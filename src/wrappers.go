@@ -424,7 +424,7 @@ func HandleZoraxyInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	info := ZoraxyInfo{
-		Version:           SYSTEM_VERSION,
+		Version:           DISPLAY_VERSION,
 		NodeUUID:          displayUUID,
 		Development:       *development_build,
 		BootTime:          displayBootTime,

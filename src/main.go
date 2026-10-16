@@ -80,7 +80,7 @@ func main() {
 
 	/* Maintaince Function Modes */
 	if *showver {
-		fmt.Println(SYSTEM_NAME + " - Version " + SYSTEM_VERSION)
+		fmt.Println(SYSTEM_NAME + " - Version " + DISPLAY_VERSION)
 		os.Exit(0)
 	}
 	if *geoDbUpdate {

@@ -2,8 +2,10 @@
 #
 # - Every push to custom (or a manual run): vet, test, and build a
 #   linux/amd64 binary, uploaded as a workflow artifact (kept 30 days).
-# - Pushing a tag named custom-v* (e.g. custom-v3.3.5-1): does the same,
-#   then publishes a GitHub Release with the binaries and SHA-256 checksums.
+# - Pushing a version tag v<base>-custom.<n> (e.g. v3.3.5-custom.1): does the
+#   same, then publishes a GitHub Release with the binary and its SHA-256
+#   checksum. The tag must match the version compiled into the binary
+#   (src/version_custom.go), or the release is refused.
 #
 # Upstream's ci.yaml only runs on main and pull requests, so it does not
 # overlap with this workflow.
@@ -13,7 +15,7 @@ name: Custom build
 on:
   push:
     branches: [custom]
-    tags: ["custom-v*"]
+    tags: ["v*-custom.*"]
   workflow_dispatch:
 
 concurrency:
@@ -87,6 +89,25 @@ jobs:
           cd dist
           sha256sum "zoraxy_${GOOS}_${GOARCH}" > "zoraxy_${GOOS}_${GOARCH}.sha256"
 
+      - name: Check version
+        working-directory: src/dist
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Prints e.g. "Zoraxy - Version 3.3.5-custom.1"
+          version="$(./zoraxy_linux_amd64 -version | sed -n 's/^Zoraxy - Version //p')"
+          echo "Built version: ${version}"
+          echo "Built **Zoraxy ${version}**" >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$version" ]; then
+            echo "::error::Could not read the version from the binary"
+            exit 1
+          fi
+          if [ "$REF_TYPE" = "tag" ] && [ "$TAG" != "v${version}" ]; then
+            echo "::error::Tag ${TAG} does not match the binary version v${version}. Bump FORK_REVISION in src/version_custom.go or fix the tag."
+            exit 1
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
@@ -96,7 +117,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/custom-v')
+    if: github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-latest
     permissions:
