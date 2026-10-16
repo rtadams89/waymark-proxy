@@ -71,6 +71,7 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/proxy/assetcache/set", HandleAssetCacheSet)
 	authRouter.HandleFunc("/api/proxy/assetcache/purge", HandleAssetCachePurge)
 	authRouter.HandleFunc("/api/proxy/assetcache/limit", HandleAssetCacheLimit)
+	authRouter.HandleFunc("/api/proxy/assetcache/summary", HandleAssetCacheSummary)
 	/* Reverse proxy virtual directory */
 	authRouter.HandleFunc("/api/proxy/vdir/list", ReverseProxyListVdir)
 	authRouter.HandleFunc("/api/proxy/vdir/add", ReverseProxyAddVdir)

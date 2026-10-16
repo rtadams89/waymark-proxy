@@ -60,16 +60,39 @@ type Usage struct {
 	MaxBytes int64 `json:"maxBytes"`
 }
 
+// DayStats are counters across all rules for one calendar day (local time).
+type DayStats struct {
+	Date        string `json:"date"` // YYYY-MM-DD
+	Hits        int64  `json:"hits"`
+	Revalidated int64  `json:"revalidated"`
+	Misses      int64  `json:"misses"`
+	Uncacheable int64  `json:"uncacheable"`
+	BytesServed int64  `json:"bytesServed"` // bandwidth saved: body bytes the upstream did not have to send
+}
+
+// HitRate is the share of static file requests answered from memory (0-1),
+// or -1 when there were none.
+func (d DayStats) HitRate() float64 {
+	served := d.Hits + d.Revalidated
+	total := served + d.Misses + d.Uncacheable
+	if total == 0 {
+		return -1
+	}
+	return float64(served) / float64(total)
+}
+
 // Store is the shared memory cache. The zero value is not usable; use NewStore.
 type Store struct {
-	mu       sync.Mutex
-	maxBytes int64
-	used     int64
-	count    int64
-	lru      *list.List // front = most recently used
-	byKey    map[string][]*entry
-	stats    map[string]*RuleStats
-	now      func() time.Time
+	mu        sync.Mutex
+	maxBytes  int64
+	used      int64
+	count     int64
+	lru       *list.List // front = most recently used
+	byKey     map[string][]*entry
+	stats     map[string]*RuleStats
+	today     DayStats
+	yesterday DayStats
+	now       func() time.Time
 }
 
 // NewStore returns an empty cache limited to maxBytes.
@@ -138,8 +161,62 @@ func (s *Store) statsLocked(rule string) *RuleStats {
 
 func (s *Store) count1(rule string, f func(*RuleStats)) {
 	s.mu.Lock()
-	f(s.statsLocked(rule))
+	st := s.statsLocked(rule)
+	before := *st
+	f(st)
+	s.rollDayLocked()
+	s.today.Hits += st.Hits - before.Hits
+	s.today.Revalidated += st.Revalidated - before.Revalidated
+	s.today.Misses += st.Misses - before.Misses
+	s.today.Uncacheable += st.Uncacheable - before.Uncacheable
+	s.today.BytesServed += st.BytesServed - before.BytesServed
 	s.mu.Unlock()
+}
+
+func dateOf(t time.Time) string {
+	return t.Local().Format("2006-01-02")
+}
+
+// rollDayLocked starts a new day's counters after midnight.
+func (s *Store) rollDayLocked() {
+	today := dateOf(s.now())
+	if s.today.Date == today {
+		return
+	}
+	if s.today.Date == dateOf(s.now().AddDate(0, 0, -1)) {
+		s.yesterday = s.today
+	} else {
+		s.yesterday = DayStats{Date: dateOf(s.now().AddDate(0, 0, -1))}
+	}
+	s.today = DayStats{Date: today}
+}
+
+// Daily returns today's and yesterday's counters across all rules.
+func (s *Store) Daily() (today, yesterday DayStats) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rollDayLocked()
+	return s.today, s.yesterday
+}
+
+// RestoreDaily loads saved daily counters (after a restart). Counters for
+// days other than today and yesterday are ignored.
+func (s *Store) RestoreDaily(saved []DayStats) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rollDayLocked()
+	for _, d := range saved {
+		switch d.Date {
+		case s.today.Date:
+			s.today.Hits += d.Hits
+			s.today.Revalidated += d.Revalidated
+			s.today.Misses += d.Misses
+			s.today.Uncacheable += d.Uncacheable
+			s.today.BytesServed += d.BytesServed
+		case s.yesterday.Date:
+			s.yesterday = d
+		}
+	}
 }
 
 // lookup returns the stored variant matching r (fresh or not) and marks it

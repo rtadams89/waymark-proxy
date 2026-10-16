@@ -19,6 +19,6 @@ package main
 */
 
 const (
-	FORK_REVISION   = "7"
+	FORK_REVISION   = "8"
 	DISPLAY_VERSION = SYSTEM_VERSION + "-custom." + FORK_REVISION
 )

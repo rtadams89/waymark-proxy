@@ -25,6 +25,8 @@
         { id: "cardCountries",      group: "Summary cards", label: "Countries (GeoIP)",    def: false, find: () => $("#cardCountries").closest(".column") },
         { id: "topPaths",         group: "Details",        label: "Top requested paths",            def: true,  find: () => $("#topPathsList").closest(".column") },
         { id: "requestMethods",   group: "Details",        label: "Request methods",                def: true,  find: () => $("#methodChart").closest(".column") },
+        { id: "cacheToday",       group: "Details",        label: "Static file cache (today)",      def: true,  find: () => $("#zrCacheTodayCard").closest(".column") },
+        { id: "cacheMemory",      group: "Details",        label: "Cache memory use",               def: true,  find: () => $("#zrCacheMemoryCard").closest(".column") },
         { id: "tlsOverview",      group: "Details",        label: "SSL / TLS overview",             def: true,  find: () => $("#certTotal").closest(".column") },
         { id: "systemResources",  group: "Details",        label: "System resources",               def: true,  find: () => $("#cpuUsageBar").closest(".column") }
     ];

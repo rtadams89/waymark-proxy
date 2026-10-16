@@ -548,6 +548,53 @@
     </div>
 </div>
 
+<!-- Custom fork: static file cache (script/statusCache.js) -->
+<div class="standardContainer nobottom" id="zrCacheRow">
+    <div class="ui two column stackable grid" style="margin: 0;">
+        <div class="column" style="padding-left: 0;">
+            <div class="dashboard-card dbstatCard" id="zrCacheTodayCard">
+                <h4>Static File Cache (Today)</h4>
+                <p class="cardSubtitle" id="zrCacheTodaySub">Static file requests on hosts with caching on</p>
+                <div class="certOverviewBox">
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="green bullseye icon"></i>Hit rate</div>
+                        <div class="certOverviewValue" id="zrCacheHitRate">-</div>
+                        <span class="dbstatDelta" id="zrCacheHitRateDelta"></span>
+                    </div>
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="blue exchange icon"></i>Bandwidth saved</div>
+                        <div class="certOverviewValue" id="zrCacheSaved">-</div>
+                        <span class="dbstatDelta" id="zrCacheSavedDelta"></span>
+                    </div>
+                </div>
+                <span class="dbstatDelta" id="zrCacheTodayDetail" style="margin-top: 0.8em;"></span>
+            </div>
+        </div>
+        <div class="column" style="padding-right: 0;">
+            <div class="dashboard-card dbstatCard" id="zrCacheMemoryCard">
+                <h4>Cache Memory</h4>
+                <p class="cardSubtitle">In-memory cache shared by all hosts</p>
+                <div class="certOverviewBox">
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="purple database icon"></i>Full</div>
+                        <div class="certOverviewValue" id="zrCacheFull">-</div>
+                    </div>
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="grey hdd icon"></i>Used</div>
+                        <div class="certOverviewValue" id="zrCacheUsed">-</div>
+                    </div>
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="grey file icon"></i>Files</div>
+                        <div class="certOverviewValue" id="zrCacheFiles">-</div>
+                    </div>
+                </div>
+                <div class="ui small teal progress" id="zrCacheBar" style="margin: 1em 0 0.3em 0;"><div class="bar" style="min-width: 0;"></div></div>
+                <span class="dbstatDelta" id="zrCacheMemoryDetail"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Top Requested Paths & Request Methods -->
 <div class="standardContainer nobottom">
     <div class="ui two column stackable grid" style="margin: 0;">
@@ -1306,3 +1353,4 @@
 </script>
 <!-- Custom fork: per-panel show/hide settings -->
 <script src="script/statusPanels.js"></script>
+<script src="script/statusCache.js"></script>

@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"imuslab.com/zoraxy/mod/assetcache"
 	"imuslab.com/zoraxy/mod/dynamicproxy"
@@ -23,14 +25,44 @@ import (
 
 const (
 	assetCacheLimitKey   = "asset_cache_max_mb"
+	assetCacheDailyKey   = "asset_cache_daily"
 	assetCacheDefaultMB  = 256
 	assetCacheMinLimitMB = 16
 	assetCacheMaxLimitMB = 65536
 )
 
-// initAssetCache applies the saved memory limit. Called at startup.
+// initAssetCache applies the saved memory limit and restores today's
+// counters. Called at startup.
 func initAssetCache() {
 	dynamicproxy.AssetCache.SetMaxBytes(int64(assetCacheLimitMB()) << 20)
+	assetCacheDailyOnce.Do(func() {
+		if sysdb != nil && sysdb.TableExists(migrationTable) && sysdb.KeyExists(migrationTable, assetCacheDailyKey) {
+			saved := []assetcache.DayStats{}
+			if err := sysdb.Read(migrationTable, assetCacheDailyKey, &saved); err == nil {
+				dynamicproxy.AssetCache.RestoreDaily(saved)
+			}
+		}
+		go func() {
+			for range time.Tick(time.Minute) {
+				saveAssetCacheDaily()
+			}
+		}()
+	})
+}
+
+var assetCacheDailyOnce sync.Once
+
+// saveAssetCacheDaily stores today's and yesterday's counters (for the
+// status page) so a restart does not reset them.
+func saveAssetCacheDaily() {
+	if sysdb == nil {
+		return
+	}
+	if !sysdb.TableExists(migrationTable) {
+		sysdb.NewTable(migrationTable)
+	}
+	today, yesterday := dynamicproxy.AssetCache.Daily()
+	sysdb.Write(migrationTable, assetCacheDailyKey, []assetcache.DayStats{today, yesterday})
 }
 
 func assetCacheLimitMB() int {
@@ -206,4 +238,28 @@ func HandleAssetCacheLimit(w http.ResponseWriter, r *http.Request) {
 	dynamicproxy.AssetCache.SetMaxBytes(int64(mb) << 20)
 	SystemWideLogger.PrintAndLog("assetcache", "Cache memory limit set to "+strconv.Itoa(mb)+" MB", nil)
 	utils.SendOK(w)
+}
+
+// HandleAssetCacheSummary returns today's and yesterday's cache totals
+// across all rules, for the status page.
+// GET /api/proxy/assetcache/summary
+func HandleAssetCacheSummary(w http.ResponseWriter, r *http.Request) {
+	today, yesterday := dynamicproxy.AssetCache.Daily()
+	enabled := 0
+	if dynamicProxyRouter != nil {
+		for _, ep := range dynamicProxyRouter.GetProxyEndpointsAsMap() {
+			if ep.AssetCache.On() && !ep.Disabled {
+				enabled++
+			}
+		}
+	}
+	js, _ := json.Marshal(map[string]any{
+		"today":            today,
+		"todayHitRate":     today.HitRate(),
+		"yesterday":        yesterday,
+		"yesterdayHitRate": yesterday.HitRate(),
+		"cachedHosts":      enabled,
+		"usage":            dynamicproxy.AssetCache.Usage(),
+	})
+	utils.SendJSONResponse(w, string(js))
 }

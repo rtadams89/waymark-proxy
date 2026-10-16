@@ -230,6 +230,7 @@
                     <th>Host</th>
                     <th class="details-view">Alt. Listening Addr</th>
                     <th>Destination</th>
+                    <th class="no-sort">Health / Cache</th>
                     <th class="details-view">Authentication</th>
                     <th>Virtual Directory</th>
                     <th class="no-sort">Tags</th>
@@ -911,6 +912,9 @@
                                 ${upstreams}        
                             </div>
                         </td>
+                        <td data-label="features" datatype="features" class="hcCacheCell" eptuuid="${subd.RootOrMatchingDomain}" style="white-space: nowrap;">
+                            ${renderHealthCacheCell(subd)}
+                        </td>
                         <td data-label="auth" datatype="auth" class="details-view" style="${authDisplayEmpty?"text-align: center;":""}">
                             ${authDisplay}
                         </td>
@@ -942,6 +946,7 @@
             resolveAccessRuleNameOnHostRPlist();
             initDetailView();
             filterProxyList();
+            updateHealthIndicators();
         });
     }
 
@@ -1306,6 +1311,66 @@
         }));
         showEditorSideWrapper("snippet/healthChecks.html?t=" + Date.now() + "#" + payload);
     }
+
+    //Custom fork: health check and caching indicators in the rule list
+    function renderHealthCacheCell(subd){
+        let hc = subd.HealthCheck;
+        let parts = [];
+        if (hc && (hc.activeEnabled || hc.passiveEnabled)){
+            let kind = hc.activeEnabled && hc.passiveEnabled ? "Active + passive" : (hc.activeEnabled ? "Active" : "Passive");
+            let title = describeHealthCheck(hc).replace(/"/g, "&quot;");
+            parts.push(`<span class="hcIndicator" title="${title}"><i class="grey heartbeat icon"></i><span class="hcIndicatorText">${kind}</span></span>`);
+        }
+        let ac = subd.AssetCache;
+        if (ac && ac.enabled){
+            let ttl = ac.defaultTTLSeconds;
+            let ttlText = ttl % 86400 == 0 ? (ttl / 86400) + "d" : (ttl % 3600 == 0 ? (ttl / 3600) + "h" : (ttl % 60 == 0 ? (ttl / 60) + "m" : ttl + "s"));
+            parts.push(`<span class="cacheIndicator" title="Static file caching on: ${(ac.extensions || []).length} file types${ac.matchContentTypes ? " + by content type" : ""}, default lifetime ${ttlText}"><i class="teal archive icon"></i>Caching</span>`);
+        }
+        if (parts.length == 0){
+            return `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
+        }
+        return parts.join("<br>");
+    }
+
+    //Custom fork: colour the health indicators from live health check state
+    function updateHealthIndicators(){
+        if ($("#httpProxyList .hcIndicator").length == 0){
+            return;
+        }
+        $.get("/api/proxy/healthcheck/status", function(statuses){
+            if (!Array.isArray(statuses)){
+                return;
+            }
+            let byRule = {};
+            statuses.forEach(s => { (byRule[s.rule] = byRule[s.rule] || []).push(s); });
+            $("#httpProxyList .hcCacheCell").each(function(){
+                let ind = $(this).find(".hcIndicator");
+                if (ind.length == 0){
+                    return;
+                }
+                let list = byRule[String($(this).attr("eptuuid")).toLowerCase()] || [];
+                let down = list.filter(s => !s.enabled);
+                let icon = ind.find(".heartbeat.icon").removeClass("grey green red");
+                ind.find(".hcDownNote").remove();
+                if (list.length == 0){
+                    icon.addClass("grey");
+                }else if (down.length == 0){
+                    icon.addClass("green");
+                    ind.attr("data-state", "healthy");
+                }else{
+                    icon.addClass("red");
+                    ind.attr("data-state", "down");
+                    ind.append(`<span class="hcDownNote" style="color: #db2828;"> · ${down.length} of ${list.length} down</span>`);
+                }
+            });
+        });
+    }
+    setInterval(function(){
+        if ($("#httpProxyList").is(":visible")){
+            updateHealthIndicators();
+        }
+    }, 15000);
 
     //Custom fork: one-line summary of a rule's health check settings
     function describeHealthCheck(hc){

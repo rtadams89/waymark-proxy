@@ -421,3 +421,41 @@ func TestConfigValidate(t *testing.T) {
 		}
 	}
 }
+
+func TestDailyStats(t *testing.T) {
+	h := newHarness(t)
+	h.clock = time.Date(2026, 10, 16, 23, 59, 0, 0, time.Local)
+	h.up.set("/a.css", "AAAA", "Content-Type", "text/css")
+	h.up.set("/n.css", "N", "Content-Type", "text/css", "Cache-Control", "no-store")
+	h.do("GET", "/a.css")
+	h.do("GET", "/a.css")
+	h.do("GET", "/a.css")
+	h.do("GET", "/n.css")
+	today, _ := h.store.Daily()
+	if today.Date != "2026-10-16" || today.Hits != 2 || today.Misses != 1 || today.Uncacheable != 1 || today.BytesServed != 8 || today.HitRate() != 0.5 {
+		t.Fatalf("today: %+v rate %v", today, today.HitRate())
+	}
+	// Purging a rule does not change the day's totals
+	h.store.Purge("app.test")
+	if d, _ := h.store.Daily(); d.Hits != 2 {
+		t.Fatalf("purge changed daily totals: %+v", d)
+	}
+	// Midnight: today becomes yesterday
+	h.clock = h.clock.Add(2 * time.Minute)
+	h.do("GET", "/a.css")
+	today, yesterday := h.store.Daily()
+	if today.Date != "2026-10-17" || today.Misses != 1 || today.Hits != 0 || yesterday.Hits != 2 || yesterday.Date != "2026-10-16" {
+		t.Fatalf("rollover: today %+v yesterday %+v", today, yesterday)
+	}
+	// Restore after a restart adds to today and replaces yesterday
+	s2 := NewStore(1 << 20)
+	s2.now = func() time.Time { return h.clock }
+	s2.RestoreDaily([]DayStats{today, yesterday, {Date: "2020-01-01", Hits: 99}})
+	t2, y2 := s2.Daily()
+	if t2 != today || y2 != yesterday {
+		t.Fatalf("restore: %+v %+v", t2, y2)
+	}
+	if (DayStats{}).HitRate() != -1 {
+		t.Fatalf("empty hit rate")
+	}
+}

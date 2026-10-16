@@ -466,6 +466,7 @@ func ShutdownSeq() {
 	if dashboardBandwidth != nil {
 		dashboardBandwidth.Close()
 	}
+	saveAssetCacheDaily() //Custom fork: keep today's cache stats across restarts
 
 	if mdnsTickerStop != nil {
 		SystemWideLogger.Println("Stopping mDNS Discoverer (might take a few minutes)")

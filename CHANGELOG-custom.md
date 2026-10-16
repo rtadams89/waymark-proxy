@@ -8,6 +8,16 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - The revision lives in `src/version_custom.go` (`FORK_REVISION`). `SYSTEM_VERSION` in `src/def.go` stays the plain upstream version, because Zoraxy's config migrations parse it as a number.
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 
+## 3.3.5-custom.8
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- HTTP Proxy list: a **Health / Cache** column showing whether each rule has health checks (active, passive or both) and static file caching on. The health indicator is green when all checked upstreams are healthy and red with "n of m down" otherwise, refreshed every 15 seconds; hovering shows the settings.
+- Status page: two new panels, each can be hidden in the panel settings.
+  - **Static File Cache (Today)**: today's hit rate and bandwidth saved across all hosts with caching on, compared with yesterday. Counters reset at local midnight and are kept across restarts.
+  - **Cache Memory**: how full the shared in-memory cache is (percentage, size against the limit, number of files).
+
 ## 3.3.5-custom.7
 
 Base: upstream v3.3.5 (`310b0cc`).
