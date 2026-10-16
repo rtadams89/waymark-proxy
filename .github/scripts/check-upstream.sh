@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # Custom fork: report a new upstream Zoraxy release.
 #
-# Compares the latest upstream release (pre-releases excluded) with the
-# upstream version this branch is based on (SYSTEM_VERSION in src/def.go).
-# If upstream is newer and not reported before, it opens an issue labelled
-# "upstream-release" and starts the "Merge upstream release" workflow, which
-# prepares a pull request.
+# Upstream publishes release candidates (vX.Y.Z-rcN) as normal releases
+# before the final vX.Y.Z, so this follows final releases only and mentions
+# a newer release candidate in the run summary.
 #
-# Environment: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_STEP_SUMMARY (set by
-# Actions), UPSTREAM_REPO (default tobychui/zoraxy), DRY_RUN=1 to only print.
+# A final release counts as new when its version is at least the upstream
+# version this branch is based on (SYSTEM_VERSION in src/def.go) and its
+# commit is not already merged into this branch. Then it opens an issue
+# labelled "upstream-release" (once per release) and starts the "Merge
+# upstream release" workflow, which prepares a pull request.
+#
+# Needs a full clone (fetch-depth: 0). Environment: GH_TOKEN,
+# GITHUB_REPOSITORY, GITHUB_STEP_SUMMARY (set by Actions), UPSTREAM_REPO
+# (default tobychui/zoraxy), UPSTREAM_URL (git URL, default from
+# UPSTREAM_REPO), DRY_RUN=1 to only print.
 set -euo pipefail
 
 UPSTREAM_REPO="${UPSTREAM_REPO:-tobychui/zoraxy}"
+UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/${UPSTREAM_REPO}.git}"
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
 base="$(sed -n -E 's/^[[:space:]]*SYSTEM_VERSION[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' src/def.go | head -n1)"
@@ -20,22 +27,57 @@ if [ -z "$base" ]; then
   exit 1
 fi
 
-release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/latest")"
-tag="$(jq -r .tag_name <<<"$release_json")"
+# Highest version among tags matching a pattern ("" if none)
+newest_tag() {
+  grep -E "$1" | awk '{v=$0; sub(/^v/, "", v); print v " " $0}' | sort -V -k1,1 | tail -n1 | cut -d' ' -f2
+}
+version_ge() { # $1 >= $2
+  [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n1)" = "$1" ]
+}
+
+releases_json="$(gh api "repos/${UPSTREAM_REPO}/releases?per_page=50")"
+tags="$(jq -r '.[] | select(.draft | not) | .tag_name' <<<"$releases_json")"
+tag="$(newest_tag '^v?[0-9]+\.[0-9]+\.[0-9]+$' <<<"$tags" || true)"
+rc_tag="$(newest_tag '^v?[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$' <<<"$tags" || true)"
+
+if [ -z "$tag" ]; then
+  echo "::warning::No final upstream release found"
+  exit 0
+fi
 latest="${tag#v}"
-if ! [[ "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "::warning::Latest upstream release tag '${tag}' is not a plain x.y.z version; skipping"
+
+note_rc() {
+  if [ -n "$rc_tag" ]; then
+    rc_version="${rc_tag#v}"
+    rc_version="${rc_version%%-rc*}"
+    if ! version_ge "$latest" "$rc_version" && version_ge "$rc_version" "$base"; then
+      echo "Release candidate ${rc_tag} is out; waiting for its final release." | tee -a "$SUMMARY"
+    fi
+  fi
+}
+
+if ! version_ge "$latest" "$base"; then
+  echo "Up to date: this fork is based on upstream ${base}; the latest final upstream release is ${tag}." | tee -a "$SUMMARY"
+  note_rc
   exit 0
 fi
 
-newest="$(printf '%s\n%s\n' "$base" "$latest" | sort -V | tail -n1)"
-if [ "$latest" = "$base" ] || [ "$newest" = "$base" ]; then
-  echo "Up to date: this fork is based on upstream ${base}; latest upstream release is ${tag}." | tee -a "$SUMMARY"
+# Same or newer version: new only if its commit is not merged yet
+git fetch --no-tags --quiet "$UPSTREAM_URL" "+refs/tags/${tag}:refs/upstream-tags/${tag}"
+if git merge-base --is-ancestor "refs/upstream-tags/${tag}^{commit}" HEAD; then
+  echo "Up to date: this branch already includes upstream ${tag}." | tee -a "$SUMMARY"
+  note_rc
   exit 0
 fi
 
+since="$(git merge-base HEAD "refs/upstream-tags/${tag}^{commit}" 2>/dev/null | cut -c1-12 || true)"
 echo "Upstream ${tag} is available (this fork is based on ${base})." | tee -a "$SUMMARY"
-title="Upstream Zoraxy ${tag} is available (fork is on ${base})"
+note_rc
+if [ "$latest" = "$base" ]; then
+  title="Upstream Zoraxy ${tag} is available (fork has an earlier ${base} build)"
+else
+  title="Upstream Zoraxy ${tag} is available (fork is on ${base})"
+fi
 
 if [ "${DRY_RUN:-}" = "1" ]; then
   echo "DRY_RUN: would open issue: ${title}"
@@ -61,6 +103,7 @@ if ! gh workflow run upstream-merge.yml --repo "$GITHUB_REPOSITORY" --ref custom
   merge_note="Could not start the **Merge upstream release** workflow automatically ($(head -c 300 /tmp/dispatch.err)). Run it from the Actions tab with tag \`${tag}\`."
 fi
 
+release_json="$(jq --arg t "$tag" '[.[] | select(.tag_name == $t)][0]' <<<"$releases_json")"
 published="$(jq -r '.published_at // ""' <<<"$release_json" | cut -c1-10)"
 notes="$(jq -r '.body // ""' <<<"$release_json" | head -c 50000)"
 body_file="$(mktemp)"
@@ -68,7 +111,7 @@ cat >"$body_file" <<EOF
 Upstream [${UPSTREAM_REPO}](https://github.com/${UPSTREAM_REPO}) published **${tag}** on ${published}. This fork is based on **${base}**.
 
 - Release: https://github.com/${UPSTREAM_REPO}/releases/tag/${tag}
-- Changes since ${base}: https://github.com/${UPSTREAM_REPO}/compare/v${base}...${tag}
+- Upstream changes not yet in this fork: https://github.com/${UPSTREAM_REPO}/compare/${since:-v${base}}...${tag}
 
 ${merge_note}
 

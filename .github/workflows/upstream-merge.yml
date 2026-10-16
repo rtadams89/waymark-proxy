@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Upstream release tag, e.g. v3.3.6 (empty = latest release)"
+        description: "Upstream release tag, e.g. v3.3.6 or v3.3.6-rc1 (empty = latest final release)"
         required: false
         default: ""
 
@@ -60,10 +60,12 @@ jobs:
         run: |
           tag="$INPUT_TAG"
           if [ -z "$tag" ]; then
-            tag="$(gh api repos/tobychui/zoraxy/releases/latest --jq .tag_name)"
+            # Newest final release; upstream also publishes release candidates as releases
+            tag="$(gh api 'repos/tobychui/zoraxy/releases?per_page=50' --jq '.[] | select(.draft | not) | .tag_name' \
+              | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | awk '{v=$0; sub(/^v/, "", v); print v " " $0}' | sort -V -k1,1 | tail -n1 | cut -d' ' -f2)"
           fi
-          if ! [[ "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::'$tag' is not a release tag like v3.3.6"
+          if ! [[ "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+            echo "::error::'$tag' is not a release tag like v3.3.6 or v3.3.6-rc1"
             exit 1
           fi
           echo "TAG=$tag" >> "$GITHUB_ENV"
@@ -134,7 +136,7 @@ jobs:
             echo "Merges upstream Zoraxy **$TAG** (\`$UPSTREAM_SHA\`) into \`custom\` and starts **$VERSION**."
             echo
             echo "- Release notes: https://github.com/tobychui/zoraxy/releases/tag/$TAG"
-            echo "- Upstream changes since $OLD_BASE: https://github.com/tobychui/zoraxy/compare/v$OLD_BASE...$TAG"
+            echo "- Upstream changes merged here: https://github.com/tobychui/zoraxy/compare/${SINCE_SHA:-v$OLD_BASE}...$TAG"
             echo "- Kept removed (this fork deletes them): ${REMOVED:-none}"
             echo "- Version: \`FORK_REVISION\` reset to 1, CHANGELOG-custom.md entry added"
             echo

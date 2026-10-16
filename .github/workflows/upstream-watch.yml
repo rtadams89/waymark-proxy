@@ -1,9 +1,10 @@
 # Custom fork: daily check for a new upstream Zoraxy release.
 #
-# When tobychui/zoraxy publishes a release newer than the upstream version
-# this fork is based on, it opens an issue (label "upstream-release") and
-# starts the "Merge upstream release" workflow, which prepares a pull
-# request. Each release is reported once. See .github/scripts/check-upstream.sh.
+# When tobychui/zoraxy publishes a final release (release candidates are
+# skipped) that is not merged into custom yet, it opens an issue (label
+# "upstream-release") and starts the "Merge upstream release" workflow,
+# which prepares a pull request. Each release is reported once. See
+# .github/scripts/check-upstream.sh.
 #
 # Needs Issues turned on for the repository (Settings > General > Features).
 
@@ -33,6 +34,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: custom
+          fetch-depth: 0  # to tell whether a release is already merged
 
       - name: Compare with the latest upstream release
         env:

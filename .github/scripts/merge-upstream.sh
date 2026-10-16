@@ -16,8 +16,8 @@ UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/tobychui/zoraxy.git}"
 FORK_REMOVED_PATHS="${FORK_REMOVED_PATHS:-docker docs example tools .github/workflows/ci.yaml .github/workflows/docker.yml}"
 RESULT="${MERGE_RESULT_FILE:-merge-result.env}"
 
-if ! [[ "${TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "::error::TAG must look like v3.3.6 (got '${TAG:-}')"
+if ! [[ "${TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+  echo "::error::TAG must look like v3.3.6 or v3.3.6-rc1 (got '${TAG:-}')"
   exit 1
 fi
 
@@ -27,6 +27,7 @@ git fetch --no-tags --quiet "$UPSTREAM_URL" "+refs/tags/${TAG}:${UPSTREAM_REF}"
 upstream_sha="$(git rev-parse --short "${UPSTREAM_REF}^{commit}")"
 
 old_base="$(sed -n -E 's/^[[:space:]]*SYSTEM_VERSION[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' src/def.go | head -n1)"
+since_sha="$(git merge-base HEAD "${UPSTREAM_REF}^{commit}" 2>/dev/null | cut -c1-12 || true)"
 git switch --quiet -C "$BRANCH"
 if git merge-base --is-ancestor "${UPSTREAM_REF}^{commit}" HEAD; then
   echo "custom already contains ${TAG}; nothing to merge."
@@ -98,6 +99,7 @@ git commit --quiet -m "Start ${version}"
   echo "VERSION=${version}"
   echo "BASE=${base}"
   echo "OLD_BASE=${old_base}"
+  echo "SINCE_SHA=${since_sha}"
   echo "UPSTREAM_SHA=${upstream_sha}"
   echo "REMOVED=${removed_list# }"
 } >"$RESULT"
