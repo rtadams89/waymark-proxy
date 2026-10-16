@@ -1,0 +1,174 @@
+# Custom fork: prepare a pull request that merges an upstream Zoraxy release.
+#
+# Started by "Watch upstream releases", or by hand from the Actions tab
+# (leave the tag empty for the latest release). It:
+# - creates branch upstream-merge/<tag> from custom and merges the release,
+#   keeping the folders this fork removed removed
+# - resets the fork revision to 1 (<new base>-custom.1) and adds a
+#   CHANGELOG-custom.md entry
+# - runs the same checks as the build (vet, test, govulncheck)
+# - opens a pull request into custom (a draft if a check failed), or, on
+#   merge conflicts, reports the conflicting files instead
+#
+# Merge the pull request with "Create a merge commit" (not squash/rebase).
+# Opening pull requests needs Settings > Actions > General > "Allow GitHub
+# Actions to create and approve pull requests". Without it the branch is
+# still pushed and the run summary links to it.
+
+name: Merge upstream release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Upstream release tag, e.g. v3.3.6 (empty = latest release)"
+        required: false
+        default: ""
+
+concurrency:
+  group: upstream-merge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INPUT_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Checkout custom (full history)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: custom
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: "1.26.x"
+          check-latest: true
+          cache-dependency-path: src/go.sum
+
+      - name: Pick the release
+        run: |
+          tag="$INPUT_TAG"
+          if [ -z "$tag" ]; then
+            tag="$(gh api repos/tobychui/zoraxy/releases/latest --jq .tag_name)"
+          fi
+          if ! [[ "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$tag' is not a release tag like v3.3.6"
+            exit 1
+          fi
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          echo "Merging upstream **$tag**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Merge
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set +e
+          bash .github/scripts/merge-upstream.sh
+          code=$?
+          set -e
+          cat merge-result.env >> "$GITHUB_ENV"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "3" ]; then
+            echo "custom already includes $TAG. Nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$code" != "0" ] && [ "$code" != "2" ]; then
+            exit "$code"
+          fi
+
+      - name: Report conflicts
+        if: steps.merge.outputs.code == '2'
+        run: |
+          {
+            echo "Merging upstream $TAG into custom has conflicts that need a person (or Claude) to resolve:"
+            echo
+            for f in $CONFLICTS; do echo "- \`$f\`"; done
+            echo
+            echo "Nothing was changed. Ask Claude to merge upstream $TAG into custom and resolve these."
+          } > conflicts.md
+          cat conflicts.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY" --jq .has_issues)" = "true" ]; then
+            gh label create upstream-release --repo "$GITHUB_REPOSITORY" --color 0e8a16 --description "New upstream Zoraxy release" --force >/dev/null
+            gh issue create --repo "$GITHUB_REPOSITORY" --label upstream-release \
+              --title "Merging upstream Zoraxy $TAG needs conflict resolution" --body-file conflicts.md
+          fi
+          echo "::error::Merge conflicts in: $CONFLICTS"
+          exit 1
+
+      - name: Run checks
+        id: checks
+        if: steps.merge.outputs.code == '0'
+        working-directory: src
+        run: |
+          status=passed
+          : > ../checks.log
+          for step in "go mod verify" "go vet ./..." "go test ./..." "go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./..."; do
+            echo "### $step" >> ../checks.log
+            if ! bash -c "$step" >> ../checks.log 2>&1; then
+              status=failed
+              echo "FAILED: $step" >> ../checks.log
+            fi
+          done
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "Checks: **$status**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push branch and open pull request
+        if: steps.merge.outputs.code == '0'
+        env:
+          CHECKS: ${{ steps.checks.outputs.status }}
+        run: |
+          git push --force --quiet origin "HEAD:refs/heads/$BRANCH"
+          {
+            echo "Merges upstream Zoraxy **$TAG** (\`$UPSTREAM_SHA\`) into \`custom\` and starts **$VERSION**."
+            echo
+            echo "- Release notes: https://github.com/tobychui/zoraxy/releases/tag/$TAG"
+            echo "- Upstream changes since $OLD_BASE: https://github.com/tobychui/zoraxy/compare/v$OLD_BASE...$TAG"
+            echo "- Kept removed (this fork deletes them): ${REMOVED:-none}"
+            echo "- Version: \`FORK_REVISION\` reset to 1, CHANGELOG-custom.md entry added"
+            echo
+            if [ "$CHECKS" = "passed" ]; then
+              echo "**Checks passed** (go mod verify, vet, test, govulncheck)."
+            else
+              echo "**Checks failed**, so this is a draft. Ask Claude to look at the failures before merging."
+            fi
+            echo
+            echo "<details><summary>Check output</summary>"
+            echo
+            echo '```'
+            tail -c 50000 checks.log
+            echo '```'
+            echo "</details>"
+            echo
+            echo "**After review:** merge with **Create a merge commit** (not squash or rebase), pull \`custom\` in GitHub Desktop, then tag \`v$VERSION\` to publish the build."
+          } > pr.md
+
+          if [ "$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq length)" != "0" ]; then
+            gh pr comment "$BRANCH" --repo "$GITHUB_REPOSITORY" --body-file pr.md
+            echo "Updated the existing pull request for $BRANCH." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          draft=""
+          if [ "$CHECKS" != "passed" ]; then draft="--draft"; fi
+          if url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base custom --head "$BRANCH" $draft \
+                --title "Merge upstream Zoraxy $TAG" --body-file pr.md 2>pr.err)"; then
+            echo "Opened $url" >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "Pushed branch \`$BRANCH\`, but could not open the pull request: $(head -c 300 pr.err)"
+              echo
+              echo "Open it here: https://github.com/$GITHUB_REPOSITORY/compare/custom...$BRANCH (or turn on Settings > Actions > General > Allow GitHub Actions to create and approve pull requests)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Pull request not opened; see the run summary"
+          fi

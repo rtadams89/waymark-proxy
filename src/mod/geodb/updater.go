@@ -257,6 +257,11 @@ func (u *Updater) scheduleWorker(stopChan chan struct{}) {
 			timer.Stop()
 			return
 		case <-timer.C:
+			if u.store.disabled.Load() {
+				//Custom fork: no downloads while lookups are turned off
+				waitDuration = jitteredInterval(GeoDBUpdateInterval)
+				continue
+			}
 			if err := u.UpdateNow(); err != nil {
 				//Update failed. Retry sooner instead of waiting another week
 				u.store.log("Scheduled GeoIP database update failed", err)

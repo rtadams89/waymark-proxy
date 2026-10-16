@@ -7,6 +7,17 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - The revision goes up by one for every change that ships, and resets to 1 after rebasing onto a new upstream release (`3.3.6-custom.1`).
 - The revision lives in `src/version_custom.go` (`FORK_REVISION`). `SYSTEM_VERSION` in `src/def.go` stays the plain upstream version, because Zoraxy's config migrations parse it as a number.
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
+- New upstream releases are picked up by the "Watch upstream releases" workflow (daily), which opens an issue and starts "Merge upstream release" to prepare a pull request. Merge those pull requests with a merge commit.
+
+## 3.3.5-custom.10
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Setting to turn Geo-IP lookups off (Utilities > System > Geo-IP Lookups). While off, the Geo-IP database is not loaded (about 170 MB less memory in testing), statistics record no visitor countries, and scheduled database downloads are skipped. It can't be turned off while an enabled access rule list contains countries; while it's off, countries can't be added and the access rule page says why. Turning it back on loads the database without a restart.
+- Upstream release tracking (GitHub Actions):
+  - **Watch upstream releases** runs daily. When tobychui/zoraxy publishes a release newer than this fork's base, it opens an issue (label `upstream-release`) and starts the merge workflow. Needs Issues turned on for the repository.
+  - **Merge upstream release** (also runnable by hand) merges the release into a new `upstream-merge/<tag>` branch, keeps the folders this fork removed removed, resets the version to `<new base>-custom.1` with a changelog entry, runs vet, tests and govulncheck, and opens a pull request into `custom` (a draft if a check failed). On merge conflicts it reports the files in an issue instead. Opening pull requests needs "Allow GitHub Actions to create and approve pull requests" in the repository's Actions settings.
 
 ## 3.3.5-custom.9
 

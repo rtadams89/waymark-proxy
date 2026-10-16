@@ -160,6 +160,7 @@ func startupSequence() {
 		Logger:                       SystemWideLogger,
 		SlowLookupCacheClearInterval: GEODB_CACHE_CLEAR_INTERVAL * time.Minute,
 		ExternalGeoDBFolder:          CONF_GEODB_PATH,
+		Disabled:                     !geoIPEnabledSetting(), //Custom fork: GeoIP lookups can be turned off
 	})
 	if err != nil {
 		panic(err)

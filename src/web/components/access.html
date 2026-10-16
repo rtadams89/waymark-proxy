@@ -58,6 +58,8 @@
                 <div class="toggleSucc" style="float: right; display:none; color: #2abd4d;" >
                     <i class="ui green checkmark icon"></i> Setting Saved
                 </div>
+                <!-- Custom fork: shown while Geo-IP lookups are off -->
+                <div class="ui yellow message geoipOffNote" style="display:none;"><i class="exclamation triangle icon"></i> Geo-IP lookups are turned off (Utilities, System tab), so country lists can't be used. IP and CIDR entries still work.</div>
                 <h4>Country Blacklist</h4>
                     <p><i class="yellow exclamation triangle icon"></i>
                     This will block all requests from the selected country. The requester's location is estimated from their IP address and may not be 100% accurate.</p>
@@ -390,6 +392,8 @@
                         </div>
                     </div>  
                 </div>
+                <!-- Custom fork: shown while Geo-IP lookups are off -->
+                <div class="ui yellow message geoipOffNote" style="display:none;"><i class="exclamation triangle icon"></i> Geo-IP lookups are turned off (Utilities, System tab), so country lists can't be used. IP and CIDR entries still work.</div>
                 <h4>Country Whitelist</h4>
                     <p><i class="yellow exclamation triangle icon"></i>
                     This will allow all requests from the selected country. The requester's location is estimated from their IP address and may not be 100% accurate.</p>
@@ -837,11 +841,23 @@
     }
     
     //Load all the black white lists
+    //Custom fork: warn on the country lists while Geo-IP lookups are off
+    function checkGeoIPLookups(){
+        $.get("/api/geodb/enabled", function(data){
+            if (data && data.error == undefined){
+                $(".geoipOffNote").toggle(!data.enabled);
+            }
+        });
+    }
+    checkGeoIPLookups();
+
     function initBlackWhitelistTables(){
         //Remove event listener on toggle buttons
         $("#enableWhitelist").off("change");
         $("#enableBlacklist").off("change");
         $("#enableWhitelistLoopback").off("change");
+
+        checkGeoIPLookups(); //Custom fork
 
         //Initialize the button states
         initBlacklistEnableState();

@@ -52,6 +52,8 @@ type Store struct {
 	cacheClearTicker         *time.Ticker //Ticker for clearing cache
 	cacheClearTickerStopChan chan bool    //Stop channel for cache clear ticker
 	option                   *StoreOptions
+
+	disabled atomic.Bool //Custom fork: lookups turned off and dataset unloaded, see enable_custom.go
 }
 
 type StoreOptions struct {
@@ -60,6 +62,8 @@ type StoreOptions struct {
 	Logger                       *logger.Logger
 	SlowLookupCacheClearInterval time.Duration //Clear slow lookup cache interval
 	ExternalGeoDBFolder          string        //Folder for storing the downloaded geodb dataset
+
+	Disabled bool //Custom fork: start with lookups turned off (dataset not loaded)
 }
 
 type CountryInfo struct {
@@ -91,11 +95,14 @@ func NewGeoDb(sysdb *database.Database, option *StoreOptions) (*Store, error) {
 	}
 
 	//Load the geoip dataset into the store
-	dataset, err := thisGeoDBStore.loadDataSet()
-	if err != nil {
-		return nil, err
+	thisGeoDBStore.disabled.Store(option.Disabled) //Custom fork
+	if !option.Disabled {
+		dataset, err := thisGeoDBStore.loadDataSet()
+		if err != nil {
+			return nil, err
+		}
+		thisGeoDBStore.dataset.Store(dataset)
 	}
-	thisGeoDBStore.dataset.Store(dataset)
 
 	//Start cache clear ticker
 	if option.AllowSlowIpv4LookUp || option.AllowSlowIpv6Lookup {
@@ -171,6 +178,9 @@ func (s *Store) loadDataSet() (*geoDataSet, error) {
 // swap it into the store. This is called after a database update so the new
 // dataset can be used without restarting Zoraxy
 func (s *Store) ReloadGeoDB() error {
+	if s.disabled.Load() {
+		return nil //Custom fork: loaded when lookups are turned back on
+	}
 	newDataSet, err := s.loadDataSet()
 	if err != nil {
 		return err

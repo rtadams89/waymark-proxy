@@ -156,6 +156,24 @@
         </div>
     </div>
     <div class="ui bottom attached tab segment utilitiesTabs" data-tab="utiltab4">
+        <!-- Custom fork: GeoIP lookups on/off (geoip_custom.go) -->
+        <h3>Geo-IP Lookups</h3>
+        <p>Resolves visitor IP addresses into countries for country-based access rules, visitor statistics and the status page's visitor map. On a proxy that only serves your own network, turning this off saves the memory the database uses and a lookup on every request.</p>
+        <div class="ui basic segment">
+            <div class="ui form">
+                <div class="field">
+                    <div class="ui toggle checkbox">
+                        <input type="checkbox" id="geoipLookupsEnabled">
+                        <label>Enable Geo-IP lookups</label>
+                    </div>
+                    <br>
+                    <small id="geoipLookupsHint">While off, the database is not loaded, statistics record no visitor countries, and access rules can't use country lists. IP and CIDR entries keep working.</small>
+                </div>
+            </div>
+            <div id="geoipLookupsMsg" class="ui message" style="display:none;"></div>
+        </div>
+        <div class="ui divider"></div>
+        <div id="geodbUpdateSection">
         <!-- Geo-IP Database Update -->
         <h3>Geo-IP Database Update</h3>
         <p>The Geo-IP database resolves visitor IP addresses into country codes for access control rules and statistics. Updating it keeps the country lookup results accurate.</p>
@@ -195,6 +213,7 @@
                 <i class="clock outline icon"></i> Next update in <span id="geodbCountdown">-</span>
             </div>
             <div id="geodbUpdateMsg" class="ui message" style="display:none;"></div>
+        </div>
         </div>
         <div class="ui divider"></div>
 
@@ -513,6 +532,52 @@
 
     loadGeoDBUpdateStatus();
 
+    /* Custom fork: Geo-IP lookups on/off */
+    var geoipLookupsOn = true;
+    function loadGeoIPLookupsSetting(){
+        $.get("/api/geodb/enabled", function(data){
+            if (!data || data.error != undefined){
+                return;
+            }
+            geoipLookupsOn = data.enabled;
+            $("#geoipLookupsEnabled").prop("checked", data.enabled);
+            $("#geodbUpdateSection").css({opacity: data.enabled ? "" : "0.45", "pointer-events": data.enabled ? "" : "none"});
+            if (data.enabled && data.rulesUsingCountries.length > 0){
+                $("#geoipLookupsHint").text("Can't be turned off while these access rules use country lists: " + data.rulesUsingCountries.join(", ") + ". Remove their countries first.");
+            }else{
+                $("#geoipLookupsHint").text("While off, the database is not loaded, statistics record no visitor countries, and access rules can't use country lists. IP and CIDR entries keep working.");
+            }
+        });
+    }
+    function showGeoIPLookupsMessage(message, ok){
+        $("#geoipLookupsMsg").removeClass("green red").addClass(ok ? "green" : "red")
+            .html(`<i class="${ok ? "check circle" : "exclamation triangle"} icon"></i> ` + $("<span>").text(message).html())
+            .stop().finish().slideDown("fast").delay(ok ? 3000 : 9000).slideUp("fast");
+    }
+    //Native change event: index.html re-initializes checkbox modules later
+    $("#geoipLookupsEnabled").on("change", function(){
+        let enable = $(this).is(":checked");
+        $.cjax({
+            type: "POST",
+            url: "/api/geodb/enabled",
+            data: {enable: enable},
+            success: function(data){
+                if (data.error != undefined){
+                    showGeoIPLookupsMessage(data.error, false);
+                }else{
+                    showGeoIPLookupsMessage(enable ? "Geo-IP lookups turned on" : "Geo-IP lookups turned off and the database unloaded", true);
+                }
+                loadGeoIPLookupsSetting();
+                loadGeoDBUpdateStatus();
+            },
+            error: function(){
+                showGeoIPLookupsMessage("Unable to change the setting", false);
+                loadGeoIPLookupsSetting();
+            }
+        });
+    });
+    loadGeoIPLookupsSetting();
+
     /*
         Geo-IP Lookup & Access Rule Check
     */
@@ -533,7 +598,7 @@
                 document.getElementById('geoipError').style.display = 'block';
                 return;
             }
-            const countryCode = data.countryIsoCode || '(unknown)';
+            const countryCode = data.countryIsoCode || (geoipLookupsOn ? '(unknown)' : '(Geo-IP lookups are off)');
             document.getElementById('geoipCountryCode').textContent = countryCode;
 
             const tbody = document.getElementById('geoipRuleTableBody');
@@ -836,4 +901,4 @@
         });
     }
 
-    loadSupporters();
+    loadSupporters();
