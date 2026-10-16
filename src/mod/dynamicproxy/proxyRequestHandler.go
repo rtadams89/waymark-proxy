@@ -159,6 +159,16 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	r.Header.Set("X-Forwarded-Server", "zoraxy-"+h.Parent.Option.HostUUID)
 	reqHostname := r.Host
 
+	//Custom fork: static file cache (answers hits, stores misses on the way past)
+	cacheSession := h.assetCacheBegin(w, r, target)
+	if cacheSession != nil {
+		if cacheSession.Served() {
+			return
+		}
+		w, r = cacheSession, cacheSession.UpstreamRequest()
+		defer cacheSession.Finish()
+	}
+
 	/* Load balancing */
 	selectedUpstream, err := h.Parent.loadBalancer.GetRequestUpstreamTarget(w, r, target.ActiveOrigins, target.UseStickySession, target.DisableAutoFallback)
 	if err != nil {
@@ -228,6 +238,7 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	if observer := h.Parent.Option.UpstreamResultObserver; observer != nil {
 		observer(target.RootOrMatchingDomain, selectedUpstream.OriginIpOrDomain, statusCode, err)
 	}
+	cacheSession.SetUpstreamResult(statusCode, err)
 
 	//validate the error
 	var dnsError *net.DNSError

@@ -291,6 +291,7 @@ func ReverseProxyInit() {
 	//Custom fork: active/passive health checks (healthcheck_custom.go)
 	migrateUptimeMonitorToHealthChecks()
 	initHealthChecks()
+	initAssetCache() //Custom fork: static file cache memory limit
 	refreshHealthCheckTargets()
 
 	//Add all proxy services to uptime monitor

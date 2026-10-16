@@ -66,6 +66,11 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/proxy/healthcheck/get", HandleHealthCheckGet)
 	authRouter.HandleFunc("/api/proxy/healthcheck/set", HandleHealthCheckSet)
 	authRouter.HandleFunc("/api/proxy/healthcheck/status", HandleHealthCheckOverview)
+	// Custom fork: static file cache (assetcache_custom.go)
+	authRouter.HandleFunc("/api/proxy/assetcache/get", HandleAssetCacheGet)
+	authRouter.HandleFunc("/api/proxy/assetcache/set", HandleAssetCacheSet)
+	authRouter.HandleFunc("/api/proxy/assetcache/purge", HandleAssetCachePurge)
+	authRouter.HandleFunc("/api/proxy/assetcache/limit", HandleAssetCacheLimit)
 	/* Reverse proxy virtual directory */
 	authRouter.HandleFunc("/api/proxy/vdir/list", ReverseProxyListVdir)
 	authRouter.HandleFunc("/api/proxy/vdir/add", ReverseProxyAddVdir)

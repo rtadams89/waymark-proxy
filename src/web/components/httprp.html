@@ -273,6 +273,10 @@
                     <a class="item hrpedit_menu_item" cfgpage="headers">
                         <i class="heading icon"></i> <span class="editorSideMenuText">Headers</span>
                     </a>
+                    <!-- Custom fork: static file cache (snippet/assetCache.html) -->
+                    <a class="item hrpedit_menu_item" cfgpage="cache">
+                        <i class="archive icon"></i> <span class="editorSideMenuText">Caching</span>
+                    </a>
                     <a class="item hrpedit_menu_item" cfgpage="accessrule">
                         <i class="star icon"></i> <span class="editorSideMenuText">Access Rules</span>
                     </a>
@@ -510,6 +514,12 @@
                     </div>
                     <!-- Custom Headers -->
                     <div class="rpconfig_content" rpcfg="headers">
+                        <iframe src="" class="wrapper_frame">
+
+                        </iframe>
+                    </div>
+                    <!-- Custom fork: Caching -->
+                    <div class="rpconfig_content" rpcfg="cache">
                         <iframe src="" class="wrapper_frame">
 
                         </iframe>
@@ -1957,6 +1967,16 @@
             }));
             let frameURL = "snippet/customHeaders.html?t=" + Date.now() + "#" + payload;
             editor.find(".rpconfig_content[rpcfg='headers'] .wrapper_frame").attr('src', frameURL);
+        })();
+
+        /* ------------ Custom fork: Caching ------------ */
+        (() => {
+            let payload = encodeURIComponent(JSON.stringify({
+                ept: "host",
+                ep: uuid
+            }));
+            let frameURL = "snippet/assetCache.html?t=" + Date.now() + "#" + payload;
+            editor.find(".rpconfig_content[rpcfg='cache'] .wrapper_frame").attr('src', frameURL);
         })();
 
         /* ------------ Access Rule ------------ */

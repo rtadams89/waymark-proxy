@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Custom fork: per-rule static file cache (mod/assetcache).
+             Shown in the rule editor's Caching tab as
+             snippet/assetCache.html#{"ept":"host","ep":"<rule>"} -->
+        <meta charset="utf-8">
+        <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
+        <link rel="stylesheet" href="../script/semantic/semantic.min.css">
+        <script src="../script/jquery-3.6.0.min.js"></script>
+        <script src="../script/semantic/semantic.min.js"></script>
+        <script src="../script/utils.js"></script>
+        <style>
+            .acSection{ padding: 1em; border-radius: 0.4em; border: 1px solid rgba(128,128,128,0.25); margin-bottom: 1em; }
+            .acSection.off .acBody{ opacity: 0.45; pointer-events: none; }
+            .acHint{ opacity: 0.7; font-size: 0.9em; }
+            .acMono{ font-family: monospace; word-break: break-all; }
+            .acCode{ font-family: monospace; white-space: nowrap; }
+            .acInline{ display: flex; gap: 0.5em; align-items: center; flex-wrap: nowrap; }
+            .ui.form .acInline .ui.input{ flex: 0 0 7em; width: 7em !important; }
+            .ui.form .acInline .ui.input input{ width: 100% !important; }
+            .ui.form .acInline .ui.dropdown{ width: auto !important; min-width: 8em !important; }
+            #acStats .statistic > .value{ font-size: 1.6em !important; }
+            #acStats .statistic > .label{ font-size: 0.8em; text-transform: none; }
+            #acStats.ui.statistics{ margin: 0.5em 0 0.5em 0; }
+            #acStats.ui.statistics .statistic{ margin: 0 1.5em 0.8em 0; }
+            body.darkTheme #acStats .statistic > .value, body.darkTheme #acStats .statistic > .label{ color: var(--text_color) !important; }
+            .ui.progress{ margin-bottom: 0.4em !important; }
+            .ui.progress .bar{ min-width: 0 !important; }
+        </style>
+    </head>
+    <body>
+        <link rel="stylesheet" href="../darktheme.css">
+        <script src="../script/darktheme.js"></script>
+        <br>
+        <div class="ui container">
+            <div class="ui header">
+                <div class="content">
+                    Static File Cache
+                    <div class="sub header">Rule: <span class="acMono" id="acRuleName"></span></div>
+                </div>
+            </div>
+
+            <div class="ui yellow message" id="acNoCacheNote" style="display:none;">
+                <i class="exclamation triangle icon"></i>
+                Zoraxy's global "no cache" option is on. It marks every response <code>no-store</code>, so nothing will be cached until it is turned off.
+            </div>
+
+            <div class="ui form" id="acForm">
+                <div class="acSection" id="acSection">
+                    <div class="ui toggle checkbox" id="acEnabledToggle">
+                        <input type="checkbox" name="enabled">
+                        <label><b>Cache static files for this host</b><br><span class="acHint">Keep images, stylesheets, scripts and fonts in memory and serve them without asking the upstream</span></label>
+                    </div>
+                    <div class="acBody" style="margin-top: 1.2em;">
+                        <div class="field">
+                            <label>File extensions</label>
+                            <textarea rows="3" name="extensions" class="acMono" placeholder="css, js, png, woff2"></textarea>
+                            <div class="acHint" style="margin-top: 0.3em;">Separated by commas or spaces. URLs with any other extension (pages, API calls) always go to the upstream. <a href="#" id="acResetExt">Reset to defaults</a></div>
+                        </div>
+                        <div class="field">
+                            <div class="ui checkbox" id="acTypesToggle">
+                                <input type="checkbox" name="matchContentTypes">
+                                <label>Also cache URLs without an extension when the upstream answers with an image, font, stylesheet, script, audio or video file
+                                    <br><span class="acHint">For example <span class="acCode">/avatar?id=3</span> returning <span class="acCode">image/png</span></span></label>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Default lifetime</label>
+                            <div class="acInline">
+                                <div class="ui input"><input type="number" min="1" name="ttlValue"></div>
+                                <select class="ui compact selection dropdown" id="acTtlUnit">
+                                    <option value="1">seconds</option>
+                                    <option value="60">minutes</option>
+                                    <option value="3600">hours</option>
+                                    <option value="86400">days</option>
+                                </select>
+                            </div>
+                            <div class="acHint" style="margin-top: 0.3em;">Used only when the upstream doesn't say how long a file stays fresh (<span class="acCode">Cache-Control: max-age</span> or <span class="acCode">Expires</span>). The upstream's own headers always win.</div>
+                        </div>
+                        <div class="field">
+                            <label>Largest file to store</label>
+                            <div class="acInline">
+                                <div class="ui input"><input type="number" min="1" max="1024" name="maxFileMB"></div><span>MB</span>
+                            </div>
+                            <div class="acHint" style="margin-top: 0.3em;">Bigger files are passed through without being stored.</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="ui basic button" id="acSaveBtn" onclick="saveSettings(); return false;"><i class="green save icon"></i> Save</button>
+                <span class="acHint" style="margin-left: 0.5em;">Saving clears this host's cached files.</span>
+            </div>
+
+            <div class="ui divider"></div>
+            <h4 class="ui header">This host
+                <div class="sub header" id="acStatsSince">Since Zoraxy started or the cache was last cleared</div>
+            </h4>
+            <div class="ui small statistics" id="acStats">
+                <div class="statistic"><div class="value" id="acHitRate">-</div><div class="label">Hit rate</div></div>
+                <div class="statistic"><div class="value" id="acServed">0</div><div class="label">Served from cache</div></div>
+                <div class="statistic"><div class="value" id="acMisses">0</div><div class="label">Fetched and stored</div></div>
+                <div class="statistic"><div class="value" id="acUncacheable">0</div><div class="label">Not cacheable</div></div>
+                <div class="statistic"><div class="value" id="acBytesServed">0 B</div><div class="label">Sent from cache</div></div>
+                <div class="statistic"><div class="value" id="acStored">0</div><div class="label">Files stored</div></div>
+            </div>
+            <div class="acHint" id="acStatsDetail" style="margin-bottom: 0.8em;"></div>
+            <button class="ui basic button" id="acPurgeBtn" onclick="purgeCache();"><i class="red trash alternate icon"></i> Clear this host's cache</button>
+
+            <div class="ui divider"></div>
+            <h4 class="ui header">Memory limit (all hosts)</h4>
+            <div class="ui small indicating progress" id="acUsageBar"><div class="bar"></div></div>
+            <div class="acHint" id="acUsageText" style="margin-bottom: 0.8em;"></div>
+            <div class="ui form">
+                <div class="acInline">
+                    <div class="ui input"><input type="number" min="16" max="65536" id="acLimitMB"></div><span>MB</span>
+                    <button class="ui basic button" id="acLimitBtn" onclick="saveLimit();"><i class="green save icon"></i> Set limit</button>
+                </div>
+                <div class="acHint" style="margin-top: 0.3em;">Shared by every host with caching on. When it's full, the least recently used files are dropped. The cache is kept in memory only and starts empty after Zoraxy restarts.</div>
+            </div>
+
+            <div class="ui divider"></div>
+            <div class="ui list acHint">
+                <div class="item">Files are stored only if the upstream allows it: responses marked <span class="acCode">no-store</span>, <span class="acCode">no-cache</span> or <span class="acCode">private</span>, responses that set a cookie, and error responses are always passed through.</div>
+                <div class="item">Cached files are shared between everyone who can reach this host (after Zoraxy's access rules and authentication). If the app itself protects some files with its own login, make sure it marks them <span class="acCode">private</span>, or leave their extension out of the list.</div>
+                <div class="item">When a cached file expires, Zoraxy asks the upstream whether it changed (using its <span class="acCode">ETag</span> or <span class="acCode">Last-Modified</span>) and keeps the stored copy if it didn't.</div>
+                <div class="item">Responses show <span class="acCode">X-Zoraxy-Cache: HIT</span>, <span class="acCode">REVALIDATED</span>, <span class="acCode">MISS</span> or <span class="acCode">BYPASS</span>, visible in the browser's developer tools.</div>
+                <div class="item">A browser hard reload fetches files from the upstream again. Virtual directories and WebSocket connections are never cached. Video seeking (range requests) is served from the cache only after the whole file has been stored once.</div>
+            </div>
+            <br>
+        </div>
+
+        <script>
+            let editingEndpoint = {};
+            let defaultExtensions = [];
+            let formDirty = false;
+
+            function notify(msg, ok=true, ms=undefined){
+                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { alert(msg); }
+            }
+            function fmtBytes(n){
+                if (!n || n < 0) return "0 B";
+                const u = ["B","KB","MB","GB","TB"];
+                let i = 0;
+                while (n >= 1024 && i < u.length - 1){ n /= 1024; i++; }
+                return (i == 0 ? n : n.toFixed(n < 10 ? 1 : 0)) + " " + u[i];
+            }
+            function fmtCount(n){ return (n || 0).toLocaleString(); }
+
+            $("#acTtlUnit").dropdown({ onChange: function(){ formDirty = true; } });
+            $("#acEnabledToggle").checkbox({ onChange: function(){ applyVisibility(); formDirty = true; } });
+            $("#acTypesToggle").checkbox({ onChange: function(){ formDirty = true; } });
+            $("#acForm textarea, #acForm input[type=number]").on("input", function(){ formDirty = true; });
+            $("#acResetExt").on("click", function(e){
+                e.preventDefault();
+                $("#acForm [name=extensions]").val(defaultExtensions.join(", "));
+                formDirty = true;
+            });
+
+            function applyVisibility(){
+                $("#acSection").toggleClass("off", !$("#acEnabledToggle input")[0].checked);
+            }
+
+            function setTTL(seconds){
+                let unit = 1;
+                [86400, 3600, 60].some(u => { if (seconds % u == 0){ unit = u; return true; } return false; });
+                $("#acForm [name=ttlValue]").val(seconds / unit);
+                $("#acTtlUnit").dropdown("set selected", String(unit));
+            }
+
+            function fillForm(cfg){
+                $("#acEnabledToggle").checkbox(cfg.enabled ? "set checked" : "set unchecked");
+                $("#acTypesToggle").checkbox(cfg.matchContentTypes ? "set checked" : "set unchecked");
+                $("#acForm [name=extensions]").val((cfg.extensions || []).join(", "));
+                setTTL(cfg.defaultTTLSeconds);
+                $("#acForm [name=maxFileMB]").val(cfg.maxFileMB);
+                applyVisibility();
+                formDirty = false;
+            }
+
+            function readForm(){
+                let unit = parseInt($("#acTtlUnit").dropdown("get value")) || 1;
+                let ttl = parseFloat($("#acForm [name=ttlValue]").val());
+                return {
+                    enabled: $("#acEnabledToggle input")[0].checked,
+                    extensions: $("#acForm [name=extensions]").val().split(/[\s,;]+/).filter(x => x.length > 0),
+                    matchContentTypes: $("#acTypesToggle input")[0].checked,
+                    defaultTTLSeconds: Math.round((isNaN(ttl) ? 0 : ttl) * unit),
+                    maxFileMB: parseInt($("#acForm [name=maxFileMB]").val()) || 0
+                };
+            }
+
+            function renderStats(st, usage, limitMB){
+                let served = (st.hits || 0) + (st.revalidated || 0);
+                let total = served + (st.misses || 0) + (st.uncacheable || 0);
+                $("#acHitRate").text(total > 0 ? Math.round(served * 100 / total) + "%" : "-");
+                $("#acServed").text(fmtCount(served));
+                $("#acMisses").text(fmtCount(st.misses));
+                $("#acUncacheable").text(fmtCount(st.uncacheable));
+                $("#acBytesServed").text(fmtBytes(st.bytesServed));
+                $("#acStored").text(fmtCount(st.entries));
+                let detail = fmtBytes(st.bytes) + " stored";
+                if (st.revalidated > 0){
+                    detail += " · " + fmtCount(st.revalidated) + " of the cache hits were confirmed unchanged by the upstream after expiring";
+                }
+                $("#acStatsDetail").text(detail);
+
+                let pct = usage.maxBytes > 0 ? Math.min(100, usage.bytes * 100 / usage.maxBytes) : 0;
+                $("#acUsageBar").progress({ percent: pct, showActivity: false });
+                $("#acUsageText").text(fmtBytes(usage.bytes) + " of " + fmtBytes(usage.maxBytes) + " used by " + fmtCount(usage.entries) + " file(s) across all hosts");
+                if (!$("#acLimitMB").is(":focus")){
+                    $("#acLimitMB").val(limitMB);
+                }
+            }
+
+            function load(fillSettings){
+                $.get("/api/proxy/assetcache/get?ep=" + encodeURIComponent(editingEndpoint.ep), function(data){
+                    if (data.error != undefined){
+                        if (fillSettings){ notify(data.error, false); }
+                        return;
+                    }
+                    defaultExtensions = data.defaultExtensions || [];
+                    if (fillSettings || !formDirty){
+                        fillForm(data.config);
+                    }
+                    $("#acNoCacheNote").toggle(!!data.globalNoCache);
+                    renderStats(data.stats, data.usage, data.limitMB);
+                });
+            }
+
+            function saveSettings(){
+                let cfg = readForm();
+                $("#acSaveBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/proxy/assetcache/set",
+                    method: "POST",
+                    data: { ep: editingEndpoint.ep, config: JSON.stringify(cfg) },
+                    success: function(data){
+                        $("#acSaveBtn").removeClass("loading disabled");
+                        if (data.error != undefined){
+                            notify(data.error, false, 6000);
+                            return;
+                        }
+                        notify(cfg.enabled ? "Caching settings saved" : "Caching turned off");
+                        formDirty = false;
+                        load(true);
+                    },
+                    error: function(){
+                        $("#acSaveBtn").removeClass("loading disabled");
+                        notify("Failed to save caching settings", false);
+                    }
+                });
+            }
+
+            function purgeCache(){
+                $("#acPurgeBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/proxy/assetcache/purge",
+                    method: "POST",
+                    data: { ep: editingEndpoint.ep },
+                    success: function(data){
+                        $("#acPurgeBtn").removeClass("loading disabled");
+                        if (data.error != undefined){
+                            notify(data.error, false);
+                            return;
+                        }
+                        notify("Cache cleared for this host");
+                        load(false);
+                    },
+                    error: function(){
+                        $("#acPurgeBtn").removeClass("loading disabled");
+                        notify("Failed to clear the cache", false);
+                    }
+                });
+            }
+
+            function saveLimit(){
+                $("#acLimitBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/proxy/assetcache/limit",
+                    method: "POST",
+                    data: { limitMB: $("#acLimitMB").val() },
+                    success: function(data){
+                        $("#acLimitBtn").removeClass("loading disabled");
+                        if (data.error != undefined){
+                            notify(data.error, false, 6000);
+                            return;
+                        }
+                        notify("Memory limit saved");
+                        $("#acLimitMB").blur();
+                        load(false);
+                    },
+                    error: function(){
+                        $("#acLimitBtn").removeClass("loading disabled");
+                        notify("Failed to save the memory limit", false);
+                    }
+                });
+            }
+
+            if (window.location.hash.length > 1){
+                try{
+                    editingEndpoint = JSON.parse(decodeURIComponent(window.location.hash.substr(1)));
+                    $("#acRuleName").text(editingEndpoint.ep);
+                    load(true);
+                    setInterval(function(){ load(false); }, 5000);
+                }catch(ex){
+                    console.log("Unable to load endpoint data from hash", ex);
+                }
+            }
+        </script>
+    </body>
+</html>

@@ -8,6 +8,20 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - The revision lives in `src/version_custom.go` (`FORK_REVISION`). `SYSTEM_VERSION` in `src/def.go` stays the plain upstream version, because Zoraxy's config migrations parse it as a number.
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 
+## 3.3.5-custom.7
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Static file caching, turned on per proxy rule in the rule editor's new **Caching** tab. Cached files are kept in memory and served without contacting the upstream.
+  - Only static file types are cached: a per-rule list of extensions (CSS, JS, images, fonts, audio/video, wasm by default). URLs without an extension can also be cached by response type (image, font, stylesheet, script, audio, video). Pages and API calls always go to the upstream.
+  - Freshness follows the upstream's `Cache-Control` / `Expires` headers, with a per-rule default lifetime (1 hour) when it sends none. Responses marked `no-store`, `no-cache` or `private`, responses that set cookies, error responses and files over the per-rule size limit (10 MB) are never stored.
+  - Expired files with an `ETag` or `Last-Modified` are revalidated with a conditional request, and the stored copy is kept when the upstream answers 304.
+  - Separate copies per `Vary` value (for example gzip and uncompressed). Browser conditional requests (304) and range requests (206) are answered from the cache.
+  - One memory limit shared by all rules (256 MB by default, adjustable in the Caching tab); least recently used files are dropped first. The cache starts empty after a restart.
+  - Per-rule stats (hit rate, files and bytes stored, data served from cache) and a button to clear a rule's cache. Responses carry `X-Zoraxy-Cache: HIT | REVALIDATED | MISS | BYPASS`.
+  - The cache runs after access rules, rate limiting, CAPTCHA and authentication. Requests carrying their own `Authorization` header for the upstream, WebSocket connections and virtual directories are never cached.
+
 ## 3.3.5-custom.6
 
 Base: upstream v3.3.5 (`310b0cc`).

@@ -20,6 +20,7 @@ import (
 	"imuslab.com/zoraxy/mod/auth/sso/zorxauth"
 
 	"imuslab.com/zoraxy/mod/access"
+	"imuslab.com/zoraxy/mod/assetcache"
 	"imuslab.com/zoraxy/mod/auth/sso/forward"
 	"imuslab.com/zoraxy/mod/dynamicproxy/captcha"
 	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
@@ -320,6 +321,9 @@ type ProxyEndpoint struct {
 
 	//Custom fork: active and passive health checks for load balanced upstreams (nil = off)
 	HealthCheck *healthcheck.Config `json:",omitempty"`
+
+	//Custom fork: in-memory caching of static files (nil = off)
+	AssetCache *assetcache.Config `json:",omitempty"`
 }
 
 /*
