@@ -59,3 +59,7 @@ src/zoraxy.exe~
 /src/www
 /src/conf.old_*
 /.claude
+
+# ---> Custom fork: local build output
+src/dist/
+/dist/
