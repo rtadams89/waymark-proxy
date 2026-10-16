@@ -1,7 +1,7 @@
 # Build workflow for the "custom" branch of this fork.
 #
-# - Every push to custom (or a manual run): vet, test, and build Linux
-#   binaries, uploaded as a workflow artifact (kept 30 days).
+# - Every push to custom (or a manual run): vet, test, and build a
+#   linux/amd64 binary, uploaded as a workflow artifact (kept 30 days).
 # - Pushing a tag named custom-v* (e.g. custom-v3.3.5-1): does the same,
 #   then publishes a GitHub Release with the binaries and SHA-256 checksums.
 #
@@ -61,13 +61,6 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -86,8 +79,8 @@ jobs:
         working-directory: src
         env:
           CGO_ENABLED: "0"
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+          GOOS: linux
+          GOARCH: amd64
         run: |
           mkdir -p dist
           go build -trimpath -ldflags "-s -w" -o "dist/zoraxy_${GOOS}_${GOARCH}" .
@@ -97,7 +90,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: zoraxy_${{ matrix.goos }}_${{ matrix.goarch }}
+          name: zoraxy_linux_amd64
           path: src/dist/*
           retention-days: 30
           if-no-files-found: error
