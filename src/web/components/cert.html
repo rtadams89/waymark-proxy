@@ -103,6 +103,7 @@
         </div>
         <br>
         <button class="ui basic button" onclick="initManagedDomainCertificateList();"><i class="green refresh icon"></i> Refresh List</button>
+        <button class="ui basic button" onclick="openDnsCredentialManager();"><i class="yellow key icon"></i> Manage DNS Credentials</button>
         <br>
         <div class="ui blue message">
             <h4>What is a Fallback Certificate?</h4>
@@ -333,7 +334,47 @@
     }
 
     //List the stored certificates
+    /* Custom fork: show and change which DNS credential set each certificate uses */
+    let certDnsBindings = {};
+    function escapeCertHTML(s){
+        return $("<div>").text(s == undefined ? "" : String(s)).html();
+    }
+
+    function renderDnsChallengeCell(filename, useDNS){
+        let b = certDnsBindings[filename];
+        if (b && b.profileId){
+            if (b.missing){
+                return `<i class="red exclamation triangle icon"></i> Missing credential set`;
+            }
+            return `<i class="green check icon"></i> <i class="key icon"></i>${escapeCertHTML(b.profileName)}`;
+        }
+        if (useDNS){
+            if (b && b.legacy){
+                return `<i class="green check icon"></i> <small>Per-certificate</small>`;
+            }
+            return `<i class="green check icon"></i>`;
+        }
+        return `<i class="red times icon"></i>`;
+    }
+
+    function openCertChallengeSettings(filename){
+        showSideWrapper("snippet/dnsProfiles.html?assign=" + encodeURIComponent(filename));
+    }
+
+    function openDnsCredentialManager(){
+        showSideWrapper("snippet/dnsProfiles.html");
+    }
+
     function initManagedDomainCertificateList(){
+        //Load bindings first; render the list even if that fails
+        $.get("/api/acme/dnsProfiles/bindings", function(bindings){
+            certDnsBindings = (bindings && bindings.error == undefined) ? bindings : {};
+        }).always(function(){
+            renderManagedDomainCertificateList();
+        });
+    }
+
+    function renderManagedDomainCertificateList(){
         $.get("/api/cert/list?date=true", function(data){
             if (data.error != undefined){
                 msgbox(data.error, false, 5000);
@@ -354,10 +395,11 @@
                         <td>${entry.LastModifiedDate}</td>
                         <td class="${isExpired?"expired":"valid"} certdate">${entry.ExpireDate} (${!isExpired?entry.RemainingDays+" days left":"Expired"})</td>
                         <td>${entry.IsFallback?"<i class='green check icon'></i>":""}</td>
-                        <td><i class="${entry.UseDNS?"green check": "red times"} icon"></i></td>
+                        <td>${renderDnsChallengeCell(entry.Filename, entry.UseDNS)}</td>
                         <td>
                             <button title="Set as Default / Fallback Certificate" class="ui mini basic button ${(entry.IsFallback?"disabled":"")} " onclick="setSelectedCertAsFallbackCertificate('${entry.Filename}');"><i class="ui blue home icon"></i> Set Fallback</button>
                             <button title="Renew Certificate" class="ui mini basic icon button renewButton" onclick="renewCertificate('${entryDomainRenewKey}', '${entry.UseDNS}', this);"><i class="ui green refresh icon"></i></button>
+                            <button title="Challenge / DNS Credentials" class="ui mini basic icon button" onclick="openCertChallengeSettings('${entry.Filename}');"><i class="ui yellow key icon"></i></button>
                             <button title="Delete key-pair" class="ui mini basic icon red button" onclick="deleteCertificate('${entry.Filename}');"><i class="ui red trash icon"></i></button>
                         </td>
                     </tr>`);

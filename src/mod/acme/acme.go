@@ -220,28 +220,14 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 
 	// setup how to receive challenge
 	if useDNS {
-		if !a.Database.TableExists("acme") {
-			a.Database.NewTable("acme")
-			return false, errors.New("DNS Provider and DNS Credential configuration required for ACME Provider (Error -1)")
-		}
-
-		if !a.Database.KeyExists("acme", certificateName+"_dns_provider") || !a.Database.KeyExists("acme", certificateName+"_dns_credentials") {
-			return false, errors.New("DNS Provider and DNS Credential configuration required for ACME Provider (Error -2)")
-		}
-
-		var dnsCredentials string
-		err := a.Database.Read("acme", certificateName+"_dns_credentials", &dnsCredentials)
+		// Shared credential set if the certificate is bound to one, else the
+		// upstream per-certificate credentials (see dnsprofiles.go)
+		dnsProvider, dnsCredentials, credSource, err := a.resolveDNSCredentials(certificateName)
 		if err != nil {
-			a.Logf("Read DNS credential failed", err)
+			a.Logf("Resolve DNS credentials failed", err)
 			return false, err
 		}
-
-		var dnsProvider string
-		err = a.Database.Read("acme", certificateName+"_dns_provider", &dnsProvider)
-		if err != nil {
-			a.Logf("Read DNS Provider failed", err)
-			return false, err
-		}
+		a.Logf("Using "+credSource+" for the DNS challenge", nil)
 
 		provider, err := GetDnsChallengeProviderByName(dnsProvider, dnsCredentials, propagationTimeout)
 		if err != nil {

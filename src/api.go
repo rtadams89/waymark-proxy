@@ -252,6 +252,13 @@ func RegisterACMEAndAutoRenewerAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/acme/autoRenew/renewPolicy", acmeAutoRenewer.HandleRenewPolicy)
 	authRouter.HandleFunc("/api/acme/autoRenew/renewNow", acmeAutoRenewer.HandleRenewNow)
 	authRouter.HandleFunc("/api/acme/dns/providers", acmedns.HandleServeProvidersJson)
+	// Custom fork: shared DNS challenge credential sets (mod/acme/dnsprofiles.go)
+	authRouter.HandleFunc("/api/acme/dnsProfiles/list", acmeHandler.HandleListDNSProfiles)
+	authRouter.HandleFunc("/api/acme/dnsProfiles/save", acmeHandler.HandleSaveDNSProfile)
+	authRouter.HandleFunc("/api/acme/dnsProfiles/delete", acmeHandler.HandleDeleteDNSProfile)
+	authRouter.HandleFunc("/api/acme/dnsProfiles/bindings", acmeHandler.HandleListDNSBindings)
+	authRouter.HandleFunc("/api/acme/dnsProfiles/assign", acmeHandler.HandleAssignDNSProfile)
+	authRouter.HandleFunc("/api/acme/dnsProfiles/importFromCert", acmeHandler.HandleImportDNSProfileFromCert)
 	/* ACME Wizard */
 	authRouter.HandleFunc("/api/acme/wizard", acmewizard.HandleGuidedStepCheck)
 }

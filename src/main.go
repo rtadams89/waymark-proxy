@@ -138,10 +138,13 @@ func main() {
 	initAPIs(webminPanelMux)
 	initRestAPI(pluginAPIMux)
 
+	// Custom fork: keeps gorilla/csrf v1.7.3+ working over plain HTTP, see csrf_plaintext.go
+	webminPanelWithPlaintextMarker := markPlaintextAdminRequests(csrfMiddleware(webminPanelMux))
+
 	// Create a entry mux to accept all management interface requests
 	entryMux := http.NewServeMux()
 	entryMux.Handle("/plugin/", pluginAPIMux)            //For plugins API access
-	entryMux.Handle("/", csrfMiddleware(webminPanelMux)) //For webmin UI access, require csrf token
+	entryMux.Handle("/", webminPanelWithPlaintextMarker) //For webmin UI access, require csrf token
 
 	// Start the reverse proxy server in go routine
 	go func() {

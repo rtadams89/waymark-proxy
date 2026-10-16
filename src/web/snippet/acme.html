@@ -22,6 +22,11 @@
         .validDomain{
           color: rgb(49, 192, 113);
         }
+
+        /* Custom fork: provider/credential fields only apply to manual entry */
+        .ui.form.usingCredentialSet .dnsManualOnly{
+          display: none !important;
+        }
       </style>
   </head>
   <body>
@@ -107,7 +112,7 @@
   -->
   <h3>Generate New Certificate</h3>
   <p>Enter a new / existing domain(s) to request new certificate(s)</p>
-  <div class="ui form">
+  <div class="ui form" id="newCertForm">
     <div class="field">
       <label>Domain(s)</label>
       <input id="domainsInput" type="text" placeholder="example.com" onkeyup="handlePostInputAutomation();">
@@ -144,7 +149,24 @@
         <label>Use a DNS Challenge<br>
       </div>
     </div>
+    <!-- Custom fork: pick a saved DNS credential set (snippet/dnsProfiles.html) -->
     <div class="field dnsChallengeOnly" style="display:none;">
+      <label>DNS Credentials</label>
+      <div class="ui selection dropdown" id="dnsCredentialSource">
+        <input type="hidden" name="dnsCredentialSource" value="manual">
+        <i class="dropdown icon"></i>
+        <div class="default text">Pick a credential set</div>
+        <div class="menu" id="dnsCredentialSourceMenu">
+          <div class="item" data-value="manual">Enter credentials manually (this certificate only)</div>
+        </div>
+      </div>
+      <small>
+        <a href="dnsProfiles.html" target="_blank"><i class="external icon"></i>Manage saved credential sets</a>
+        &nbsp;|&nbsp;
+        <a style="cursor: pointer;" onclick="initDnsCredentialSources();"><i class="refresh icon"></i>Reload list</a>
+      </small>
+    </div>
+    <div class="field dnsChallengeOnly dnsManualOnly" style="display:none;">
       <label>DNS Provider</label>
       <div class="ui search selection dropdown" id="dnsProvider">
         <input type="hidden" name="dnsProvider" value="">
@@ -155,7 +177,7 @@
         </div>
       </div>
     </div>
-    <div class="field dnsChallengeOnly" style="display:none;">
+    <div class="field dnsChallengeOnly dnsManualOnly" style="display:none;">
       <div class="ui divider"></div>
         <p>DNS Credentials</p>
       <div id="dnsProviderAPIFields">
@@ -191,7 +213,7 @@
     <div class="field dnsChallengeOnly" style="display:none;">
       <h4><i class="yellow exclamation triangle icon"></i> Notes & FAQ</h4>
       <div class="ui bulleted list">
-        <div class="item">Domain DNS credentials are stored separately. For each new subdomain, you will need to enter a new DNS credentials.</div>
+        <div class="item">Save your DNS credentials once as a credential set and pick it for each certificate. Manually entered credentials are stored for that certificate only.</div>
         <div class="item">For some DNS providers like CloudFlare, you do not need to fill in all fields.</div>
         <div class="item">If you are not sure what to fill in, check out the documentation from <a href="https://go-acme.github.io/lego/dns/" target="_blank">lego (DNS challenge library)</a></div>
         <div class="item">Domain Name Server: If you have more than one DNS server, enter them separated by commas (e.g. ns1.example.com,ns2.example.com). Used for DNS-01 challenge propagation verification.</div>
@@ -690,6 +712,13 @@
         return;
       }
 
+      //Custom fork: a saved credential set is selected, bind it to this certificate
+      let credentialSource = $("#dnsCredentialSource").dropdown("get value");
+      if (credentialSource != "" && credentialSource != "manual"){
+        assignDnsCredentialSet(credentialSource, callback);
+        return;
+      }
+
       //Check if all fields is empty. If yes, do not update the config
       let allFieldsEmpty = true;
       $(".dnsConfigField").each(function(){
@@ -749,9 +778,8 @@
             console.log("Certificate DNS Credentials updated successfully");
             // Show success message
             parent.msgbox("Certificate DNS Credentials updated successfully");
-            if (callback != undefined){
-              callback(true);
-            }
+            //Custom fork: manually entered credentials replace any saved set this certificate was bound to
+            assignDnsCredentialSet("legacy", callback);
           }
         },
         error: function(error) {
@@ -761,6 +789,73 @@
           if (callback != undefined){
             callback(false);
           }
+        }
+      });
+    }
+
+    /* Custom fork: saved DNS credential sets */
+
+    function initDnsCredentialSources(){
+      $.get("/api/acme/dnsProfiles/list", function(data){
+        if (data.error != undefined){
+          return;
+        }
+        let current = $("#dnsCredentialSource").dropdown("get value");
+        let menu = $("#dnsCredentialSourceMenu");
+        menu.empty();
+        data.forEach(p => {
+          let label = $("<div>").text(p.name + " (" + (dnsProviderNameMap[p.provider] || p.provider) + ")").html();
+          menu.append(`<div class="item" data-value="${p.id}"><i class="key icon"></i>${label}</div>`);
+        });
+        menu.append(`<div class="item" data-value="manual">Enter credentials manually (this certificate only)</div>`);
+        $("#dnsCredentialSource").dropdown("refresh");
+        //On first load, default to the first saved set when there is one.
+        //On reload, keep the user's choice unless that set was deleted.
+        let stillExists = current == "manual" || data.some(p => p.id == current);
+        if (firstCredentialSourceLoad || current == "" || !stillExists){
+          current = data.length > 0 ? data[0].id : "manual";
+        }
+        firstCredentialSourceLoad = false;
+        $("#dnsCredentialSource").dropdown("set selected", current);
+        applyDnsCredentialSourceMode();
+      });
+    }
+
+    let firstCredentialSourceLoad = true;
+    function applyDnsCredentialSourceMode(){
+      let source = $("#dnsCredentialSource").dropdown("get value");
+      $("#newCertForm").toggleClass("usingCredentialSet", source != "" && source != "manual");
+    }
+
+    $("#dnsCredentialSource").dropdown({
+      onChange: function(){
+        applyDnsCredentialSourceMode();
+      }
+    });
+
+    // profileId: a credential set id, "legacy" (per-certificate credentials) or "http"
+    function assignDnsCredentialSet(profileId, callback=undefined){
+      var filename = getFilename();
+      if (filename == '') {
+        parent.msgbox("Domain to renew cannot be empty", false, 5000);
+        if (callback != undefined){ callback(false); }
+        return;
+      }
+      $.cjax({
+        url: "/api/acme/dnsProfiles/assign",
+        method: "POST",
+        data: { filename: filename, profileId: profileId },
+        success: function(response){
+          if (response.error){
+            parent.msgbox(response.error, false, 12000);
+            if (callback != undefined){ callback(false); }
+          }else{
+            if (callback != undefined){ callback(true); }
+          }
+        },
+        error: function(){
+          parent.msgbox("Failed to update DNS credential settings", false);
+          if (callback != undefined){ callback(false); }
         }
       });
     }
@@ -1025,6 +1120,7 @@
       });
     }
     initDNSProviderList();
+    initDnsCredentialSources();
     
 
     //Clear up the input field when page load
