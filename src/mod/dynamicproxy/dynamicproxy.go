@@ -472,7 +472,7 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 		endpointProxyRewriteRules = sep.HeaderRewriteRules
 	}
 
-	selectedUpstream.ServeHTTP(w, r, &dpcore.ResponseRewriteRuleSet{
+	statusCode, err := selectedUpstream.ServeHTTP(w, r, &dpcore.ResponseRewriteRuleSet{
 		ProxyDomain:             selectedUpstream.OriginIpOrDomain,
 		OriginalHost:            originalHostHeader,
 		UseTLS:                  selectedUpstream.RequireTLS,
@@ -486,6 +486,10 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 		DevelopmentMode:         sep.parent.Option.DevelopmentMode,
 		AltSvc:                  router.getAltSvcValue(),
 	})
+	//Custom fork: feed the outcome to passive health monitoring
+	if observer := router.Option.UpstreamResultObserver; observer != nil {
+		observer(sep.RootOrMatchingDomain, selectedUpstream.OriginIpOrDomain, statusCode, err)
+	}
 }
 
 func (router *Router) handleCaptchaGating(w http.ResponseWriter, r *http.Request, sep *ProxyEndpoint) (handled bool, challenged bool) {

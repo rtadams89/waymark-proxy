@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Custom fork: per-rule active and passive health checks (mod/healthcheck).
+             Opened from the rule editor's Upstream tab as
+             snippet/healthChecks.html#{"ept":"host","ep":"<rule>"} -->
+        <meta charset="utf-8">
+        <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
+        <link rel="stylesheet" href="../script/semantic/semantic.min.css">
+        <script src="../script/jquery-3.6.0.min.js"></script>
+        <script src="../script/semantic/semantic.min.js"></script>
+        <script src="../script/utils.js"></script>
+        <style>
+            .hcSection{ padding: 1em; border-radius: 0.4em; border: 1px solid rgba(128,128,128,0.25); margin-bottom: 1em; }
+            .hcSection.off .hcBody{ opacity: 0.45; pointer-events: none; }
+            .hcHint{ opacity: 0.7; font-size: 0.9em; }
+            .hcInline .ui.input{ width: 6.5em; }
+            .hcStateDot{ display:inline-block; width:0.7em; height:0.7em; border-radius:50%; margin-right:0.4em; vertical-align: middle; }
+            .hcUp{ background:#21ba45; } .hcDown{ background:#db2828; } .hcHeld{ background:#f2c037; }
+            .hcReason{ font-size: 0.85em; opacity: 0.8; }
+            #hcEvents .item{ font-size: 0.9em; }
+            .hcMono{ font-family: monospace; word-break: break-all; }
+            #hcStatusBody td.hcMono{ white-space: nowrap; word-break: normal; }
+        </style>
+    </head>
+    <body>
+        <link rel="stylesheet" href="../darktheme.css">
+        <script src="../script/darktheme.js"></script>
+        <br>
+        <div class="ui container">
+            <div class="ui header">
+                <div class="content">
+                    Health Checks
+                    <div class="sub header">Rule: <span class="hcMono" id="hcRuleName"></span></div>
+                </div>
+            </div>
+
+            <div class="ui yellow message" id="hcSingleUpstreamNote" style="display:none;">
+                <i class="exclamation triangle icon"></i>
+                This rule has only one upstream. Health checks still run and are logged, but Zoraxy never removes a rule's only upstream, so there is nothing to fail over to. Add a second upstream to use load-balancer failover.
+            </div>
+
+            <div class="ui form" id="hcForm">
+                <!-- Active checks -->
+                <div class="hcSection" id="hcActiveSection">
+                    <div class="ui toggle checkbox" id="hcActiveToggle">
+                        <input type="checkbox" name="activeEnabled">
+                        <label><b>Active checks</b><br><span class="hcHint">Probe every upstream on a schedule</span></label>
+                    </div>
+                    <div class="hcBody" style="margin-top: 1em;">
+                        <div class="field">
+                            <label>Check type</label>
+                            <div class="ui selection dropdown" id="hcType">
+                                <input type="hidden" name="type">
+                                <i class="dropdown icon"></i>
+                                <div class="default text">Check type</div>
+                                <div class="menu">
+                                    <div class="item" data-value="http-get">HTTP GET</div>
+                                    <div class="item" data-value="http-head">HTTP HEAD</div>
+                                    <div class="item" data-value="tcp">TCP connect</div>
+                                    <div class="item" data-value="icmp">ICMP ping</div>
+                                </div>
+                            </div>
+                            <div class="hcHint" id="hcTypeHint" style="margin-top:0.3em;"></div>
+                        </div>
+                        <div class="hcHttpOnly">
+                            <div class="two fields">
+                                <div class="field">
+                                    <label>Path</label>
+                                    <input type="text" name="path" placeholder="/healthz" autocomplete="off">
+                                </div>
+                                <div class="field">
+                                    <label>Healthy status codes</label>
+                                    <input type="text" name="expectedStatus" placeholder="200-399" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>Host header <span class="hcHint">(optional)</span></label>
+                                <input type="text" name="hostHeader" placeholder="Leave empty to use the upstream address" autocomplete="off">
+                                <div class="hcHint">For backends that route by hostname. Also used as the TLS server name for HTTPS upstreams.</div>
+                            </div>
+                        </div>
+                        <div class="four fields hcInline">
+                            <div class="field">
+                                <label>Interval</label>
+                                <div class="ui right labeled input"><input type="number" name="intervalSeconds" min="2" max="3600"><div class="ui basic label">s</div></div>
+                            </div>
+                            <div class="field">
+                                <label>Timeout</label>
+                                <div class="ui right labeled input"><input type="number" name="timeoutSeconds" min="1" max="60"><div class="ui basic label">s</div></div>
+                            </div>
+                            <div class="field">
+                                <label>Disable after</label>
+                                <div class="ui right labeled input"><input type="number" name="fall" min="1" max="20"><div class="ui basic label">fails</div></div>
+                            </div>
+                            <div class="field">
+                                <label>Enable after</label>
+                                <div class="ui right labeled input"><input type="number" name="rise" min="1" max="20"><div class="ui basic label">passes</div></div>
+                            </div>
+                        </div>
+                        <div class="hcHint">Consecutive results. An upstream is disabled after "Disable after" failed checks in a row, and re-enabled after "Enable after" successful checks in a row.</div>
+                    </div>
+                </div>
+
+                <!-- Passive monitoring -->
+                <div class="hcSection" id="hcPassiveSection">
+                    <div class="ui toggle checkbox" id="hcPassiveToggle">
+                        <input type="checkbox" name="passiveEnabled">
+                        <label><b>Passive monitoring</b><br><span class="hcHint">Watch real proxied traffic for errors</span></label>
+                    </div>
+                    <div class="hcBody" style="margin-top: 1em;">
+                        <div class="field">
+                            <label>Count as errors</label>
+                            <div class="ui checkbox" style="margin-right:1.2em;"><input type="checkbox" name="countServerErrors"><label>5xx responses</label></div>
+                            <div class="ui checkbox" style="margin-right:1.2em;"><input type="checkbox" name="countTimeouts"><label>Timeouts</label></div>
+                            <div class="ui checkbox"><input type="checkbox" name="countConnectionErrors"><label>Connection failures</label></div>
+                            <div class="hcHint" style="margin-top:0.3em;">Connection failures: refused, reset, unreachable or DNS errors. Client disconnects are never counted.</div>
+                        </div>
+                        <div class="three fields hcInline">
+                            <div class="field">
+                                <label>Disable after</label>
+                                <div class="ui right labeled input"><input type="number" name="threshold" min="1" max="1000"><div class="ui basic label">errors</div></div>
+                            </div>
+                            <div class="field">
+                                <label>Within</label>
+                                <div class="ui right labeled input"><input type="number" name="windowSeconds" min="1" max="3600"><div class="ui basic label">s</div></div>
+                            </div>
+                            <div class="field" id="hcRecoveryField">
+                                <label>Re-enable after</label>
+                                <div class="ui right labeled input"><input type="number" name="passiveRecoverySeconds" min="5" max="3600"><div class="ui basic label">s</div></div>
+                            </div>
+                        </div>
+                        <div class="hcHint" id="hcRecoveryHint"></div>
+                    </div>
+                </div>
+
+                <button class="ui basic button" id="hcSaveBtn" onclick="saveHealthCheck(); return false;"><i class="green save icon"></i> Save</button>
+            </div>
+
+            <div class="ui divider"></div>
+            <h4 class="ui header">
+                Upstream status
+                <div class="sub header">Updates every 5 seconds</div>
+            </h4>
+            <table class="ui very basic compact table">
+                <thead><tr><th>Upstream</th><th>State</th><th>Last check</th></tr></thead>
+                <tbody id="hcStatusBody"><tr><td colspan="3" class="hcHint">Loading…</td></tr></tbody>
+            </table>
+
+            <h4 class="ui header">Recent changes</h4>
+            <div class="ui list" id="hcEvents"><div class="item hcHint">None yet</div></div>
+
+            <div class="ui divider"></div>
+            <div class="ui bulleted list hcHint">
+                <div class="item">Every enable and disable is written to Zoraxy's log with its reason, under <code>[healthcheck]</code>.</div>
+                <div class="item">With active checks on, these checks also feed the Uptime Monitor page (one entry per 5 minutes, marked down if the upstream was out of load balancing at any point in it), and the separate 5 minute uptime probe is skipped for this rule. With passive monitoring only, the uptime probe keeps running but no longer switches these upstreams on or off.</div>
+                <div class="item">ICMP ping uses an unprivileged ping socket (allowed by default on Debian through <code>net.ipv4.ping_group_range</code>) and falls back to a raw socket.</div>
+                <div class="item">If the same backend address is used by several rules, it is taken out of load balancing when any rule's checks find it unhealthy.</div>
+            </div>
+            <button class="ui basic button" style="float:right;" onclick="parent.hideSideWrapper(true);"><i class="remove icon"></i> Close</button>
+            <br><br><br>
+        </div>
+
+        <script>
+            let editingEndpoint = {};
+            let statusTimer = null;
+            let formDirty = false;
+
+            function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html(); }
+            function notify(msg, ok=true, ms=undefined){
+                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { alert(msg); }
+            }
+            function ago(ts){
+                if (!ts) return "";
+                let s = Math.max(0, Math.round(Date.now()/1000 - ts));
+                if (s < 60) return s + "s ago";
+                if (s < 3600) return Math.round(s/60) + "m ago";
+                if (s < 86400) return Math.round(s/3600) + "h ago";
+                return new Date(ts*1000).toLocaleString();
+            }
+
+            $("#hcType").dropdown({ onChange: function(){ applyVisibility(); formDirty = true; } });
+            $(".ui.checkbox").checkbox({ onChange: function(){ applyVisibility(); formDirty = true; } });
+            $("#hcForm input[type=text], #hcForm input[type=number]").on("input", function(){ formDirty = true; });
+
+            const typeHints = {
+                "http-get": "Requests the path and checks the status code. The response body is ignored.",
+                "http-head": "Like GET but without a response body. Some backends answer HEAD incorrectly; use GET if checks fail unexpectedly.",
+                "tcp": "Healthy if a TCP connection to the upstream's port opens. Does not check the application.",
+                "icmp": "Healthy if the upstream's IP answers ping. Only proves the machine is up, not the service."
+            };
+
+            function applyVisibility(){
+                let active = $("#hcActiveToggle input")[0].checked;
+                let passive = $("#hcPassiveToggle input")[0].checked;
+                let type = $("#hcType").dropdown("get value");
+                $("#hcActiveSection").toggleClass("off", !active);
+                $("#hcPassiveSection").toggleClass("off", !passive);
+                $(".hcHttpOnly").toggle(type == "http-get" || type == "http-head");
+                $("#hcTypeHint").text(typeHints[type] || "");
+                if (active){
+                    $("#hcRecoveryField").addClass("disabled");
+                    $("#hcRecoveryHint").text("Upstreams disabled by passive monitoring come back through the active checks (after the \"Enable after\" count of successful checks).");
+                }else{
+                    $("#hcRecoveryField").removeClass("disabled");
+                    $("#hcRecoveryHint").text("With no active checks, a disabled upstream is given traffic again after this many seconds. If the errors continue it is disabled again.");
+                }
+            }
+
+            function setForm(cfg){
+                let f = $("#hcForm");
+                $("#hcActiveToggle").checkbox(cfg.activeEnabled ? "set checked" : "set unchecked");
+                $("#hcPassiveToggle").checkbox(cfg.passiveEnabled ? "set checked" : "set unchecked");
+                $("#hcType").dropdown("set selected", cfg.type || "http-get");
+                ["path","expectedStatus","hostHeader","intervalSeconds","timeoutSeconds","rise","fall","threshold","windowSeconds","passiveRecoverySeconds"].forEach(k => {
+                    f.find(`[name=${k}]`).val(cfg[k] == undefined ? "" : cfg[k]);
+                });
+                ["countServerErrors","countTimeouts","countConnectionErrors"].forEach(k => {
+                    f.find(`[name=${k}]`).parent().checkbox(cfg[k] ? "set checked" : "set unchecked");
+                });
+                applyVisibility();
+                formDirty = false;
+            }
+
+            function readForm(){
+                let f = $("#hcForm");
+                let num = k => parseInt(f.find(`[name=${k}]`).val(), 10);
+                return {
+                    activeEnabled: $("#hcActiveToggle input")[0].checked,
+                    type: $("#hcType").dropdown("get value"),
+                    path: f.find("[name=path]").val().trim(),
+                    hostHeader: f.find("[name=hostHeader]").val().trim(),
+                    expectedStatus: f.find("[name=expectedStatus]").val().trim(),
+                    intervalSeconds: num("intervalSeconds"),
+                    timeoutSeconds: num("timeoutSeconds"),
+                    rise: num("rise"),
+                    fall: num("fall"),
+                    passiveEnabled: $("#hcPassiveToggle input")[0].checked,
+                    countServerErrors: f.find("[name=countServerErrors]")[0].checked,
+                    countTimeouts: f.find("[name=countTimeouts]")[0].checked,
+                    countConnectionErrors: f.find("[name=countConnectionErrors]")[0].checked,
+                    threshold: num("threshold"),
+                    windowSeconds: num("windowSeconds"),
+                    passiveRecoverySeconds: num("passiveRecoverySeconds")
+                };
+            }
+
+            function load(initial){
+                $.get("/api/proxy/healthcheck/get", { ep: editingEndpoint.ep }, function(data){
+                    if (data.error != undefined){
+                        notify(data.error, false);
+                        return;
+                    }
+                    if (initial || !formDirty){
+                        setForm(data.config);
+                    }
+                    $("#hcSingleUpstreamNote").toggle(data.upstreams.length < 2);
+                    renderStatus(data);
+                    renderEvents(data.events);
+                });
+            }
+
+            function renderStatus(data){
+                let body = $("#hcStatusBody");
+                body.empty();
+                if (data.upstreams.length == 0){
+                    body.append(`<tr><td colspan="3" class="hcHint">This rule has no active upstreams.</td></tr>`);
+                    return;
+                }
+                let byAddr = {};
+                data.statuses.forEach(s => byAddr[s.upstream] = s);
+                data.upstreams.forEach(addr => {
+                    let s = byAddr[addr];
+                    if (!s){
+                        body.append(`<tr><td class="hcMono">${esc(addr)}</td><td colspan="2" class="hcHint">Not health checked${data.disabled ? " (rule is disabled)" : ""}</td></tr>`);
+                        return;
+                    }
+                    let dot = "hcUp", label = "Healthy";
+                    if (!s.enabled){ dot = "hcDown"; label = "Disabled"; }
+                    else if (!s.receivesTraffic){ dot = "hcHeld"; label = "Healthy here, held out by another rule"; }
+                    let latency = (s.lastLatencyMs || 0) < 1 ? "<1 ms" : s.lastLatencyMs + " ms";
+                    let last = s.lastCheck ? `${esc(s.lastDetail)}<br><span class="hcReason">${latency} · ${ago(s.lastCheck)}</span>` : (s.check ? `<span class="hcHint">pending</span>` : `<span class="hcHint">passive only</span>`);
+                    let counters = [];
+                    if (s.consecutiveFail > 0) counters.push(`${s.consecutiveFail} failed in a row`);
+                    if (s.consecutiveOk > 0 && !s.enabled) counters.push(`${s.consecutiveOk} passed in a row`);
+                    if (s.passiveErrors > 0) counters.push(`${s.passiveErrors} recent proxy error(s)`);
+                    body.append(`<tr>
+                        <td class="hcMono">${esc(addr)}</td>
+                        <td><span class="hcStateDot ${dot}"></span><b>${label}</b> <span class="hcReason">${ago(s.since)}</span>
+                            <div class="hcReason">${esc(s.reason)}</div>
+                            ${counters.length ? `<div class="hcReason">${esc(counters.join(" · "))}</div>` : ""}</td>
+                        <td>${last}</td>
+                    </tr>`);
+                });
+            }
+
+            function renderEvents(events){
+                let list = $("#hcEvents");
+                list.empty();
+                if (!events || events.length == 0){
+                    list.append(`<div class="item hcHint">None yet</div>`);
+                    return;
+                }
+                events.forEach(e => {
+                    list.append(`<div class="item">
+                        <i class="${e.enabled ? "green check circle" : "red times circle"} icon"></i>
+                        <div class="content"><b>${e.enabled ? "Enabled" : "Disabled"}</b> <span class="hcMono">${esc(e.upstream)}</span> · ${esc(new Date(e.time*1000).toLocaleString())}
+                            <div class="hcReason">${esc(e.reason)}</div></div>
+                    </div>`);
+                });
+            }
+
+            function saveHealthCheck(){
+                let cfg = readForm();
+                $("#hcSaveBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/proxy/healthcheck/set",
+                    method: "POST",
+                    data: { ep: editingEndpoint.ep, config: JSON.stringify(cfg) },
+                    success: function(data){
+                        $("#hcSaveBtn").removeClass("loading disabled");
+                        if (data.error != undefined){
+                            notify(data.error, false, 6000);
+                            return;
+                        }
+                        notify("Health check settings saved");
+                        formDirty = false;
+                        load(true);
+                    },
+                    error: function(){
+                        $("#hcSaveBtn").removeClass("loading disabled");
+                        notify("Failed to save health check settings", false);
+                    }
+                });
+            }
+
+            if (window.location.hash.length > 1){
+                try{
+                    editingEndpoint = JSON.parse(decodeURIComponent(window.location.hash.substr(1)));
+                    $("#hcRuleName").text(editingEndpoint.ep);
+                    load(true);
+                    statusTimer = setInterval(function(){ load(false); }, 5000);
+                }catch(ex){
+                    console.log("Unable to load endpoint data from hash", ex);
+                }
+            }
+        </script>
+    </body>
+</html>

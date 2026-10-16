@@ -224,6 +224,11 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 		AltSvc:                         h.Parent.getAltSvcValue(),
 	})
 
+	//Custom fork: feed the outcome to passive health monitoring
+	if observer := h.Parent.Option.UpstreamResultObserver; observer != nil {
+		observer(target.RootOrMatchingDomain, selectedUpstream.OriginIpOrDomain, statusCode, err)
+	}
+
 	//validate the error
 	var dnsError *net.DNSError
 	upstreamHostname := selectedUpstream.OriginIpOrDomain

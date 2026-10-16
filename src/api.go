@@ -62,6 +62,10 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/proxy/upstream/setPriority", ReverseProxyUpstreamSetPriority)
 	authRouter.HandleFunc("/api/proxy/upstream/update", ReverseProxyUpstreamUpdate)
 	authRouter.HandleFunc("/api/proxy/upstream/remove", ReverseProxyUpstreamDelete)
+	// Custom fork: health checks (healthcheck_custom.go)
+	authRouter.HandleFunc("/api/proxy/healthcheck/get", HandleHealthCheckGet)
+	authRouter.HandleFunc("/api/proxy/healthcheck/set", HandleHealthCheckSet)
+	authRouter.HandleFunc("/api/proxy/healthcheck/status", HandleHealthCheckOverview)
 	/* Reverse proxy virtual directory */
 	authRouter.HandleFunc("/api/proxy/vdir/list", ReverseProxyListVdir)
 	authRouter.HandleFunc("/api/proxy/vdir/add", ReverseProxyAddVdir)
@@ -198,6 +202,7 @@ func RegisterStatisticalAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/stats/overview", HandleDashboardOverview)
 	authRouter.HandleFunc("/api/stats/trafficmap", HandleTrafficMapData)
 	authRouter.HandleFunc("/api/stats/countries", HandleCountryDistrSummary)
+	authRouter.HandleFunc("/api/custom/statusPanels", HandleStatusPanels) // Custom fork: status page panel visibility
 	authRouter.HandleFunc("/api/stats/netstat", netstatBuffers.HandleGetNetworkInterfaceStats)
 	authRouter.HandleFunc("/api/stats/netstatgraph", netstatBuffers.HandleGetBufferedNetworkInterfaceStats)
 	authRouter.HandleFunc("/api/stats/listnic", netstat.HandleListNetworkInterfaces)

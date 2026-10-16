@@ -37,6 +37,10 @@ type Target struct {
 	ProxyType         ProxyType
 	SkipTlsValidation bool
 	HealthCheckURI    string //Optional URI path appended to URL for the health check. If empty, "/" is used.
+
+	//Custom fork: not probed by this monitor; its records are supplied by the
+	//health check module through RecordExternal (see external_custom.go)
+	ExternallyMonitored bool
 }
 
 type Config struct {

@@ -376,6 +376,9 @@
 
                             </div>
                             <button class="ui basic compact button editUpstreamButton" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey server icon"></i> Edit Upstreams</button>
+                            <!-- Custom fork: health checks (snippet/healthChecks.html) -->
+                            <button class="ui basic compact button editHealthCheckButton" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey heartbeat icon"></i> Health Checks</button>
+                            <div class="healthCheckSummary" style="margin-left: 0.4em; margin-top: 0.6em; opacity: 0.75; font-size: 0.9em;"></div>
                             <div class="ui divider"></div>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="EnableUptimeMonitor">
@@ -1281,6 +1284,35 @@
         $("#vdirBaseRoutingRule").parent().dropdown("set selected", uuid);
     }
 
+    //Custom fork: open the health check settings for this rule
+    function editHealthChecks(uuid){
+        let payload = encodeURIComponent(JSON.stringify({
+            ept: "host",
+            ep: uuid
+        }));
+        showEditorSideWrapper("snippet/healthChecks.html?t=" + Date.now() + "#" + payload);
+    }
+
+    //Custom fork: one-line summary of a rule's health check settings
+    function describeHealthCheck(hc){
+        if (!hc || (!hc.activeEnabled && !hc.passiveEnabled)){
+            return "Health checks: off";
+        }
+        let parts = [];
+        if (hc.activeEnabled){
+            let names = {"http-get": "HTTP GET " + hc.path, "http-head": "HTTP HEAD " + hc.path, "tcp": "TCP connect", "icmp": "ICMP ping"};
+            parts.push((names[hc.type] || hc.type) + " every " + hc.intervalSeconds + "s");
+        }
+        if (hc.passiveEnabled){
+            parts.push("passive: " + hc.threshold + " errors in " + hc.windowSeconds + "s");
+        }
+        let summary = "Health checks: " + parts.join(", ");
+        if (hc.activeEnabled){
+            summary += ". Uptime history comes from these checks; the health-check URI below is not used.";
+        }
+        return summary;
+    }
+
     //Open the load balance option
     function editUpstreams(uuid){
         let payload = encodeURIComponent(JSON.stringify({
@@ -1820,6 +1852,12 @@
             editUpstreams(uuid);
         });
 
+        /* Custom fork: health checks */
+        editor.find(".healthCheckSummary").text(describeHealthCheck(subd.HealthCheck));
+        editor.find(".editHealthCheckButton").off("click").on("click", function(){
+            editHealthChecks(uuid);
+        });
+
         editor.find(".EnableUptimeMonitor").off("change");
         editor.find(".EnableUptimeMonitor").prop("checked", !subd.DisableUptimeMonitor);
         editor.find(".EnableUptimeMonitor").on("change", function() {
@@ -2254,4 +2292,4 @@
         }
     }
         
-</script>
+</script>

@@ -150,6 +150,7 @@ func HandleCountryDistrSummary(w http.ResponseWriter, r *http.Request) {
 // Update uptime monitor targets after rules updated
 // See https://github.com/tobychui/zoraxy/issues/77
 func UpdateUptimeMonitorTargets() {
+	refreshHealthCheckTargets() //Custom fork: health checks follow the same rule changes
 	if uptimeMonitor != nil {
 		uptimeMonitor.SetTargets(GetUptimeTargetsFromReverseProxyRules(dynamicProxyRouter))
 		uptimeMonitor.CleanRecords()
@@ -218,7 +219,7 @@ func GetUptimeTargetsFromReverseProxyRules(dp *dynamicproxy.Router) []*uptime.Ta
 		}
 	}
 
-	return UptimeTargets
+	return markHealthCheckedUptimeTargets(dp, UptimeTargets) //Custom fork: rules with active health checks feed their own uptime history
 }
 
 // Handle rendering up time monitor data

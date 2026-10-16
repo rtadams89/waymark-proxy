@@ -99,6 +99,10 @@ func (m *Monitor) masterPingTargets() {
 // pingTargets pings a list of targets with a given timeout and whether to log the results in the online status log
 func (m *Monitor) pingTargets(timeout time.Duration, targets []*Target, requireOnlineStatusLog bool) {
 	for _, target := range targets {
+		if target.ExternallyMonitored {
+			//Custom fork: health checks supply this target's records
+			continue
+		}
 		if target.Protocol != "http" && target.Protocol != "https" {
 			m.Config.Logger.PrintAndLog(LOG_MODULE_NAME, "Unknown protocol: "+target.Protocol, errors.New("unsupported protocol"))
 			continue

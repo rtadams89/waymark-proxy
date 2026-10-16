@@ -325,7 +325,7 @@
             <button class="zoom-btn" id="btn-fullscreen" title="Fullscreen"><i class="expand icon" style="font-size:11px;"></i></button>
         </div>
         <div id="legend-overlay">
-            <div class="legend-item"><div class="legend-line legend-line-proxy"></div> Internet → Proxy Rule</div>
+            <div class="legend-item"><div class="legend-line legend-line-proxy"></div> Clients → Proxy Rule</div>
             <div class="legend-item"><div class="legend-line legend-line-upstream"></div> Proxy Rule → Upstream</div>
             <div class="legend-item"><div class="legend-line legend-line-disabled" style="border-top:2px dashed #bbb;height:0;width:24px;"></div> Disabled / Inactive</div>
         </div>
@@ -468,7 +468,7 @@
         return g;
     }
 
-    /* Build the Internet node (globe icon with circle background) */
+    /* Build the clients node (people icon with circle background) */
     function buildInternetNode(x, y, h) {
         const g = svgEl("g", { class: "internet-node" });
         const cy = y + h / 2;
@@ -483,19 +483,21 @@
         });
         g.appendChild(circle);
 
-        // Globe icon — simple SVG globe lines
-        const globeG = svgEl("g", { stroke: "rgba(255,255,255,0.55)", "stroke-width": "1.5", fill: "none" });
-        globeG.appendChild(svgEl("circle", { cx, cy, r: r - 1, stroke: "rgba(255,255,255,0.3)" }));
-        // Latitude lines
-        for (const dy of [-14, 0, 14]) {
-            const halfW = Math.sqrt(Math.max(0, r * r - dy * dy)) * 0.95;
-            globeG.appendChild(svgEl("path", {
-                d: `M ${cx - halfW} ${cy + dy} Q ${cx} ${cy + dy - 5} ${cx + halfW} ${cy + dy}`
+        // Custom fork: "clients" icon (a group of people) instead of a globe,
+        // since this proxy serves internal clients rather than the Internet
+        const peopleG = svgEl("g", { fill: "rgba(255,255,255,0.9)", stroke: "none" });
+        const person = (px, py, scale, opacity) => {
+            const p = svgEl("g", { opacity });
+            p.appendChild(svgEl("circle", { cx: px, cy: py - 7 * scale, r: 5.5 * scale }));
+            p.appendChild(svgEl("path", {
+                d: `M ${px - 10 * scale} ${py + 11 * scale} Q ${px - 10 * scale} ${py} ${px} ${py} Q ${px + 10 * scale} ${py} ${px + 10 * scale} ${py + 11 * scale} Z`
             }));
-        }
-        // Vertical meridian
-        globeG.appendChild(svgEl("ellipse", { cx, cy, rx: 14, ry: r - 1 }));
-        g.appendChild(globeG);
+            return p;
+        };
+        peopleG.appendChild(person(cx - 11, cy - 1, 0.8, 0.6));
+        peopleG.appendChild(person(cx + 11, cy - 1, 0.8, 0.6));
+        peopleG.appendChild(person(cx, cy + 3, 1, 1));
+        g.appendChild(peopleG);
 
         // Label — placed below the circle in horizontal mode, above it in
         // vertical mode so it does not sit on top of the downward flow edges.
@@ -506,7 +508,7 @@
             "font-size": "11",
             "text-anchor": "middle"
         });
-        label.textContent = "Internet";
+        label.textContent = "Clients";
         g.appendChild(label);
 
         return g;

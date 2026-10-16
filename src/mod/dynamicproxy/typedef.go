@@ -29,6 +29,7 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
 	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
 	"imuslab.com/zoraxy/mod/geodb"
+	"imuslab.com/zoraxy/mod/healthcheck"
 	"imuslab.com/zoraxy/mod/info/logger"
 	"imuslab.com/zoraxy/mod/plugins"
 	"imuslab.com/zoraxy/mod/statistic"
@@ -70,6 +71,9 @@ type RouterOption struct {
 	WebDirectory       string                    //The static web server directory containing the templates folder
 	LoadBalancer       *loadbalance.RouteManager //Load balancer that handle load balancing of proxy target
 	PluginManager      *plugins.Manager          //Plugin manager for handling plugin routing
+
+	/* Custom fork: passive health monitoring, called after each proxied request (may be nil) */
+	UpstreamResultObserver func(ruleID string, upstreamAddr string, statusCode int, err error) `json:"-"` //not serializable; must not break /api/proxy/status
 
 	/* Timeouts */
 	ReadHeaderTimeout int64 //HTTP server read timeout in seconds
@@ -313,6 +317,9 @@ type ProxyEndpoint struct {
 	parent   *Router            `json:"-"` //Parent router, excluded from JSON
 	detector *exploits.Detector `json:"-"` //Exploit detector instance, excluded from JSON
 	Tags     []string           // Tags for the proxy endpoint
+
+	//Custom fork: active and passive health checks for load balanced upstreams (nil = off)
+	HealthCheck *healthcheck.Config `json:",omitempty"`
 }
 
 /*

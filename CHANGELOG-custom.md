@@ -8,6 +8,29 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - The revision lives in `src/version_custom.go` (`FORK_REVISION`). `SYSTEM_VERSION` in `src/def.go` stays the plain upstream version, because Zoraxy's config migrations parse it as a number.
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 
+## 3.3.5-custom.4
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Changed**
+- Rules with active health checks now feed the Uptime Monitor page from those checks, and the uptime monitor's own 5 minute probe is skipped for their upstreams. Results are rolled up into one entry per 5 minutes (so the page still covers a day); an entry is down if the upstream was out of load balancing at any point in it, whether active checks or passive monitoring took it out.
+- Rules with passive monitoring only, virtual directories, and rules without health checks are still probed by the uptime monitor as before.
+
+## 3.3.5-custom.3
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Health checks for load balanced upstreams, set per proxy rule from the Upstream tab of the rule editor (**Health Checks** button).
+  - Active checks: HTTP GET, HTTP HEAD, TCP connect or ICMP ping, with path, healthy status codes, optional Host header, interval, timeout, and how many consecutive failures disable / successes re-enable an upstream.
+  - Passive monitoring, enabled separately: counts 5xx responses, timeouts and connection failures (each selectable) in real proxied traffic and disables an upstream after N errors within W seconds. It comes back through the active checks, or after a recovery time when no active check is configured.
+  - Every enable/disable is logged with its reason under `[healthcheck]`, and shown in the rule's Health Checks panel with live per-upstream status.
+  - The existing uptime monitor keeps recording history, but no longer switches upstreams on or off for rules that use health checks.
+- Status page: every panel below the server status banner can be shown or hidden (**Panels** button in the banner). Choices are saved on the server. The GeoIP visitor map and the countries card are hidden by default.
+
+**Changed**
+- Traffic flow diagram: the "Internet" node is now "Clients", with a people icon instead of a globe.
+
 ## 3.3.5-custom.2
 
 Base: upstream v3.3.5 (`310b0cc`).

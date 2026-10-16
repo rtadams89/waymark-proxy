@@ -247,6 +247,7 @@ func ReverseProxyInit() {
 	}
 
 	dynamicProxyRouter = dprouter
+	dprouter.Option.UpstreamResultObserver = observeUpstreamResult //Custom fork: passive health monitoring
 	// Signal that the router is ready
 	select {
 	case dynamicProxyRouterReady <- true:
@@ -287,6 +288,10 @@ func ReverseProxyInit() {
 		SystemWideLogger.Println("Dynamic Reverse Proxy service started")
 	}
 
+	//Custom fork: active/passive health checks (healthcheck_custom.go)
+	initHealthChecks()
+	refreshHealthCheckTargets()
+
 	//Add all proxy services to uptime monitor
 	//Create a uptime monitor service
 	go func() {
@@ -295,7 +300,7 @@ func ReverseProxyInit() {
 			Targets:           GetUptimeTargetsFromReverseProxyRules(dynamicProxyRouter),
 			Interval:          300,                                //5 minutes
 			MaxRecordsStore:   288,                                //1 day
-			OnlineStateNotify: loadBalancer.NotifyHostOnlineState, //Notify the load balancer for online state
+			OnlineStateNotify: uptimeNotifyRespectingHealthChecks, //Notify the load balancer for online state (custom fork: skips health-checked upstreams)
 			Logger:            SystemWideLogger,                   //Logger
 			Verbal:            *development_build,                 //Enable verbose logging in dev mode
 		})
