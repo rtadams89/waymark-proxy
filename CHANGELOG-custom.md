@@ -8,6 +8,13 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - The revision lives in `src/version_custom.go` (`FORK_REVISION`). `SYSTEM_VERSION` in `src/def.go` stays the plain upstream version, because Zoraxy's config migrations parse it as a number.
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 
+## 3.3.5-custom.5
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Fixed**
+- Health Checks panel: the check type menu now always shows all four options. In the narrow side panel it was limited to about three entries and scrolled, which hid HTTP GET after picking another type.
+
 ## 3.3.5-custom.4
 
 Base: upstream v3.3.5 (`310b0cc`).

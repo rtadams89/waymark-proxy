@@ -21,6 +21,9 @@
             #hcEvents .item{ font-size: 0.9em; }
             .hcMono{ font-family: monospace; word-break: break-all; }
             #hcStatusBody td.hcMono{ white-space: nowrap; word-break: normal; }
+            /* Only four options: show them all. In a narrow side panel Semantic UI
+               caps the menu at about three items and scrolls the first one away. */
+            #hcType .menu{ max-height: none !important; overflow-y: visible !important; }
         </style>
     </head>
     <body>
