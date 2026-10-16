@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gorilla/csrf"
+	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
 	"imuslab.com/zoraxy/mod/sshprox"
 )
 

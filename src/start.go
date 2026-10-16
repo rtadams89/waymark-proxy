@@ -14,12 +14,12 @@ import (
 	"imuslab.com/zoraxy/mod/auth/sso/oauth2"
 	"imuslab.com/zoraxy/mod/eventsystem"
 
-	"github.com/gorilla/csrf"
 	"imuslab.com/zoraxy/mod/access"
 	"imuslab.com/zoraxy/mod/acme"
 	"imuslab.com/zoraxy/mod/auth"
 	"imuslab.com/zoraxy/mod/auth/sso/forward"
 	"imuslab.com/zoraxy/mod/auth/sso/zorxauth"
+	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
 	"imuslab.com/zoraxy/mod/database"
 	"imuslab.com/zoraxy/mod/database/dbinc"
 	"imuslab.com/zoraxy/mod/dockerux"
