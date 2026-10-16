@@ -3,22 +3,27 @@ package main
 /*
 	healthcheck_uptime_custom.go (custom fork)
 
-	Rules with active health checks feed the Uptime Monitor from those checks
-	instead of being probed a second time by the uptime monitor's own 5 minute
-	check. Their uptime targets are marked ExternallyMonitored, and each
-	upstream's check results are rolled up into one uptime record per uptime
-	interval (5 minutes), the spacing the Uptime Monitor page expects.
+	The Uptime Monitor page shows proxy rules with active health checks, fed
+	from those checks. The uptime monitor no longer probes anything itself:
+	its target list contains only health-checked upstreams, all marked
+	ExternallyMonitored, and it is kept only as the history store behind the
+	page. Each upstream's check results are rolled up into one record per
+	uptime interval (5 minutes), the spacing the page expects.
 
 	A record is "offline" if the upstream was out of load balancing at any
 	point during its window, whether active checks or passive monitoring took
 	it out. Failed checks that did not reach the "Disable after" count do not
 	mark a window offline.
 
-	Rules with passive monitoring only have nothing to probe with, so the
-	uptime monitor keeps checking them as before.
+	Rules without active health checks (including passive-only rules and
+	virtual directories) do not appear on the page.
+
+	Also here: the default health check for new rules, and the one-time
+	migration of upstream's "Monitor Uptime" setting to health checks.
 */
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -70,30 +75,42 @@ func newUptimeFeed() *uptimeFeed {
 
 var healthUptimeFeed = newUptimeFeed()
 
-// markHealthCheckedUptimeTargets is applied to the uptime monitor's target
-// list every time it is rebuilt. Upstreams of rules with valid active health
-// checks are marked ExternallyMonitored and registered with the feed.
-func markHealthCheckedUptimeTargets(dp *dynamicproxy.Router, targets []*uptime.Target) []*uptime.Target {
-	hosts := dp.GetProxyEndpointsAsMap()
+// healthCheckUptimeTargets builds the uptime monitor's target list: one
+// entry per upstream of every enabled rule with valid active health checks,
+// using upstream's ID format ("rule", or "rule (upstream:N)" when a rule has
+// several upstreams). It also registers those targets with the feed.
+func healthCheckUptimeTargets(dp *dynamicproxy.Router) []*uptime.Target {
+	targets := []*uptime.Target{}
 	fed := map[uptimeFeedKey]uptimeFeedTarget{}
-	for _, t := range targets {
-		if t.ProxyType != uptime.ProxyType_Host {
-			continue // virtual directories are not health checked
-		}
-		ruleID := t.ID
-		if i := strings.Index(ruleID, " (upstream:"); i >= 0 {
-			ruleID = ruleID[:i]
-		}
-		ep, ok := hosts[ruleID]
-		if !ok || ep.HealthCheck == nil || !ep.HealthCheck.ActiveEnabled {
+	for ruleID, ep := range dp.GetProxyEndpointsAsMap() {
+		if ep.Disabled || ep.HealthCheck == nil || !ep.HealthCheck.ActiveEnabled {
 			continue
 		}
 		if _, err := ep.HealthCheck.Validate(); err != nil {
-			continue // health checks ignore invalid settings, so keep the uptime probe
+			continue // health checks ignore invalid settings too
 		}
-		addr := strings.TrimPrefix(strings.TrimPrefix(t.URL, "https://"), "http://")
-		t.ExternallyMonitored = true
-		fed[uptimeFeedKey{ruleID, addr}] = uptimeFeedTarget{id: t.ID, name: t.Name, url: t.URL, protocol: t.Protocol}
+		multiple := len(ep.ActiveOrigins) > 1
+		for i, origin := range ep.ActiveOrigins {
+			protocol := "http"
+			if origin.RequireTLS {
+				protocol = "https"
+			}
+			id := ruleID
+			if multiple {
+				id = fmt.Sprintf("%s (upstream:%d)", ruleID, i)
+			}
+			t := &uptime.Target{
+				ID:                  id,
+				Name:                id,
+				URL:                 protocol + "://" + origin.OriginIpOrDomain,
+				Protocol:            protocol,
+				ProxyType:           uptime.ProxyType_Host,
+				SkipTlsValidation:   origin.SkipCertValidations,
+				ExternallyMonitored: true,
+			}
+			targets = append(targets, t)
+			fed[uptimeFeedKey{ruleID, origin.OriginIpOrDomain}] = uptimeFeedTarget{id: id, name: id, url: t.URL, protocol: protocol}
+		}
 	}
 	healthUptimeFeed.setTargets(fed)
 	return targets
@@ -180,4 +197,78 @@ func (f *uptimeFeed) record(info uptimeFeedTarget, t healthcheck.Target, last he
 		rec.Latency = 0
 	}
 	return rec
+}
+
+/* Defaults for new rules, and migration from upstream's uptime monitor */
+
+const (
+	migrationTable              = "custom_fork"
+	uptimeToHealthCheckMigrated = "uptime_to_healthcheck_migrated"
+)
+
+// defaultActiveHealthCheck is used for new rules and for migrated ones:
+// HTTP GET every 10s, disabled after 3 failures, re-enabled after 2 passes.
+// path is the rule's old uptime monitor health-check URI, if any.
+func defaultActiveHealthCheck(path string) *healthcheck.Config {
+	cfg := healthcheck.DefaultConfig()
+	cfg.ActiveEnabled = true
+	cfg.Type = healthcheck.CheckHTTPGet
+	cfg.IntervalSeconds, cfg.TimeoutSeconds = 10, 3
+	cfg.Fall, cfg.Rise = 3, 2
+	cfg.Path = strings.TrimSpace(path)
+	if v, err := cfg.Validate(); err == nil {
+		return v
+	}
+	cfg.Path = "/" // unusable old path: fall back to the root
+	v, _ := cfg.Validate()
+	return v
+}
+
+// newRuleHealthCheck is applied when a proxy rule is created. The create
+// form's "Health checks" checkbox and path field reuse upstream's enableUtm
+// and utmURI parameters.
+func newRuleHealthCheck(enabled bool, path string) *healthcheck.Config {
+	if !enabled {
+		return nil
+	}
+	return defaultActiveHealthCheck(path)
+}
+
+// migrateUptimeMonitorToHealthChecks gives every rule that had upstream's
+// "Monitor Uptime" enabled (and no health check settings yet) an equivalent
+// active health check, so failover and uptime history continue. It runs once
+// per installation.
+func migrateUptimeMonitorToHealthChecks() {
+	if sysdb == nil || dynamicProxyRouter == nil {
+		return
+	}
+	if !sysdb.TableExists(migrationTable) {
+		sysdb.NewTable(migrationTable)
+	}
+	if sysdb.KeyExists(migrationTable, uptimeToHealthCheckMigrated) {
+		return
+	}
+	endpoints := []*dynamicproxy.ProxyEndpoint{}
+	for _, ep := range dynamicProxyRouter.GetProxyEndpointsAsMap() {
+		endpoints = append(endpoints, ep)
+	}
+	converted := applyUptimeMigration(endpoints, SaveReverseProxyConfig)
+	SystemWideLogger.PrintAndLog("healthcheck", fmt.Sprintf("Converted the uptime monitor setting of %d proxy rule(s) to health checks", converted), nil)
+	sysdb.Write(migrationTable, uptimeToHealthCheckMigrated, time.Now().Unix())
+}
+
+func applyUptimeMigration(endpoints []*dynamicproxy.ProxyEndpoint, save func(*dynamicproxy.ProxyEndpoint) error) int {
+	converted := 0
+	for _, ep := range endpoints {
+		if ep.HealthCheck != nil || ep.DisableUptimeMonitor {
+			continue
+		}
+		ep.HealthCheck = defaultActiveHealthCheck(ep.UptimeMonitorURI)
+		if err := save(ep); err != nil {
+			SystemWideLogger.PrintAndLog("healthcheck", "Could not save converted health check for rule "+ep.RootOrMatchingDomain, err)
+			continue
+		}
+		converted++
+	}
+	return converted
 }

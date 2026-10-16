@@ -50,14 +50,21 @@
       </div>
       <div id="importSection" style="display:none;">
         <div class="ui divider"></div>
-        <h4>Reuse these credentials elsewhere</h4>
-        <p>This certificate has its own per-certificate DNS credentials (<span id="importLegacyProvider"></span>). You can turn them into a named credential set that other certificates can use. The certificate will be switched to the new set.</p>
-        <div class="ui form">
-          <div class="field">
-            <label>Name for the new credential set</label>
-            <input type="text" id="importName" maxlength="64" placeholder="e.g. Home Cloudflare">
+        <h4>Per-certificate credentials</h4>
+        <p>This certificate has its own per-certificate DNS credentials (<span id="importLegacyProvider"></span>).</p>
+        <div id="legacyImportForm">
+          <p>You can turn them into a named credential set that other certificates can use. The certificate will be switched to the new set.</p>
+          <div class="ui form">
+            <div class="field">
+              <label>Name for the new credential set</label>
+              <input type="text" id="importName" maxlength="64" placeholder="e.g. Home Cloudflare">
+            </div>
+            <button class="ui basic button" onclick="importFromCert();"><i class="blue copy icon"></i> Create Credential Set</button>
           </div>
-          <button class="ui basic button" onclick="importFromCert();"><i class="blue copy icon"></i> Create Credential Set</button>
+        </div>
+        <div style="margin-top: 1em;">
+          <p id="legacyInUseNote" class="profileFieldsSet" style="display:none;"><i class="info circle icon"></i>They can be deleted once this certificate uses a credential set or HTTP-01 instead.</p>
+          <button class="ui basic red button" id="legacyDeleteBtn" style="display:none;" onclick="deleteLegacyCredentials();"><i class="red trash icon"></i> Delete Per-certificate Credentials</button>
         </div>
       </div>
       <div class="ui divider"></div>
@@ -70,7 +77,8 @@
         <div class="sub header">Saved DNS challenge credentials that any certificate can use</div>
       </div>
     </div>
-    <table class="ui basic celled table">
+    <!-- unstackable: in the narrow side panel Semantic UI would otherwise stack every cell vertically -->
+    <table class="ui unstackable basic celled table">
       <thead>
         <tr><th>Name</th><th>Provider</th><th>Used By</th><th style="width: 7em;"></th></tr>
       </thead>
@@ -397,12 +405,54 @@
         if (!assignInfo.acmeManaged){
           $("#assignNotAcmeWarning").show();
         }
-        if (assignInfo.legacy){
-          $("#importLegacyProvider").text(providerDisplayName(assignInfo.legacyProvider));
-          $("#importSection").show();
-        }
+        renderLegacySection();
         if (assignInfo.missing){
           notify("The credential set this certificate used no longer exists. Pick another option.", false, 8000);
+        }
+      });
+    }
+
+    // Whether the certificate currently renews with its per-certificate credentials
+    function legacyInUse(){
+      return assignInfo && assignInfo.legacy && assignInfo.useDNS && !(assignInfo.profileId && !assignInfo.missing);
+    }
+
+    function renderLegacySection(){
+      if (!assignInfo || !assignInfo.legacy){
+        $("#importSection").hide();
+        return;
+      }
+      $("#importLegacyProvider").text(providerDisplayName(assignInfo.legacyProvider));
+      $("#importSection").show();
+      let inUse = legacyInUse();
+      $("#legacyDeleteBtn").toggle(!inUse);
+      $("#legacyInUseNote").toggle(inUse);
+    }
+
+    // Reload this certificate's binding state after a change
+    function refreshAssignInfo(callback){
+      $.get("/api/acme/dnsProfiles/bindings", function(data){
+        assignInfo = data[assignCert] || { legacy: false, useDNS: false, acmeManaged: false };
+        renderAssignChoices();
+        renderLegacySection();
+        if (callback) callback();
+      });
+    }
+
+    function deleteLegacyCredentials(){
+      if (!confirm("Delete the per-certificate DNS credentials of " + assignCert + "? This cannot be undone.")) return;
+      $.cjax({
+        url: "/api/acme/dnsProfiles/deleteLegacy",
+        method: "POST",
+        data: { filename: assignCert },
+        success: function(data){
+          if (data.error != undefined){
+            notify(data.error, false, 8000);
+            return;
+          }
+          notify("Per-certificate credentials deleted");
+          refreshParentCertList();
+          refreshAssignInfo();
         }
       });
     }
@@ -421,7 +471,7 @@
           }
           notify("Challenge settings updated for " + assignCert);
           refreshParentCertList();
-          loadProfiles();
+          loadProfiles(function(){ refreshAssignInfo(function(){ $("#assignChoice").dropdown("set selected", choice); }); });
         }
       });
     }
@@ -442,8 +492,7 @@
           $("#importName").val("");
           refreshParentCertList();
           loadProfiles(function(){
-            renderAssignChoices();
-            $("#assignChoice").dropdown("set selected", data.id);
+            refreshAssignInfo(function(){ $("#assignChoice").dropdown("set selected", data.id); });
           });
         }
       });

@@ -264,6 +264,7 @@ func RegisterACMEAndAutoRenewerAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/acme/dnsProfiles/bindings", acmeHandler.HandleListDNSBindings)
 	authRouter.HandleFunc("/api/acme/dnsProfiles/assign", acmeHandler.HandleAssignDNSProfile)
 	authRouter.HandleFunc("/api/acme/dnsProfiles/importFromCert", acmeHandler.HandleImportDNSProfileFromCert)
+	authRouter.HandleFunc("/api/acme/dnsProfiles/deleteLegacy", acmeHandler.HandleDeleteLegacyDNSCredentials)
 	/* ACME Wizard */
 	authRouter.HandleFunc("/api/acme/wizard", acmewizard.HandleGuidedStepCheck)
 }

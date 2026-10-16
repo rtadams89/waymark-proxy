@@ -8,6 +8,25 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - The revision lives in `src/version_custom.go` (`FORK_REVISION`). `SYSTEM_VERSION` in `src/def.go` stays the plain upstream version, because Zoraxy's config migrations parse it as a number.
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 
+## 3.3.5-custom.6
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Changed**
+- Health checks replace upstream's separate uptime monitor. The uptime monitor no longer probes anything; the Uptime Monitor page shows proxy rules with active health checks, fed by those checks in 5 minute blocks.
+- New proxy rules get an active health check by default (HTTP GET every 10s, disabled after 3 failures, re-enabled after 2 successes). The create form's uptime option is now "Enable health checks", with an optional health check path.
+- The rule editor's "Monitor Uptime" checkbox and health-check URI field are gone (hidden); health checks are configured under Upstream → Health Checks.
+
+**Migration**
+- On first start of this version, every rule that had "Monitor Uptime" on and no health check settings gets the default active health check, using its old health-check URI as the path, so failover and uptime history continue. This runs once per installation; rules that had "Monitor Uptime" off are left without health checks.
+
+**Fixed**
+- DNS Credential Sets: the table no longer stacks into a column of headers followed by a column of values in the narrow side panel; each set is one row under Name / Provider / Used By.
+- A certificate's own (per-certificate) DNS credentials can now be deleted from the credential set picker once the certificate uses a credential set or HTTP-01. While the certificate still renews with them, the delete button is hidden and a note explains why.
+
+**Note**
+- Rules without active health checks, including passive-only rules and virtual directories, no longer get automatic failover from the uptime monitor and are not shown on the Uptime Monitor page.
+
 ## 3.3.5-custom.5
 
 Base: upstream v3.3.5 (`310b0cc`).

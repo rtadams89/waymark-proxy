@@ -219,7 +219,7 @@ func GetUptimeTargetsFromReverseProxyRules(dp *dynamicproxy.Router) []*uptime.Ta
 		}
 	}
 
-	return markHealthCheckedUptimeTargets(dp, UptimeTargets) //Custom fork: rules with active health checks feed their own uptime history
+	return healthCheckUptimeTargets(dp) //Custom fork: the Uptime Monitor shows rules with active health checks, fed by those checks
 }
 
 // Handle rendering up time monitor data

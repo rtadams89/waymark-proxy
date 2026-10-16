@@ -66,14 +66,15 @@
                                 <div class="field">
                                     <div class="ui checkbox">
                                         <input type="checkbox" id="enableUtm" checked>
-                                        <label>Enable uptime monitor<br><small>Automatically check upstream status and switch to another if offline</small>
+                                        <!-- Custom fork: this option now creates a health check (HTTP GET every 10s; fine-tune it in the rule editor) -->
+                                        <label>Enable health checks<br><small>Check upstreams with HTTP GET every 10s, take them out of load balancing when they fail, and show them on the Uptime Monitor. Adjust under Upstream &rarr; Health Checks in the rule editor.</small>
                                         </label>
                                     </div>
                                 </div>
                                 <div class="field">
-                                    <label>Uptime monitor health-check URI <small>(optional)</small></label>
+                                    <label>Health check path <small>(optional)</small></label>
                                     <input type="text" id="utmURI" placeholder="/" autocomplete="off">
-                                    <small>Path appended to the upstream URL when the uptime monitor performs its check (e.g. <code>/identity</code> for Plex, <code>/healthz</code>). Leave empty to use <code>/</code>.</small>
+                                    <small>Path requested on each upstream by the health check (e.g. <code>/identity</code> for Plex, <code>/healthz</code>). Leave empty to use <code>/</code>.</small>
                                 </div>
 
                                 <div class="field">

@@ -156,7 +156,7 @@
             <div class="ui divider"></div>
             <div class="ui bulleted list hcHint">
                 <div class="item">Every enable and disable is written to Zoraxy's log with its reason, under <code>[healthcheck]</code>.</div>
-                <div class="item">With active checks on, these checks also feed the Uptime Monitor page (one entry per 5 minutes, marked down if the upstream was out of load balancing at any point in it), and the separate 5 minute uptime probe is skipped for this rule. With passive monitoring only, the uptime probe keeps running but no longer switches these upstreams on or off.</div>
+                <div class="item">Active checks also feed the Uptime Monitor page: one entry per 5 minutes, marked down if the upstream was out of load balancing at any point in it. Rules without active checks are not shown there.</div>
                 <div class="item">ICMP ping uses an unprivileged ping socket (allowed by default on Debian through <code>net.ipv4.ping_group_range</code>) and falls back to a raw socket.</div>
                 <div class="item">If the same backend address is used by several rules, it is taken out of load balancing when any rule's checks find it unhealthy.</div>
             </div>

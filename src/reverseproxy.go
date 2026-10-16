@@ -289,6 +289,7 @@ func ReverseProxyInit() {
 	}
 
 	//Custom fork: active/passive health checks (healthcheck_custom.go)
+	migrateUptimeMonitorToHealthChecks()
 	initHealthChecks()
 	refreshHealthCheckTargets()
 
@@ -601,6 +602,7 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 			EnableTimeoutRefreshOnActivity: enableTimeoutRefreshOnActivity,
 		}
 
+		thisProxyEndpoint.HealthCheck = newRuleHealthCheck(enableUtm, utmURI) //Custom fork: "Health checks" option on the create form
 		preparedEndpoint, err := dynamicProxyRouter.PrepareProxyRoute(&thisProxyEndpoint)
 		if err != nil {
 			utils.SendErrorResponse(w, "unable to prepare proxy route to target endpoint: "+err.Error())

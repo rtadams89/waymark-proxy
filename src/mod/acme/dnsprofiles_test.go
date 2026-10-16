@@ -267,3 +267,52 @@ func TestImportFromCert(t *testing.T) {
 		t.Errorf("imported set not bound: %v %v %v", creds, source, err)
 	}
 }
+
+func TestDeleteLegacyCredentials(t *testing.T) {
+	a := newTestACMEHandler(t)
+	installFakeCert(t, "example.com", &CertificateInfoJSON{UseDNS: true})
+	a.ensureDNSProfileTables()
+	a.Database.Write("acme", "example.com"+legacyDNSProviderSuffix, "cloudflare")
+	a.Database.Write("acme", "example.com"+legacyDNSCredSuffix, `{"AuthToken":"legacy-tok"}`)
+	a.Database.Write("acme", "example.com_dns_servers", "")
+
+	// Still in use: renews via DNS-01 with no credential set
+	res := postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"example.com"}})
+	if res["error"] == nil || !a.Database.KeyExists("acme", "example.com"+legacyDNSCredSuffix) {
+		t.Fatalf("delete of in-use credentials should be refused: %v", res)
+	}
+
+	// Move it to a credential set, then delete succeeds
+	res = postForm(t, a.HandleImportDNSProfileFromCert, url.Values{"filename": {"example.com"}, "name": {"CF"}})
+	if res["id"] == nil {
+		t.Fatalf("import failed: %v", res)
+	}
+	res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"example.com"}})
+	if res["error"] != nil {
+		t.Fatalf("delete refused: %v", res)
+	}
+	for _, s := range []string{legacyDNSProviderSuffix, legacyDNSCredSuffix, "_dns_servers"} {
+		if a.Database.KeyExists("acme", "example.com"+s) {
+			t.Errorf("key %s not removed", s)
+		}
+	}
+	// Renewals still resolve through the credential set
+	if _, creds, _, err := a.resolveDNSCredentials("example.com"); err != nil || !strings.Contains(creds, "legacy-tok") {
+		t.Errorf("credential set no longer resolves: %v %v", creds, err)
+	}
+	// Nothing left to delete; traversal refused
+	if res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"example.com"}}); res["error"] == nil {
+		t.Error("second delete should report nothing to delete")
+	}
+	if res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"../sys"}}); res["error"] == nil {
+		t.Error("traversal should be refused")
+	}
+
+	// HTTP-01 certificate: per-certificate credentials not in use, deletable
+	installFakeCert(t, "http.example.com", &CertificateInfoJSON{UseDNS: false})
+	a.Database.Write("acme", "http.example.com"+legacyDNSProviderSuffix, "cloudflare")
+	a.Database.Write("acme", "http.example.com"+legacyDNSCredSuffix, `{}`)
+	if res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"http.example.com"}}); res["error"] != nil {
+		t.Errorf("HTTP-01 cert credentials should be deletable: %v", res)
+	}
+}

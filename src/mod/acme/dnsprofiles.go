@@ -668,3 +668,36 @@ func (a *ACMEHandler) HandleImportDNSProfileFromCert(w http.ResponseWriter, r *h
 	js, _ := json.Marshal(map[string]string{"id": id})
 	utils.SendJSONResponse(w, string(js))
 }
+
+// HandleDeleteLegacyDNSCredentials removes a certificate's upstream-style
+// per-certificate DNS credentials. Refused while the certificate still relies
+// on them: DNS-01 renewal with no credential set assigned.
+func (a *ACMEHandler) HandleDeleteLegacyDNSCredentials(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	a.ensureDNSProfileTables()
+
+	certName, err := utils.PostPara(r, "filename")
+	if err != nil || !isValidCertName(certName) {
+		utils.SendErrorResponse(w, "invalid certificate name")
+		return
+	}
+	if !a.Database.KeyExists("acme", certName+legacyDNSProviderSuffix) && !a.Database.KeyExists("acme", certName+legacyDNSCredSuffix) {
+		utils.SendErrorResponse(w, "this certificate has no per-certificate DNS credentials")
+		return
+	}
+	bound := a.Database.KeyExists("acme", certName+dnsProfileBindingSuffix)
+	if !bound && certFileExists(certName) {
+		if info, err := LoadCertInfoJSON(filepath.Join(acmeCertStoreDir, certName+".json")); err == nil && info.UseDNS {
+			utils.SendErrorResponse(w, "this certificate still renews with its per-certificate credentials. Assign a credential set or HTTP-01 first.")
+			return
+		}
+	}
+	for _, suffix := range []string{legacyDNSProviderSuffix, legacyDNSCredSuffix, "_dns_servers"} {
+		a.Database.Delete("acme", certName+suffix)
+	}
+	a.Logf("Deleted per-certificate DNS credentials of "+certName, nil)
+	utils.SendOK(w)
+}

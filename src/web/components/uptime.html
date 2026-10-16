@@ -1,7 +1,7 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Uptime Monitor</h2>
-        <p>Check the online state of proxied targets</p>
+        <p>Uptime of proxy rules with active health checks, in 5 minute blocks. Set up health checks in the rule editor under Upstream &rarr; Health Checks.</p>
     </div>
     <div class="ui divider"></div>
     <div id="utmrender" class="ui basic segment">
@@ -107,8 +107,8 @@
                 <h4 class="ui header">
                     <i class="green check circle icon"></i>
                     <div class="content">
-                        No Uptime Monitor Targets
-                        <div class="sub header">There are currently no uptime monitor targets configured. To get started, go to <b>Create Proxy Rule</b> to add a new proxy rule, then refresh this page.</div>
+                        No health-checked proxy rules
+                        <div class="sub header">This page shows proxy rules that have active health checks. Turn them on in the rule editor under <b>Upstream &rarr; Health Checks</b>, then refresh this page.</div>
                     </div>
                 </h4>
             </div>`);
@@ -368,4 +368,4 @@
             return "Unknown Error";
         }
     }
-</script>
+</script>
