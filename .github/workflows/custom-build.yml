@@ -33,7 +33,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
-          go-version-file: src/go.mod
+          # go.mod says "go 1.26.0", which setup-go would install literally.
+          # Build with the newest 1.26 patch release so the standard library
+          # carries current security fixes.
+          go-version: "1.26.x"
+          check-latest: true
           cache-dependency-path: src/go.sum
 
       - name: Verify dependencies
@@ -46,6 +50,12 @@ jobs:
 
       - name: Test
         run: go test ./...
+        working-directory: src
+
+      # Fails the build if code paths we actually call hit a known
+      # vulnerability in a dependency or the standard library.
+      - name: Vulnerability check (govulncheck)
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
         working-directory: src
 
   build:
@@ -65,7 +75,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
-          go-version-file: src/go.mod
+          # go.mod says "go 1.26.0", which setup-go would install literally.
+          # Build with the newest 1.26 patch release so the standard library
+          # carries current security fixes.
+          go-version: "1.26.x"
+          check-latest: true
           cache-dependency-path: src/go.sum
 
       - name: Build
