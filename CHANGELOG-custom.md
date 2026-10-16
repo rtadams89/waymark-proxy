@@ -8,6 +8,20 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - The revision lives in `src/version_custom.go` (`FORK_REVISION`). `SYSTEM_VERSION` in `src/def.go` stays the plain upstream version, because Zoraxy's config migrations parse it as a number.
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 
+## 3.3.5-custom.9
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Changed**
+- On rules with health checks, the checks now decide routing whatever the number of upstreams. When every upstream is disabled (including a rule's only upstream), visitors get the "Web server is down" (521) error page at once instead of being forwarded to a dead server and timing out. Rules without health checks still always forward to their only upstream, as upstream Zoraxy does.
+- The legacy "disable auto fallback" option is ignored on rules with health checks, so a failed upstream is always taken out of the pool.
+
+**Added**
+- HTTP Proxy list: a red heart next to each upstream that is down (hover for the reason), and next to the host when all of its upstreams are down.
+
+**Fixed**
+- Health check settings: the Upstream status table's headings no longer stack above the values in the side panel. The single-upstream note now describes the actual behaviour.
+
 ## 3.3.5-custom.8
 
 Base: upstream v3.3.5 (`310b0cc`).

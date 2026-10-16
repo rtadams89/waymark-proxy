@@ -1344,13 +1344,32 @@
             }
             let byRule = {};
             statuses.forEach(s => { (byRule[s.rule] = byRule[s.rule] || []).push(s); });
+            $("#httpProxyList .hcHostDown, #httpProxyList .hcUpstreamDown").remove();
             $("#httpProxyList .hcCacheCell").each(function(){
                 let ind = $(this).find(".hcIndicator");
                 if (ind.length == 0){
                     return;
                 }
+                let row = $(this).closest("tr");
                 let list = byRule[String($(this).attr("eptuuid")).toLowerCase()] || [];
-                let down = list.filter(s => !s.enabled);
+                let down = list.filter(s => !s.enabled || !s.receivesTraffic);
+
+                // Red heart next to each upstream that is out of the pool
+                down.forEach(s => {
+                    row.find(".upstreamList a").each(function(){
+                        if ($(this).text().trim() == s.upstream){
+                            let why = (s.reason || "Failed its health checks").replace(/"/g, "&quot;");
+                            $(this).after(`<i class="red heartbeat icon hcUpstreamDown" style="margin-left: 0.3em;" title="Down: ${why}"></i>`);
+                        }
+                    });
+                });
+                // ...and next to the host when none is left
+                if (list.length > 0 && down.length == list.length){
+                    let hostCell = row.find("td[datatype='inbound']");
+                    let marker = `<i class="red heartbeat icon hcHostDown" title="All upstreams are down: visitors get the &quot;Web server is down&quot; (521) error page"></i>`;
+                    let br = hostCell.children("br").first();
+                    if (br.length){ br.before(marker); } else { hostCell.append(marker); }
+                }
                 let icon = ind.find(".heartbeat.icon").removeClass("grey green red");
                 ind.find(".hcDownNote").remove();
                 if (list.length == 0){

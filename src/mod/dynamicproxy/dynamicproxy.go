@@ -445,7 +445,14 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	selectedUpstream, err := router.loadBalancer.GetRequestUpstreamTarget(w, r, sep.ActiveOrigins, sep.UseStickySession, sep.DisableAutoFallback)
+	//Custom fork: health checks found every upstream down, answer with the error page
+	if proxyHandler.allUpstreamsDown(sep) {
+		serveProxyRequestError(w, 521, router, ErrorTemplateRPError)
+		router.logRequest(r, false, 521, "host-http", r.Host, "health-check-down", sep)
+		return
+	}
+
+	selectedUpstream, err := router.loadBalancer.GetRequestUpstreamTarget(w, r, sep.ActiveOrigins, sep.UseStickySession, autoFallbackOff(sep))
 	if err != nil {
 		serveProxyRequestError(w, 404, router, ErrorTemplateHostError)
 		router.Option.Logger.PrintAndLog("dprouter", "failed to get upstream for hostname", err)

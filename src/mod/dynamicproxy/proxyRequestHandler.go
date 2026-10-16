@@ -159,6 +159,13 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	r.Header.Set("X-Forwarded-Server", "zoraxy-"+h.Parent.Option.HostUUID)
 	reqHostname := r.Host
 
+	//Custom fork: health checks found every upstream down, answer with the error page
+	if h.allUpstreamsDown(target) {
+		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
+		h.Parent.logRequest(r, false, 521, "host-http", reqHostname, "health-check-down", target)
+		return
+	}
+
 	//Custom fork: static file cache (answers hits, stores misses on the way past)
 	cacheSession := h.assetCacheBegin(w, r, target)
 	if cacheSession != nil {
@@ -170,7 +177,7 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	}
 
 	/* Load balancing */
-	selectedUpstream, err := h.Parent.loadBalancer.GetRequestUpstreamTarget(w, r, target.ActiveOrigins, target.UseStickySession, target.DisableAutoFallback)
+	selectedUpstream, err := h.Parent.loadBalancer.GetRequestUpstreamTarget(w, r, target.ActiveOrigins, target.UseStickySession, autoFallbackOff(target))
 	if err != nil {
 		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 		h.Parent.Option.Logger.PrintAndLog("proxy", "Failed to assign an upstream for this request", err)
