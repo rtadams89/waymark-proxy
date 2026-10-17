@@ -89,7 +89,6 @@ Waymark keeps Zoraxy's core: HTTP and stream proxying, load balancing, ACME cert
 - Redirects after SSO login stay on the protected host, error pages load no third-party scripts, and the web UI escapes the values it shows.
 - Cross-site request protection uses Go's standard `CrossOriginProtection` instead of the unmaintained gorilla/csrf.
 - CI runs vet, tests, `govulncheck` and CodeQL on every change and builds with the latest Go 1.26 patch release.
-- A daily workflow watches Zoraxy for new releases and prepares a pull request that merges them.
 
 **Removed from Zoraxy**
 - Network tools (IP and port scanners, mDNS browser, traceroute, ping, WHOIS, Wake-on-LAN), the web SSH client and the HTTP forward proxy. The SSH client's embedded terminal binaries alone added about 10 MB to the binary.
@@ -342,7 +341,7 @@ Back up `conf/` and `sys.db`, or use **System Backup & Restore** under **System 
 
 ## Relationship to Zoraxy, license and credits
 
-Waymark Proxy is a modified version of [Zoraxy](https://github.com/tobychui/zoraxy), created by [tobychui](https://github.com/tobychui) for [imuslab](https://imuslab.com) and developed with many contributors. It started as a set of changes to Zoraxy 3.3.5 and continues as a separate project; new Zoraxy releases are merged in when they're useful. It isn't affiliated with or endorsed by the Zoraxy project. Please report Waymark issues [here](https://github.com/rtadams89/waymark-proxy/issues), not to Zoraxy.
+Waymark Proxy is a modified version of [Zoraxy](https://github.com/tobychui/zoraxy), created by [tobychui](https://github.com/tobychui) for [imuslab](https://imuslab.com) and developed with many contributors. It started as a set of changes to Zoraxy 3.3.5 and is now a separate project that no longer follows Zoraxy releases. It isn't affiliated with or endorsed by the Zoraxy project. Please report Waymark issues [here](https://github.com/rtadams89/waymark-proxy/issues), not to Zoraxy.
 
 Waymark Proxy is free software under the [GNU Affero General Public License v3.0](LICENSE), the same license as Zoraxy. Copyright © 2021-2026 tobychui and the Zoraxy contributors; changes and additions © 2026 Ryan Adams. It comes with no warranty. If you run a modified version that other people use over a network, the AGPL requires you to offer them its source code.
 

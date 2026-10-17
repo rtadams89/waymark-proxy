@@ -11,19 +11,19 @@ package main
 	Release tags are v<PRODUCT_VERSION> (v1.0.0); CI refuses a tag that does
 	not match the version built into the binary. Keep CHANGELOG.md in step.
 
-	SYSTEM_VERSION (def.go) is the Zoraxy release Waymark is built on
-	(UPSTREAM_BASE). Leave it as a plain x.y.z: Zoraxy converts it to a number
-	("3.3.5" -> 335) to run its config migrations, and plugins read it as the
-	host version. It only changes when a Zoraxy release is merged in.
+	SYSTEM_VERSION (def.go) is the Zoraxy release Waymark was forked from
+	(UPSTREAM_BASE). Waymark no longer follows Zoraxy releases, so it stays
+	at 3.3.5. Leave it as a plain x.y.z: the config migrations convert it to
+	a number ("3.3.5" -> 335), and plugins read it as the host version.
 */
 
 const (
 	PRODUCT_NAME       = "Waymark Proxy"
 	PRODUCT_SHORT_NAME = "Waymark"
-	PRODUCT_VERSION    = "2.6.1"
+	PRODUCT_VERSION    = "2.6.2"
 	PRODUCT_REPO       = "https://github.com/rtadams89/waymark-proxy"
 
-	// UPSTREAM_BASE is the Zoraxy release this build is based on.
+	// UPSTREAM_BASE is the Zoraxy release Waymark was forked from.
 	UPSTREAM_BASE = SYSTEM_VERSION
 
 	// DISPLAY_VERSION is shown in the web UI and by `waymark -version`, and

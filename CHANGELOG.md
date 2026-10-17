@@ -5,22 +5,24 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 **Versioning:** [semantic versioning](https://semver.org), `MAJOR.MINOR.PATCH`.
 
 - **PATCH** (1.0.1): bug and security fixes only.
-- **MINOR** (1.1.0): new features, including merged Zoraxy releases, that keep existing configuration working.
+- **MINOR** (1.1.0): new features that keep existing configuration working.
 - **MAJOR** (2.0.0): changes that need action when upgrading.
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
-- The Zoraxy release Waymark is based on is shown in **Settings > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
+- Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
-## 2.6.1
+## 2.6.2
 
-Based on Zoraxy 3.3.5 (`310b0cc`).
+2.6.1 was tagged but not released (a test failed in CI); its changes are included here.
 
 **Changed**
+- Waymark no longer follows Zoraxy releases: the daily "Watch upstream releases" workflow, the "Merge upstream release" workflow and their scripts (`check-upstream.sh`, `merge-upstream.sh`) are removed. Waymark stays based on Zoraxy 3.3.5 for configuration migrations and the version plugins see.
 - HTTP proxy destinations: an upstream's weight is set in its edit form (a number from 0 to 100, with an explanation), instead of with the up and down arrow buttons, which looked like they reordered the list. The weight is checked on the server too.
 - Long upstream addresses no longer wrap mid-word (`…:800` / `6`): the address stays on one line unless it is too long for the panel.
 
 **Fixed**
 - Opening a proxy rule's editor before any certificate was installed raised a script error (the certificate list is empty then), and the certificate dropdown in the TLS section did not appear. Certificate names in that dropdown are now escaped.
 - Upstream addresses in the destinations list are escaped.
+- Statistics: the per-day counters (client addresses, user agents, URLs and so on) could end up above their size limit when many new entries arrived while one was being trimmed, because nothing trimmed again afterwards. The trim now repeats until the counter is within its limit. This also made a test fail now and then.
 
 ## 2.6.0
 

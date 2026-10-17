@@ -80,18 +80,19 @@ func boundedIncr(m *sync.Map, b *boundedCounter, key string, capN int) {
 	}
 
 	// Try to acquire the trim lock without blocking. If another goroutine
-	// is already trimming, our insert lands; the next over-cap insert will
-	// trigger a trim.
-	if !b.trimMu.TryLock() {
-		return
+	// is already trimming, our insert lands and that goroutine trims again
+	// after it unlocks (the loop below), so inserts made during a trim
+	// cannot leave the map over the cap.
+	for int(b.size.Load()) > capN {
+		if !b.trimMu.TryLock() {
+			return
+		}
+		// Re-check under lock — the other trimmer may have just finished.
+		if int(b.size.Load()) > capN {
+			evictLeastFrequent(m, b, capN)
+		}
+		b.trimMu.Unlock()
 	}
-	defer b.trimMu.Unlock()
-
-	// Re-check under lock — the other trimmer may have just finished.
-	if int(b.size.Load()) <= capN {
-		return
-	}
-	evictLeastFrequent(m, b, capN)
 }
 
 // evictLeastFrequent removes the entries in m with the lowest request counts
