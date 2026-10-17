@@ -901,7 +901,7 @@
                 countryCode = String(countryCode).toLowerCase().replace(/[^a-z]/g, ""); //ISO codes are letters only
                 bannedListHtml += `
                 <tr>
-                    <td><i class="${countryCode} flag"></i> ${getCountryName(countryCode)} (${countryCode.toUpperCase()})</td>
+                    <td><i class="${countryCode} flag"></i> ${htmlEscape(getCountryName(countryCode))} (${countryCode.toUpperCase()})</td>
                     <td><button class="ui red basic mini icon button" onclick="removeFromBannedList('${countryCode}')"><i class="trash icon"></i></button></td>
                 </tr>
                 `;
@@ -1006,7 +1006,7 @@
                 let countryCode = String(countryWhitelistEntry.CC).toLowerCase().replace(/[^a-z]/g, ""); //ISO codes are letters only
                 whiteListHTML += `
                 <tr>
-                    <td><i class="${countryCode} flag"></i> ${getCountryName(countryCode)} (${countryCode.toUpperCase()})</td>
+                    <td><i class="${countryCode} flag"></i> ${htmlEscape(getCountryName(countryCode))} (${countryCode.toUpperCase()})</td>
                     <td><button class="ui red basic mini icon button" onclick="removeFromWhiteList('${countryCode}')"><i class="trash icon"></i></button></td>
                 </tr>
                 `;

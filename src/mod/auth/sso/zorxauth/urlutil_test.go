@@ -234,17 +234,18 @@ func TestBuildLoginRedirectURL_HostOnlyUsesRequestHTTP(t *testing.T) {
 func TestSameHostRedirect(t *testing.T) {
 	r := httptest.NewRequest("GET", "https://app.example.com:8443/__sso/set", nil)
 	cases := map[string]string{
-		"https://app.example.com/dash":   "https://app.example.com/dash",
-		"https://APP.example.com:9000/x": "https://APP.example.com:9000/x",
-		"/dash?x=1":                      "/dash?x=1",
-		"https://evil.example.net/":      "/",
-		"https://app.example.com.evil/":  "/",
-		"https://user@app.example.com/":  "/",
-		"//evil.example.net/":            "/",
-		"/\\evil.example.net/":           "/",
-		"javascript:alert(1)":            "/",
-		"dash":                           "/",
-		"":                               "/",
+		"https://app.example.com/dash":                "/dash",
+		"https://app.example.com//evil.example.net/x": "/evil.example.net/x",
+		"https://APP.example.com:9000/x":              "/x",
+		"/dash?x=1":                                   "/dash?x=1",
+		"https://evil.example.net/":                   "/",
+		"https://app.example.com.evil/":               "/",
+		"https://user@app.example.com/":               "/",
+		"//evil.example.net/":                         "/",
+		"/\\evil.example.net/":                        "/evil.example.net/",
+		"javascript:alert(1)":                         "/",
+		"dash":                                        "/",
+		"":                                            "/",
 	}
 	for in, want := range cases {
 		if got := sameHostRedirect(in, r); got != want {

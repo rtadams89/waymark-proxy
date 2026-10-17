@@ -734,7 +734,7 @@
 
                 let upstreamLink = `${upstream.RequireTLS?"https://":"http://"}${upstream.OriginIpOrDomain}`;
 
-                upstreams += `<a href="${upstreamLink}" target="_blank">${upstream.OriginIpOrDomain} ${tlsIcon}</a><br>`;
+                upstreams += `<a href="${htmlEscape(upstreamLink)}" target="_blank">${htmlEscape(upstream.OriginIpOrDomain)} ${tlsIcon}</a><br>`;
             })
         }
         return upstreams;
@@ -743,7 +743,7 @@
     function renderVirtualDirectoryList(subd){
         let vdList = `<div class="ui list">`;
         subd.VirtualDirectories.forEach(vdir => {
-            vdList += `<div class="item">${vdir.MatchingPath} <i class="green angle double right icon"></i> ${vdir.Domain}</div>`;
+            vdList += `<div class="item">${htmlEscape(vdir.MatchingPath)} <i class="green angle double right icon"></i> ${htmlEscape(vdir.Domain)}</div>`;
         });
         vdList += `</div>`
         if (subd.VirtualDirectories.length == 0){
@@ -756,7 +756,7 @@
     function renderTagList(subd){
         let tagList = "";
         if (subd.Tags.length > 0){
-            tagList = subd.Tags.map(tag => `<span class="ui tiny label tag-select" style="background-color: ${getTagColorByName(tag)}; color: ${getTagTextColor(tag)}">${tag}</span>`).join("");
+            tagList = subd.Tags.map(tag => `<span class="ui tiny label tag-select" style="background-color: ${getTagColorByName(tag)}; color: ${getTagTextColor(tag)}">${htmlEscape(tag)}</span>`).join("");
         }else{
             tagList = "<small style='opacity: 0.3; pointer-events: none; user-select: none;'>No Tags</small>";
             tagListEmpty = true;
@@ -794,7 +794,7 @@
             $("#httpProxyList").html(``);
             if (data.error !== undefined){
                     $("#httpProxyList").append(`<tr>
-                    <td data-label="" colspan="9"><i class="remove icon"></i> ${data.error}</td>
+                    <td data-label="" colspan="9"><i class="remove icon"></i> ${htmlEscape(data.error)}</td>
                 </tr>`);
             }else if (data.length == 0){
                 $("#httpProxyList").append(`<tr>
@@ -1719,9 +1719,9 @@
         </div>`);
         tags.forEach(tag => {
             let thisTagColor = getTagColorByName(tag);
-            dropdownMenu.append(`<div class="item tag-select" data-value="${tag}">
+            dropdownMenu.append(`<div class="item tag-select" data-value="${htmlEscape(tag)}">
                 <div class="ui empty circular label" style="background-color: ${thisTagColor}; border-color: ${thisTagColor};" ></div>
-                ${tag}
+                ${htmlEscape(tag)}
             </div>`);
         });
     }
@@ -1739,7 +1739,7 @@
     function renderTagsPreview(endpoint, tags){
         let targetProxyRuleEle = $(".subdEntry[eptuuid='" + endpoint + "'] td[data-label='tags']");
         //Update the tag DOM
-        let newTagDOM = tags.map(tag => `<span class="ui tiny label tag-select" style="background-color: ${getTagColorByName(tag)}; color: ${getTagTextColor(tag)}">${tag}</span>`).join("");
+        let newTagDOM = tags.map(tag => `<span class="ui tiny label tag-select" style="background-color: ${getTagColorByName(tag)}; color: ${getTagTextColor(tag)}">${htmlEscape(tag)}</span>`).join("");
         $(targetProxyRuleEle).find(".tags-list").html(newTagDOM);
 
         //Update the tag payload

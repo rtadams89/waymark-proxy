@@ -422,8 +422,9 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 }
 
 // oauth2ReturnLocation turns the OAuth2 state (the query-escaped URL of the
-// page that started the login) into the address to return to. Only http(s)
-// URLs on host, or paths on it, are accepted; anything else goes to "/".
+// page that started the login) into the address to return to: the path and
+// query of that page on this host. A state naming another host, or another
+// scheme than http(s), returns "/".
 func oauth2ReturnLocation(state string, host string) string {
 	location := strings.TrimPrefix(state, "/internal/") // fix for #695
 	if decoded, err := url.QueryUnescape(location); err == nil {
@@ -437,11 +438,16 @@ func oauth2ReturnLocation(state string, host string) string {
 		if (u.Scheme != "http" && u.Scheme != "https") || !strings.EqualFold(u.Host, host) || u.User != nil {
 			return "/"
 		}
-		return u.String()
-	}
-	// A path on this host; "//x" and "/\\x" would be read as another host
-	if !strings.HasPrefix(location, "/") || strings.HasPrefix(location, "//") || strings.HasPrefix(location, "/\\") {
+	} else if !strings.HasPrefix(location, "/") {
 		return "/"
 	}
-	return location
+	return localRedirectTarget(u.Path, u.RawQuery)
+}
+
+// localRedirectTarget builds a redirect that stays on the current host from
+// a URL's path and query only. Leading slashes and backslashes collapse to a
+// single "/", so the result can never be read as "//other-host".
+func localRedirectTarget(path string, rawQuery string) string {
+	target := &url.URL{Path: "/" + strings.TrimLeft(path, "/\\"), RawQuery: rawQuery}
+	return target.String()
 }

@@ -10,6 +10,18 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.2.3
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Security**
+- OAuth2 SSO and Waymark Auth: the redirect after login is now built only from the path and query of the return address (after the host check), with leading slashes and backslashes collapsed, so it always stays on the current host.
+- Web UI notifications show messages as text. They often carry server error messages, which can include values you entered.
+- Access rules: country names in the blacklist and whitelist tables are escaped.
+- Switching tabs only calls the handlers that pages registered, never a property chosen by the tab ID.
+- Proxy rule host names and aliases may only contain letters, digits, `.`, `-`, `_`, the wildcards `*` and `?`, and `:`, `[`, `]` (ports and IPv6 addresses). Internationalised domain names must be entered in their `xn--` form.
+- HTTP Proxy list: upstream addresses, virtual directories, tags and error messages are escaped.
+
 ## 2.2.2
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

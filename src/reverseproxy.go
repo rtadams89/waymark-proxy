@@ -530,9 +530,15 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if !validProxyConfigName(rootOrMatchingDomain) {
-			utils.SendErrorResponse(w, "the host name cannot contain /, \\ or ..")
+		if !validHostRuleName(rootOrMatchingDomain) {
+			utils.SendErrorResponse(w, "invalid host name: use letters, digits, . - _ * ? and : (no .. or /)")
 			return
+		}
+		for _, alias := range aliasHostnames {
+			if !validHostRuleName(alias) {
+				utils.SendErrorResponse(w, "invalid alias host name: "+alias)
+				return
+			}
 		}
 
 		//Generate a default authenticaion provider
@@ -959,6 +965,13 @@ func ReverseProxyHandleAlias(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "Invalid alias list given")
 		return
 	}
+	for i, alias := range newAlias {
+		newAlias[i] = strings.TrimSpace(alias)
+		if !validHostRuleName(newAlias[i]) {
+			utils.SendErrorResponse(w, "invalid alias host name: "+newAlias[i])
+			return
+		}
+	}
 
 	//Set the current alias
 	newProxyEndpoint := dynamicproxy.CopyEndpoint(targetProxyEntry)
@@ -1067,8 +1080,8 @@ func ReverseProxyHandleSetHostname(w http.ResponseWriter, r *http.Request) {
 
 	originalRootnameOrMatchingDomain = strings.TrimSpace(originalRootnameOrMatchingDomain)
 	newHostname = strings.TrimSpace(newHostname)
-	if newHostname != "/" && !validProxyConfigName(newHostname) {
-		utils.SendErrorResponse(w, "the host name cannot contain /, \\ or ..")
+	if newHostname != "/" && !validHostRuleName(newHostname) {
+		utils.SendErrorResponse(w, "invalid host name: use letters, digits, . - _ * ? and : (no .. or /)")
 		return
 	}
 	if newHostname == "/" {

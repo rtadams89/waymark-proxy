@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -112,6 +113,18 @@ func filterProxyConfigFilename(filename string) string {
 // stays in the proxy rule folder.
 func validProxyConfigName(name string) bool {
 	return name != "" && !strings.ContainsAny(name, "/\\\x00") && !strings.Contains(name, "..")
+}
+
+// hostRulePattern is what a proxy rule's host name or alias may contain:
+// letters, digits, . - _, the wildcards * and ?, and : [ ] for ports and
+// IPv6 addresses.
+var hostRulePattern = regexp.MustCompile(`^[A-Za-z0-9._*?:\[\]-]{1,253}$`)
+
+// validHostRuleName reports whether name can be a proxy rule's host name or
+// alias. Besides keeping file names in the proxy rule folder, this keeps
+// markup out of names the web UI shows.
+func validHostRuleName(name string) bool {
+	return hostRulePattern.MatchString(name) && validProxyConfigName(name)
 }
 
 func SaveReverseProxyConfig(endpoint *dynamicproxy.ProxyEndpoint) error {

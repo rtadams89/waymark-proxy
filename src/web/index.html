@@ -524,8 +524,11 @@
                 $(".functiontab").hide();
                 $("#" + tabID).fadeIn('fast', function(){
                     setTimeout(function(){
-                        if (Object.prototype.hasOwnProperty.call(tabSwitchEventBind, tabID) && typeof tabSwitchEventBind[tabID] == "function"){
-                            tabSwitchEventBind[tabID]();
+                        //Only handlers the pages registered are called, never a property picked by the tab ID
+                        for (const [boundTabID, handler] of Object.entries(tabSwitchEventBind)){
+                            if (boundTabID === tabID && typeof handler == "function"){
+                                handler();
+                            }
                         }
                     },100)
                 });
@@ -569,7 +572,8 @@
                     $("#messageBox").attr("class", "ui red floating compact message")
                     icon = `<i class="ui red circle times icon"></i>`;
                 }
-                $("#messageBox").html(`${icon} ${message}`);
+                //Messages often carry server errors that include user input: show them as text
+                $("#messageBox").html(icon).append(document.createTextNode(" " + message));
                 $("#messageBox").finish().fadeIn("fast").delay(delayDuration).fadeOut("fast");
             }
 
