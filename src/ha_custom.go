@@ -14,6 +14,7 @@ package main
 */
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
@@ -21,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/user"
 	"strconv"
 	"strings"
@@ -250,7 +252,9 @@ func haApply(cfg *hacluster.Config) (hacluster.ApplyResult, error) {
 	if err := rt.WriteSettings(cfg.Settings(haSelf(cfg), applyID, haNodeName(cfg))); err != nil {
 		return hacluster.ApplyResult{}, fmt.Errorf("could not write HA settings: %w", err)
 	}
-	res, err := rt.WaitForResult(applyID, 20*time.Second)
+	// The helper bounds each keepalived start to 20 seconds and may apply a
+	// newer save straight after, so allow for a slow start plus a restore
+	res, err := rt.WaitForResult(applyID, 75*time.Second)
 	if err != nil {
 		return res, err
 	}
@@ -269,7 +273,7 @@ func haRenewalHold() (bool, string) {
 	if !cfg.Enabled {
 		return false, ""
 	}
-	switch haRuntime().ReadRole().State {
+	switch haEffectiveRole(haRuntime()).State {
 	case "BACKUP":
 		return true, "this node is the HA standby (the active node renews)"
 	case "FAULT":
@@ -278,6 +282,32 @@ func haRenewalHold() (bool, string) {
 		return true, "keepalived is stopped on this node"
 	}
 	return false, ""
+}
+
+// haServiceState asks systemd whether a unit is running (active, inactive,
+// failed, ...). Read-only, so it works as the unprivileged zoraxy user.
+// Returns "unknown" when systemd can't be asked.
+func haServiceState(unit string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	out, _ := exec.CommandContext(ctx, "systemctl", "is-active", unit).Output()
+	if state := strings.TrimSpace(string(out)); state != "" && !strings.ContainsAny(state, " \n") {
+		return state
+	}
+	return "unknown"
+}
+
+// haEffectiveRole is the role keepalived last reported, except that a
+// keepalived systemd says is not running counts as STOP (the role file is
+// stale if keepalived was killed without running its stop notification).
+func haEffectiveRole(rt *hacluster.Runtime) hacluster.Role {
+	role := rt.ReadRole()
+	if role.State != "STOP" {
+		if st := haServiceState("keepalived"); st == "inactive" || st == "failed" {
+			role.State = "STOP"
+		}
+	}
+	return role
 }
 
 /* API */
@@ -315,16 +345,20 @@ func HandleHAStatus(w http.ResponseWriter, r *http.Request) {
 		"self":            self,
 		"nodeName":        haNodeName(cfg),
 		"localAddresses":  local,
-		"role":            rt.ReadRole(),
-		"vipHeld":         vipHeld,
-		"heartbeat":       hb,
-		"lastApply":       lastApply,
-		"preview":         cfg.Preview(self, haOwner(), hacluster.DefaultScriptsDir),
-		"renewalHeld":     hold,
-		"renewalReason":   holdReason,
-		"haDir":           rt.Dir,
-		"installerFiles":  hacluster.DeployFileNames,
-		"executable":      haExecutable(),
+		"role":            haEffectiveRole(rt),
+		"services": map[string]string{
+			"applyWatcher": haServiceState("zoraxy-ha-apply.path"),
+			"keepalived":   haServiceState("keepalived"),
+		},
+		"vipHeld":        vipHeld,
+		"heartbeat":      hb,
+		"lastApply":      lastApply,
+		"preview":        cfg.Preview(self, haOwner(), hacluster.DefaultScriptsDir),
+		"renewalHeld":    hold,
+		"renewalReason":  holdReason,
+		"haDir":          rt.Dir,
+		"installerFiles": hacluster.DeployFileNames,
+		"executable":     haExecutable(),
 	}
 	js, _ := json.Marshal(resp)
 	utils.SendJSONResponse(w, string(js))

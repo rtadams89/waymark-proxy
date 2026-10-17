@@ -17,7 +17,7 @@ func (c *Config) Preview(self int, owner, scriptsDir string) string {
 	}
 	global := "global_defs {\n    router_id zoraxy_" + name + "\n    enable_script_security\n    script_user " + owner + "\n}\n"
 	if !c.Enabled || self < 0 || self >= len(c.Nodes) {
-		return header + "\n# HA is turned off in Zoraxy: no floating IP is managed on this node.\n\n" + global
+		return header + "\n# HA is turned off in Zoraxy: keepalived is stopped and no floating IP is managed on this node.\n\n" + global
 	}
 	me := c.Nodes[self]
 	var peers strings.Builder

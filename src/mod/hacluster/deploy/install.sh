@@ -12,7 +12,13 @@
 #   /var/lib/zoraxy/ha    owned by the zoraxy user: settings, heartbeat, role
 #   /var/lib/zoraxy-ha    root-owned, readable by the zoraxy group: apply results
 #
-# Set ZORAXY_USER if Zoraxy runs as a user other than "zoraxy".
+# If Zoraxy's systemd service is sandboxed (ProtectSystem=strict), adds a
+# drop-in letting it write /var/lib/zoraxy/ha; restart Zoraxy afterwards.
+# keepalived is enabled and started by zoraxy-ha-apply when HA is turned on
+# in Zoraxy, and stopped and disabled when it is turned off.
+#
+# Set ZORAXY_USER if Zoraxy runs as a user other than "zoraxy", and
+# ZORAXY_UNIT if its service can't be found automatically.
 set -euo pipefail
 cd "$(dirname "$0")"
 ZUSER="${ZORAXY_USER:-zoraxy}"
@@ -44,7 +50,35 @@ fi
 install -o root -g root -m 0644 zoraxy-ha-apply.path zoraxy-ha-apply.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now zoraxy-ha-apply.path
-systemctl enable keepalived
+
+# Zoraxy's own service: ProtectSystem=strict makes /var/lib read-only to it
+restart_note=""
+unit="${ZORAXY_UNIT:-}"
+if [ -z "$unit" ]; then
+	for pid in $(pgrep -x -u "$ZUSER" zoraxy 2>/dev/null); do
+		unit="$(sed -n 's#^0::.*/\([^/]*\.service\)$#\1#p' "/proc/$pid/cgroup" 2>/dev/null | head -n1)"
+		[ -n "$unit" ] && break
+	done
+fi
+if [ -z "$unit" ] && systemctl cat zoraxy.service >/dev/null 2>&1; then
+	unit=zoraxy.service
+fi
+if [ -n "$unit" ] && [ "$(systemctl show "$unit" -p ProtectSystem --value 2>/dev/null)" = strict ]; then
+	rw=" $(systemctl show "$unit" -p ReadWritePaths --value) "
+	if [[ "$rw" == *" /var/lib/zoraxy "* || "$rw" == *" /var/lib/zoraxy/ha "* ]]; then
+		echo "$unit can already write /var/lib/zoraxy/ha"
+	else
+		install -d -m 0755 "/etc/systemd/system/$unit.d"
+		printf '# Added by the Zoraxy HA installer: lets Zoraxy write its HA folder\n[Service]\nReadWritePaths=/var/lib/zoraxy/ha\n' >"/etc/systemd/system/$unit.d/zoraxy-ha.conf"
+		chmod 0644 "/etc/systemd/system/$unit.d/zoraxy-ha.conf"
+		systemctl daemon-reload
+		restart_note="$unit is sandboxed (ProtectSystem=strict): added /etc/systemd/system/$unit.d/zoraxy-ha.conf
+so it can write /var/lib/zoraxy/ha. Restart Zoraxy to apply it: sudo systemctl restart $unit"
+	fi
+elif [ -z "$unit" ]; then
+	echo "Note: could not find Zoraxy's systemd service. If it uses ProtectSystem=strict, add"
+	echo "ReadWritePaths=/var/lib/zoraxy/ha to it (or rerun with ZORAXY_UNIT=<name>.service)."
+fi
 
 # Apply settings Zoraxy may already have saved
 if [ -f /var/lib/zoraxy/ha/cluster.env ]; then
@@ -52,5 +86,6 @@ if [ -f /var/lib/zoraxy/ha/cluster.env ]; then
 fi
 
 echo
+[ -n "$restart_note" ] && { echo "$restart_note"; echo; }
 echo "Zoraxy HA integration installed. Next: open Zoraxy > Networking > High Availability,"
 echo "enter the cluster settings and save. Repeat this install on the other node."

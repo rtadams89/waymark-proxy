@@ -9,6 +9,25 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 - New upstream releases are picked up by the "Watch upstream releases" workflow (daily), which opens an issue and starts "Merge upstream release" to prepare a pull request. Merge those pull requests with a merge commit.
 
+## 3.3.5-custom.13
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Fixed**
+- High availability: turning HA off left keepalived running with no VRRP instance. Debian's keepalived never reports ready to systemd in that state, so its start hung for 90 seconds and failed (also at every boot). keepalived now runs only while HA is on: turning HA off stops and disables it, turning it on enables and starts it. The installer no longer enables keepalived itself.
+- High availability: a save made while the apply helper was still running was ignored (systemd skips path changes while the helper runs). The helper now checks for a newer save after each apply and applies it too.
+- The apply helper limits each keepalived start or reload to 20 seconds and checks keepalived is actually running before reporting success. If keepalived does not come up, it restores the previous working config, or stops keepalived and says so when there is none. Before, it could report a restore that didn't happen.
+- Zoraxy waited only 20 seconds for the apply result and reported "no response" while keepalived was still starting. It now waits up to 75 seconds.
+
+**Added**
+- The installer finds Zoraxy's systemd service. If it is sandboxed (`ProtectSystem=strict`), the installer adds a drop-in (`ReadWritePaths=/var/lib/zoraxy/ha`) and asks you to restart Zoraxy. Set `ZORAXY_UNIT` if it can't find the service.
+- HA page: a **Services** row showing whether the settings watcher (`zoraxy-ha-apply.path`) and keepalived are running, with the command to fix each.
+- HA page: when Zoraxy can't write its HA folder because its service is sandboxed, the not-installed message says so and how to fix it.
+- The role badge in the menu bar shows the node name (for example "zrx-b · Standby"), so it's clear which node a page came from.
+
+**Changed**
+- If systemd reports keepalived is not running, the node counts as "keepalived stopped" even when keepalived was killed without reporting it. This holds certificate renewal and shows it in the badge.
+
 ## 3.3.5-custom.12
 
 Base: upstream v3.3.5 (`310b0cc`).

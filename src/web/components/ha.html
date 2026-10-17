@@ -35,6 +35,7 @@
             <div class="haLabel">Role</div><div id="haRoleCell">-</div>
             <div class="haLabel">Floating IP</div><div id="haVipCell">-</div>
             <div class="haLabel">Health reported to keepalived</div><div id="haHeartbeatCell">-</div>
+            <div class="haLabel">Services</div><div id="haServicesCell">-</div>
             <div class="haLabel">Certificate renewal</div><div id="haRenewCell">-</div>
             <div class="haLabel">Last apply</div><div id="haApplyCell">-</div>
         </div>
@@ -113,6 +114,7 @@
         <h3>Notes</h3>
         <div class="ui bulleted list haHint">
             <div class="item">keepalived uses unicast VRRP between the listed node addresses. If a firewall sits between the nodes, allow IP protocol 112 (VRRP) between them.</div>
+            <div class="item">keepalived runs only while high availability is on: turning it off here stops and disables keepalived on this node, and turning it on enables and starts it.</div>
             <div class="item">A node gives up the floating IP when Zoraxy's proxy listener stops answering (checked every 2 seconds; the floating IP moves within about 10 seconds), when Zoraxy stops, or when the machine goes down.</div>
             <div class="item">Only the active node renews certificates automatically. "Renew now" still works on any node.</div>
             <div class="item">Installer files: <span id="haInstallerLinks2"></span>. Log of each apply: <span class="haMono">journalctl -u zoraxy-ha-apply</span>; keepalived: <span class="haMono">journalctl -u keepalived</span>.</div>
@@ -232,6 +234,16 @@
                 (hb.ok ? `<i class="green check circle icon"></i>Healthy <span class="haHint">(proxy listener answering, ${ago(hb.time)})</span>`
                        : `<i class="red times circle icon"></i>Unhealthy: ${esc(hb.reason)}`));
             $("#haRenewCell").html(d.renewalHeld ? `<i class="blue pause circle icon"></i>Held: ${esc(d.renewalReason)}` : `<i class="green check circle icon"></i>Runs on this node`);
+            let sv = d.services || {};
+            let svc = function(label, state, expectActive, fix){
+                if (state == "active") return `<i class="green check circle icon"></i>${label} running`;
+                if (state == "unknown" || !state) return `<i class="grey question circle icon"></i>${label}: <span class="haHint">systemd status unavailable</span>`;
+                if (!expectActive) return `<i class="grey minus circle icon"></i>${label} ${esc(state)} <span class="haHint">(expected while HA is off)</span>`;
+                return `<i class="red times circle icon"></i>${label} ${esc(state)}` + (fix ? ` <span class="haHint">- run <code>${fix}</code></span>` : "");
+            };
+            $("#haServicesCell").html(!d.installed ? `<span class="haHint">-</span>` :
+                svc("Settings watcher", sv.applyWatcher, true, "sudo systemctl enable --now zoraxy-ha-apply.path") + "<br>" +
+                svc("keepalived", sv.keepalived, c.enabled, "sudo journalctl -u keepalived"));
             let a = d.lastApply;
             $("#haApplyCell").html(a && a.status ? `${a.status == "ok" ? `<i class="green check circle icon"></i>` : `<i class="red times circle icon"></i>`}${esc(a.message)} <span class="haHint">${ago(a.time)}</span>` : `<span class="haHint">Not applied yet</span>`);
             $("#haPreview").text(d.preview);
@@ -251,7 +263,7 @@
         window.haSave = function(){
             let cfg = readForm();
             $("#haSaveBtn").addClass("loading disabled");
-            showMsg("Saving and applying...", null);
+            showMsg("Saving and applying (starting keepalived can take up to a minute)...", null);
             $.cjax({
                 url: "/api/ha/config",
                 method: "POST",

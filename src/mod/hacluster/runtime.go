@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -46,6 +47,11 @@ func (r *Runtime) Installed() (bool, string) {
 	}
 	probe := filepath.Join(r.Dir, ".probe")
 	if err := os.WriteFile(probe, []byte("x"), 0600); err != nil {
+		if errors.Is(err, syscall.EROFS) {
+			// Permissions are fine but systemd's ProtectSystem=strict hides the folder
+			return false, "Zoraxy's systemd service is sandboxed and cannot write to " + r.Dir +
+				" (read-only file system). Rerun install.sh, or add ReadWritePaths=" + r.Dir + " to the service with systemctl edit and restart Zoraxy"
+		}
 		return false, "Zoraxy cannot write to " + r.Dir
 	}
 	os.Remove(probe)

@@ -282,3 +282,134 @@ func TestExportInstaller(t *testing.T) {
 		}
 	}
 }
+
+// keepaliveLab runs the helper repeatedly against one folder with fake
+// keepalived and systemctl binaries. The fake systemctl keeps keepalived's
+// state in a file and logs every call; HANG=1 makes start/restart hang
+// (keepalived never reporting ready to systemd).
+type keepaliveLab struct {
+	t                         *testing.T
+	dir, haDir, stateDir, bin string
+	user                      string
+}
+
+func newKeepaliveLab(t *testing.T) *keepaliveLab {
+	dir := t.TempDir()
+	l := &keepaliveLab{t: t, dir: dir, haDir: filepath.Join(dir, "ha"), stateDir: filepath.Join(dir, "state"), bin: filepath.Join(dir, "bin")}
+	for _, d := range []string{l.haDir, l.stateDir, l.bin} {
+		os.MkdirAll(d, 0755)
+	}
+	u, _ := user.Current()
+	l.user = u.Username
+	os.WriteFile(filepath.Join(l.bin, "keepalived"), []byte("#!/bin/sh\nexit 0\n"), 0755)
+	fake := `#!/bin/bash
+echo "$*" >> "$LAB/calls"
+st="$(cat "$LAB/kstate" 2>/dev/null || echo inactive)"
+case "$*" in
+"is-active --quiet keepalived") [ "$st" = active ] ;;
+"enable keepalived") exit 0 ;;
+"restart keepalived")
+	[ -f "$LAB/onrestart" ] && { bash "$LAB/onrestart"; rm -f "$LAB/onrestart"; }
+	if [ -f "$LAB/hang" ]; then sleep 10; exit 1; fi
+	echo active > "$LAB/kstate" ;;
+"reload keepalived") exit 0 ;;
+"stop keepalived" | "disable --now keepalived") echo inactive > "$LAB/kstate" ;;
+*) exit 0 ;;
+esac
+`
+	os.WriteFile(filepath.Join(l.bin, "systemctl"), []byte(fake), 0755)
+	return l
+}
+
+func (l *keepaliveLab) settings(applyID int64, enabled bool, priority int) string {
+	c := &Config{Enabled: enabled, VIP: "10.0.0.5", Prefix: 24, RouterID: 51, Nodes: []Node{
+		{Name: "a", Address: "10.0.0.10", Interface: "eth0", Priority: priority},
+		{Name: "b", Address: "10.0.0.11", Interface: "eth0", Priority: 10},
+	}}
+	return c.Settings(0, applyID, "a")
+}
+
+func (l *keepaliveLab) save(content string) {
+	os.WriteFile(filepath.Join(l.haDir, "cluster.env"), []byte(content), 0640)
+}
+
+func (l *keepaliveLab) run() (ApplyResult, string, time.Duration) {
+	os.Remove(filepath.Join(l.dir, "calls"))
+	cmd := exec.Command("bash", "deploy/zoraxy-ha-apply")
+	cmd.Env = append(os.Environ(), "HA_DIR="+l.haDir, "HA_STATE_DIR="+l.stateDir, "KEEPALIVED_CONF="+filepath.Join(l.dir, "etc", "keepalived.conf"),
+		"HA_OWNER="+l.user, "HA_SKIP_IFCHECK=1", "HA_SYSTEMCTL_TIMEOUT=1", "LAB="+l.dir, "PATH="+l.bin+":"+os.Getenv("PATH"))
+	start := time.Now()
+	out, _ := cmd.CombinedOutput()
+	res, _ := (&Runtime{Dir: l.haDir, StateDir: l.stateDir}).ReadResult()
+	calls, _ := os.ReadFile(filepath.Join(l.dir, "calls"))
+	l.t.Logf("helper output: %s", out)
+	return res, string(calls), time.Since(start)
+}
+
+func (l *keepaliveLab) state() string {
+	b, _ := os.ReadFile(filepath.Join(l.dir, "kstate"))
+	return strings.TrimSpace(string(b))
+}
+
+func (l *keepaliveLab) conf() string {
+	b, _ := os.ReadFile(filepath.Join(l.dir, "etc", "keepalived.conf"))
+	return string(b)
+}
+
+func TestHelperManagesKeepalived(t *testing.T) {
+	l := newKeepaliveLab(t)
+
+	// HA on: keepalived enabled and started
+	l.save(l.settings(1, true, 150))
+	res, calls, _ := l.run()
+	if res.Status != "ok" || res.ApplyID != 1 || l.state() != "active" || !strings.Contains(calls, "enable keepalived") || !strings.Contains(calls, "restart keepalived") {
+		t.Fatalf("enable: %+v state=%s calls=%q", res, l.state(), calls)
+	}
+
+	// Already running: reloaded, not restarted
+	l.save(l.settings(2, true, 140))
+	res, calls, _ = l.run()
+	if res.Status != "ok" || !strings.Contains(calls, "reload keepalived") || strings.Contains(calls, "restart") {
+		t.Fatalf("reload: %+v calls=%q", res, calls)
+	}
+
+	// HA off: keepalived stopped and disabled (never left running with no instance)
+	l.save(l.settings(3, false, 140))
+	res, calls, _ = l.run()
+	if res.Status != "ok" || l.state() != "inactive" || !strings.Contains(calls, "disable --now keepalived") || !strings.Contains(res.Message, "stopped") {
+		t.Fatalf("off: %+v state=%s calls=%q", res, l.state(), calls)
+	}
+
+	// keepalived hangs on start and there is no earlier HA config to go back to
+	os.WriteFile(filepath.Join(l.dir, "hang"), nil, 0644)
+	l.save(l.settings(4, true, 150))
+	res, calls, took := l.run()
+	if res.Status != "error" || res.ApplyID != 4 || !strings.Contains(res.Message, "keepalived is stopped") || strings.Contains(res.Message, "restored") || took > 8*time.Second {
+		t.Fatalf("hang without previous: %+v took=%s calls=%q", res, took, calls)
+	}
+
+	// A working config, then a start that hangs: the working config comes back
+	os.Remove(filepath.Join(l.dir, "hang"))
+	l.save(l.settings(5, true, 150))
+	if res, _, _ = l.run(); res.Status != "ok" {
+		t.Fatalf("recover: %+v", res)
+	}
+	os.WriteFile(filepath.Join(l.dir, "kstate"), []byte("inactive"), 0644)
+	os.WriteFile(filepath.Join(l.dir, "hang"), nil, 0644)
+	l.save(l.settings(6, true, 120))
+	res, _, _ = l.run()
+	if res.Status != "error" || !strings.Contains(res.Message, "previous config was restored") || !strings.Contains(l.conf(), "priority 150") {
+		t.Fatalf("restore: %+v\n%s", res, l.conf())
+	}
+
+	// Zoraxy saves again while the helper is busy: the newer save is applied too
+	os.Remove(filepath.Join(l.dir, "hang"))
+	os.WriteFile(filepath.Join(l.dir, "kstate"), []byte("inactive"), 0644)
+	newer := l.settings(8, true, 110)
+	os.WriteFile(filepath.Join(l.dir, "onrestart"), []byte("cat > "+filepath.Join(l.haDir, "cluster.env")+" <<'X'\n"+newer+"X\n"), 0644)
+	l.save(l.settings(7, true, 100))
+	res, _, _ = l.run()
+	if res.Status != "ok" || res.ApplyID != 8 || !strings.Contains(l.conf(), "priority 110") {
+		t.Fatalf("missed save: %+v\n%s", res, l.conf())
+	}
+}
