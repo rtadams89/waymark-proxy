@@ -28,7 +28,10 @@ type Logger struct {
 	logRotateTicker *time.Ticker
 	logger          *log.Logger
 	file            *os.File
-	outputs         atomic.Pointer[outputState] //Custom fork: where each stream goes (outputs_custom.go, syslog_custom.go)
+	// Custom fork: where each stream goes (outputs_custom.go, syslog_custom.go).
+	// A pointer, so Logger values can still be copied (access.Options holds
+	// one by value) and copies follow later changes.
+	outputs *atomic.Pointer[outputState]
 }
 
 // Create a new logger that log to files
@@ -41,6 +44,7 @@ func NewLogger(logFilePrefix string, logFolder string) (*Logger, error) {
 	thisLogger := Logger{
 		Prefix:    logFilePrefix,
 		LogFolder: logFolder,
+		outputs:   &atomic.Pointer[outputState]{},
 	}
 
 	//Create the log file if not exists
@@ -79,6 +83,7 @@ func NewFmtLogger() (*Logger, error) {
 		CurrentLogFile: "",
 		logger:         nil,
 		file:           nil,
+		outputs:        &atomic.Pointer[outputState]{},
 	}, nil
 }
 

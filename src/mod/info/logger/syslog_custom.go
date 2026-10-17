@@ -342,6 +342,10 @@ func (l *Logger) ApplyOutputs(o *LogOutputs) {
 			st.sinks = append(st.sinks, newSyslogSink(d))
 		}
 	}
+	if l.outputs == nil {
+		// A Logger made without NewLogger/NewFmtLogger (tests)
+		l.outputs = &atomic.Pointer[outputState]{}
+	}
 	old := l.outputs.Swap(st)
 	if old != nil {
 		for _, s := range old.sinks {
@@ -352,14 +356,22 @@ func (l *Logger) ApplyOutputs(o *LogOutputs) {
 
 // Outputs returns the settings in use (defaults if none were applied).
 func (l *Logger) Outputs() *LogOutputs {
-	if st := l.outputs.Load(); st != nil {
+	if st := l.state(); st != nil {
 		return st.cfg
 	}
 	return DefaultLogOutputs()
 }
 
+// state returns the outputs in use, or nil if none were applied.
+func (l *Logger) state() *outputState {
+	if l == nil || l.outputs == nil {
+		return nil
+	}
+	return l.outputs.Load()
+}
+
 func (l *Logger) toFile(stream string) bool {
-	st := l.outputs.Load()
+	st := l.state()
 	if st == nil {
 		return true
 	}
@@ -371,7 +383,7 @@ func (l *Logger) toFile(stream string) bool {
 
 // toSyslog queues e for every server that takes its stream.
 func (l *Logger) toSyslog(e *LogEvent) {
-	st := l.outputs.Load()
+	st := l.state()
 	if st == nil {
 		return
 	}
@@ -385,7 +397,7 @@ func (l *Logger) toSyslog(e *LogEvent) {
 // SyslogStatuses reports each active server's delivery state.
 func (l *Logger) SyslogStatuses() []SyslogStatus {
 	out := []SyslogStatus{}
-	if st := l.outputs.Load(); st != nil {
+	if st := l.state(); st != nil {
 		for _, s := range st.sinks {
 			out = append(out, s.status())
 		}
