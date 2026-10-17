@@ -10,6 +10,24 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Settings > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.5.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Added**
+- **Where logs go** on **Monitoring > Logs**: system logs (Waymark's own messages) and traffic logs (one line per HTTP request) can each be written to the log file, sent to syslog servers, both, or neither. Both go to the log file by default, as before. System messages are still printed to standard output (the systemd journal) either way.
+- **Syslog servers** (up to 8), each with: IP address or host name, port, protocol (UDP, TCP or TLS), framing for TCP and TLS (newline or RFC 6587 octet counting), message format (RFC 5424, RFC 3164, JSON with an RFC 5424 header, or JSON lines), facility, which streams to send, and for TLS the certificate check (system CAs or a pasted CA certificate, an optional name to check, or no check). **Send test message** tries a server before saving; each server shows its connection state and how many messages were sent and dropped.
+- Each server has its own queue (4,096 messages) and reconnects on its own (every 1 to 30 seconds), so a slow or unreachable server never holds up the proxy; messages beyond the queue are dropped and counted.
+- Settings are stored in `conf/log_outputs.json`.
+
+**Changed**
+- HA configuration sync also copies the log rotation settings (`log_conf.json`) and log output settings (`log_outputs.json`), so they can be changed on the active node; before, a standby's log rotation settings could not be changed while sync was on. Each node sends syslog messages with its own host name.
+- Traffic log lines cut very long request paths (over 4,096 characters) and user agents (over 512) short.
+- Logs page: the rotation section is titled **Log file rotation**, and it says rotated files are compressed with gzip (it said ZIP).
+
+**Documentation**
+- README: new **Logs and syslog** section; the feature list, requirements (outbound HTTPS for update checks) and the data folder table cover the recent changes.
+
 ## 2.4.0
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

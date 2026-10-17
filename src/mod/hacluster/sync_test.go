@@ -94,8 +94,11 @@ func TestSyncRoundTrip(t *testing.T) {
 	if _, ok := c.Files["geodb/ip2country.csv"]; ok {
 		t.Fatal("geodb must not sync")
 	}
-	if _, ok := c.Files["log_conf.json"]; ok {
-		t.Fatal("log config must not sync")
+	if _, ok := c.Files["log_conf.json"]; !ok {
+		t.Fatal("log rotation settings must sync")
+	}
+	if _, ok := c.Files["version"]; ok {
+		t.Fatal("files outside the synced entries must not sync")
 	}
 	if _, ok := c.Tables["custom_fork"]["asset_cache_daily"]; ok {
 		t.Fatal("per-node key synced")
@@ -127,8 +130,11 @@ func TestSyncRoundTrip(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(standby, "trusted_proxies.json")); err == nil {
 		t.Fatal("file missing on the active node is still on the standby")
 	}
-	if read("geodb/ip2country.csv") != "standby's own copy" || read("log_conf.json") != `{"standby":true}` {
+	if read("geodb/ip2country.csv") != "standby's own copy" {
 		t.Fatal("per-node files were touched")
+	}
+	if read("log_conf.json") != "{}" {
+		t.Fatal("log rotation settings not copied from the active node")
 	}
 	if string(sdb["auth"]["passhash/admin"]) != `"hash1"` || sdb["auth"]["passhash/olduser"] != nil {
 		t.Fatalf("auth table not mirrored: %v", sdb["auth"])

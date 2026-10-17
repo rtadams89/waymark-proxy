@@ -60,6 +60,8 @@ var SyncConfEntries = []string{
 	"acme_conf.json",       // certificate auto renewal settings
 	"plugin_groups.json",   // plugin tag groups
 	"trusted_proxies.json", // trusted proxy addresses
+	"log_conf.json",        // log rotation settings
+	"log_outputs.json",     // log file and syslog outputs
 }
 
 // SyncTables are the database tables copied from the active node.

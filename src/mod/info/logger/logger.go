@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -27,6 +28,7 @@ type Logger struct {
 	logRotateTicker *time.Ticker
 	logger          *log.Logger
 	file            *os.File
+	outputs         atomic.Pointer[outputState] //Custom fork: where each stream goes (outputs_custom.go, syslog_custom.go)
 }
 
 // Create a new logger that log to files
@@ -108,23 +110,22 @@ func (l *Logger) Println(v ...interface{}) {
 
 func (l *Logger) Log(title string, errorMessage string, originalError error, copyToSTDOUT bool) {
 	l.ValidateAndUpdateLogFilepath()
+	now := time.Now()
+	ev := &LogEvent{Stream: StreamSystem, Time: now, Severity: SeverityInfo, Module: title, Message: errorMessage}
+	ev.Text = "[" + title + "] [system:info] " + errorMessage
+	if originalError != nil {
+		ev.Severity, ev.Error = SeverityError, originalError.Error()
+		ev.Text = "[" + title + "] [system:error] " + errorMessage + ": " + originalError.Error()
+	}
+	line := "[" + now.Format("2006-01-02 15:04:05.000000") + "] " + ev.Text
 	if l.logger == nil || copyToSTDOUT {
 		//Use STDOUT instead of logger
-		if originalError == nil {
-			fmt.Println("[" + time.Now().Format("2006-01-02 15:04:05.000000") + "] [" + title + "] [system:info] " + errorMessage)
-		} else {
-			fmt.Println("[" + time.Now().Format("2006-01-02 15:04:05.000000") + "] [" + title + "] [system:error] " + errorMessage + ": " + originalError.Error())
-		}
+		fmt.Println(line)
 	}
-
-	if l.logger != nil {
-		if originalError == nil {
-			l.logger.Println("[" + time.Now().Format("2006-01-02 15:04:05.000000") + "] [" + title + "] [system:info] " + errorMessage)
-		} else {
-			l.logger.Println("[" + time.Now().Format("2006-01-02 15:04:05.000000") + "] [" + title + "] [system:error] " + errorMessage + ": " + originalError.Error())
-		}
+	if l.logger != nil && l.toFile(StreamSystem) {
+		l.logger.Println(line)
 	}
-
+	l.toSyslog(ev) //Custom fork: remote syslog (syslog_custom.go)
 }
 
 // Validate if the logging target is still valid (detect any months change)

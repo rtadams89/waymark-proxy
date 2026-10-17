@@ -19,17 +19,29 @@ import (
 // aware resolver) instead of being derived here, so that untrusted proxy headers
 // (X-Forwarded-For, X-Real-IP, etc.) cannot be used to spoof the logged source IP.
 func (l *Logger) LogHTTPRequest(r *http.Request, reqclass string, statusCode int, downstreamHostname string, upstreamHostname string, clientIP string) {
+	//Read the request now: it may be reused once the handler returns
+	now := time.Now()
+	ev := &LogEvent{Stream: StreamTraffic, Time: now, Severity: SeverityInfo, Class: reqclass, Origin: downstreamHostname,
+		Client: clientIP, UserAgent: truncateField(r.UserAgent(), 512), Method: r.Method, URI: truncateField(r.RequestURI, 4096),
+		Status: statusCode, Upstream: upstreamHostname}
 	go func() {
+		ev.Text = "[router:" + ev.Class + "] [origin:" + ev.Origin + "] [client: " + ev.Client + "] [useragent: " + ev.UserAgent + "] " + ev.Method + " " + ev.URI + " " + strconv.Itoa(ev.Status)
+		l.toSyslog(ev) //Custom fork: remote syslog (syslog_custom.go)
+		if !l.toFile(StreamTraffic) {
+			return
+		}
 		l.ValidateAndUpdateLogFilepath()
 		if l.logger == nil || l.file == nil {
 			//logger is not initiated. Do not log http request
 			return
 		}
-		requestURI := r.RequestURI
-		statusCodeString := strconv.Itoa(statusCode)
-
-		//Pretty print for debugging
-		//fmt.Printf("------------\nRequest URL: %s (class: %s) \nUpstream Hostname: %s\nDownstream Hostname: %s\nStatus Code: %s\n", r.URL, reqclass, upstreamHostname, downstreamHostname, statusCodeString)
-		l.logger.Println("[" + time.Now().Format("2006-01-02 15:04:05.000000") + "] [router:" + reqclass + "] [origin:" + downstreamHostname + "] [client: " + clientIP + "] [useragent: " + r.UserAgent() + "] " + r.Method + " " + requestURI + " " + statusCodeString)
+		l.logger.Println("[" + now.Format("2006-01-02 15:04:05.000000") + "] " + ev.Text)
 	}()
+}
+
+func truncateField(s string, n int) string {
+	if len(s) > n {
+		return s[:n] + "..."
+	}
+	return s
 }

@@ -2,12 +2,37 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Logs</h2>
-        <p>Waymark's system and access log, and how it is rotated</p>
+        <p>Where Waymark's system and traffic logs go, how the log file is rotated, and the log viewer</p>
     </div>
     <div class="ui basic segment">
+        <!-- Custom fork: log outputs (logoutputs_custom.go, mod/info/logger/syslog_custom.go) -->
+        <style>
+            #logs .loHint{ color: var(--text_color_secondary); font-size: 0.9em; }
+            #logs .loMono{ font-family: monospace; }
+            #logs .loCard{ border: 1px solid var(--divider_color); border-radius: 0.6em; padding: 1em; margin-bottom: 0.8em; }
+            #logs .loCard textarea{ font-family: monospace; font-size: 0.85em; }
+        </style>
+        <h3>Where logs go</h3>
+        <p class="loHint"><b>System</b> logs are Waymark's own messages: startup, settings changes, certificate renewal, high availability, errors. <b>Traffic</b> logs have one line per HTTP request the proxy handles. Send each to the log file, to syslog servers, to both or to neither. System messages are also printed to standard output, so systemd's journal keeps them either way.</p>
+        <div class="ui form">
+            <div class="loCard">
+                <b><i class="file alternate outline icon"></i>Log file</b> <span class="loHint">(the <span class="loMono">log</span> folder on this node; rotation below)</span>
+                <div class="inline fields" style="margin: 0.6em 0 0 0;">
+                    <div class="field"><div class="ui checkbox"><input type="checkbox" id="loFileSystem"><label>System</label></div></div>
+                    <div class="field"><div class="ui checkbox"><input type="checkbox" id="loFileTraffic"><label>Traffic</label></div></div>
+                </div>
+            </div>
+            <div id="loSyslogList"></div>
+            <button class="ui basic button" id="loAddBtn" onclick="loAdd(); return false;"><i class="add icon"></i> Add syslog server</button>
+            <button class="ui basic button" id="loSaveBtn" onclick="loSave(); return false;"><i class="green save icon"></i> Save</button>
+            <div class="ui message" id="loMsg" style="display:none;"></div>
+            <div class="loHint" style="margin-top: 0.8em;">With high availability and configuration sync on, these settings are copied from the active node to the standby; each node sends with its own host name.</div>
+        </div>
+        <div class="ui divider"></div>
+
         <!-- Log Settings -->
-        <h3>Log Settings</h3>
-        <p>Configure log rotation settings for the system logger</p>
+        <h3>Log file rotation</h3>
+        <p>When to start a new log file, and how many old ones to keep</p>
         <div class="ui basic segment">
             <form id="log-settings-form" class="ui form">
                 <div class="field">
@@ -35,7 +60,7 @@
                         <label>Enable Log Compression</label>
                     </div>
                     <br>
-                    <small>When enabled, rotated log files will be compressed using ZIP format.</small>
+                    <small>When enabled, rotated log files are compressed with gzip.</small>
                 </div>
                 <button class="ui basic button" type="submit">
                     <i class="green save icon"></i> Save Settings
@@ -169,4 +194,211 @@
     });
 
     loadLogSettings();
+
+    /*
+        Log outputs: log file and syslog servers (custom fork)
+    */
+    (function(){
+        const FACILITIES = ["kern","user","mail","daemon","auth","syslog","lpr","news","uucp","cron","authpriv","ftp","local0","local1","local2","local3","local4","local5","local6","local7"];
+        const FORMATS = [["rfc5424", "RFC 5424"], ["rfc3164", "RFC 3164 (BSD)"], ["json5424", "JSON with RFC 5424 header"], ["json", "JSON lines (no syslog header)"]];
+        let loStatus = [];
+        let loMax = 8;
+
+        function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html().replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+        function ago(ts){
+            if (!ts) return "";
+            let s = Math.max(0, Math.round(Date.now() / 1000 - ts));
+            if (s < 60) return s + " s ago";
+            if (s < 3600) return Math.round(s / 60) + " min ago";
+            return Math.round(s / 3600) + " h ago";
+        }
+        function options(list, value){
+            return list.map(o => {
+                let v = Array.isArray(o) ? o[0] : o, t = Array.isArray(o) ? o[1] : o;
+                return `<option value="${esc(v)}"${v == value ? " selected" : ""}>${esc(t)}</option>`;
+            }).join("");
+        }
+
+        function card(d){
+            let c = $(`<div class="loCard loSyslog">
+                <div class="fields" style="margin-bottom: 0.5em;">
+                    <div class="six wide field"><label>Name <span class="loHint">(optional)</span></label><input type="text" class="loName" maxlength="32" placeholder="e.g. Splunk"></div>
+                    <div class="ten wide field" style="text-align: right; padding-top: 1.6em;">
+                        <div class="ui toggle checkbox" style="margin-right: 1em;"><input type="checkbox" class="loEnabled"><label>Enabled</label></div>
+                        <button class="ui mini basic button loTest"><i class="paper plane outline icon"></i> Send test message</button>
+                        <button class="ui mini basic button loRemove"><i class="red trash alternate outline icon"></i> Remove</button>
+                    </div>
+                </div>
+                <div class="fields">
+                    <div class="six wide field"><label>Server (IP address or host name)</label><input type="text" class="loHost loMono" placeholder="10.0.0.50"></div>
+                    <div class="three wide field"><label>Port</label><input type="number" class="loPort" min="1" max="65535"></div>
+                    <div class="three wide field"><label>Protocol</label><select class="loProtocol">${options([["udp","UDP"],["tcp","TCP"],["tls","TLS"]], d.protocol)}</select></div>
+                    <div class="four wide field loFramingField"><label>Framing</label><select class="loFraming">${options([["newline","Newline"],["octet","Octet counting (RFC 6587)"]], d.framing)}</select></div>
+                </div>
+                <div class="fields">
+                    <div class="six wide field"><label>Message format</label><select class="loFormat">${options(FORMATS, d.format || "rfc5424")}</select></div>
+                    <div class="four wide field"><label>Facility</label><select class="loFacility">${options(FACILITIES, d.facility || "local0")}</select></div>
+                    <div class="six wide field"><label>Send</label>
+                        <div class="inline fields" style="margin: 0.5em 0 0 0;">
+                            <div class="field"><div class="ui checkbox"><input type="checkbox" class="loSystem"><label>System</label></div></div>
+                            <div class="field"><div class="ui checkbox"><input type="checkbox" class="loTraffic"><label>Traffic</label></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="loTLS">
+                    <div class="fields">
+                        <div class="six wide field"><label>Certificate name <span class="loHint">(optional; default: the server)</span></label><input type="text" class="loTLSName loMono" placeholder="logs.example.com"></div>
+                        <div class="ten wide field" style="padding-top: 1.6em;"><div class="ui toggle checkbox"><input type="checkbox" class="loVerify"><label>Check the server's certificate</label></div></div>
+                    </div>
+                    <div class="field"><label>CA certificate <span class="loHint">(PEM, optional; default: the system's trusted CAs)</span></label><textarea class="loCA" rows="3" placeholder="-----BEGIN CERTIFICATE-----"></textarea></div>
+                </div>
+                <div class="loStatusLine loHint"></div>
+            </div>`);
+            c.find(".loName").val(d.name || "");
+            c.find(".loHost").val(d.host || "");
+            c.find(".loPort").val(d.port || "");
+            c.find(".loTLSName").val(d.tlsName || "");
+            c.find(".loCA").val(d.tlsCa || "");
+            c.find(".loEnabled").prop("checked", d.enabled !== false);
+            c.find(".loSystem").prop("checked", !!d.system);
+            c.find(".loTraffic").prop("checked", !!d.traffic);
+            c.find(".loVerify").prop("checked", d.tlsVerify !== false);
+            let sync = function(){
+                let proto = c.find(".loProtocol").val();
+                c.find(".loFramingField").toggle(proto != "udp");
+                c.find(".loTLS").toggle(proto == "tls");
+                c.find(".loPort").attr("placeholder", proto == "tls" ? "6514" : "514");
+            };
+            c.find(".loProtocol").on("change", function(){
+                // Suggest the usual framing for the protocol
+                c.find(".loFraming").val($(this).val() == "tls" ? "octet" : "newline");
+                sync();
+            });
+            c.find(".loRemove").on("click", function(){ c.remove(); loCount(); return false; });
+            c.find(".loTest").on("click", function(){ loTest(c, $(this)); return false; });
+            sync();
+            c.find(".ui.checkbox").checkbox();
+            return c;
+        }
+
+        function read(c){
+            return {
+                name: c.find(".loName").val().trim(),
+                enabled: c.find(".loEnabled").is(":checked"),
+                host: c.find(".loHost").val().trim(),
+                port: parseInt(c.find(".loPort").val()) || 0,
+                protocol: c.find(".loProtocol").val(),
+                framing: c.find(".loProtocol").val() == "udp" ? "" : c.find(".loFraming").val(),
+                format: c.find(".loFormat").val(),
+                facility: c.find(".loFacility").val(),
+                system: c.find(".loSystem").is(":checked"),
+                traffic: c.find(".loTraffic").is(":checked"),
+                tlsVerify: c.find(".loVerify").is(":checked"),
+                tlsCa: c.find(".loCA").val().trim(),
+                tlsName: c.find(".loTLSName").val().trim()
+            };
+        }
+
+        function loCount(){
+            $("#loAddBtn").toggleClass("disabled", $("#loSyslogList .loSyslog").length >= loMax);
+        }
+
+        // Status of the running senders, matched to the cards by address and protocol
+        function renderStatus(){
+            $("#loSyslogList .loSyslog").each(function(){
+                if (Date.now() < ($(this).data("testUntil") || 0)) return; // keep a test result on screen for a while
+                let d = read($(this));
+                let addr = (d.host.includes(":") ? "[" + d.host + "]" : d.host) + ":" + (d.port || (d.protocol == "tls" ? 6514 : 514));
+                let st = loStatus.find(s => s.address == addr && s.protocol == d.protocol);
+                let line = "";
+                if (!d.enabled){
+                    line = `<i class="grey minus circle icon"></i>Off`;
+                }else if (!d.system && !d.traffic){
+                    line = `<i class="grey minus circle icon"></i>Nothing selected to send`;
+                }else if (!st){
+                    line = `<i class="grey question circle icon"></i>Not running (save to start)`;
+                }else{
+                    if (st.state == "error"){
+                        line = `<i class="red times circle icon"></i>${esc(st.lastError)} <span>(${ago(st.errorTime)})</span>`;
+                    }else if (st.state == "connected"){
+                        line = `<i class="green check circle icon"></i>${st.protocol == "udp" ? "Sending" : "Connected"}`;
+                    }else{
+                        line = `<i class="blue sync icon"></i>Connecting`;
+                    }
+                    line += ` · ${st.sent} sent` + (st.lastSent ? `, last ${ago(st.lastSent)}` : "") + (st.dropped ? ` · <span style="color: #db2828;">${st.dropped} dropped</span>` : "") + (st.queued ? ` · ${st.queued} queued` : "");
+                }
+                $(this).find(".loStatusLine").html(line);
+            });
+        }
+
+        function showMsg(text, ok){
+            $("#loMsg").attr("class", "ui " + (ok === null ? "" : ok ? "positive " : "negative ") + "message").text(text).show();
+        }
+
+        window.loLoad = function(full){
+            $.get("/api/logger/outputs", function(d){
+                if (!d || typeof d != "object" || d.error != undefined) return;
+                loStatus = d.status || [];
+                loMax = d.maxSinks || 8;
+                if (full){
+                    let o = d.outputs;
+                    $("#loFileSystem").prop("checked", !!o.systemToFile);
+                    $("#loFileTraffic").prop("checked", !!o.trafficToFile);
+                    $("#loSyslogList").empty();
+                    (o.syslog || []).forEach(s => $("#loSyslogList").append(card(s)));
+                    loCount();
+                }
+                renderStatus();
+            });
+        };
+
+        window.loAdd = function(){
+            let c = card({enabled: true, protocol: "udp", framing: "newline", format: "rfc5424", facility: "local0", system: true, traffic: true, tlsVerify: true});
+            $("#loSyslogList").append(c);
+            c.find(".loHost").focus();
+            loCount();
+            renderStatus();
+        };
+
+        window.loSave = function(){
+            let o = {
+                systemToFile: $("#loFileSystem").is(":checked"),
+                trafficToFile: $("#loFileTraffic").is(":checked"),
+                syslog: $("#loSyslogList .loSyslog").map(function(){ return read($(this)); }).get()
+            };
+            if (!o.systemToFile && !o.syslog.some(s => s.enabled && s.system) &&
+                !confirm("System logs will only go to standard output (the systemd journal), not to the log file or a syslog server. Save anyway?")) return;
+            $("#loSaveBtn").addClass("loading disabled");
+            $.cjax({
+                url: "/api/logger/outputs", method: "POST", data: { outputs: JSON.stringify(o) },
+                success: function(d){
+                    if (d.error != undefined){ showMsg(d.error, false); return; }
+                    showMsg("Saved and applied", true);
+                    setTimeout(function(){ loLoad(true); }, 300);
+                    setTimeout(function(){ $("#loMsg").fadeOut(); }, 4000);
+                },
+                error: function(){ showMsg("Request failed", false); },
+                complete: function(){ $("#loSaveBtn").removeClass("loading disabled"); }
+            });
+        };
+
+        function loTest(c, btn){
+            btn.addClass("loading disabled");
+            let line = c.find(".loStatusLine");
+            c.data("testUntil", Date.now() + 20000);
+            $.cjax({
+                url: "/api/logger/outputs/test", method: "POST", data: { destination: JSON.stringify(read(c)) }, timeout: 20000,
+                success: function(d){
+                    if (d.error != undefined){ line.html(`<i class="red times circle icon"></i>Test failed: ${esc(d.error)}`); return; }
+                    line.html(`<i class="green check circle icon"></i>${esc(d.message)}`);
+                },
+                error: function(){ line.html(`<i class="red times circle icon"></i>Request failed`); },
+                complete: function(){ btn.removeClass("loading disabled"); }
+            });
+        }
+
+        $("#loFileSystem, #loFileTraffic").closest(".ui.checkbox").checkbox();
+        loLoad(true);
+        setInterval(function(){ if ($("#logs").is(":visible")) loLoad(false); }, 5000);
+    })();
 </script>

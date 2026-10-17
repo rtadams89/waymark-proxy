@@ -96,6 +96,8 @@ func startupSequence() {
 		SystemWideLogger.Println("System wide logging is enabled")
 	}
 
+	initLogOutputs() //Custom fork: log file and syslog outputs (logoutputs_custom.go)
+
 	LogViewer = logviewer.NewLogViewer(&logviewer.ViewerOption{
 		RootFolder: *path_logFile,
 	})

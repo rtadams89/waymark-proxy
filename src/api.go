@@ -480,6 +480,8 @@ func initAPIs(targetMux *http.ServeMux) {
 	authRouter.HandleFunc("/api/log/errors", LogViewer.HandleLogErrorSummary)
 	authRouter.HandleFunc("/api/log/rotate/trigger", SystemWideLogger.HandleDebugTriggerLogRotation)
 	authRouter.HandleFunc("/api/logger/config", handleLoggerConfig)
+	authRouter.HandleFunc("/api/logger/outputs", HandleLogOutputs)          // logoutputs_custom.go
+	authRouter.HandleFunc("/api/logger/outputs/test", HandleLogOutputsTest) // logoutputs_custom.go
 
 	//Debug
 	authRouter.HandleFunc("/api/info/pprof", pprof.Index)
