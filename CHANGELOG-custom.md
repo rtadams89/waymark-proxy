@@ -9,6 +9,21 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 - New upstream releases are picked up by the "Watch upstream releases" workflow (daily), which opens an issue and starts "Merge upstream release" to prepare a pull request. Merge those pull requests with a merge commit.
 
+## 3.3.5-custom.15
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- HA cluster overview, on the High Availability page (**Cluster**) and as a **High Availability** panel on the Status page. The panel is shown only while HA is on and can be hidden in the panel settings.
+  - It lists every node with its role (Active, Standby, Fault, keepalived stopped), whether it holds the floating IP, its health, its configuration sync state (Source, In sync, Updating, or the problem), its Zoraxy version and how long it has been up.
+  - A summary line shows which node holds the floating IP and how many nodes are healthy, with warnings for unreachable or unhealthy nodes, version differences, and more than one active node.
+  - Other nodes' status comes over the configuration sync connection, so it is shown while sync is on. Every node now checks the others every 10 seconds, the active one included. An unreachable node shows its last known role, faded, and when it was last seen.
+- The active node reports it in its sync status when another node also claims to be active (both holding the floating IP).
+
+**Changed**
+- **Generate** for the cluster key makes the key in the browser instead of asking Zoraxy for one.
+- If your login on a node has ended (for example after signing in to another node on the same host name, even on another port), the HA page says so. Before, it put the login page's HTML into the cluster key field, or reported "Saved" for a save that never happened.
+
 ## 3.3.5-custom.14
 
 Base: upstream v3.3.5 (`310b0cc`).

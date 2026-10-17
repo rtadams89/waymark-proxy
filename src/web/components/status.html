@@ -548,6 +548,19 @@
     </div>
 </div>
 
+<!-- Custom fork: HA cluster (script/statusHA.js, script/haCluster.js); shown only while HA is on -->
+<div class="standardContainer nobottom" id="zrHARow" style="display:none;">
+    <div class="ui one column grid" style="margin: 0;">
+        <div class="column" style="padding-left: 0; padding-right: 0;">
+            <div class="dashboard-card dbstatCard" id="zrHACard">
+                <h4>High Availability <a href="#" style="font-size: 0.75em; font-weight: normal; margin-left: 0.5em;" onclick="openTabById('ha'); return false;">Manage</a></h4>
+                <p class="cardSubtitle">Cluster nodes, their roles and health</p>
+                <div id="zrHABox"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Custom fork: upstream health (script/statusUpstreams.js) -->
 <div class="standardContainer nobottom" id="zrHealthRow">
     <div class="ui one column grid" style="margin: 0;">
@@ -1382,3 +1395,4 @@
 <script src="script/statusPanels.js"></script>
 <script src="script/statusCache.js"></script>
 <script src="script/statusUpstreams.js"></script>
+<script src="script/statusHA.js"></script>

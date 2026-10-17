@@ -28,6 +28,11 @@
         <p class="haHint" style="margin-top: 0.6em;">Review the files before running the installer: <span id="haInstallerLinks"></span>. Settings can be saved before installing; they are applied when the integration is installed.</p>
     </div>
 
+    <div class="ui segment" id="haClusterSegment" style="display:none;">
+        <h3>Cluster</h3>
+        <div id="haClusterBox"></div>
+    </div>
+
     <div class="ui segment">
         <h3>This node</h3>
         <div class="haGrid">
@@ -173,6 +178,10 @@
             if (s < 86400) return Math.round(s/3600) + " h ago";
             return new Date(ts*1000).toLocaleString();
         }
+        // A response that is not JSON is Zoraxy's login page: the session ended
+        // (for example after signing in to another node on the same host name)
+        const LOGGED_OUT = "Your login on this node has ended (signing in to another Zoraxy node on the same host name, even on another port, replaces this node's login cookie). Reload the page and sign in again.";
+        function loggedOut(d){ return d == null || typeof d != "object"; }
         function showMsg(text, ok){
             $("#haMsg").removeClass("green red yellow").addClass(ok === true ? "green" : (ok === false ? "red" : "yellow"))
                 .html(esc(text)).stop().finish().show();
@@ -292,6 +301,10 @@
             $("#haApplyCell").html(a && a.status ? `${a.status == "ok" ? `<i class="green check circle icon"></i>` : `<i class="red times circle icon"></i>`}${esc(a.message)} <span class="haHint">${ago(a.time)}</span>` : `<span class="haHint">Not applied yet</span>`);
             $("#haPreview").text(d.preview);
             $("#haReadOnlyNote").toggle(!!d.readOnly);
+            $("#haClusterSegment").toggle(!!c.enabled && (c.nodes || []).length > 0);
+            if (c.enabled && window.haRenderCluster){
+                haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, nodes: d.cluster || []});
+            }
             renderSync(d);
         }
 
@@ -320,6 +333,7 @@
                 url: "/api/ha/sync/now", method: "POST", timeout: 60000,
                 success: function(d){
                     $("#haSyncNowBtn").removeClass("loading disabled");
+                    if (loggedOut(d)){ $("#haSyncNowMsg").text(LOGGED_OUT); return; }
                     if (d.error != undefined){ $("#haSyncNowMsg").text(d.error); return; }
                     $("#haSyncNowMsg").text(d.message + (d.restarting ? ". This page reconnects when Zoraxy is back." : ""));
                     haLoad(false);
@@ -338,14 +352,17 @@
 
         window.haNewKey = function(){
             if ($("#haClusterKey").val().trim() != "" && !confirm("Replace the cluster key? Sync stops until the new key is on every node.")) return;
-            $.get("/api/ha/clusterkey", function(k){
-                if (typeof k == "string"){ $("#haClusterKey").val(k).attr("type", "text"); }
-            });
+            // Made in the browser (crypto.getRandomValues works without HTTPS too)
+            let b = new Uint8Array(32);
+            window.crypto.getRandomValues(b);
+            let k = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+            $("#haClusterKey").val(k).attr("type", "text");
         };
 
         window.haLoad = function(fill){
             $.get("/api/ha/status", function(d){
-                if (!d || d.error != undefined) return;
+                if (loggedOut(d)){ showMsg(LOGGED_OUT, false); return; }
+                if (d.error != undefined) return;
                 renderStatus(d);
                 if (fill || !haLoaded){
                     fillForm(d.config);
@@ -365,6 +382,7 @@
                 timeout: 120000, // the server waits up to 75s for keepalived
                 success: function(d){
                     $("#haSaveBtn").removeClass("loading disabled");
+                    if (loggedOut(d)){ showMsg(LOGGED_OUT, false); return; }
                     if (d.error != undefined){
                         showMsg(d.error, false);
                         return;

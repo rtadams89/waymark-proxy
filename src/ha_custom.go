@@ -361,6 +361,7 @@ func HandleHAStatus(w http.ResponseWriter, r *http.Request) {
 		"installerFiles": hacluster.DeployFileNames,
 		"executable":     haExecutable(),
 		"sync":           haSyncStatus(),
+		"cluster":        haClusterView(),
 		"readOnly":       haIsReadOnly(),
 	}
 	js, _ := json.Marshal(resp)

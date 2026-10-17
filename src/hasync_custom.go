@@ -54,11 +54,28 @@ type haSyncApplied struct {
 	Error      string `json:"error"`
 }
 
+// haSyncPeerInfo is what a node reports about itself to the other nodes
+// (/zoraxy-ha/v1/state): used for syncing and for the cluster overview.
 type haSyncPeerInfo struct {
-	Node    string `json:"node"`
-	Role    string `json:"role"`
-	Version string `json:"version"`
-	Hash    string `json:"hash"`
+	Node            string `json:"node"`
+	Role            string `json:"role"`
+	Version         string `json:"version"`
+	Hash            string `json:"hash"`
+	HeartbeatOK     bool   `json:"heartbeatOk"`
+	HeartbeatReason string `json:"heartbeatReason"`
+	VIPHeld         bool   `json:"vipHeld"`
+	Keepalived      string `json:"keepalived"` // systemd state
+	SyncStatus      string `json:"syncStatus"`
+	SyncDetail      string `json:"syncDetail"`
+	Started         int64  `json:"started"` // when Zoraxy started
+}
+
+// haPeerStatus is the last poll of another node.
+type haPeerStatus struct {
+	Info     haSyncPeerInfo
+	LastSeen int64  // last successful poll
+	LastPoll int64  // last attempt
+	Err      string // error of the last attempt, if it failed
 }
 
 var haSync struct {
@@ -72,10 +89,11 @@ var haSync struct {
 	activeNode string
 	activeAddr string
 	lastCheck  int64
-	seenHash   string           // settle check: last hash seen on the active node
-	servedSnap map[string]int64 // peer address -> last snapshot served
-	servedPoll map[string]int64 // peer address -> last state request
-	ticking    sync.Mutex       // one tick at a time
+	seenHash   string                   // settle check: last hash seen on the active node
+	servedSnap map[string]int64         // peer address -> last snapshot served
+	servedPoll map[string]int64         // peer address -> last state request
+	peers      map[string]*haPeerStatus // peer address -> last poll
+	ticking    sync.Mutex               // one tick at a time
 	restarting bool
 }
 
@@ -205,12 +223,40 @@ func haSyncAllowed(ip net.IP) bool {
 }
 
 func haSyncLocalState() any {
-	cfg := haConfig()
-	info := haSyncPeerInfo{Node: haNodeName(cfg), Role: haEffectiveRole(haRuntime()).State, Version: DISPLAY_VERSION}
+	info := haLocalInfo()
 	if c, err := hacluster.BuildContent(CONF_FOLDER, sysdb); err == nil {
 		info.Hash = c.Hash()
 	}
 	return info
+}
+
+// haLocalInfo describes this node (without the configuration hash).
+func haLocalInfo() haSyncPeerInfo {
+	cfg := haConfig()
+	ha.mu.Lock()
+	hb := ha.heartbeat
+	ha.mu.Unlock()
+	haSync.mu.Lock()
+	st, detail := haSync.status, haSync.detail
+	haSync.mu.Unlock()
+	return haSyncPeerInfo{
+		Node: haNodeName(cfg), Role: haEffectiveRole(haRuntime()).State, Version: DISPLAY_VERSION,
+		HeartbeatOK: hb.OK, HeartbeatReason: hb.Reason, VIPHeld: haVIPHeld(cfg),
+		Keepalived: haServiceState("keepalived"), SyncStatus: st, SyncDetail: detail, Started: bootTime,
+	}
+}
+
+func haVIPHeld(cfg *hacluster.Config) bool {
+	ip := net.ParseIP(cfg.VIP)
+	if ip == nil {
+		return false
+	}
+	for _, l := range localIPs() {
+		if l.Equal(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func haSyncLocalSnapshot() (*hacluster.Snapshot, error) {
@@ -308,15 +354,6 @@ func haSyncTick(force bool) (string, bool) {
 	if restarting {
 		return "Restarting to load the new configuration", true
 	}
-	if haEffectiveRole(haRuntime()).State == "MASTER" {
-		haSync.mu.Lock()
-		haSync.activeNode, haSync.activeAddr = cfg.Nodes[self].Name, cfg.Nodes[self].Address
-		haSync.seenHash = ""
-		haSync.mu.Unlock()
-		haSyncSetStatus("active", "This node is active: standby nodes copy their configuration from it")
-		return "This node is active: there is nothing to pull", false
-	}
-
 	// Ask every other node for its role and configuration hash
 	type peerResult struct {
 		node hacluster.Node
@@ -341,7 +378,42 @@ func haSyncTick(force bool) (string, bool) {
 		}(n)
 	}
 	wg.Wait()
+	haSync.mu.Lock()
+	now := time.Now().Unix()
+	for _, r := range results {
+		ps := haSync.peers[r.node.Address]
+		if ps == nil {
+			ps = &haPeerStatus{}
+			haSync.peers[r.node.Address] = ps
+		}
+		ps.LastPoll = now
+		if r.err != nil {
+			ps.Err = r.err.Error()
+			if errors.Is(r.err, hacluster.ErrSyncAuth) {
+				ps.Err = "the cluster key does not match this node's"
+			}
+		} else {
+			ps.Err, ps.Info, ps.LastSeen = "", r.info, now
+		}
+	}
+	haSync.mu.Unlock()
 	sort.Slice(results, func(i, j int) bool { return results[i].node.Name < results[j].node.Name })
+
+	if haEffectiveRole(haRuntime()).State == "MASTER" {
+		haSync.mu.Lock()
+		haSync.activeNode, haSync.activeAddr = cfg.Nodes[self].Name, cfg.Nodes[self].Address
+		haSync.seenHash = ""
+		haSync.mu.Unlock()
+		for _, r := range results {
+			if r.err == nil && r.info.Role == "MASTER" {
+				msg := r.node.Name + " also reports itself active (both nodes hold the floating IP?). Check that VRRP traffic passes between the nodes"
+				haSyncSetStatus("error", msg)
+				return msg, false
+			}
+		}
+		haSyncSetStatus("active", "This node is active: standby nodes copy their configuration from it")
+		return "This node is active: there is nothing to pull", false
+	}
 
 	var active []peerResult
 	problems := []string{}
@@ -517,6 +589,75 @@ func haWithReadOnly(mw func(http.Handler) http.Handler) func(http.Handler) http.
 	return func(h http.Handler) http.Handler { return mw(haReadOnly(h)) }
 }
 
+/* Cluster overview */
+
+// haClusterView lists every node with its last known state, for the HA
+// page and the status page panel. Other nodes are known only while
+// configuration sync is on (their state comes over the sync connection).
+func haClusterView() []map[string]any {
+	cfg := haConfig()
+	self := haSelf(cfg)
+	syncOn := cfg.SyncEnabled && hacluster.KeyBytes(cfg.ClusterKey) != nil && self >= 0
+	local := haLocalInfo()
+	out := []map[string]any{}
+	haSync.mu.Lock()
+	defer haSync.mu.Unlock()
+	for i, n := range cfg.Nodes {
+		row := map[string]any{"name": n.Name, "address": n.Address, "priority": n.Priority, "self": i == self}
+		var info *haSyncPeerInfo
+		switch {
+		case i == self:
+			info = &local
+			row["reachable"], row["lastSeen"] = true, time.Now().Unix()
+		case !syncOn:
+			row["reachable"], row["error"] = false, "Status of other nodes is shown when configuration sync is on"
+		default:
+			ps := haSync.peers[n.Address]
+			if ps == nil {
+				row["reachable"], row["error"] = false, "Not checked yet"
+				break
+			}
+			row["lastSeen"] = ps.LastSeen
+			if ps.Err != "" {
+				row["reachable"], row["error"] = false, ps.Err
+			} else {
+				row["reachable"] = true
+			}
+			if ps.LastSeen > 0 {
+				last := ps.Info
+				info = &last
+			}
+		}
+		if info != nil {
+			row["role"] = info.Role
+			row["heartbeatOk"] = info.HeartbeatOK
+			row["heartbeatReason"] = info.HeartbeatReason
+			row["vipHeld"] = info.VIPHeld
+			row["keepalived"] = info.Keepalived
+			row["version"] = info.Version
+			row["versionMatch"] = info.Version == DISPLAY_VERSION
+			row["syncStatus"] = info.SyncStatus
+			row["syncDetail"] = info.SyncDetail
+			row["started"] = info.Started
+		}
+		out = append(out, row)
+	}
+	return out
+}
+
+// HandleHACluster returns the cluster overview (status page panel).
+// GET /api/ha/cluster
+func HandleHACluster(w http.ResponseWriter, r *http.Request) {
+	cfg := haConfig()
+	js, _ := json.Marshal(map[string]any{
+		"enabled":     cfg.Enabled,
+		"syncEnabled": cfg.SyncEnabled,
+		"vip":         cfg.VIP,
+		"nodes":       haClusterView(),
+	})
+	utils.SendJSONResponse(w, string(js))
+}
+
 /* API */
 
 func haSyncStatus() map[string]any {
@@ -554,17 +695,11 @@ func HandleHASyncNow(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-// HandleHANewClusterKey returns a fresh random cluster key for the form.
-// GET /api/ha/clusterkey
-func HandleHANewClusterKey(w http.ResponseWriter, r *http.Request) {
-	js, _ := json.Marshal(hacluster.NewClusterKey())
-	utils.SendJSONResponse(w, string(js))
-}
-
 func initHASync() {
 	haSync.mu.Lock()
 	haSync.servedSnap = map[string]int64{}
 	haSync.servedPoll = map[string]int64{}
+	haSync.peers = map[string]*haPeerStatus{}
 	haSync.status, haSync.detail = "starting", "Checking the other nodes"
 	haSync.mu.Unlock()
 	go haSyncLoop()
