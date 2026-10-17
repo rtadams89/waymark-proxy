@@ -5,13 +5,11 @@ package acme
 
 	Reusable DNS challenge credential sets ("DNS profiles").
 
-	Upstream Zoraxy stores DNS challenge credentials per certificate, under
-	the "acme" table keys <certName>_dns_provider and <certName>_dns_credentials.
-	This file adds named credential sets that can be shared by any number of
-	certificates. A certificate opts in by having a binding key
-	<certName>_dns_profile that holds a profile ID. Certificates without a
-	binding keep using their legacy per-certificate credentials, so existing
-	installs behave exactly as before.
+	DNS-01 credentials are kept only in named credential sets, which any
+	number of certificates can share. A certificate that uses the DNS
+	challenge has a binding key <certName>_dns_profile in the "acme" table
+	that holds a profile ID. (Upstream Zoraxy stores credentials per
+	certificate instead; dnsprofiles_convert.go turns those into sets.)
 
 	Secrets are write-only from the web UI's point of view: the list API
 	reports which fields have a value set, but never returns the values.
@@ -39,8 +37,6 @@ import (
 const (
 	dnsProfileTable          = "acme_dns_profiles"
 	dnsProfileBindingSuffix  = "_dns_profile"
-	legacyDNSProviderSuffix  = "_dns_provider"
-	legacyDNSCredSuffix      = "_dns_credentials"
 	acmeCertStoreDir         = "./conf/certs"
 	maxDNSProfileNameLength  = 64
 	dnsProfileIDLengthInByte = 8
@@ -51,7 +47,7 @@ type DNSProfile struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Provider    string `json:"provider"`    // lego provider id, e.g. "cloudflare"
-	Credentials string `json:"credentials"` // JSON object, same shape as legacy per-cert credentials
+	Credentials string `json:"credentials"` // JSON object of lego provider settings
 	CreatedAt   int64  `json:"createdAt"`
 	UpdatedAt   int64  `json:"updatedAt"`
 }
@@ -74,10 +70,8 @@ type dnsBindingInfo struct {
 	ProfileID   string `json:"profileId,omitempty"`
 	ProfileName string `json:"profileName,omitempty"`
 	Missing     bool   `json:"missing,omitempty"` // bound to a profile that no longer exists
-	Legacy      bool   `json:"legacy"`            // has upstream-style per-certificate credentials
-	LegacyProv  string `json:"legacyProvider,omitempty"`
-	UseDNS      bool   `json:"useDNS"`      // from the certificate's ACME info file
-	AcmeManaged bool   `json:"acmeManaged"` // has an ACME info file, so Zoraxy can renew it
+	UseDNS      bool   `json:"useDNS"`            // from the certificate's ACME info file
+	AcmeManaged bool   `json:"acmeManaged"`       // has an ACME info file, so Zoraxy can renew it
 }
 
 /*
@@ -271,8 +265,7 @@ func summarizeDNSCredentials(provider string, credentials string) ([]string, map
 */
 
 // resolveDNSCredentials returns the provider and credential JSON to use for
-// a certificate's DNS-01 challenge. A bound credential set wins; otherwise
-// the legacy per-certificate keys are used.
+// a certificate's DNS-01 challenge, from the credential set bound to it.
 func (a *ACMEHandler) resolveDNSCredentials(certificateName string) (provider string, credentials string, source string, err error) {
 	a.ensureDNSProfileTables()
 
@@ -289,16 +282,7 @@ func (a *ACMEHandler) resolveDNSCredentials(certificateName string) (provider st
 		return profile.Provider, profile.Credentials, "credential set \"" + profile.Name + "\"", nil
 	}
 
-	if !a.Database.KeyExists("acme", certificateName+legacyDNSProviderSuffix) || !a.Database.KeyExists("acme", certificateName+legacyDNSCredSuffix) {
-		return "", "", "", errors.New("DNS Provider and DNS Credential configuration required for ACME Provider (Error -2)")
-	}
-	if err := a.Database.Read("acme", certificateName+legacyDNSCredSuffix, &credentials); err != nil {
-		return "", "", "", fmt.Errorf("reading DNS credentials failed: %w", err)
-	}
-	if err := a.Database.Read("acme", certificateName+legacyDNSProviderSuffix, &provider); err != nil {
-		return "", "", "", fmt.Errorf("reading DNS provider failed: %w", err)
-	}
-	return provider, credentials, "per-certificate credentials", nil
+	return "", "", "", errors.New("no DNS credential set is assigned to certificate " + certificateName + ": pick one in its challenge settings (TLS / SSL certificates, key icon)")
 }
 
 // setCertUseDNS flips the DNS challenge flag in a certificate's ACME info
@@ -530,13 +514,6 @@ func (a *ACMEHandler) HandleListDNSBindings(w http.ResponseWriter, r *http.Reque
 				info.Missing = true
 			}
 		}
-		if a.Database.KeyExists("acme", certName+legacyDNSProviderSuffix) && a.Database.KeyExists("acme", certName+legacyDNSCredSuffix) {
-			info.Legacy = true
-			var prov string
-			if a.Database.Read("acme", certName+legacyDNSProviderSuffix, &prov) == nil {
-				info.LegacyProv = prov
-			}
-		}
 		if certInfo, err := LoadCertInfoJSON(filepath.Join(acmeCertStoreDir, certName+".json")); err == nil {
 			info.AcmeManaged = true
 			info.UseDNS = certInfo.UseDNS
@@ -549,7 +526,6 @@ func (a *ACMEHandler) HandleListDNSBindings(w http.ResponseWriter, r *http.Reque
 
 // HandleAssignDNSProfile sets how a certificate answers ACME challenges.
 // profileId = <id>   use that credential set for DNS-01
-// profileId = legacy keep / revert to the per-certificate credentials for DNS-01
 // profileId = http   use HTTP-01 (no DNS challenge)
 func (a *ACMEHandler) HandleAssignDNSProfile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -578,17 +554,6 @@ func (a *ACMEHandler) HandleAssignDNSProfile(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		a.Logf("Certificate "+certName+" now uses the HTTP-01 challenge", nil)
-	case "legacy":
-		if !a.Database.KeyExists("acme", certName+legacyDNSProviderSuffix) || !a.Database.KeyExists("acme", certName+legacyDNSCredSuffix) {
-			utils.SendErrorResponse(w, "this certificate has no per-certificate DNS credentials")
-			return
-		}
-		a.Database.Delete("acme", bindingKey)
-		if err := setCertUseDNS(certName, true); err != nil {
-			utils.SendErrorResponse(w, "failed to update certificate renew settings: "+err.Error())
-			return
-		}
-		a.Logf("Certificate "+certName+" now uses its per-certificate DNS credentials", nil)
 	default:
 		profile, err := a.loadDNSProfile(choice)
 		if err != nil {
@@ -605,99 +570,5 @@ func (a *ACMEHandler) HandleAssignDNSProfile(w http.ResponseWriter, r *http.Requ
 		}
 		a.Logf("Certificate "+certName+" now uses DNS credential set \""+profile.Name+"\"", nil)
 	}
-	utils.SendOK(w)
-}
-
-// HandleImportDNSProfileFromCert copies a certificate's per-certificate
-// credentials into a new reusable credential set and binds the certificate
-// to it. The per-certificate credentials are left in place as a fallback.
-func (a *ACMEHandler) HandleImportDNSProfileFromCert(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	a.ensureDNSProfileTables()
-
-	certName, err := utils.PostPara(r, "filename")
-	if err != nil || !isValidCertName(certName) {
-		utils.SendErrorResponse(w, "invalid certificate name")
-		return
-	}
-	name, err := utils.PostPara(r, "name")
-	name = strings.TrimSpace(name)
-	if err != nil || name == "" || len(name) > maxDNSProfileNameLength {
-		utils.SendErrorResponse(w, "a name of 1-64 characters is required")
-		return
-	}
-	existing, _ := a.listDNSProfiles()
-	for _, p := range existing {
-		if strings.EqualFold(p.Name, name) {
-			utils.SendErrorResponse(w, "a credential set with this name already exists")
-			return
-		}
-	}
-
-	var provider, credentials string
-	if a.Database.Read("acme", certName+legacyDNSProviderSuffix, &provider) != nil ||
-		a.Database.Read("acme", certName+legacyDNSCredSuffix, &credentials) != nil {
-		utils.SendErrorResponse(w, "this certificate has no per-certificate DNS credentials")
-		return
-	}
-	if _, err := normalizeDNSCredentials(provider, credentials); err != nil {
-		utils.SendErrorResponse(w, "stored credentials could not be read: "+err.Error())
-		return
-	}
-
-	id, err := newDNSProfileID()
-	if err != nil {
-		utils.SendErrorResponse(w, "failed to generate id")
-		return
-	}
-	now := time.Now().Unix()
-	profile := &DNSProfile{ID: id, Name: name, Provider: provider, Credentials: credentials, CreatedAt: now, UpdatedAt: now}
-	if err := a.Database.Write(dnsProfileTable, id, profile); err != nil {
-		utils.SendErrorResponse(w, "failed to save credential set")
-		return
-	}
-	if err := a.Database.Write("acme", certName+dnsProfileBindingSuffix, id); err != nil {
-		utils.SendErrorResponse(w, "credential set created, but binding the certificate failed")
-		return
-	}
-	a.Logf("Created DNS credential set \""+name+"\" from "+certName+"'s per-certificate credentials", nil)
-
-	js, _ := json.Marshal(map[string]string{"id": id})
-	utils.SendJSONResponse(w, string(js))
-}
-
-// HandleDeleteLegacyDNSCredentials removes a certificate's upstream-style
-// per-certificate DNS credentials. Refused while the certificate still relies
-// on them: DNS-01 renewal with no credential set assigned.
-func (a *ACMEHandler) HandleDeleteLegacyDNSCredentials(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	a.ensureDNSProfileTables()
-
-	certName, err := utils.PostPara(r, "filename")
-	if err != nil || !isValidCertName(certName) {
-		utils.SendErrorResponse(w, "invalid certificate name")
-		return
-	}
-	if !a.Database.KeyExists("acme", certName+legacyDNSProviderSuffix) && !a.Database.KeyExists("acme", certName+legacyDNSCredSuffix) {
-		utils.SendErrorResponse(w, "this certificate has no per-certificate DNS credentials")
-		return
-	}
-	bound := a.Database.KeyExists("acme", certName+dnsProfileBindingSuffix)
-	if !bound && certFileExists(certName) {
-		if info, err := LoadCertInfoJSON(filepath.Join(acmeCertStoreDir, certName+".json")); err == nil && info.UseDNS {
-			utils.SendErrorResponse(w, "this certificate still renews with its per-certificate credentials. Assign a credential set or HTTP-01 first.")
-			return
-		}
-	}
-	for _, suffix := range []string{legacyDNSProviderSuffix, legacyDNSCredSuffix, "_dns_servers"} {
-		a.Database.Delete("acme", certName+suffix)
-	}
-	a.Logf("Deleted per-certificate DNS credentials of "+certName, nil)
 	utils.SendOK(w)
 }

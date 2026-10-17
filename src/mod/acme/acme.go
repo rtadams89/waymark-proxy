@@ -220,8 +220,7 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 
 	// setup how to receive challenge
 	if useDNS {
-		// Shared credential set if the certificate is bound to one, else the
-		// upstream per-certificate credentials (see dnsprofiles.go)
+		// From the credential set bound to the certificate (dnsprofiles.go)
 		dnsProvider, dnsCredentials, credSource, err := a.resolveDNSCredentials(certificateName)
 		if err != nil {
 			a.Logf("Resolve DNS credentials failed", err)

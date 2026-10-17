@@ -45,7 +45,7 @@ Everything Zoraxy does (HTTP and stream proxying, ACME certificates, access rule
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
 - **Status page panels** can be shown or hidden. New panels show upstream health, cache hit rate and memory, and the HA cluster.
 - The HTTP Proxy list shows health check and cache state per rule, with a red heart on upstreams that are down.
-- **Shared DNS credential sets** for ACME DNS challenges: save a provider token once and pick it for any certificate.
+- **DNS credential sets** for ACME DNS challenges: save a provider token once and use it for any number of certificates.
 - **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
 
 **Security and maintenance**

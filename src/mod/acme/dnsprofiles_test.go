@@ -129,15 +129,11 @@ func TestIsValidCertName(t *testing.T) {
 	}
 }
 
-func TestResolvePrefersBoundProfileOverLegacy(t *testing.T) {
+func TestResolveUsesBoundProfile(t *testing.T) {
 	a := newTestACMEHandler(t)
 	a.ensureDNSProfileTables()
-	a.Database.Write("acme", "example.com"+legacyDNSProviderSuffix, "cloudflare")
-	a.Database.Write("acme", "example.com"+legacyDNSCredSuffix, `{"AuthToken":"legacy"}`)
-
-	prov, creds, _, err := a.resolveDNSCredentials("example.com")
-	if err != nil || prov != "cloudflare" || !strings.Contains(creds, "legacy") {
-		t.Fatalf("legacy fallback failed: %v %v %v", prov, creds, err)
+	if _, _, _, err := a.resolveDNSCredentials("example.com"); err == nil {
+		t.Fatal("expected an error with no credential set assigned")
 	}
 
 	profile := &DNSProfile{ID: "0123456789abcdef", Name: "CF", Provider: "cloudflare", Credentials: `{"AuthToken":"shared"}`}
@@ -250,69 +246,77 @@ func TestStaleBindingDoesNotBlockDelete(t *testing.T) {
 	}
 }
 
-func TestImportFromCert(t *testing.T) {
+func TestConvertPerCertificateCredentials(t *testing.T) {
 	a := newTestACMEHandler(t)
-	installFakeCert(t, "example.com", &CertificateInfoJSON{UseDNS: true})
 	a.ensureDNSProfileTables()
-	a.Database.Write("acme", "example.com"+legacyDNSProviderSuffix, "cloudflare")
-	a.Database.Write("acme", "example.com"+legacyDNSCredSuffix, `{"AuthToken":"legacy-tok"}`)
+	writeOld := func(cert, creds string) {
+		a.Database.Write("acme", cert+"_dns_provider", "cloudflare")
+		a.Database.Write("acme", cert+"_dns_credentials", creds)
+		a.Database.Write("acme", cert+"_dns_servers", "")
+	}
+	// Two certificates with the same credentials, one with other credentials
+	installFakeCert(t, "a.example.com", &CertificateInfoJSON{UseDNS: true})
+	installFakeCert(t, "b.example.com", &CertificateInfoJSON{UseDNS: true})
+	installFakeCert(t, "c.example.com", &CertificateInfoJSON{UseDNS: true})
+	writeOld("a.example.com", `{"AuthToken":"tok-1"}`)
+	writeOld("b.example.com", `{"AuthToken":"tok-1"}`)
+	writeOld("c.example.com", `{"AuthToken":"tok-2"}`)
+	// Already bound to a set: keeps its set, old keys dropped
+	res := postForm(t, a.HandleSaveDNSProfile, url.Values{"name": {"Shared"}, "provider": {"cloudflare"}, "credentials": {`{"AuthToken":"tok-3"}`}})
+	sharedID := res["id"].(string)
+	installFakeCert(t, "d.example.com", &CertificateInfoJSON{UseDNS: true})
+	a.Database.Write("acme", "d.example.com"+dnsProfileBindingSuffix, sharedID)
+	writeOld("d.example.com", `{"AuthToken":"old"}`)
+	// HTTP-01 certificate and a deleted certificate: old keys dropped, no set
+	installFakeCert(t, "http.example.com", &CertificateInfoJSON{UseDNS: false})
+	writeOld("http.example.com", `{"AuthToken":"tok-4"}`)
+	writeOld("gone.example.com", `{"AuthToken":"tok-5"}`)
+	// Credentials that don't fit the provider schema are kept
+	installFakeCert(t, "bad.example.com", &CertificateInfoJSON{UseDNS: true})
+	writeOld("bad.example.com", `{"NoSuchField":"x"}`)
 
-	res := postForm(t, a.HandleImportDNSProfileFromCert, url.Values{"filename": {"example.com"}, "name": {"Imported"}})
-	id, _ := res["id"].(string)
-	if id == "" {
-		t.Fatalf("import failed: %v", res)
-	}
-	_, creds, source, err := a.resolveDNSCredentials("example.com")
-	if err != nil || !strings.Contains(creds, "legacy-tok") || !strings.Contains(source, "Imported") {
-		t.Errorf("imported set not bound: %v %v %v", creds, source, err)
-	}
-}
+	a.ConvertPerCertificateDNSCredentials()
+	a.ConvertPerCertificateDNSCredentials() // idempotent
 
-func TestDeleteLegacyCredentials(t *testing.T) {
-	a := newTestACMEHandler(t)
-	installFakeCert(t, "example.com", &CertificateInfoJSON{UseDNS: true})
-	a.ensureDNSProfileTables()
-	a.Database.Write("acme", "example.com"+legacyDNSProviderSuffix, "cloudflare")
-	a.Database.Write("acme", "example.com"+legacyDNSCredSuffix, `{"AuthToken":"legacy-tok"}`)
-	a.Database.Write("acme", "example.com_dns_servers", "")
-
-	// Still in use: renews via DNS-01 with no credential set
-	res := postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"example.com"}})
-	if res["error"] == nil || !a.Database.KeyExists("acme", "example.com"+legacyDNSCredSuffix) {
-		t.Fatalf("delete of in-use credentials should be refused: %v", res)
-	}
-
-	// Move it to a credential set, then delete succeeds
-	res = postForm(t, a.HandleImportDNSProfileFromCert, url.Values{"filename": {"example.com"}, "name": {"CF"}})
-	if res["id"] == nil {
-		t.Fatalf("import failed: %v", res)
-	}
-	res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"example.com"}})
-	if res["error"] != nil {
-		t.Fatalf("delete refused: %v", res)
-	}
-	for _, s := range []string{legacyDNSProviderSuffix, legacyDNSCredSuffix, "_dns_servers"} {
-		if a.Database.KeyExists("acme", "example.com"+s) {
-			t.Errorf("key %s not removed", s)
+	for cert, want := range map[string]string{"a.example.com": "tok-1", "b.example.com": "tok-1", "c.example.com": "tok-2", "d.example.com": "tok-3"} {
+		if _, creds, _, err := a.resolveDNSCredentials(cert); err != nil || !strings.Contains(creds, want) {
+			t.Errorf("%s: got %q, %v; want %s", cert, creds, err, want)
 		}
 	}
-	// Renewals still resolve through the credential set
-	if _, creds, _, err := a.resolveDNSCredentials("example.com"); err != nil || !strings.Contains(creds, "legacy-tok") {
-		t.Errorf("credential set no longer resolves: %v %v", creds, err)
+	bindings, _ := a.listDNSProfileBindings()
+	if bindings["a.example.com"] != bindings["b.example.com"] || bindings["a.example.com"] == bindings["c.example.com"] {
+		t.Errorf("identical credentials should share one set: %v", bindings)
 	}
-	// Nothing left to delete; traversal refused
-	if res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"example.com"}}); res["error"] == nil {
-		t.Error("second delete should report nothing to delete")
+	if bindings["d.example.com"] != sharedID {
+		t.Errorf("existing binding changed: %v", bindings)
 	}
-	if res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"../sys"}}); res["error"] == nil {
-		t.Error("traversal should be refused")
+	profiles, _ := a.listDNSProfiles()
+	if len(profiles) != 3 {
+		t.Errorf("want 3 sets (Shared + 2 converted), got %d", len(profiles))
+	}
+	for _, cert := range []string{"a.example.com", "b.example.com", "c.example.com", "d.example.com", "http.example.com", "gone.example.com"} {
+		for _, suffix := range perCertDNSKeySuffixes {
+			if a.Database.KeyExists("acme", cert+suffix) {
+				t.Errorf("%s%s not removed", cert, suffix)
+			}
+		}
+	}
+	if _, ok := bindings["http.example.com"]; ok {
+		t.Error("HTTP-01 certificate should not get a set")
+	}
+	if !a.Database.KeyExists("acme", "bad.example.com_dns_credentials") {
+		t.Error("unconvertible credentials should be kept")
 	}
 
-	// HTTP-01 certificate: per-certificate credentials not in use, deletable
-	installFakeCert(t, "http.example.com", &CertificateInfoJSON{UseDNS: false})
-	a.Database.Write("acme", "http.example.com"+legacyDNSProviderSuffix, "cloudflare")
-	a.Database.Write("acme", "http.example.com"+legacyDNSCredSuffix, `{}`)
-	if res = postForm(t, a.HandleDeleteLegacyDNSCredentials, url.Values{"filename": {"http.example.com"}}); res["error"] != nil {
-		t.Errorf("HTTP-01 cert credentials should be deletable: %v", res)
+	// Same credentials give the same set ID (both HA nodes agree)
+	b := newTestACMEHandler(t)
+	b.ensureDNSProfileTables()
+	installFakeCert(t, "a.example.com", &CertificateInfoJSON{UseDNS: true})
+	b.Database.Write("acme", "a.example.com_dns_provider", "cloudflare")
+	b.Database.Write("acme", "a.example.com_dns_credentials", `{"AuthToken":"tok-1"}`)
+	b.ConvertPerCertificateDNSCredentials()
+	bb, _ := b.listDNSProfileBindings()
+	if bb["a.example.com"] != bindings["a.example.com"] {
+		t.Errorf("set IDs differ between nodes: %s vs %s", bb["a.example.com"], bindings["a.example.com"])
 	}
 }

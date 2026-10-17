@@ -22,11 +22,6 @@
         .validDomain{
           color: rgb(49, 192, 113);
         }
-
-        /* Custom fork: provider/credential fields only apply to manual entry */
-        .ui.form.usingCredentialSet .dnsManualOnly{
-          display: none !important;
-        }
       </style>
   </head>
   <body>
@@ -153,46 +148,19 @@
     <div class="field dnsChallengeOnly" style="display:none;">
       <label>DNS Credentials</label>
       <div class="ui selection dropdown" id="dnsCredentialSource">
-        <input type="hidden" name="dnsCredentialSource" value="manual">
+        <input type="hidden" name="dnsCredentialSource" value="">
         <i class="dropdown icon"></i>
         <div class="default text">Pick a credential set</div>
-        <div class="menu" id="dnsCredentialSourceMenu">
-          <div class="item" data-value="manual">Enter credentials manually (this certificate only)</div>
-        </div>
+        <div class="menu" id="dnsCredentialSourceMenu"></div>
+      </div>
+      <div class="ui small yellow message" id="noDnsCredentialSets" style="display:none;">
+        <i class="exclamation triangle icon"></i> No DNS credential sets are saved yet. Create one first, then reload the list.
       </div>
       <small>
         <a href="dnsProfiles.html" target="_blank"><i class="external icon"></i>Manage saved credential sets</a>
         &nbsp;|&nbsp;
         <a style="cursor: pointer;" onclick="initDnsCredentialSources();"><i class="refresh icon"></i>Reload list</a>
       </small>
-    </div>
-    <div class="field dnsChallengeOnly dnsManualOnly" style="display:none;">
-      <label>DNS Provider</label>
-      <div class="ui search selection dropdown" id="dnsProvider">
-        <input type="hidden" name="dnsProvider" value="">
-        <i class="dropdown icon"></i>
-        <div class="default text">Pick a DNS Provider</div>
-        <div class="menu" id="dnsProviderList">
-          <!-- Auto populate moved to acmedns module and initDNSProviderList() -->
-        </div>
-      </div>
-    </div>
-    <div class="field dnsChallengeOnly dnsManualOnly" style="display:none;">
-      <div class="ui divider"></div>
-        <p>DNS Credentials</p>
-      <div id="dnsProviderAPIFields">
-        <p><i class="ui loading circle notch icon"></i> Generating WebForm</p>
-      </div>
-      
-      <!-- 
-        <label>Credentials File Content</label>
-        <textarea id="dnsCredentials" placeholder=""></textarea>
-        <small>For more information on the supported DNS Providers and their attirbutes look <a href="https://go-acme.github.io/lego/dns/" target="_blank">here</a>! </small>
-        <div class="ui negative message">
-          <i class="icon exclamation triangle"></i>
-          These credentials will be stored as plaintext in the database and in environment variables!
-        </div>
-      -->
     </div>
     <div class="field dnsChallengeOnly" style="display:none;">
       <label>Domain Name Server (optional)</label>
@@ -213,8 +181,7 @@
     <div class="field dnsChallengeOnly" style="display:none;">
       <h4><i class="yellow exclamation triangle icon"></i> Notes & FAQ</h4>
       <div class="ui bulleted list">
-        <div class="item">Save your DNS credentials once as a credential set and pick it for each certificate. Manually entered credentials are stored for that certificate only.</div>
-        <div class="item">For some DNS providers like CloudFlare, you do not need to fill in all fields.</div>
+        <div class="item">DNS credentials come from a saved credential set. One set can be used by any number of certificates; create separate sets to give certificates different credentials.</div>
         <div class="item">If you are not sure what to fill in, check out the documentation from <a href="https://go-acme.github.io/lego/dns/" target="_blank">lego (DNS challenge library)</a></div>
         <div class="item">Domain Name Server: If you have more than one DNS server, enter them separated by commas (e.g. ns1.example.com,ns2.example.com). Used for DNS-01 challenge propagation verification.</div>
         <div class="item">Recursive NSs Propagation Check: Verify the TXT record has propagated to all specified DNS servers before proceeding. If no DNS servers are configured above, falls back to 8.8.8.8, 8.8.4.4, 1.1.1.1, 1.0.0.1. Required for CAs using MPIC (Multi-Perspective Issuance Corroboration). May take longer than the default 600s timeout — increase propagation timeout if needed. Leave disabled unless required.</div>
@@ -507,74 +474,6 @@
       }
     })
 
-    //On DNS provider dropdown change
-    $("input[name=dnsProvider]").on('change', function() {
-      let newProviderName = $("#dnsProvider").find("input").val();
-      $.get("/api/acme/dns/providers?name=" + newProviderName, function(data){
-        console.log("Loaded required config", data);
-        $("#dnsProviderAPIFields").html("");
-        //Generate a form for this config
-        let booleanFieldsHTML = "";
-        let optionalFieldsHTML = "";
-        for (const [key, datatype] of Object.entries(data)) {
-          if (datatype == "int"){
-            let defaultValue = 10;
-            if (key == "HTTPTimeout"){
-              defaultValue = 300;
-            }
-            $("#dnsProviderAPIFields").append(`<div class="ui fluid labeled dnsConfigField input typeint" key="${key}" style="margin-top: 0.2em;">
-              <div class="ui basic blue label" style="font-weight: 300;">
-                ${key}
-              </div>
-              <input type="number" value="${defaultValue}">
-            </div>`);
-          }else if (datatype == "bool"){
-             booleanFieldsHTML += (`<div class="ui checkbox dnsConfigField" key="${key}" style="margin-top: 1em !important; padding-left: 0.4em;">
-              <input type="checkbox">
-              <label>${key}</label>
-            </div>`);
-          }else if (datatype == "time.Duration"){
-            let defaultIntValue = 120;
-            let defaultMinValue = 30;
-            if (key == "PollingInterval"){
-              defaultIntValue = 2;
-              defaultMinValue = 1;
-            }else if (key == "PropagationTimeout"){
-              defaultIntValue = 600;
-              defaultMinValue = 30;
-            }
-            optionalFieldsHTML += (`<div class="ui fluid labeled dnsConfigField small input" key="${key}" style="margin-top: 0.2em;">
-              <div class="ui basic blue label" style="font-weight: 300;">
-                ${key}
-              </div>
-              <input type="number" min="${defaultMinValue}" value="${defaultIntValue}">
-              <div class="ui basic label" style="font-weight: 300;">
-                secs
-              </div>
-            </div>`);
-          
-          }else{
-            //Default to string
-            $("#dnsProviderAPIFields").append(`<div class="ui fluid labeled input dnsConfigField" key="${key}" style="margin-top: 0.2em;">
-              <div class="ui basic label" style="font-weight: 300;">
-                ${key}
-              </div>
-              <input type="text">
-            </div>`);
-          }
-        }
-
-        //Append the boolean fields at the bottom, if exists
-        $("#dnsProviderAPIFields").append(booleanFieldsHTML);
-        if (booleanFieldsHTML != ""){
-          $(".dnsConfigField.checkbox").checkbox();
-        }
-
-        //Append the optional fields at the bottom, if exists
-        $("#dnsProviderAPIFields").append(optionalFieldsHTML);
-      });
-    });
-
     // Get filename form domains and input
     function getFilename() {
       var domains = $("#domainsInput").val();
@@ -673,124 +572,23 @@
       });
     }
 
-    //Read DNS credential from form and generate a key value structure that looks like
-    // the old DNSCredential TextArea input
-    
-    function readDnsCredentials(){
-      let dnsCredentials = {};
-      $(".dnsConfigField").each(function(){
-        let thisKey = $(this).attr("key");
-        let value = "";
-        if ($(this).hasClass("checkbox")){
-          //Boolean option
-          let checked = $(this).find("input")[0].checked;
-          dnsCredentials[thisKey] = checked;
-        }else if ($(this).hasClass("typeint")){
-          //Int options
-          let value = $(this).find("input").val();
-          dnsCredentials[thisKey] = parseInt(value);
-        }else{
-          //String options
-          let value = $(this).find("input").val().trim();
-          dnsCredentials[thisKey] = value;
-        }
-      });
-      
-      return dnsCredentials;
-    }
-
-    // Update DNS values for autorenewal
+    // Bind the selected DNS credential set to the certificate before it is requested
     function updateCertificateDNS(callback=undefined) {
-      var dns = $("#useDnsChallenge")[0].checked;
-      var dnsProvider = "";
-      var dnsCredentials = "";
-
-      if (!dns) {
+      if (!$("#useDnsChallenge")[0].checked) {
         if (callback != undefined){
           callback(true);
         }
         return;
       }
-
-      //Custom fork: a saved credential set is selected, bind it to this certificate
       let credentialSource = $("#dnsCredentialSource").dropdown("get value");
-      if (credentialSource != "" && credentialSource != "manual"){
-        assignDnsCredentialSet(credentialSource, callback);
-        return;
-      }
-
-      //Check if all fields is empty. If yes, do not update the config
-      let allFieldsEmpty = true;
-      $(".dnsConfigField").each(function(){
-        if ($(this).find("input").val().trim() != ""){
-          allFieldsEmpty = false;
-        }
-      });
-      if (allFieldsEmpty){
-        //Do not update config on server side
-        if (callback != undefined){
-          callback(true);
-        }
-        return;
-      }
-
-      dnsProvider = $("#dnsProvider").dropdown("get value");
-
-      //dnsCredentials = $("#dnsCredentials").val();
-      dnsCredentials = readDnsCredentials();
-
-      if(dnsProvider == "") {
-        parent.msgbox("DNS Provider cannot be empty", false, 5000);
-        $("#obtainButton").removeClass("loading").removeClass("disabled");
+      if (credentialSource == ""){
+        parent.msgbox("Pick a DNS credential set for the DNS challenge", false, 6000);
         if (callback != undefined){
           callback(false);
         }
         return;
       }
-
-      var filename = getFilename();
-      if (filename == '') {
-        parent.msgbox("Domain to renew cannot be empty", false, 5000);
-        if (callback != undefined){
-          callback(false);
-        }
-        return;
-      }
-
-      $.cjax({
-        url: "/api/acme/autoRenew/setDNS",
-        method: "POST",
-        data: {
-          filename: filename,
-          dnsProvider: dnsProvider,
-          dnsCredentials: JSON.stringify(dnsCredentials),
-        },
-        success: function(response) {
-          //$("#obtainButton").removeClass("loading").removeClass("disabled");
-          if (response.error) {
-            console.log("Error:", response.error);
-            // Show error message
-            parent.msgbox(response.error, false, 12000);
-            if (callback != undefined){
-              callback(false);
-            }
-          } else {
-            console.log("Certificate DNS Credentials updated successfully");
-            // Show success message
-            parent.msgbox("Certificate DNS Credentials updated successfully");
-            //Custom fork: manually entered credentials replace any saved set this certificate was bound to
-            assignDnsCredentialSet("legacy", callback);
-          }
-        },
-        error: function(error) {
-          //$("#obtainButton").removeClass("loading").removeClass("disabled");
-          console.log("Failed to update DNS configuration:", error);
-          parent.msgbox("Failed to update DNS configuration");
-          if (callback != undefined){
-            callback(false);
-          }
-        }
-      });
+      assignDnsCredentialSet(credentialSource, callback);
     }
 
     /* Custom fork: saved DNS credential sets */
@@ -807,24 +605,29 @@
           let label = $("<div>").text(p.name + " (" + (dnsProviderNameMap[p.provider] || p.provider) + ")").html();
           menu.append(`<div class="item" data-value="${p.id}"><i class="key icon"></i>${label}</div>`);
         });
-        menu.append(`<div class="item" data-value="manual">Enter credentials manually (this certificate only)</div>`);
         $("#dnsCredentialSource").dropdown("refresh");
         //On first load, default to the first saved set when there is one.
         //On reload, keep the user's choice unless that set was deleted.
-        let stillExists = current == "manual" || data.some(p => p.id == current);
+        let stillExists = data.some(p => p.id == current);
         if (firstCredentialSourceLoad || current == "" || !stillExists){
-          current = data.length > 0 ? data[0].id : "manual";
+          current = data.length > 0 ? data[0].id : "";
         }
         firstCredentialSourceLoad = false;
-        $("#dnsCredentialSource").dropdown("set selected", current);
+        if (current == ""){
+          $("#dnsCredentialSource").dropdown("clear");
+        }else{
+          $("#dnsCredentialSource").dropdown("set selected", current);
+        }
+        dnsCredentialSetCount = data.length;
         applyDnsCredentialSourceMode();
       });
     }
 
     let firstCredentialSourceLoad = true;
+    let dnsCredentialSetCount = -1;
     function applyDnsCredentialSourceMode(){
-      let source = $("#dnsCredentialSource").dropdown("get value");
-      $("#newCertForm").toggleClass("usingCredentialSet", source != "" && source != "manual");
+      let show = dnsCredentialSetCount == 0 && $("#useDnsChallenge")[0].checked;
+      $("#noDnsCredentialSets").toggle(show);
     }
 
     $("#dnsCredentialSource").dropdown({
@@ -833,7 +636,7 @@
       }
     });
 
-    // profileId: a credential set id, "legacy" (per-certificate credentials) or "http"
+    // profileId: a credential set id, or "http"
     function assignDnsCredentialSet(profileId, callback=undefined){
       var filename = getFilename();
       if (filename == '') {
@@ -973,9 +776,7 @@
     function toggleDnsChallenge(){
       if ( $("#useDnsChallenge")[0].checked){
         $(".dnsChallengeOnly").show();
-        setTimeout(function(){
-          $("#dnsProvider").dropdown("set text", "Cloudflare");
-        }, 500);
+        applyDnsCredentialSourceMode();
       }else{
         $(".dnsChallengeOnly").hide();
       }
@@ -1094,33 +895,14 @@
       }
     }
 
-    //Load the json map and create the dropdown for DNS provider names
+    //Provider display names for the credential set list
     let dnsProviderNameMap = {};
-    function initDNSProviderList(){
+    function initDNSProviderNames(callback){
       $.get("dnsnames.json", function(namemap){
         dnsProviderNameMap = namemap;
-        //Load a list of supported DNS provider from backend
-        $("#dnsProviderList").html("");
-        $.get("/api/acme/dns/providers", function(providerList){
-          providerList.sort();
-          providerList.forEach(providerid => {
-            let providerName = providerid;
-            if (dnsProviderNameMap[providerid] != undefined){
-              providerName = dnsProviderNameMap[providerid];
-            }
-            $("#dnsProviderList").append(`<div class="item" data-value="${providerid}">${providerName}</div>`);
-          });
-          $("#dnsProvider").dropdown();
-          setTimeout(function(){
-            //The dropdown is large, it takes some time to load
-            $("#dnsProvider").dropdown("set selected", "cloudflare");
-          }, 300)
-          
-        });
-      });
+      }).always(callback);
     }
-    initDNSProviderList();
-    initDnsCredentialSources();
+    initDNSProviderNames(initDnsCredentialSources);
     
 
     //Clear up the input field when page load

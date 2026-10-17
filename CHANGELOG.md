@@ -10,6 +10,28 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.0.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+A major version because features were removed (see Versioning above). Configuration carries over; the one change that can need action is the removed `-sshlb` flag.
+
+**Removed**
+- **Per-certificate DNS challenge credentials.** DNS-01 credentials now come only from DNS credential sets; give certificates their own credentials by creating a set for each. The ACME tool no longer has the "Enter credentials manually" option, and a certificate's challenge settings offer only credential sets or HTTP-01.
+  - At startup, Waymark turns any per-certificate credentials still stored into credential sets (named after the certificate; certificates with identical credentials share one set) and assigns them, so those certificates keep renewing. Credentials of deleted certificates, or of certificates that renew with HTTP-01, are deleted.
+  - Removed APIs: `/api/acme/autoRenew/setDNS`, `/api/acme/dnsProfiles/importFromCert` and `/api/acme/dnsProfiles/deleteLegacy`.
+- **Quick Start** page and its guided tour.
+- **Utilities > Toolbox** tab (IP range / CIDR converters and the Geo-IP lookup with access rule check), with its API `/api/info/ipcheck`.
+- **Networking > Network Tools** page and everything behind it:
+  - mDNS discovery viewer, IP scanner and port scanner;
+  - traceroute, ping and WHOIS lookup;
+  - Web SSH (with its embedded terminal binaries, which makes the binary smaller) and the `-sshlb` flag. **Remove `-sshlb` from your service's `ExecStart` before upgrading**, or Waymark won't start;
+  - the HTTP forward proxy (it stops listening; its `fwdproxy` settings stay in the database, unused);
+  - Wake-on-LAN and its saved addresses (`wolmac` table, kept unused);
+  - the APIs under `/api/tools/` and `/api/mdns/discover`.
+  - mDNS itself is kept: Waymark still announces itself and scans the network for plugins (`/api/mdns/list`, `-mdns` and `-mdnsname` flags).
+- HA config sync no longer copies the `fwdproxy` and `wolmac` tables.
+
 ## 1.0.1
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

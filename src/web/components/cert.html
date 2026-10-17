@@ -83,7 +83,7 @@
         </div>
     </div>
     <p>Current list of loaded certificates</p>
-    <div tourstep="certTable" style="width: 100%; overflow-x: auto; padding-bottom: 1em;">
+    <div style="width: 100%; overflow-x: auto; padding-bottom: 1em;">
         <div style="min-width: 960px; max-width: 100%;  ">
             <table class="ui unstackable basic celled table">
                 <thead>
@@ -94,7 +94,7 @@
                     <th>Expire At</th>
                     <th>Fallback</th>
                     <th>DNS Challenge</th>
-                    <th class="no-sort" tourstep="defaultCertificate">Actions</th>
+                    <th class="no-sort">Actions</th>
                 </tr></thead>
             <tbody id="certifiedDomainList">
     
@@ -349,10 +349,7 @@
             return `<i class="green check icon"></i> <i class="key icon"></i>${escapeCertHTML(b.profileName)}`;
         }
         if (useDNS){
-            if (b && b.legacy){
-                return `<i class="green check icon"></i> <small>Per-certificate</small>`;
-            }
-            return `<i class="green check icon"></i>`;
+            return `<i class="red exclamation triangle icon"></i> No credential set`;
         }
         return `<i class="red times icon"></i>`;
     }

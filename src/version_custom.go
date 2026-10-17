@@ -20,7 +20,7 @@ package main
 const (
 	PRODUCT_NAME       = "Waymark Proxy"
 	PRODUCT_SHORT_NAME = "Waymark"
-	PRODUCT_VERSION    = "1.0.1"
+	PRODUCT_VERSION    = "2.0.0"
 	PRODUCT_REPO       = "https://github.com/rtadams89/waymark-proxy"
 
 	// UPSTREAM_BASE is the Zoraxy release this build is based on.

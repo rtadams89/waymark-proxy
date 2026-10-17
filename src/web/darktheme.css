@@ -450,53 +450,6 @@ body.darkTheme #confirmBox .ui.top.attached.progress .bar {
     background-color: var(--buttom_toggle_active) !important;
 }
 
-/* Tour Modal */
-
-body.darkTheme #tourModal {
-    background-color: var(--theme_bg) !important;
-    color: var(--text_color) !important;
-    border: 1px solid var(--divider_color) !important;
-}
-
-body.darkTheme #tourModal .tourStepTitle {
-    color: var(--text_color) !important;
-}
-
-body.darkTheme #tourModal .tourStepContent {
-    color: var(--text_color_secondary) !important;
-}
-
-body.darkTheme #tourModal .ui.divider {
-    border-color: var(--divider_color) !important;
-}
-
-body.darkTheme #tourModal .ui.button {
-    color: var(--button_color) !important;
-    border: 1px solid var(--button_border_color) !important;
-}
-
-body.darkTheme #tourModal .ui.button:hover {
-    background-color: var(--button_hover_bg) !important;
-    color: var(--button_hover_color) !important;
-    border: 1px solid var(--button_border_color) !important;
-}
-
-body.darkTheme #tourModal .ui.red.button:hover {
-    background-color: #380a0a !important;
-    color: var(--button_red_hover_color) !important;
-}
-
-body.darkTheme #tourModal .ui.circular.icon.button {
-    background-color: var(--theme_bg_primary) !important;
-    color: var(--button_color) !important;
-    border: 1px solid var(--button_border_color) !important;
-}
-
-body.darkTheme #tourModal .ui.circular.icon.button:hover {
-    background-color: var(--theme_bg_secondary) !important;
-    color: var(--button_hover_color) !important;
-    border: 1px solid var(--button_border_color) !important;
-}
 
 /*
     HTTP Proxy Table
@@ -1100,54 +1053,7 @@ body.darkTheme .ui.celled.unstackable.table:not(.basic) th{
     border-color: var(--divider_color) !important;
 }
 
-body.darkTheme #networktool .ui.accordion .title {
-    color: var(--text_color) !important;
-}
-
-body.darkTheme #networktool .ui.accordion .title .dropdown.icon {
-    color: var(--icon_color) !important;
-}
-
-body.darkTheme #networktool .ui.accordion .title .menu {
-    background-color: var(--theme_bg) !important;
-    color: var(--text_color) !important;
-    border-color: var(--divider_color) !important;
-}
-
-body.darkTheme .ui.selection.fluid.dropdown#mdnsWoL {
-    background-color: var(--theme_bg) !important;
-    color: var(--text_color) !important;
-    border-color: var(--divider_color) !important;
-}
-
-body.darkTheme .ui.selection.fluid.dropdown#mdnsWoL .menu {
-    background-color: var(--theme_bg) !important;
-    color: var(--text_color) !important;
-}
-
-body.darkTheme .ui.selection.fluid.dropdown#mdnsWoL .menu .item {
-    color: var(--text_color) !important;
-}
-
-body.darkTheme .ui.selection.fluid.dropdown#mdnsWoL .menu .item:hover {
-    background-color: var(--theme_bg_secondary) !important;
-    color: var(--text_color) !important;
-}
-
-body.darkTheme .ui.selection.fluid.dropdown#mdnsWoL .menu .item.active.selected {
-    background-color: var(--theme_highlight) !important;
-    color: var(--text_color) !important;
-}
-
 body.darkTheme .ui.selection.visible.dropdown > .text:not(.default) {
-    color: var(--text_color) !important;
-}
-
-body.darkTheme .ui.selection.fluid.dropdown#mdnsWoL .default.text {
-    color: var(--text_color) !important;
-}
-
-body.darkTheme .ui.selection.fluid.dropdown#mdnsWoL .dropdown.icon {
     color: var(--text_color) !important;
 }
 
@@ -1226,4 +1132,4 @@ body.darkTheme .ui.horizontal.divider {
 body.darkTheme .ui.checkbox input:checked ~ .box::after,
 body.darkTheme .ui.checkbox input:checked ~ label::after {
     color: var(--text_color_inverted) !important;
-}
+}

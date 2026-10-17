@@ -67,8 +67,8 @@ var SyncConfEntries = []string{
 // and live SSO sessions stay per node.
 var SyncTables = []string{
 	"settings", "auth", "acme", "acme_dns_profiles", "acmepref", "redirect",
-	"fwdproxy", "oauth2", "authelia", "authentik", "auth_sso_forward",
-	"zorxauth", "zorxauth_users", "webserv", "wolmac", "custom_ui", "custom_fork",
+	"oauth2", "authelia", "authentik", "auth_sso_forward",
+	"zorxauth", "zorxauth_users", "webserv", "custom_ui", "custom_fork",
 }
 
 // SyncSkipKeys are per-node keys inside synced tables.

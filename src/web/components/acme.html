@@ -37,7 +37,7 @@
     <div class="ui divider"></div>
     <h3>Preferred Certificate Authority</h3>
     <p>The default CA to use when create a new subdomain proxy endpoint with TLS certificate</p>
-    <div class="ui fluid form" tourstep="acmeSettings">
+    <div class="ui fluid form">
         <div class="field">
             <label>Preferred CA</label>
             <div class="ui selection dropdown" id="defaultCA">
@@ -127,7 +127,7 @@
     <div class="ui divider"></div>
     <h3>Generate New Certificate</h3>
     <p>Manually generate a certificate if one of your domain do not have certificate.</p>
-    <button class="ui basic button" tourstep="openACMEManager" onclick="openACMEManager();"><i class="yellow external icon"></i> Open ACME Tool</button>
+    <button class="ui basic button" onclick="openACMEManager();"><i class="yellow external icon"></i> Open ACME Tool</button>
     <button class="ui basic button" onclick="showSideWrapper('snippet/dnsProfiles.html');"><i class="yellow key icon"></i> Manage DNS Credentials</button>
 </div>
 <script>

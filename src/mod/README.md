@@ -66,17 +66,6 @@ This directory contains all the modular components that make up the Zoraxy rever
 - Maintains WebSocket protocol compliance
 - Supports bidirectional communication
 
-### forwardproxy
-**Purpose**: Forward proxy implementation
-- Acts as a forward proxy for client requests
-- Supports HTTP CONNECT tunneling
-
-### sshprox
-**Purpose**: SSH proxy and terminal access
-- Provides SSH-based proxy functionality
-- Includes embedded terminal access
-- Supports SSH tunneling
-
 ## Monitoring & Analytics
 
 ### statistic
@@ -113,26 +102,14 @@ This directory contains all the modular components that make up the Zoraxy rever
 
 ### netutils
 **Purpose**: Network utility functions
-- Implements ping, traceroute, and whois functionality
-- Provides IP address utilities and validation
-- Includes network diagnostic tools
-
-### ipscan
-**Purpose**: IP scanning and network discovery
-- Performs IP address scanning
-- Provides port scanning capabilities
-- Network discovery and enumeration
+- Provides IP address matching and validation
+- Port occupancy checks and domain name validation
 
 ### mdns
 **Purpose**: Multicast DNS service discovery
 - Discovers services on the local network
 - Implements mDNS protocol
 - Provides service advertisement
-
-### wakeonlan
-**Purpose**: Wake-on-LAN functionality
-- Sends Wake-on-LAN packets to wake up devices
-- Supports network device power management
 
 ## System Management
 
@@ -220,4 +197,4 @@ Modules may depend on:
 - Other Zoraxy modules (through interfaces)
 - External libraries (documented in go.mod)
 
-For more detailed information about specific modules, refer to their individual README files or source code documentation.
+For more detailed information about specific modules, refer to their individual README files or source code documentation.

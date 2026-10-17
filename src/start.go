@@ -25,7 +25,6 @@ import (
 	"imuslab.com/zoraxy/mod/dockerux"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
-	"imuslab.com/zoraxy/mod/forwardproxy"
 	"imuslab.com/zoraxy/mod/geodb"
 	"imuslab.com/zoraxy/mod/info/hardwareinfo"
 	"imuslab.com/zoraxy/mod/info/logger"
@@ -37,7 +36,6 @@ import (
 	"imuslab.com/zoraxy/mod/pathrule"
 	"imuslab.com/zoraxy/mod/plugins"
 	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
-	"imuslab.com/zoraxy/mod/sshprox"
 	"imuslab.com/zoraxy/mod/statistic"
 	"imuslab.com/zoraxy/mod/statistic/analytic"
 	"imuslab.com/zoraxy/mod/streamproxy"
@@ -310,9 +308,6 @@ func startupSequence() {
 		}
 	}
 
-	//Create WebSSH Manager
-	webSshManager = sshprox.NewSSHProxyManager()
-
 	//Create TCP Proxy Manager
 	streamProxyManager, err = streamproxy.NewStreamProxy(&streamproxy.Options{
 		AccessControlHandler: accessController.DefaultAccessRule.AllowConnectionAccess,
@@ -324,23 +319,8 @@ func startupSequence() {
 		panic(err)
 	}
 
-	//Create WoL MAC storage table
-	sysdb.NewTable("wolmac")
-
 	//Create an analytic loader
 	AnalyticLoader = analytic.NewDataLoader(sysdb, statisticCollector)
-
-	//Create basic forward proxy
-	sysdb.NewTable("fwdproxy")
-	fwdProxyEnabled := false
-	fwdProxyPort := 5587
-	sysdb.Read("fwdproxy", "port", &fwdProxyPort)
-	sysdb.Read("fwdproxy", "enabled", &fwdProxyEnabled)
-	forwardProxy = forwardproxy.NewForwardProxy(sysdb, fwdProxyPort, SystemWideLogger)
-	if fwdProxyEnabled {
-		SystemWideLogger.PrintAndLog("Forward Proxy", "HTTP Forward Proxy Listening on :"+strconv.Itoa(forwardProxy.Port), nil)
-		forwardProxy.Start()
-	}
 
 	/*
 		ACME API
@@ -350,6 +330,7 @@ func startupSequence() {
 	//Create a table just to store acme related preferences
 	sysdb.NewTable("acmepref")
 	acmeHandler = initACME()
+	acmeHandler.ConvertPerCertificateDNSCredentials()
 	acmeAutoRenewer, err = acme.NewAutoRenewer(
 		ACME_AUTORENEW_CONFIG_PATH,
 		CONF_CERT_STORE,

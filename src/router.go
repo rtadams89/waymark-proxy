@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
-	"imuslab.com/zoraxy/mod/sshprox"
 )
 
 /*
@@ -50,30 +49,6 @@ func FSHandler(handler http.Handler) http.Handler {
 				pluginID := parts[2]
 				pluginManager.HandlePluginUI(pluginID, w, r)
 			} else {
-				http.Error(w, "Invalid Usage", http.StatusInternalServerError)
-			}
-			return
-		}
-
-		//For WebSSH Routing
-		//Example URL Path: /web.ssh/{{instance_uuid}}/*
-		if strings.HasPrefix(r.URL.Path, "/web.ssh/") {
-			requestPath := r.URL.Path
-			parts := strings.Split(requestPath, "/")
-			if !strings.HasSuffix(requestPath, "/") && len(parts) == 3 {
-				http.Redirect(w, r, requestPath+"/", http.StatusTemporaryRedirect)
-				return
-			}
-			if len(parts) > 2 {
-				//Extract the instance ID from the request path
-				instanceUUID := parts[2]
-				//fmt.Println(instanceUUID)
-
-				//Rewrite the url so the proxy knows how to serve stuffs
-				r.URL, _ = sshprox.RewriteURL("/web.ssh/"+instanceUUID, r.RequestURI)
-				webSshManager.HandleHttpByInstanceId(instanceUUID, w, r)
-			} else {
-				//fmt.Println(parts)
 				http.Error(w, "Invalid Usage", http.StatusInternalServerError)
 			}
 			return

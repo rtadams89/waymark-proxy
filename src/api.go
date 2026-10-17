@@ -12,9 +12,7 @@ import (
 	"imuslab.com/zoraxy/mod/auth"
 	"imuslab.com/zoraxy/mod/dynamicproxy/domainsniff"
 	"imuslab.com/zoraxy/mod/info/hardwareinfo"
-	"imuslab.com/zoraxy/mod/ipscan"
 	"imuslab.com/zoraxy/mod/netstat"
-	"imuslab.com/zoraxy/mod/netutils"
 	"imuslab.com/zoraxy/mod/utils"
 )
 
@@ -257,7 +255,6 @@ func RegisterStreamProxyAPIs(authRouter *auth.RouterDef) {
 // Register the APIs for mDNS service management functions
 func RegisterMDNSAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/mdns/list", HandleMdnsListing)
-	authRouter.HandleFunc("/api/mdns/discover", HandleMdnsScanning)
 }
 
 // Register the APIs for ACME and Auto Renewer management functions
@@ -271,7 +268,6 @@ func RegisterACMEAndAutoRenewerAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/acme/autoRenew/email", acmeAutoRenewer.HandleACMEEmail)
 	authRouter.HandleFunc("/api/acme/autoRenew/setDomains", acmeAutoRenewer.HandleSetAutoRenewDomains)
 	authRouter.HandleFunc("/api/acme/autoRenew/setEAB", acmeAutoRenewer.HanldeSetEAB)
-	authRouter.HandleFunc("/api/acme/autoRenew/setDNS", acmeAutoRenewer.HandleSetDNS)
 	authRouter.HandleFunc("/api/acme/autoRenew/listDomains", acmeAutoRenewer.HandleLoadAutoRenewDomains)
 	authRouter.HandleFunc("/api/acme/autoRenew/renewPolicy", acmeAutoRenewer.HandleRenewPolicy)
 	authRouter.HandleFunc("/api/acme/autoRenew/renewNow", acmeAutoRenewer.HandleRenewNow)
@@ -282,8 +278,6 @@ func RegisterACMEAndAutoRenewerAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/acme/dnsProfiles/delete", acmeHandler.HandleDeleteDNSProfile)
 	authRouter.HandleFunc("/api/acme/dnsProfiles/bindings", acmeHandler.HandleListDNSBindings)
 	authRouter.HandleFunc("/api/acme/dnsProfiles/assign", acmeHandler.HandleAssignDNSProfile)
-	authRouter.HandleFunc("/api/acme/dnsProfiles/importFromCert", acmeHandler.HandleImportDNSProfileFromCert)
-	authRouter.HandleFunc("/api/acme/dnsProfiles/deleteLegacy", acmeHandler.HandleDeleteLegacyDNSCredentials)
 	/* ACME Wizard */
 	authRouter.HandleFunc("/api/acme/wizard", acmewizard.HandleGuidedStepCheck)
 }
@@ -304,20 +298,6 @@ func RegisterStaticWebServerAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/webserv/webdav/setPort", staticWebServer.HandleWebDAVPortChange)
 	authRouter.HandleFunc("/api/webserv/webdav/setUseCustomCredentials", staticWebServer.HandleSetUseCustomCredentials)
 	authRouter.HandleFunc("/api/webserv/webdav/setCustomCredentials", staticWebServer.HandleSetCustomCredentials)
-}
-
-// Register the APIs for Network Utilities functions
-func RegisterNetworkUtilsAPIs(authRouter *auth.RouterDef) {
-	authRouter.HandleFunc("/api/tools/ipscan", ipscan.HandleIpScan)
-	authRouter.HandleFunc("/api/tools/portscan", ipscan.HandleScanPort)
-	authRouter.HandleFunc("/api/tools/traceroute", netutils.HandleTraceRoute)
-	authRouter.HandleFunc("/api/tools/ping", netutils.HandlePing)
-	authRouter.HandleFunc("/api/tools/whois", netutils.HandleWhois)
-	authRouter.HandleFunc("/api/tools/webssh", HandleCreateProxySession)
-	authRouter.HandleFunc("/api/tools/websshSupported", HandleWebSshSupportCheck)
-	authRouter.HandleFunc("/api/tools/wol", HandleWakeOnLan)
-	authRouter.HandleFunc("/api/tools/fwdproxy/enable", forwardProxy.HandleToogle)
-	authRouter.HandleFunc("/api/tools/fwdproxy/port", forwardProxy.HandlePort)
 }
 
 func RegisterPluginAPIs(authRouter *auth.RouterDef) {
@@ -468,7 +448,6 @@ func initAPIs(targetMux *http.ServeMux) {
 	RegisterStatisticalAPIs(authRouter)
 	RegisterStreamProxyAPIs(authRouter)
 	RegisterMDNSAPIs(authRouter)
-	RegisterNetworkUtilsAPIs(authRouter)
 	RegisterACMEAndAutoRenewerAPIs(authRouter)
 	RegisterStaticWebServerAPIs(authRouter)
 	RegisterPluginAPIs(authRouter)
@@ -480,7 +459,6 @@ func initAPIs(targetMux *http.ServeMux) {
 	//Others
 	targetMux.HandleFunc("/api/info/x", HandleZoraxyInfo)
 	authRouter.HandleFunc("/api/info/geoip", HandleGeoIpLookup)
-	authRouter.HandleFunc("/api/info/ipcheck", HandleIpAccessCheck)
 	authRouter.HandleFunc("/api/geodb/updateStatus", HandleGeoDBUpdateStatus)
 	authRouter.HandleFunc("/api/geodb/updateNow", HandleGeoDBUpdateNow)
 	authRouter.HandleFunc("/api/geodb/autoUpdate", HandleGeoDBAutoUpdate)

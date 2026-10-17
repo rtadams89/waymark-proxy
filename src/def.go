@@ -24,7 +24,6 @@ import (
 	"imuslab.com/zoraxy/mod/dockerux"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
-	"imuslab.com/zoraxy/mod/forwardproxy"
 	"imuslab.com/zoraxy/mod/geodb"
 	"imuslab.com/zoraxy/mod/info/logger"
 	"imuslab.com/zoraxy/mod/info/logviewer"
@@ -32,7 +31,6 @@ import (
 	"imuslab.com/zoraxy/mod/netstat"
 	"imuslab.com/zoraxy/mod/pathrule"
 	"imuslab.com/zoraxy/mod/plugins"
-	"imuslab.com/zoraxy/mod/sshprox"
 	"imuslab.com/zoraxy/mod/statistic"
 	"imuslab.com/zoraxy/mod/statistic/analytic"
 	"imuslab.com/zoraxy/mod/streamproxy"
@@ -67,7 +65,6 @@ var (
 	databaseBackend            = flag.String("db", "auto", "Database backend to use (leveldb, boltdb, auto) Note that fsdb will be used on unsupported platforms like RISCV")
 	noauth                     = flag.Bool("noauth", false, "Disable authentication for management interface")
 	showver                    = flag.Bool("version", false, "Show version of this server")
-	allowSshLoopback           = flag.Bool("sshlb", false, "Allow loopback web ssh connection (DANGER)")
 	allowMdnsScanning          = flag.Bool("mdns", true, "Enable mDNS scanner and transponder")
 	mdnsName                   = flag.String("mdnsname", "", "mDNS name, leave empty to use default (waymark_{node-uuid}.local)")
 	runningInDocker            = flag.Bool("docker", false, "Run Waymark in docker compatibility mode")
@@ -169,12 +166,10 @@ var (
 	statisticCollector *statistic.Collector      //Collecting statistic from visitors
 	uptimeMonitor      *uptime.Monitor           //Uptime monitor service worker
 	mdnsScanner        *mdns.MDNSHost            //mDNS discovery services
-	webSshManager      *sshprox.Manager          //Web SSH connection service
 	streamProxyManager *streamproxy.Manager      //Stream Proxy Manager for TCP / UDP forwarding
 	acmeHandler        *acme.ACMEHandler         //Handler for ACME Certificate renew
 	acmeAutoRenewer    *acme.AutoRenewer         //Handler for ACME auto renew ticking
 	staticWebServer    *webserv.WebServer        //Static web server for hosting simple stuffs
-	forwardProxy       *forwardproxy.Handler     //HTTP Forward proxy, basically VPN for web browser
 	loadBalancer       *loadbalance.RouteManager //Global scope loadbalancer, store the state of the lb routing
 	pluginManager      *plugins.Manager          //Plugin manager for managing plugins
 

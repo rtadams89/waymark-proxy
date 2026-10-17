@@ -6,26 +6,6 @@ import (
 	"imuslab.com/zoraxy/mod/netutils"
 )
 
-func TestHandleTraceRoute(t *testing.T) {
-	results, err := netutils.TraceRoute("imuslab.com", 64)
-	if err != nil {
-		t.Skipf("Skipping test (requires network/ICMP access): %v", err)
-	}
-
-	t.Log(results)
-}
-
-func TestHandlePing(t *testing.T) {
-	ipOrDomain := "example.com"
-
-	realIP, pingTime, ttl, err := netutils.PingIP(ipOrDomain)
-	if err != nil {
-		t.Skipf("Skipping test (requires network/ICMP access): %v", err)
-		return
-	}
-
-	t.Log(realIP, pingTime, ttl)
-}
 func TestMatchIpWildcard_IPv6(t *testing.T) {
 	// IPv6 wildcards are not supported by MatchIpWildcard, so these should all return false
 	tests := []struct {

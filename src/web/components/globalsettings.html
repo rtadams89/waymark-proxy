@@ -117,7 +117,7 @@
     <p>Ingress settings for the reverse proxy server (Previously named Global Settings)</p>
     <div class="ui divider"></div>
     <p>Inbound / Proxy Listening Port</p>
-    <div class="ui action fluid notloopbackOnly input" tourstep="incomingPort">
+    <div class="ui action fluid notloopbackOnly input">
         <small id="applyButtonReminder">Click "Apply" button to confirm listening port changes</small>
         <input type="text" id="incomingPort" placeholder="Incoming Port" value="443">
         <button class="ui green notloopbackOnly button" style="background: var(--theme_green);" onclick="handlePortChange();"><i class="ui checkmark icon"></i> Apply</button>
@@ -139,7 +139,7 @@
         Port 80 is occupied by another service and might not be working properly
     </div>
     <br>
-    <div tourstep="forceHttpsRedirect" style="display: inline-block;">
+    <div style="display: inline-block;">
         <div id="redirect" class="ui toggle notloopbackOnly tlsEnabledOnly checkbox" style="margin-top: 0.4em;">
             <input type="checkbox">
             <label>Force redirect HTTP request to HTTPS<br>

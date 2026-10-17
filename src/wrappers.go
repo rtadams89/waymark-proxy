@@ -20,14 +20,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"imuslab.com/zoraxy/mod/dynamicproxy"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/mdns"
 	"imuslab.com/zoraxy/mod/uptime"
 	"imuslab.com/zoraxy/mod/utils"
-	"imuslab.com/zoraxy/mod/wakeonlan"
 )
 
 /*
@@ -45,9 +42,9 @@ type TrafficMapUpstream struct {
 
 // TrafficMapProxy represents a proxy rule node for the traffic flow diagram
 type TrafficMapProxy struct {
-	Domain       string               `json:"domain"`
-	Disabled     bool                 `json:"disabled"`
-	RequestCount int                  `json:"requestCount"`
+	Domain       string                `json:"domain"`
+	Disabled     bool                  `json:"disabled"`
+	RequestCount int                   `json:"requestCount"`
 	Upstreams    []*TrafficMapUpstream `json:"upstreams"`
 }
 
@@ -66,7 +63,9 @@ func HandleTrafficMapData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Helper to look up today's request count for a given key
-	lookupCount := func(m interface{ Load(key interface{}) (interface{}, bool) }, key string) int {
+	lookupCount := func(m interface {
+		Load(key interface{}) (interface{}, bool)
+	}, key string) int {
 		if v, ok := m.Load(key); ok {
 			if count, ok := v.(int); ok {
 				return count
@@ -294,113 +293,6 @@ func HandleMdnsListing(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-func HandleMdnsScanning(w http.ResponseWriter, r *http.Request) {
-	if mdnsScanner == nil {
-		utils.SendErrorResponse(w, "mDNS scanner is disabled on this host")
-		return
-	}
-	domain, err := utils.PostPara(r, "domain")
-	var hosts []*mdns.NetworkHost
-	if err != nil {
-		//Search for arozos node
-		hosts = mdnsScanner.Scan(30, "")
-		previousmdnsScanResults = hosts
-	} else {
-		//Search for other nodes
-		hosts = mdnsScanner.Scan(30, domain)
-	}
-
-	js, _ := json.Marshal(hosts)
-	utils.SendJSONResponse(w, string(js))
-}
-
-/*
-	WAKE ON LAN
-
-	Handle wake on LAN
-	Support following methods
-	/?set=xxx&name=xxx Record a new MAC address into the database
-	/?wake=xxx Wake a server given its MAC address
-	/?del=xxx Delete a server given its MAC address
-	/ Default: list all recorded WoL MAC address
-*/
-
-func HandleWakeOnLan(w http.ResponseWriter, r *http.Request) {
-	set, _ := utils.PostPara(r, "set")
-	del, _ := utils.PostPara(r, "del")
-	wake, _ := utils.PostPara(r, "wake")
-	if set != "" {
-		//Get the name of the describing server
-		servername, err := utils.PostPara(r, "name")
-		if err != nil {
-			utils.SendErrorResponse(w, "invalid server name given")
-			return
-		}
-
-		//Check if the given mac address is a valid mac address
-		set = strings.TrimSpace(set)
-		if !wakeonlan.IsValidMacAddress(set) {
-			utils.SendErrorResponse(w, "invalid mac address given")
-			return
-		}
-
-		//Store this into the database
-		sysdb.Write("wolmac", set, servername)
-
-		utils.SendOK(w)
-	} else if wake != "" {
-		//Wake the target up by MAC address
-		if !wakeonlan.IsValidMacAddress(wake) {
-			utils.SendErrorResponse(w, "invalid mac address given")
-			return
-		}
-
-		SystemWideLogger.PrintAndLog("WoL", "Sending Wake on LAN magic packet to "+wake, nil)
-		err := wakeonlan.WakeTarget(wake)
-		if err != nil {
-			utils.SendErrorResponse(w, err.Error())
-			return
-		}
-
-		utils.SendOK(w)
-	} else if del != "" {
-		if !wakeonlan.IsValidMacAddress(del) {
-			utils.SendErrorResponse(w, "invalid mac address given")
-			return
-		}
-
-		sysdb.Delete("wolmac", del)
-		utils.SendOK(w)
-	} else {
-		//List all the saved WoL MAC Address
-		entries, err := sysdb.ListTable("wolmac")
-		if err != nil {
-			utils.SendErrorResponse(w, "unknown error occured")
-			return
-		}
-
-		type MacAddrRecord struct {
-			ServerName string
-			MacAddr    string
-		}
-
-		results := []*MacAddrRecord{}
-		for _, keypairs := range entries {
-			macAddr := string(keypairs[0])
-			serverName := ""
-			json.Unmarshal(keypairs[1], &serverName)
-
-			results = append(results, &MacAddrRecord{
-				ServerName: serverName,
-				MacAddr:    macAddr,
-			})
-		}
-
-		js, _ := json.Marshal(results)
-		utils.SendJSONResponse(w, string(js))
-	}
-}
-
 /*
 	Zoraxy Host Info
 */
@@ -411,26 +303,22 @@ func HandleZoraxyInfo(w http.ResponseWriter, r *http.Request) {
 		NodeUUID          string
 		Development       bool
 		BootTime          int64
-		EnableSshLoopback bool
 		ZerotierConnected bool
 	}
 
 	displayUUID := nodeUUID
-	displayAllowSSHLB := *allowSshLoopback
 	displayBootTime := bootTime
 
 	if !authAgent.CheckAuth(r) {
 		displayUUID = "Unauthorized"
-		displayAllowSSHLB = false
 		displayBootTime = 0
 	}
 
 	info := ZoraxyInfo{
-		Version:           DISPLAY_VERSION,
-		NodeUUID:          displayUUID,
-		Development:       *development_build,
-		BootTime:          displayBootTime,
-		EnableSshLoopback: displayAllowSSHLB,
+		Version:     DISPLAY_VERSION,
+		NodeUUID:    displayUUID,
+		Development: *development_build,
+		BootTime:    displayBootTime,
 	}
 
 	js, _ := json.MarshalIndent(info, "", " ")
@@ -451,52 +339,5 @@ func HandleGeoIpLookup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	js, _ := json.Marshal(cc)
-	utils.SendJSONResponse(w, string(js))
-}
-
-// HandleIpAccessCheck resolves the GeoIP country code for the given IP and
-// evaluates every access rule to report whether the IP would be permitted.
-func HandleIpAccessCheck(w http.ResponseWriter, r *http.Request) {
-	ip, err := utils.GetPara(r, "ip")
-	if err != nil {
-		utils.SendErrorResponse(w, "ip not given")
-		return
-	}
-
-	// Resolve country code
-	cc, err := geodbStore.ResolveCountryCodeFromIP(ip)
-	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	// Evaluate each access rule
-	type RuleResult struct {
-		ID      string `json:"id"`
-		Name    string `json:"name"`
-		Allowed bool   `json:"allowed"`
-	}
-
-	type Result struct {
-		CountryIsoCode string       `json:"countryIsoCode"`
-		Rules          []RuleResult `json:"rules"`
-	}
-
-	allRules := accessController.ListAllAccessRules()
-	ruleResults := make([]RuleResult, 0, len(allRules))
-	for _, rule := range allRules {
-		ruleResults = append(ruleResults, RuleResult{
-			ID:      rule.ID,
-			Name:    rule.Name,
-			Allowed: rule.AllowIpAccess(ip),
-		})
-	}
-
-	result := Result{
-		CountryIsoCode: cc.CountryIsoCode,
-		Rules:          ruleResults,
-	}
-
-	js, _ := json.Marshal(result)
 	utils.SendJSONResponse(w, string(js))
 }
