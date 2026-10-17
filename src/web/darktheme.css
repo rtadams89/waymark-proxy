@@ -37,6 +37,7 @@ body:not(.darkTheme){
     --accent_strong: #0f766e;      /* text, links and icons on light backgrounds */
     --accent_soft: rgba(20, 184, 166, 0.12);
     --accent_navy: #123b5c;
+    --warning_text: #a36b00;
 
     --theme_background: linear-gradient(60deg, #123b5c 0%, #14b8a6 100%);
     --theme_background_inverted: linear-gradient(45deg, #0b2134 21%, #1d4466 79%);
@@ -72,6 +73,7 @@ body.darkTheme{
     --accent_strong: #2dd4bf;      /* text, links and icons on dark backgrounds */
     --accent_soft: rgba(45, 212, 191, 0.14);
     --accent_navy: #1d4561;
+    --warning_text: #f2c037;
 
     --theme_background: linear-gradient(60deg, #1d5a80 0%, #14b8a6 100%);
     --theme_background_inverted: linear-gradient(45deg, #0a1520 21%, #1a3346 79%);

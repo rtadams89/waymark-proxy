@@ -591,9 +591,12 @@ func haWithReadOnly(mw func(http.Handler) http.Handler) func(http.Handler) http.
 
 /* Cluster overview */
 
-// haClusterView lists every node with its last known state, for the HA
-// page and the status page panel. Other nodes are known only while
-// configuration sync is on (their state comes over the sync connection).
+// haClusterView lists every node with its state, for the HA page and the
+// status page panel. Other nodes are known only while configuration sync is
+// on (their state comes over the sync connection). A node's role, health,
+// floating IP and sync fields are reported only when its latest poll
+// answered; for an unreachable node only "lastRole" and "lastSeen" are
+// given, so a stale "active" is never mistaken for the current state.
 func haClusterView() []map[string]any {
 	cfg := haConfig()
 	self := haSelf(cfg)
@@ -612,21 +615,7 @@ func haClusterView() []map[string]any {
 		case !syncOn:
 			row["reachable"], row["error"] = false, "Status of other nodes is shown when configuration sync is on"
 		default:
-			ps := haSync.peers[n.Address]
-			if ps == nil {
-				row["reachable"], row["error"] = false, "Not checked yet"
-				break
-			}
-			row["lastSeen"] = ps.LastSeen
-			if ps.Err != "" {
-				row["reachable"], row["error"] = false, ps.Err
-			} else {
-				row["reachable"] = true
-			}
-			if ps.LastSeen > 0 {
-				last := ps.Info
-				info = &last
-			}
+			info = haPeerRow(row, haSync.peers[n.Address])
 		}
 		if info != nil {
 			row["role"] = info.Role
@@ -643,6 +632,26 @@ func haClusterView() []map[string]any {
 		out = append(out, row)
 	}
 	return out
+}
+
+// haPeerRow fills the reachability fields of another node's row and returns
+// its state when that state is current (the latest poll answered), else nil.
+func haPeerRow(row map[string]any, ps *haPeerStatus) *haSyncPeerInfo {
+	if ps == nil {
+		row["reachable"], row["error"] = false, "Not checked yet"
+		return nil
+	}
+	row["lastSeen"] = ps.LastSeen
+	if ps.Err != "" {
+		row["reachable"], row["error"] = false, ps.Err
+		if ps.LastSeen > 0 {
+			row["lastRole"] = ps.Info.Role
+		}
+		return nil
+	}
+	row["reachable"] = true
+	info := ps.Info
+	return &info
 }
 
 // HandleHACluster returns the cluster overview (status page panel).

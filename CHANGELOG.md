@@ -10,6 +10,15 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.1.1
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Fixed**
+- HA cluster overview: after a failover, the node that took over reported "More than one node is active" because it counted the unreachable node's last known role as current.
+  - The cluster view (`/api/ha/cluster`) now gives a node's role, health, floating IP and sync state only when it answered the latest poll. For an unreachable node it gives `lastRole` and `lastSeen` instead.
+  - The overview shows that role faded, labelled "when last seen". A failover is reported as one warning, e.g. "Failed over to waymark01 · waymark02 unreachable (was active, last seen 3 min ago)", or "No standby" when the unreachable node was the standby. Both nodes reporting active while reachable is still an error.
+
 ## 2.1.0
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

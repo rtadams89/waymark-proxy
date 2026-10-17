@@ -44,18 +44,33 @@
         }
     }
 
-    // problems(): short warnings for the summary line
+    // problems(): the summary line's problems, as {errors, warnings}.
+    // Only nodes that answered the latest poll have a role; an unreachable
+    // node has just lastRole/lastSeen, which describe the past.
     function problems(data){
-        let out = [], nodes = data.nodes || [];
-        let active = nodes.filter(n => n.role == "MASTER");
-        if (active.length > 1) out.push("More than one node is active (" + active.map(n => esc(n.name)).join(", ") + ")");
+        let errors = [], warnings = [], nodes = data.nodes || [];
+        let me = nodes.find(n => n.self);
+        let active = nodes.filter(n => n.reachable && n.role == "MASTER");
+        if (active.length > 1) errors.push("More than one node is active (" + active.map(n => esc(n.name)).join(", ") + ")");
         if (data.syncEnabled){
-            nodes.filter(n => !n.self && !n.reachable).forEach(n => out.push(esc(n.name) + " unreachable"));
-            nodes.filter(n => n.version && !n.versionMatch).forEach(n => out.push(esc(n.name) + " runs " + esc(n.version)));
+            nodes.filter(n => !n.self && !n.reachable).forEach(n => {
+                let seen = n.lastSeen ? "last seen " + since(n.lastSeen) + " ago" : "not seen yet";
+                if (me && me.role == "MASTER"){
+                    // This node holds the active role: a failover, or a missing standby
+                    if (n.lastRole == "MASTER"){
+                        warnings.push("Failed over to " + esc(me.name) + " · " + esc(n.name) + " unreachable (was active, " + seen + ")");
+                    }else{
+                        warnings.push("No standby · " + esc(n.name) + " unreachable (" + seen + ")");
+                    }
+                }else{
+                    errors.push(esc(n.name) + " unreachable (" + (n.lastRole == "MASTER" ? "was active, " : "") + seen + ")");
+                }
+            });
+            nodes.filter(n => n.reachable && n.version && !n.versionMatch).forEach(n => errors.push(esc(n.name) + " runs " + esc(n.version)));
         }
-        nodes.filter(n => n.reachable && n.role && n.heartbeatOk === false).forEach(n => out.push(esc(n.name) + " unhealthy"));
-        nodes.filter(n => n.reachable && (n.role == "FAULT" || n.role == "STOP")).forEach(n => out.push(esc(n.name) + ": " + ROLES[n.role][0]));
-        return out;
+        nodes.filter(n => n.reachable && n.role && n.heartbeatOk === false).forEach(n => errors.push(esc(n.name) + " unhealthy"));
+        nodes.filter(n => n.reachable && (n.role == "FAULT" || n.role == "STOP")).forEach(n => errors.push(esc(n.name) + ": " + ROLES[n.role][0]));
+        return {errors: errors, warnings: warnings};
     }
 
     // haRenderCluster fills container with the overview. data: {enabled,
@@ -70,7 +85,8 @@
             (holder ? `<i class="green map marker alternate icon"></i>Floating IP <span style="font-family: monospace;">${esc(data.vip)}</span> on <b>${esc(holder.name)}</b>`
                     : `<i class="red map marker alternate icon"></i>Floating IP <span style="font-family: monospace;">${esc(data.vip)}</span> is not held by any node it can see`) +
             ` · ${healthy} of ${nodes.length} nodes healthy` +
-            (probs.length ? `<div style="margin-top: 0.3em; color: #db2828;"><i class="exclamation triangle icon"></i>${probs.join(" · ")}</div>` : "") +
+            (probs.errors.length ? `<div style="margin-top: 0.3em; color: #db2828;"><i class="exclamation triangle icon"></i>${probs.errors.join(" · ")}</div>` : "") +
+            (probs.warnings.length ? `<div style="margin-top: 0.3em; color: var(--warning_text, #a36b00);"><i class="exclamation circle icon"></i>${probs.warnings.join("<br>")}</div>` : "") +
             (!data.syncEnabled && nodes.length > 1 ? `<div style="margin-top: 0.3em; opacity: 0.7;">Other nodes' status appears when configuration sync is on.</div>` : "") +
             `</div>`;
 
@@ -78,18 +94,17 @@
             let name = `<b>${esc(n.name)}</b>` + (n.self ? ` <span class="ui mini basic label" style="margin-left: 0.3em;">this node</span>` : "") +
                 `<div style="font-family: monospace; font-size: 0.85em; opacity: 0.7;">${esc(n.address)}</div>`;
             let role, health, sync, ver, seen;
-            if (!n.role && !n.reachable){
+            if (!n.reachable && !n.lastRole){
                 role = `<span style="opacity: 0.6;">-</span>`;
                 health = `<span style="opacity: 0.7;" title="${esc(n.error)}"><i class="grey question circle icon"></i>${esc(n.error || "Unknown")}</span>`;
                 sync = ver = seen = `<span style="opacity: 0.6;">-</span>`;
             }else{
                 role = rolePill(n.role) + (n.vipHeld ? ` <i class="green map marker alternate icon" title="Holds the floating IP"></i>` : "");
                 if (!n.reachable){
-                    // Only the last known role is shown, faded; the rest would be stale
-                    role = `<span style="opacity: 0.45;" title="Last known role">${rolePill(n.role)}</span>`;
+                    // Only the role it had when last seen, faded and labelled as history
+                    role = `<span style="opacity: 0.45;" title="Role when last seen, ${since(n.lastSeen)} ago">${rolePill(n.lastRole)}</span><div style="font-size: 0.8em; opacity: 0.6;">when last seen</div>`;
                     health = `<i class="red unlink icon"></i>Unreachable <span style="opacity: 0.7;" title="${esc(n.error)}">(last seen ${since(n.lastSeen)} ago)</span>`;
-                    sync = seen = `<span style="opacity: 0.6;">-</span>`;
-                    ver = n.version ? `<span style="opacity: 0.6;">${esc(n.version)}</span>` : "-";
+                    sync = seen = ver = `<span style="opacity: 0.6;">-</span>`;
                     return `<tr><td>${name}</td><td>${role}</td><td>${health}</td><td>${sync}</td>` +
                         (opts.compact ? "" : `<td>${ver}</td>`) + `<td>${seen}</td></tr>`;
                 }else if (n.heartbeatOk){
