@@ -1,15 +1,15 @@
-// Package hacluster (custom fork) is Zoraxy's side of an active/passive pair
+// Package hacluster (custom fork) is Waymark's side of an active/passive pair
 // run by keepalived.
 //
-// Zoraxy runs as an unprivileged user, so it never writes keepalived's
+// Waymark runs as an unprivileged user, so it never writes keepalived's
 // config. It writes a small settings file for this node (cluster.env) into
-// a folder it owns; a root-owned helper (deploy/zoraxy-ha-apply, started by
+// a folder it owns; a root-owned helper (deploy/waymark-ha-apply, started by
 // a systemd path unit) validates it, renders keepalived.conf from a fixed
 // template, tests it and reloads keepalived, then reports the result.
 //
-// keepalived in turn runs two root-owned scripts as the zoraxy user: a
-// health check that reads Zoraxy's heartbeat file, and a notify script that
-// records the node's role (MASTER, BACKUP, FAULT) for Zoraxy to read.
+// keepalived in turn runs two root-owned scripts as the waymark user: a
+// health check that reads Waymark's heartbeat file, and a notify script that
+// records the node's role (MASTER, BACKUP, FAULT) for Waymark to read.
 package hacluster
 
 import (
@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-// Node is one Zoraxy instance in the pair.
+// Node is one Waymark instance in the pair.
 type Node struct {
 	Name      string `json:"name"`      // lowercase letters, digits and dashes
 	Address   string `json:"address"`   // the node's own IPv4 address on the shared VLAN
@@ -171,7 +171,7 @@ func (c *Config) FindSelf(local []net.IP) int {
 func (c *Config) Settings(self int, applyID int64, nodeName string) string {
 	var b strings.Builder
 	w := func(k, v string) { b.WriteString(k + "=" + v + "\n") }
-	b.WriteString("# Written by Zoraxy (HA settings for this node). Applied by zoraxy-ha-apply.\n")
+	b.WriteString("# Written by Waymark (HA settings for this node). Applied by waymark-ha-apply.\n")
 	w("APPLY_ID", strconv.FormatInt(applyID, 10))
 	if !c.Enabled || self < 0 || self >= len(c.Nodes) {
 		w("ENABLED", "0")

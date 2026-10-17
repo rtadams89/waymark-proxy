@@ -379,7 +379,7 @@ func (p *ReverseProxy) ProxyHTTP(rw http.ResponseWriter, req *http.Request, rrr 
 	injectUserDefinedHeaders(outreq.Header, rrr.UpstreamHeaders)
 
 	// Rewrite outbound UA top upstream, must be after user headers
-	rewriteUserAgent(outreq.Header, "Zoraxy/"+rrr.Version)
+	rewriteUserAgent(outreq.Header, "Waymark/"+rrr.Version)
 
 	//Fix proxmox transfer encoding bug if detected Proxmox Cookie
 	if rrr.DisableChunkedTransferEncoding || domainsniff.IsProxmox(req) {
@@ -489,7 +489,7 @@ func (p *ReverseProxy) ProxyHTTP(rw http.ResponseWriter, req *http.Request, rrr 
 
 	//Add debug X-Proxy-By tracker
 	if rrr.DevelopmentMode {
-		res.Header.Set("x-proxy-by", "zoraxy/"+rrr.Version)
+		res.Header.Set("x-proxy-by", "waymark/"+rrr.Version)
 	}
 
 	//Custom Location header rewriter functions

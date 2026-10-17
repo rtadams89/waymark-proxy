@@ -39,9 +39,9 @@
       <!--  Networked Containers Lists -->
       <div class="ui header">
         <div class="content">
-          Containers on Zoraxy's Networks
+          Containers on Waymark's Networks
           <div class="sub header">
-            These containers share a network with Zoraxy.<br />
+            These containers share a network with Waymark.<br />
             Your networks must support Docker DNS-based name resolution.
           </div>
         </div>
@@ -67,7 +67,7 @@
         <div class="content">
           Containers on different Networks
           <div class="sub header">
-            These containers are not connected to Zoraxy's networks.<br />
+            These containers are not connected to Waymark's networks.<br />
             Manual configuration is required.
           </div>
         </div>
@@ -200,7 +200,7 @@
           )
         );
 
-        // identify the Zoraxy container to determine shared networks
+        // identify the Waymark container to determine shared networks
         const zoraxyContainer = containers.find(
           (container) =>
             container.Labels &&
@@ -249,7 +249,7 @@
             return;
           }
 
-          // networks that are shared with Zoraxy
+          // networks that are shared with Waymark
           const sharedNetworks = Object.values(
             container.NetworkSettings.Networks
           ).filter((network) => zoraxyNetworkIDs.includes(network.NetworkID));

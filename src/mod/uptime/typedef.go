@@ -8,7 +8,7 @@ import (
 
 const (
 	LOG_MODULE_NAME           = "uptime-monitor"
-	UPTIME_MONITOR_USER_AGENT = "zoraxy-uptime/1.4"
+	UPTIME_MONITOR_USER_AGENT = "waymark-uptime/1.4"
 )
 
 type Record struct {

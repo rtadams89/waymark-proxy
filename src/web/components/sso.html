@@ -7,7 +7,7 @@
     <div class="ui top attached tabular menu ssoTabs">
         <a class="item active" data-tab="forward_auth_tab">Forward Auth</a>
         <a class="item" data-tab="oauth2_tab">OAuth 2.0</a>
-        <a class="item" data-tab="zoraxy_sso_tab">Zoraxy Auth</a>
+        <a class="item" data-tab="zoraxy_sso_tab">Waymark Auth</a>
         </div>
         <div class="ui bottom attached tab segment active" data-tab="forward_auth_tab">
         <!-- Forward Auth -->
@@ -182,7 +182,7 @@
             <div class="field">
                 <label for="oauth2TokenUrl">Token URL</label>
                 <input type="text" id="oauth2TokenUrl" name="oauth2TokenUrl" placeholder="Enter Token URL">
-                <small>URL used by Zoraxy to exchange a valid OAuth2 authentication code for an access token. Optional if Well-Known url is configured.</small>
+                <small>URL used by Waymark to exchange a valid OAuth2 authentication code for an access token. Optional if Well-Known url is configured.</small>
             </div>
 
             <div class="field">
@@ -208,9 +208,9 @@
         </form>
         </div>
         <div class="ui bottom attached tab segment" data-tab="zoraxy_sso_tab">
-            <!-- Zoraxy Auth -->
-            <h2>Zoraxy Auth</h2>
-            <p>Zoraxy Auth is a built-in SSO authentication system that allows you to manage users directly within Zoraxy.</p>
+            <!-- Waymark Auth -->
+            <h2>Waymark Auth</h2>
+            <p>Waymark Auth is a built-in SSO authentication system that allows you to manage users directly within Waymark.</p>
             <!-- Setup Instructions -->
             <div class="ui accordion zorxAuthGatewayInstructions">
                 <div class="title">
@@ -219,17 +219,17 @@
                 </div>
                 <div class="content">
                     <div class="ui segment">
-                        <p>To use Zoraxy Auth, you will need to configure the gateway settings below.</p>
+                        <p>To use Waymark Auth, you will need to configure the gateway settings below.</p>
                         <ol>
-                            <li>Enable the Zoraxy Auth Gateway by toggling the switch below.</li>
-                            <li>Set up an HTTP proxy rule to forward the SSO domain to the Zoraxy Auth SSO port. <br>
+                            <li>Enable the Waymark Auth Gateway by toggling the switch below.</li>
+                            <li>Set up an HTTP proxy rule to forward the SSO domain to the Waymark Auth SSO port. <br>
                                 e.g. <code>auth.example.com → localhost:5489</code></li>
                             <li>Configure the SSO Redirect URL in the settings below to point to the SSO domain.<br>
                                 e.g. <code>https://auth.example.com</code></li>
                         </ol>
                         <br>
                         <p><b>Logout Instructions</b></p>
-                        <p>If your site uses Zoraxy Auth for SSO, for better UX, add a hyperlink to the logout URL in your application's navigation or user menu.</p>
+                        <p>If your site uses Waymark Auth for SSO, for better UX, add a hyperlink to the logout URL in your application's navigation or user menu.</p>
                         <ol>
                             <li>To logout from SSO, navigate to the SSO domain and append <code>/logout</code> to the URL.<br>
                                 e.g. <code>https://auth.example.com/logout</code></li>
@@ -252,14 +252,14 @@
                  <div class="field" style="margin-top: 2em;">
                     <div class="ui toggle checkbox">
                         <input type="checkbox" id="zorxAuthGatewayEnabled" name="gatewayEnabled">
-                        <label for="zorxAuthGatewayEnabled">Enable Zoraxy Auth Gateway<br>
-                        <small>Enable or disable the Zoraxy Auth Gateway (login interface) web request handling. Already authentication sessions will remain active until they expire</small></label>
+                        <label for="zorxAuthGatewayEnabled">Enable Waymark Auth Gateway<br>
+                        <small>Enable or disable the Waymark Auth Gateway (login interface) web request handling. Already authentication sessions will remain active until they expire</small></label>
                     </div>
                  </div>
                 <div class="field" style="margin-top: 1.4em;">
                     <label for="zorxAuthGatewayPort">Gateway Port</label>
                     <input type="number" id="zorxAuthGatewayPort" name="gatewayPort" placeholder="5489" min="1" max="65535" value="5489">
-                    <small>Port number for the Zoraxy Auth Gateway to listen on</small>
+                    <small>Port number for the Waymark Auth Gateway to listen on</small>
                 </div>
                 <button class="ui basic button" type="submit"><i class="green check icon"></i> Apply Change</button>
                 <button class="ui basic button" type="button" onclick="openZorxAuthUserEditor();"><i class="ui green users icon"></i> Manage Users</button>
@@ -269,7 +269,7 @@
             <!-- SSO Settings -->
             <form class="ui form" action="#" id="zorxAuthSettings">
                 <h3>SSO Behavior</h3>
-                <p>Configure the behavior of the Zoraxy SSO authentication system.</p>
+                <p>Configure the behavior of the Waymark SSO authentication system.</p>
                 <div class="field">
                     <label for="zorxAuthSSORedirectURL">SSO Redirect URL</label>
                     <input type="text" id="zorxAuthSSORedirectURL" name="ssoRedirectURL" placeholder="https://auth.example.com">
@@ -328,7 +328,7 @@
                             <div class="ui divider"></div>
                             <b>Login Page Appearance</b>
                             <br><br>
-                            <p><small>Replace the logo, wording and panel artwork on the Zoraxy Auth login page with your own resources.</small></p>
+                            <p><small>Replace the logo, wording and panel artwork on the Waymark Auth login page with your own resources.</small></p>
                             <button class="ui basic button" type="button" onclick="openZorxAuthCustomization();"><i class="ui purple paint brush icon"></i> Customization</button>
                         </div>
                     </div>
@@ -355,10 +355,10 @@
         /* Load OAuth 2.0 settings from backend */
         getOAuth20Settings();
 
-        /* Load Zoraxy Auth settings from backend */
+        /* Load Waymark Auth settings from backend */
         getZorxAuthSettings();
 
-        /* Load Zoraxy Auth Gateway settings from backend */
+        /* Load Waymark Auth Gateway settings from backend */
         getZorxAuthGatewaySettings();
 
         /* Add more initialization code here if needed */
@@ -645,7 +645,7 @@
     });
 
     /*
-        Zoraxy Auth settings fetcher.
+        Waymark Auth settings fetcher.
     */
     function getZorxAuthSettings() {
         $.cjax({
@@ -676,7 +676,7 @@
                 updateLogoutUrlDisplay();
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Error fetching Zoraxy Auth settings:', textStatus, errorThrown);
+                console.error('Error fetching Waymark Auth settings:', textStatus, errorThrown);
             }
         });
     }
@@ -701,7 +701,7 @@
     });
 
     /*
-        Zoraxy Auth settings update handler.
+        Waymark Auth settings update handler.
     */
     $("#zorxAuthSettings").on("submit", function(event) {
         event.preventDefault();
@@ -723,7 +723,7 @@
         const rateLimitPerIp = parseInt($('#zorxAuthRateLimitPerIp').val()) || 60;
         const useExpotentialBackoff = $('#zorxAuthUseExpotentialBackoff').is(':checked');
 
-        console.log(`Updating Zoraxy Auth settings. SSO Redirect: ${ssoRedirectURL}. Session Set URL: ${ssoSessionSetURL}. Cookie: ${cookieName}. Duration: ${cookieDuration}. RememberMe Duration: ${cookieDurationRememberMe}. Rate Limit: ${enableRateLimit}. Rate Limit/IP: ${rateLimitPerIp}. Exponential Backoff: ${useExpotentialBackoff}`);
+        console.log(`Updating Waymark Auth settings. SSO Redirect: ${ssoRedirectURL}. Session Set URL: ${ssoSessionSetURL}. Cookie: ${cookieName}. Duration: ${cookieDuration}. RememberMe Duration: ${cookieDurationRememberMe}. Rate Limit: ${enableRateLimit}. Rate Limit/IP: ${rateLimitPerIp}. Exponential Backoff: ${useExpotentialBackoff}`);
 
         $.cjax({
             url: '/api/sso/zorxauth/provider',
@@ -743,12 +743,12 @@
                     msgbox(data.error, false);
                     return;
                 }
-                msgbox('Zoraxy Auth settings updated', true);
-                console.log('Zoraxy Auth settings updated:', data);
+                msgbox('Waymark Auth settings updated', true);
+                console.log('Waymark Auth settings updated:', data);
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Error updating Zoraxy Auth settings:', textStatus, errorThrown);
-                msgbox('Error updating Zoraxy Auth settings, check console', false);
+                console.error('Error updating Waymark Auth settings:', textStatus, errorThrown);
+                msgbox('Error updating Waymark Auth settings, check console', false);
             }
         });
     });
@@ -767,18 +767,18 @@
 
                 getZorxAuthSettings();
 
-                msgbox('Zoraxy Auth settings cleared', true);
-                console.log('Zoraxy Auth settings cleared:', data);
+                msgbox('Waymark Auth settings cleared', true);
+                console.log('Waymark Auth settings cleared:', data);
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Error clearing Zoraxy Auth settings:', textStatus, errorThrown);
-                msgbox('Error clearing Zoraxy Auth settings, check console', false);
+                console.error('Error clearing Waymark Auth settings:', textStatus, errorThrown);
+                msgbox('Error clearing Waymark Auth settings, check console', false);
             }
         });
     });
 
     /*
-        Zoraxy Auth Gateway settings fetcher.
+        Waymark Auth Gateway settings fetcher.
     */
     function setZorxAuthGatewayRunningState(gatewayEnabled, isRunning, gatewayPort) {
         if (gatewayPort !== undefined && gatewayPort !== null && gatewayPort !== "") {
@@ -823,13 +823,13 @@
                 );
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Error fetching Zoraxy Auth Gateway settings:', textStatus, errorThrown);
+                console.error('Error fetching Waymark Auth Gateway settings:', textStatus, errorThrown);
             }
         });
     }
 
     /*
-        Zoraxy Auth Gateway settings update handler.
+        Waymark Auth Gateway settings update handler.
     */
     $("#zorxAuthGatewaySettings").on("submit", function(event) {
         event.preventDefault();
@@ -837,7 +837,7 @@
         const gatewayEnabled = $('#zorxAuthGatewayEnabled').is(':checked');
         const gatewayPort = parseInt($('#zorxAuthGatewayPort').val()) || 5489;
 
-        console.log(`Updating Zoraxy Auth Gateway settings. Enabled: ${gatewayEnabled}. Port: ${gatewayPort}`);
+        console.log(`Updating Waymark Auth Gateway settings. Enabled: ${gatewayEnabled}. Port: ${gatewayPort}`);
 
         $.cjax({
             url: '/api/sso/zorxauth/gateway',
@@ -851,8 +851,8 @@
                     msgbox(data.error, false);
                     return;
                 }
-                msgbox('Zoraxy Auth Gateway settings updated', true);
-                console.log('Zoraxy Auth Gateway settings updated:', data);
+                msgbox('Waymark Auth Gateway settings updated', true);
+                console.log('Waymark Auth Gateway settings updated:', data);
                 
                 // Reload settings to update running status
                 setTimeout(function() {
@@ -860,8 +860,8 @@
                 }, 500);
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Error updating Zoraxy Auth Gateway settings:', textStatus, errorThrown);
-                msgbox('Error updating Zoraxy Auth Gateway settings, check console', false);
+                console.error('Error updating Waymark Auth Gateway settings:', textStatus, errorThrown);
+                msgbox('Error updating Waymark Auth Gateway settings, check console', false);
             }
         });
     });

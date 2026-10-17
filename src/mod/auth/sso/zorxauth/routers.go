@@ -207,7 +207,7 @@ func isAjaxRequest(r *http.Request) bool {
 
 // setAuthHeaders sets the authentication headers to be passed to the backend service after successful authentication
 func (ar *AuthRouter) setAuthHeaders(r *http.Request, user *User) {
-	r.Header.Set("X-Auth-Method", "zoraxy_sso")
+	r.Header.Set("X-Auth-Method", "waymark_sso")
 	r.Header.Set("Remote-User", user.Username) //Authelia compatibility
 	r.Header.Set("Remote-Name", user.Username) //Authelia compatibility
 	r.Header.Del("Remote-Groups")

@@ -7,7 +7,7 @@
         <meta name="theme-color" content="#4b75ff">
         <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
         <link rel="icon" type="image/png" href="./favicon.png" />
-        <title>Control Panel | Zoraxy</title>
+        <title>Control Panel | Waymark</title>
         <link rel="stylesheet" href="script/semantic/semantic.min.css">
         <script src="script/jquery-3.6.0.min.js"></script>
         <script src="script/semantic/semantic.min.js"></script>
@@ -299,7 +299,7 @@
         <br>
         <div class="ui divider"></div>
         <div class="ui container" style="color: grey; font-size: 90%; padding-bottom: 1em;">
-            <p><a href="https://zoraxy.aroz.org" target="_blank">Zoraxy</a> <span class="zrversion"></span> © 2021 - <span class="year"></span> tobychui. Licensed under AGPL</p>
+            <p><a href="https://github.com/rtadams89/waymark-proxy" target="_blank">Waymark Proxy</a> <span class="zrversion"></span> © 2026 Ryan Adams · Based on <a href="https://github.com/tobychui/zoraxy" target="_blank">Zoraxy</a> © 2021 - <span class="year"></span> tobychui and contributors · Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">GNU AGPL v3</a>, with no warranty · <a href="https://github.com/rtadams89/waymark-proxy" target="_blank">Source code</a></p>
         </div>
         
         <div id="messageBox" class="ui green floating big compact message">
@@ -318,7 +318,7 @@
         </div>
 
         <div id="tourModal" class="nofocus" position="center">
-            <h4 class="tourStepTitle">Welcome to Zoraxy Tour</h4>
+            <h4 class="tourStepTitle">Welcome to Waymark Tour</h4>
             <p class="tourStepContent">This is a simplified tour to show some of what it can do.
                 Use your keyboard or click the next button to get going.</p>
             <div class="ui divider"></div>
@@ -572,7 +572,7 @@
 
                 // Update document title
                 var tabLabel = $(targetBtn).clone().children('i').remove().end().text().trim();
-                document.title = (tabLabel ? tabLabel + ' | ' : '') + 'Zoraxy';
+                document.title = (tabLabel ? tabLabel + ' | ' : '') + 'Waymark';
 
                 // Expand the group containing this tab if it is collapsed
                 expandGroupContaining(tabID);

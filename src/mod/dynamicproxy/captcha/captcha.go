@@ -39,8 +39,8 @@ var googleRecaptchaV2Template string
 var googleRecaptchaV3Template string
 
 const (
-	CookieName             = "zoraxy_captcha_session"
-	VerifyPath             = "/.zoraxy/captcha/verify"
+	CookieName             = "waymark_captcha_session"
+	VerifyPath             = "/.waymark/captcha/verify"
 	DefaultSessionDuration = 3600 // 1 hour in seconds
 	CloudflareTurnstileAPI = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 	GoogleRecaptchaAPIv2v3 = "https://www.google.com/recaptcha/api/siteverify"

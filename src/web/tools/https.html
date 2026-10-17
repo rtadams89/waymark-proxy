@@ -6,7 +6,7 @@
         <meta charset="UTF-8">
         <meta name="theme-color" content="#4b75ff">
         <link rel="icon" type="image/png" href="./favicon.png" />
-        <title>HTTPS Setup Wizard | Zoraxy</title>
+        <title>HTTPS Setup Wizard | Waymark</title>
         <link rel="stylesheet" href="../script/semantic/semantic.min.css">
         <script src="../script/jquery-3.6.0.min.js"></script>
         <script src="../../script/ao_module.js"></script>
@@ -32,13 +32,13 @@
             <div class="ui segment">
                 <h3 class="ui header">
                     HTTPS (TLS/SSL Certificate) Setup Wizard
-                    <div class="sub header">This tool help you setup https with your domain / subdomain on your Zoraxy host. <br>
+                    <div class="sub header">This tool help you setup https with your domain / subdomain on your Waymark host. <br>
                     Follow the steps below to get started</div>
                 </h3>
             </div>
             <div class="ui segment stepContainer" step="1">
                 <h4 class="ui header">
-                    1. Setup Zoraxy to listen to port 80 or 443 and start listening
+                    1. Setup Waymark to listen to port 80 or 443 and start listening
                     <div class="sub header">ACME can only works on port 80 (or 80 redirected 443). Please make sure Zoarxy is listening to either one of the ports.</div>
                 </h4>
                 <button class="ui basic green button" onclick="checkStep(1, step1Callback, this);">Check Port Setup</button>
@@ -48,8 +48,8 @@
             </div>
             <div class="ui segment stepContainer" step="2">
                 <h4 class="ui header">
-                    2. If you are under NAT, setup Port Forward and forward external port 80 (<b style="color: rgb(206, 29, 29); font-weight:bolder;">and</b> 443, if you are using 443) to your Zoraxy's LAN IP address port 80 (and 443)
-                    <div class="sub header">If your Zoraxy server IP address starts with 192.168., you are mostly under a NAT router.</div>
+                    2. If you are under NAT, setup Port Forward and forward external port 80 (<b style="color: rgb(206, 29, 29); font-weight:bolder;">and</b> 443, if you are using 443) to your Waymark's LAN IP address port 80 (and 443)
+                    <div class="sub header">If your Waymark server IP address starts with 192.168., you are mostly under a NAT router.</div>
                 </h4>
                 <small>The check function below will use public ip to check if port is opened. Make sure your host is reachable from the internet!<br>
                     <b style="color: rgb(206, 29, 29); font-weight:bolder;">If you are using 443, you still need to forward port 80 for performing 80 to 443 redirect.</b></small><br>
@@ -61,7 +61,7 @@
 
             <div class="ui segment stepContainer" step="3">
                 <h4 class="ui header">
-                    3. Point your domain (or sub-domain) to your Zoraxy server public IP address
+                    3. Point your domain (or sub-domain) to your Waymark server public IP address
                     <div class="sub header">DNS records might takes 5 - 10 minutes to take effect. If checking did not poss the first time, wait for a few minutes and retry.</div>
                 </h4>
                 <div class="ui fluid input">
@@ -77,7 +77,7 @@
             <div class="ui segment stepContainer" step="4">
                 <h4 class="ui header">
                     4. Request a public CA to assign you a certificate
-                    <div class="sub header">This process might take a few minutes and usually fully automated. If there are any error, you can see Zoraxy STDOUT / log for more information.</div>
+                    <div class="sub header">This process might take a few minutes and usually fully automated. If there are any error, you can see Waymark STDOUT / log for more information.</div>
                 </h4>
                 <div class="ui form">
                     <div class="field">
@@ -95,7 +95,7 @@
                     <div class="field multiDomainOnly" style="display:none;">
                       <label>Matching Rule</label>
                       <input id="filenameInput" type="text" placeholder="Enter filename (no file extension)">
-                      <small>Matching rule to let Zoraxy pick which certificate to use (Also be used as filename). Usually is the longest common suffix of the entered addresses. (e.g. dev.example.com)</small>
+                      <small>Matching rule to let Waymark pick which certificate to use (Also be used as filename). Usually is the longest common suffix of the entered addresses. (e.g. dev.example.com)</small>
                     </div>
                     <div class="field multiDomainOnly" style="display:none;">
                       <button class="ui basic fluid button" onclick="autoDetectMatchingRules();">Auto Detect Matching Rule</button>
@@ -251,7 +251,7 @@
                 }else{
                     $(resultContainer).html(`<div class="ui red message">
                         <i class="ui remove icon"></i> Domain is reachable but there are no HTTP server listening<br>
-                        Make sure you have point to the correct IP address and there are not another proxy server above Zoraxy.
+                        Make sure you have point to the correct IP address and there are not another proxy server above Waymark.
                     </div>`);
                 }
             }   

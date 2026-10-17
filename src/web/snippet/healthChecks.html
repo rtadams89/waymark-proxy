@@ -40,7 +40,7 @@
 
             <div class="ui blue message" id="hcSingleUpstreamNote" style="display:none;">
                 <i class="info circle icon"></i>
-                This rule has only one upstream. While it fails its health checks, visitors get Zoraxy's "Web server is down" (521) error page straight away. Add a second upstream to fail over to it instead.
+                This rule has only one upstream. While it fails its health checks, visitors get Waymark's "Web server is down" (521) error page straight away. Add a second upstream to fail over to it instead.
             </div>
 
             <div class="ui form" id="hcForm">
@@ -169,7 +169,7 @@
             <div class="ui divider"></div>
             <div class="ui bulleted list hcHint">
                 <div class="item">A disabled upstream gets no traffic. If every upstream of the rule is disabled, visitors get the "Web server is down" (521) error page until one passes its checks again.</div>
-                <div class="item">Every enable and disable is written to Zoraxy's log with its reason, under <code>[healthcheck]</code>.</div>
+                <div class="item">Every enable and disable is written to Waymark's log with its reason, under <code>[healthcheck]</code>.</div>
                 <div class="item">Active checks also feed the Uptime Monitor page: one entry per 5 minutes, marked down if the upstream was out of load balancing at any point in it. Rules without active checks are not shown there.</div>
                 <div class="item">ICMP ping uses an unprivileged ping socket (allowed by default on Debian through <code>net.ipv4.ping_group_range</code>) and falls back to a raw socket.</div>
                 <div class="item">If the same backend address is used by several rules, it is taken out of load balancing when any rule's checks find it unhealthy.</div>

@@ -1,14 +1,14 @@
 [Unit]
-Description=Build keepalived config from Zoraxy HA settings
+Description=Build keepalived config from Waymark HA settings
 After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/zoraxy-ha-apply
+ExecStart=/usr/local/sbin/waymark-ha-apply
 # Only needs to write the keepalived config and its result file, and to ask
 # systemd to reload keepalived
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=full
 ProtectHome=yes
-ReadWritePaths=/etc/keepalived /var/lib/zoraxy-ha
+ReadWritePaths=/etc/keepalived /var/lib/waymark-ha

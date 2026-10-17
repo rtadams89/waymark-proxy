@@ -44,7 +44,7 @@ loop_ttl:
 			Body: &icmp.Echo{
 				ID:   id,
 				Seq:  seq,
-				Data: []byte("zoraxy_trace"),
+				Data: []byte("waymark_trace"),
 			},
 		}
 		// serialize the ICMP message
@@ -143,7 +143,7 @@ loop_ttl:
 			Body: &icmp.Echo{
 				ID:   id,
 				Seq:  seq,
-				Data: []byte("zoraxy_trace"),
+				Data: []byte("waymark_trace"),
 			},
 		}
 		// serialize the ICMP message

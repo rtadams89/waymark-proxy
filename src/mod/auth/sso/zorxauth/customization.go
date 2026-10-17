@@ -116,7 +116,7 @@ type BrandingConfig struct {
 
 func getDefaultBranding() *BrandingConfig {
 	return &BrandingConfig{
-		BrandText:     "Zoraxy Auth",
+		BrandText:     "Waymark Auth",
 		WatermarkText: "Authentication Gateway",
 	}
 }

@@ -100,7 +100,7 @@
               </div>
               <small><i class="ui red info circle icon"></i> Domain in red are expired</small><br>
               <div class="ui yellow message">
-                Certificate Renew only works on the certification authority (CA) supported by Zoraxy. Check Zoraxy wiki for more information on supported list of CAs.
+                Certificate Renew only works on the certification authority (CA) supported by Waymark (the same as Zoraxy). Check the Zoraxy wiki for more information on supported list of CAs.
               </div>
               <button class="ui basic right floated button" onclick="saveAutoRenewPolicy();"><i class="blue save icon"></i> Save Changes</button>
               <button id="renewSelectedButton" onclick="renewNow();" class="ui basic right floated disabled button"><i class="yellow refresh icon"></i> Renew Selected</button>
@@ -124,7 +124,7 @@
     <div class="field multiDomainOnly" style="display:none;">
       <label>Matching Rule</label>
       <input id="filenameInput" type="text" placeholder="Enter filename (no file extension)">
-      <small>Matching rule to let Zoraxy pick which certificate to use (Also be used as filename). Usually is the longest common suffix of the entered addresses. (e.g. dev.example.com)</small>
+      <small>Matching rule to let Waymark pick which certificate to use (Also be used as filename). Usually is the longest common suffix of the entered addresses. (e.g. dev.example.com)</small>
     </div>
     <div class="field multiDomainOnly" style="display:none;">
       <button class="ui basic fluid button" onclick="autoDetectMatchingRules();">Auto Detect Matching Rule</button>

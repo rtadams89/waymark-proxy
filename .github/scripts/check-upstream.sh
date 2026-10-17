@@ -99,7 +99,7 @@ fi
 
 # Prepare the merge pull request
 merge_note="The **Merge upstream release** workflow has been started for ${tag}; its pull request will appear under Pull requests in a few minutes."
-if ! gh workflow run upstream-merge.yml --repo "$GITHUB_REPOSITORY" --ref custom -f tag="$tag" 2>/tmp/dispatch.err; then
+if ! gh workflow run upstream-merge.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$tag" 2>/tmp/dispatch.err; then
   merge_note="Could not start the **Merge upstream release** workflow automatically ($(head -c 300 /tmp/dispatch.err)). Run it from the Actions tab with tag \`${tag}\`."
 fi
 
@@ -108,17 +108,17 @@ published="$(jq -r '.published_at // ""' <<<"$release_json" | cut -c1-10)"
 notes="$(jq -r '.body // ""' <<<"$release_json" | head -c 50000)"
 body_file="$(mktemp)"
 cat >"$body_file" <<EOF
-Upstream [${UPSTREAM_REPO}](https://github.com/${UPSTREAM_REPO}) published **${tag}** on ${published}. This fork is based on **${base}**.
+Upstream [${UPSTREAM_REPO}](https://github.com/${UPSTREAM_REPO}) published **${tag}** on ${published}. Waymark is based on **${base}**.
 
 - Release: https://github.com/${UPSTREAM_REPO}/releases/tag/${tag}
-- Upstream changes not yet in this fork: https://github.com/${UPSTREAM_REPO}/compare/${since:-v${base}}...${tag}
+- Upstream changes not yet in Waymark: https://github.com/${UPSTREAM_REPO}/compare/${since:-v${base}}...${tag}
 
 ${merge_note}
 
 **To take the update**
-1. Review the pull request "Merge upstream Zoraxy ${tag}". It merges the release into \`custom\`, keeps the fork's removed folders removed, resets the version to \`${latest}-custom.1\`, and reports build and test results.
+1. Review the pull request "Merge upstream Zoraxy ${tag}". It merges the release into \`main\`, keeps the folders Waymark removed removed, notes the merge in CHANGELOG.md, and reports build and test results.
 2. Merge it with **Create a merge commit** (not squash or rebase), so later upstream merges stay simple.
-3. Fetch/pull \`custom\` in GitHub Desktop, then tag \`v${latest}-custom.1\` to publish the build.
+3. Pull \`main\` in GitHub Desktop, bump \`PRODUCT_VERSION\` in src/version_custom.go and the changelog, commit, then tag \`v<new version>\` to publish the build.
 
 If the merge has conflicts, the workflow reports the files instead of opening a pull request.
 

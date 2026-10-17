@@ -180,7 +180,7 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if userAgent := req.Header.Get("User-Agent"); userAgent != "" {
 		requestHeader.Set("User-Agent", userAgent)
 	} else {
-		requestHeader.Set("User-Agent", "zoraxy-wsproxy/1.1")
+		requestHeader.Set("User-Agent", "waymark-wsproxy/1.1")
 	}
 
 	// Pass X-Forwarded-For headers too, code below is a part of

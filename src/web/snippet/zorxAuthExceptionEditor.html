@@ -14,8 +14,8 @@
         <script src="../script/darktheme.js"></script>
         <br>
         <div class="ui container">
-            <h3 class="ui header">Zoraxy Auth - Exception Rules</h3>
-            <p>Exclude specific <b>paths</b> or <b>IP / CIDR</b> ranges from Zoraxy Auth SSO authentication. Requests matching any rule below will bypass authentication entirely.</p>
+            <h3 class="ui header">Waymark Auth - Exception Rules</h3>
+            <p>Exclude specific <b>paths</b> or <b>IP / CIDR</b> ranges from Waymark Auth SSO authentication. Requests matching any rule below will bypass authentication entirely.</p>
 
             <!-- Exception Rules Table -->
             <table class="ui basic very compact unstackable celled table">
@@ -79,7 +79,7 @@
                 <div id="zorxTrustProxyWarning" class="ui yellow message" style="display: none; margin-top: 0.4em;">
                     <i class="exclamation triangle icon"></i>
                     <b>Security Warning</b><br>
-                    Enabling <em>Trust Proxy Headers</em> allows Zoraxy to read the client IP from HTTP headers that any client can forge. Only enable this when Zoraxy sits <b>behind a trusted reverse proxy</b> (e.g. Cloudflare, Nginx).
+                    Enabling <em>Trust Proxy Headers</em> allows Waymark to read the client IP from HTTP headers that any client can forge. Only enable this when Waymark sits <b>behind a trusted reverse proxy</b> (e.g. Cloudflare, Nginx).
                 </div>
 
                 <button class="ui basic button" onclick="addZorxAuthExceptionRule();" style="margin-top: 0.6em;">
@@ -91,9 +91,9 @@
             <div class="ui basic message" style="margin-top: 1.4em;">
                 <h4>How exception rules work</h4>
                 <ul>
-                    <li><b>Path prefix:</b> Any request whose path begins with the given prefix bypasses Zoraxy Auth. The prefix <b>must start with a slash</b> (<code>/</code>).</li>
-                    <li><b>Path regex:</b> Any request whose path matches the Go regular expression bypasses Zoraxy Auth (e.g. <code>^/api/.*$</code>).</li>
-                    <li><b>IP / CIDR:</b> Requests from the matching IP address, CIDR block or wildcard bypass Zoraxy Auth.</li>
+                    <li><b>Path prefix:</b> Any request whose path begins with the given prefix bypasses Waymark Auth. The prefix <b>must start with a slash</b> (<code>/</code>).</li>
+                    <li><b>Path regex:</b> Any request whose path matches the Go regular expression bypasses Waymark Auth (e.g. <code>^/api/.*$</code>).</li>
+                    <li><b>IP / CIDR:</b> Requests from the matching IP address, CIDR block or wildcard bypass Waymark Auth.</li>
                 </ul>
             </div>
 

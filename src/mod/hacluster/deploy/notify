@@ -1,10 +1,10 @@
 #!/bin/bash
-# Zoraxy HA role notification for keepalived (custom fork). Runs as the
-# zoraxy user. keepalived calls it as: notify INSTANCE <name> <state> [priority]
-# and records the new state where Zoraxy can read it.
+# Waymark HA role notification for keepalived (custom fork). Runs as the
+# waymark user. keepalived calls it as: notify INSTANCE <name> <state> [priority]
+# and records the new state where Waymark can read it.
 state="${3:-}"
 case "$state" in MASTER | BACKUP | FAULT | STOP) ;; *) exit 0 ;; esac
-dir="${HA_DIR:-/var/lib/zoraxy/ha}"
+dir="${HA_DIR:-/var/lib/waymark/ha}"
 tmp="$(mktemp "$dir/.role.XXXXXX")" || exit 0
 printf '%s %s\n' "$state" "$(date +%s)" >"$tmp"
 chmod 0644 "$tmp"

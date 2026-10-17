@@ -11,7 +11,7 @@ package main
 	  configuration to the other cluster nodes
 	- a standby polls the other nodes every 10 seconds; when the active node's
 	  configuration changed and has stayed the same for one poll, it
-	  downloads and checks a snapshot, stages it, and restarts Zoraxy in
+	  downloads and checks a snapshot, stages it, and restarts Waymark in
 	  place. The staged snapshot is applied at startup, before any module
 	  loads its configuration (haApplyPendingSync, called from start.go)
 	- while sync is on, a standby refuses configuration changes in the admin
@@ -55,7 +55,7 @@ type haSyncApplied struct {
 }
 
 // haSyncPeerInfo is what a node reports about itself to the other nodes
-// (/zoraxy-ha/v1/state): used for syncing and for the cluster overview.
+// (/waymark-ha/v1/state): used for syncing and for the cluster overview.
 type haSyncPeerInfo struct {
 	Node            string `json:"node"`
 	Role            string `json:"role"`
@@ -67,7 +67,7 @@ type haSyncPeerInfo struct {
 	Keepalived      string `json:"keepalived"` // systemd state
 	SyncStatus      string `json:"syncStatus"`
 	SyncDetail      string `json:"syncDetail"`
-	Started         int64  `json:"started"` // when Zoraxy started
+	Started         int64  `json:"started"` // when Waymark started
 }
 
 // haPeerStatus is the last poll of another node.
@@ -166,7 +166,7 @@ func haApplyPendingSync() {
 		return
 	}
 	if snap.Version != DISPLAY_VERSION {
-		fail(snap.Hash, fmt.Errorf("staged configuration is from Zoraxy %s, this is %s", snap.Version, DISPLAY_VERSION))
+		fail(snap.Hash, fmt.Errorf("staged configuration is from Waymark %s, this is %s", snap.Version, DISPLAY_VERSION))
 		return
 	}
 	if err := hacluster.ApplyContent(CONF_FOLDER, sysdb, &snap.Content); err != nil {
@@ -184,7 +184,7 @@ func shortHash(h string) string {
 	return h
 }
 
-// haRestartForSync restarts Zoraxy in place (same process ID, so systemd
+// haRestartForSync restarts Waymark in place (same process ID, so systemd
 // keeps tracking it) to load a staged configuration.
 func haRestartForSync() {
 	SystemWideLogger.PrintAndLog("ha-sync", "Restarting to load the configuration from the active node", nil)
@@ -196,7 +196,7 @@ func haRestartForSync() {
 	mdnsTickerStop = nil // the mDNS ticker may be mid-scan; exec ends it anyway
 	ShutdownSeq()
 	err = syscall.Exec(exe, os.Args, os.Environ())
-	// Only reached if exec failed; exit so systemd can restart Zoraxy
+	// Only reached if exec failed; exit so systemd can restart Waymark
 	fmt.Println("HA sync: restart failed: " + err.Error())
 	os.Exit(1)
 }
@@ -371,7 +371,7 @@ func haSyncTick(force bool) (string, bool) {
 		go func(n hacluster.Node) {
 			defer wg.Done()
 			var info haSyncPeerInfo
-			err := hacluster.SyncFetch(net.JoinHostPort(n.Address, strconv.Itoa(cfg.SyncPort)), key, "/zoraxy-ha/v1/state", &info, 3*time.Second)
+			err := hacluster.SyncFetch(net.JoinHostPort(n.Address, strconv.Itoa(cfg.SyncPort)), key, "/waymark-ha/v1/state", &info, 3*time.Second)
 			rmu.Lock()
 			results = append(results, peerResult{n, info, err})
 			rmu.Unlock()
@@ -445,7 +445,7 @@ func haSyncTick(force bool) (string, bool) {
 	haSync.activeNode, haSync.activeAddr = m.node.Name, m.node.Address
 	haSync.mu.Unlock()
 	if m.info.Version != DISPLAY_VERSION {
-		msg := fmt.Sprintf("Not syncing: %s runs Zoraxy %s and this node runs %s. Run the same version on every node", m.node.Name, m.info.Version, DISPLAY_VERSION)
+		msg := fmt.Sprintf("Not syncing: %s runs Waymark %s and this node runs %s. Run the same version on every node", m.node.Name, m.info.Version, DISPLAY_VERSION)
 		haSyncSetStatus("error", msg)
 		return msg, false
 	}
@@ -481,7 +481,7 @@ func haSyncTick(force bool) (string, bool) {
 	}
 
 	var snap hacluster.Snapshot
-	if err := hacluster.SyncFetch(net.JoinHostPort(m.node.Address, strconv.Itoa(cfg.SyncPort)), key, "/zoraxy-ha/v1/snapshot", &snap, 20*time.Second); err != nil {
+	if err := hacluster.SyncFetch(net.JoinHostPort(m.node.Address, strconv.Itoa(cfg.SyncPort)), key, "/waymark-ha/v1/snapshot", &snap, 20*time.Second); err != nil {
 		msg := "Could not download the configuration from " + m.node.Name + ": " + err.Error()
 		haSyncSetStatus("error", msg)
 		return msg, false
@@ -500,7 +500,7 @@ func haSyncTick(force bool) (string, bool) {
 	haSync.mu.Lock()
 	haSync.restarting = true
 	haSync.mu.Unlock()
-	msg := "Copied the configuration from " + m.node.Name + "; restarting Zoraxy to load it"
+	msg := "Copied the configuration from " + m.node.Name + "; restarting Waymark to load it"
 	haSyncSetStatus("restarting", msg)
 	go func() {
 		time.Sleep(time.Second) // let the Sync now response go out
@@ -516,7 +516,7 @@ func haSyncCheckSnapshot(snap *hacluster.Snapshot) error {
 		return err
 	}
 	if snap.Version != DISPLAY_VERSION {
-		return fmt.Errorf("it is from Zoraxy %s, this node runs %s", snap.Version, DISPLAY_VERSION)
+		return fmt.Errorf("it is from Waymark %s, this node runs %s", snap.Version, DISPLAY_VERSION)
 	}
 	raw, ok := snap.Content.Tables[migrationTable][haConfigKey]
 	if !ok {

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Custom fork: merge an upstream Zoraxy release into a new branch.
+# Waymark Proxy: merge an upstream Zoraxy release into a new branch.
 #
-# Run from a full clone of the fork with "custom" checked out. Creates
-# upstream-merge/<tag> from custom, merges the upstream release tag, keeps
-# the paths this fork removed removed, resets FORK_REVISION to 1 and adds a
-# CHANGELOG-custom.md entry. Exit codes: 0 merged, 2 conflicts, 3 nothing
-# to merge.
+# Run from a full clone with "main" checked out. Creates upstream-merge/<tag>
+# from main, merges the upstream release tag, keeps the paths Waymark
+# removed removed, and notes the merge under "## Unreleased" in CHANGELOG.md.
+# The Waymark version is not changed here: bump PRODUCT_VERSION
+# (src/version_custom.go) when releasing. Exit codes: 0 merged,
+# 2 conflicts, 3 nothing to merge.
 #
 # Environment: TAG (e.g. v3.3.6), UPSTREAM_URL (default upstream GitHub
 # repo), FORK_REMOVED_PATHS (space separated). Writes results to
@@ -13,7 +14,9 @@
 set -euo pipefail
 
 UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/tobychui/zoraxy.git}"
-FORK_REMOVED_PATHS="${FORK_REMOVED_PATHS:-docker docs example tools .github/workflows/ci.yaml .github/workflows/docker.yml}"
+FORK_REMOVED_PATHS="${FORK_REMOVED_PATHS:-docker docs example tools img CHANGELOG-custom.md .github/workflows/ci.yaml .github/workflows/docker.yml .github/workflows/custom-build.yml}"
+# Files Waymark rewrote for its own branding: on a conflict, Waymark's version wins
+OURS_PATHS="${OURS_PATHS:-README.md CHANGELOG.md CODEOWNERS .github/ISSUE_TEMPLATE src/web/img src/web/favicon.png}"
 RESULT="${MERGE_RESULT_FILE:-merge-result.env}"
 
 if ! [[ "${TAG:-}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
@@ -30,7 +33,7 @@ old_base="$(sed -n -E 's/^[[:space:]]*SYSTEM_VERSION[[:space:]]*=[[:space:]]*"([
 since_sha="$(git merge-base HEAD "${UPSTREAM_REF}^{commit}" 2>/dev/null | cut -c1-12 || true)"
 git switch --quiet -C "$BRANCH"
 if git merge-base --is-ancestor "${UPSTREAM_REF}^{commit}" HEAD; then
-  echo "custom already contains ${TAG}; nothing to merge."
+  echo "main already contains ${TAG}; nothing to merge."
   echo "STATUS=up-to-date" >"$RESULT"
   exit 3
 fi
@@ -38,7 +41,7 @@ fi
 merge_failed=0
 git merge --no-ff --no-commit --quiet "${UPSTREAM_REF}^{commit}" || merge_failed=1
 
-# Paths this fork removed stay removed: resolves modify/delete conflicts and
+# Paths Waymark removed stay removed: resolves modify/delete conflicts and
 # drops files upstream added inside them
 removed_list=""
 for p in $FORK_REMOVED_PATHS; do
@@ -49,12 +52,25 @@ for p in $FORK_REMOVED_PATHS; do
   fi
 done
 
+# Branding files: keep Waymark's version where both sides changed them
+kept_ours=""
+for f in $(git diff --name-only --diff-filter=U); do
+  for p in $OURS_PATHS; do
+    if [ "$f" = "$p" ] || [[ "$f" == "$p"/* ]]; then
+      git checkout --ours -- "$f" 2>/dev/null || git rm -q -- "$f"
+      git add -- "$f" 2>/dev/null || true
+      kept_ours="${kept_ours} ${f}"
+    fi
+  done
+done
+[ -n "$kept_ours" ] && echo "Kept Waymark's version of:${kept_ours}"
+
 conflicts="$(git diff --name-only --diff-filter=U)"
 if [ -n "$conflicts" ]; then
   echo "Merge conflicts in:"
   echo "$conflicts" | sed 's/^/  /'
   git merge --abort
-  git switch --quiet custom
+  git switch --quiet main
   {
     echo "STATUS=conflicts"
     echo "UPSTREAM_SHA=${upstream_sha}"
@@ -63,35 +79,33 @@ if [ -n "$conflicts" ]; then
   exit 2
 fi
 if [ "$merge_failed" = "1" ]; then
-  echo "(merge stopped only on paths this fork removed; kept them removed:${removed_list})"
+  echo "(merge stopped only on paths Waymark removed; kept them removed:${removed_list})"
 fi
 
-git commit --quiet -m "Merge upstream Zoraxy ${TAG}" -m "Paths removed in this fork were kept removed:${removed_list:- none}"
+git commit --quiet -m "Merge upstream Zoraxy ${TAG}" -m "Paths removed in Waymark were kept removed:${removed_list:- none}"
 
-# Start the new upstream base at revision 1
+# Note the merge in CHANGELOG.md under "## Unreleased" (created if missing)
 base="$(sed -n -E 's/^[[:space:]]*SYSTEM_VERSION[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' src/def.go | head -n1)"
-sed -i -E 's/^([[:space:]]*FORK_REVISION[[:space:]]*=[[:space:]]*)"[0-9]+"/\1"1"/' src/version_custom.go
-version="${base}-custom.1"
+version="$(sed -n -E 's/^[[:space:]]*PRODUCT_VERSION[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' src/version_custom.go | head -n1)"
+line="- Merged Zoraxy ${TAG} (\`${upstream_sha}\`, [release notes](https://github.com/tobychui/zoraxy/releases/tag/${TAG})). Waymark is now based on Zoraxy ${base}."
+if grep -q '^## Unreleased' CHANGELOG.md; then
+  # Add the line under Unreleased's "**Changed**" (creating that heading if needed)
+  awk -v line="$line" '
+    /^## / { if (inrel && !done) { print "**Changed**"; print line; print ""; done = 1 } inrel = ($0 ~ /^## Unreleased/) }
+    { print }
+    inrel && !done && /^\*\*Changed\*\*/ { print line; done = 1 }
+    END { if (inrel && !done) { print ""; print "**Changed**"; print line } }
+  ' CHANGELOG.md >CHANGELOG.md.new
+else
+  awk -v line="$line" '
+    !done && /^## / { print "## Unreleased"; print ""; print "**Changed**"; print line; print ""; done = 1 }
+    { print }
+  ' CHANGELOG.md >CHANGELOG.md.new
+fi
+mv CHANGELOG.md.new CHANGELOG.md
 
-entry="$(mktemp)"
-cat >"$entry" <<EOF
-## ${version}
-
-Base: upstream ${TAG} (\`${upstream_sha}\`).
-
-**Changed**
-- Merged upstream Zoraxy ${TAG} ([release notes](https://github.com/tobychui/zoraxy/releases/tag/${TAG})). All fork changes are carried over; the fork revision restarts at 1.
-
-EOF
-awk -v entry="$entry" '
-  !done && /^## / { while ((getline line < entry) > 0) print line; done = 1 }
-  { print }
-  END { if (!done) { while ((getline line < entry) > 0) print line } }
-' CHANGELOG-custom.md >CHANGELOG-custom.md.new
-mv CHANGELOG-custom.md.new CHANGELOG-custom.md
-
-git add src/version_custom.go CHANGELOG-custom.md
-git commit --quiet -m "Start ${version}"
+git add CHANGELOG.md
+git commit --quiet -m "Changelog: merged Zoraxy ${TAG}"
 
 {
   echo "STATUS=merged"
@@ -102,8 +116,9 @@ git commit --quiet -m "Start ${version}"
   echo "SINCE_SHA=${since_sha}"
   echo "UPSTREAM_SHA=${upstream_sha}"
   echo "REMOVED=${removed_list# }"
+  echo "KEPT_OURS=${kept_ours# }"
 } >"$RESULT"
-echo "Merged ${TAG} into ${BRANCH} as ${version}."
+echo "Merged ${TAG} into ${BRANCH} (Waymark ${version}, now based on Zoraxy ${base})."
 if [ "$base" != "${TAG#v}" ]; then
   echo "::warning::Upstream ${TAG} reports SYSTEM_VERSION ${base}"
 fi

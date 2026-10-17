@@ -14,9 +14,9 @@ import (
 
 // Default locations, created by deploy/install.sh.
 const (
-	DefaultDir        = "/var/lib/zoraxy/ha" // owned by the zoraxy user
-	DefaultStateDir   = "/var/lib/zoraxy-ha" // root-owned, readable by the zoraxy group
-	DefaultScriptsDir = "/usr/local/lib/zoraxy-ha"
+	DefaultDir        = "/var/lib/waymark/ha" // owned by the waymark user
+	DefaultStateDir   = "/var/lib/waymark-ha" // root-owned, readable by the waymark group
+	DefaultScriptsDir = "/usr/local/lib/waymark-ha"
 )
 
 // Runtime reads and writes the files shared with keepalived and the helper.
@@ -39,7 +39,7 @@ type ApplyResult struct {
 	Message string `json:"message"`
 }
 
-// Installed reports whether install.sh has run on this node: Zoraxy can
+// Installed reports whether install.sh has run on this node: Waymark can
 // write its folder and read the helper's result folder.
 func (r *Runtime) Installed() (bool, string) {
 	if st, err := os.Stat(r.Dir); err != nil || !st.IsDir() {
@@ -49,14 +49,14 @@ func (r *Runtime) Installed() (bool, string) {
 	if err := os.WriteFile(probe, []byte("x"), 0600); err != nil {
 		if errors.Is(err, syscall.EROFS) {
 			// Permissions are fine but systemd's ProtectSystem=strict hides the folder
-			return false, "Zoraxy's systemd service is sandboxed and cannot write to " + r.Dir +
-				" (read-only file system). Rerun install.sh, or add ReadWritePaths=" + r.Dir + " to the service with systemctl edit and restart Zoraxy"
+			return false, "Waymark's systemd service is sandboxed and cannot write to " + r.Dir +
+				" (read-only file system). Rerun install.sh, or add ReadWritePaths=" + r.Dir + " to the service with systemctl edit and restart Waymark"
 		}
-		return false, "Zoraxy cannot write to " + r.Dir
+		return false, "Waymark cannot write to " + r.Dir
 	}
 	os.Remove(probe)
 	if _, err := os.ReadDir(r.StateDir); err != nil {
-		return false, "Zoraxy cannot read " + r.StateDir
+		return false, "Waymark cannot read " + r.StateDir
 	}
 	return true, ""
 }
@@ -155,5 +155,5 @@ func (r *Runtime) WaitForResult(applyID int64, timeout time.Duration) (ApplyResu
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
-	return ApplyResult{}, fmt.Errorf("no response from zoraxy-ha-apply within %s (is zoraxy-ha-apply.path enabled? check: journalctl -u zoraxy-ha-apply)", timeout)
+	return ApplyResult{}, fmt.Errorf("no response from waymark-ha-apply within %s (is waymark-ha-apply.path enabled? check: journalctl -u waymark-ha-apply)", timeout)
 }

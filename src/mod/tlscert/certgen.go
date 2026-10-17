@@ -25,10 +25,10 @@ func (m *Manager) GenerateSelfSignedCertificate(cn string, sans []string, certFi
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(time.Now().UnixNano()),
 		Subject: pkix.Name{
-			CommonName:         cn,                   // Common Name for the certificate
-			Organization:       []string{"aroz.org"}, // Organization name
-			OrganizationalUnit: []string{"Zoraxy"},   // Organizational Unit
-			Country:            []string{"US"},       // Country code
+			CommonName:         cn,                        // Common Name for the certificate
+			Organization:       []string{"Waymark Proxy"}, // Organization name
+			OrganizationalUnit: []string{"Self-signed"},   // Organizational Unit
+			Country:            []string{"US"},            // Country code
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(365 * 24 * time.Hour), // valid for 1 year

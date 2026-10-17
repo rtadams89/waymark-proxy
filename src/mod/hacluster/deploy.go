@@ -11,7 +11,7 @@ import (
 var deployFiles embed.FS
 
 // DeployFileNames lists the installer files in the order they are listed.
-var DeployFileNames = []string{"install.sh", "zoraxy-ha-apply", "check", "notify", "zoraxy-ha-apply.path", "zoraxy-ha-apply.service"}
+var DeployFileNames = []string{"install.sh", "waymark-ha-apply", "check", "notify", "waymark-ha-apply.path", "waymark-ha-apply.service"}
 
 // ExportInstaller writes the root installer files into dir (created if
 // needed) so they can be reviewed and run with: sudo bash <dir>/install.sh

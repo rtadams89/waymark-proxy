@@ -5,7 +5,7 @@ package hacluster
 
 	The standby pulls a snapshot of the active node's configuration: the
 	config folder entries in SyncConfEntries and the database tables in
-	SyncTables. The snapshot is staged and applied when Zoraxy next starts,
+	SyncTables. The snapshot is staged and applied when Waymark next starts,
 	before any module loads its configuration, so nothing has to be
 	reloaded while running.
 
@@ -79,10 +79,10 @@ var SyncSkipKeys = map[string]map[string]bool{
 const (
 	maxSyncFileSize  = 16 << 20
 	maxSyncTotalSize = 128 << 20
-	syncEKMLabel     = "zoraxy-ha-sync-v1"
+	syncEKMLabel     = "waymark-ha-sync-v1"
 	// Headers carrying the two proofs
-	SyncAuthHeader  = "X-Zoraxy-Ha-Auth"
-	SyncProofHeader = "X-Zoraxy-Ha-Proof"
+	SyncAuthHeader  = "X-Waymark-Ha-Auth"
+	SyncProofHeader = "X-Waymark-Ha-Proof"
 )
 
 var clusterKeyPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -108,14 +108,14 @@ type SyncContent struct {
 
 // Snapshot is SyncContent plus where and when it was taken.
 type Snapshot struct {
-	Version string      `json:"version"` // Zoraxy version of the node that took it
+	Version string      `json:"version"` // Waymark version of the node that took it
 	Node    string      `json:"node"`
 	Created int64       `json:"created"`
 	Hash    string      `json:"hash"`
 	Content SyncContent `json:"content"`
 }
 
-// Store is the part of Zoraxy's database used by sync.
+// Store is the part of Waymark's database used by sync.
 type Store interface {
 	NewTable(table string) error
 	TableExists(table string) bool
@@ -425,7 +425,7 @@ func SelfSignedTLS() (tls.Certificate, error) {
 	serial, _ := rand.Int(rand.Reader, big.NewInt(1<<62))
 	tpl := &x509.Certificate{
 		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "zoraxy-ha-sync"},
+		Subject:      pkix.Name{CommonName: "waymark-ha-sync"},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(10 * 365 * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
@@ -443,7 +443,7 @@ func SyncServerTLSConfig(cert tls.Certificate) *tls.Config {
 	return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13, NextProtos: []string{"http/1.1"}}
 }
 
-// SyncHandler serves /zoraxy-ha/v1/state and /zoraxy-ha/v1/snapshot to
+// SyncHandler serves /waymark-ha/v1/state and /waymark-ha/v1/snapshot to
 // peers that prove they have the cluster key.
 type SyncHandler struct {
 	Key      func() []byte                 // current cluster key (nil: refuse everything)
@@ -472,9 +472,9 @@ func (h *SyncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var body any
 	switch r.URL.Path {
-	case "/zoraxy-ha/v1/state":
+	case "/waymark-ha/v1/state":
 		body = h.State()
-	case "/zoraxy-ha/v1/snapshot":
+	case "/waymark-ha/v1/snapshot":
 		snap, err := h.Snapshot()
 		if err != nil {
 			http.Error(w, "could not read configuration: "+err.Error(), http.StatusInternalServerError)

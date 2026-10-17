@@ -73,7 +73,7 @@ func TestSettingsAndSelf(t *testing.T) {
 	}
 }
 
-// runHelper runs deploy/zoraxy-ha-apply against a temp folder (no systemctl,
+// runHelper runs deploy/waymark-ha-apply against a temp folder (no systemctl,
 // no interface checks) and returns the rendered config and result.
 func runHelper(t *testing.T, settings string, fakeKeepalived bool, extraEnv ...string) (string, ApplyResult, string) {
 	t.Helper()
@@ -85,7 +85,7 @@ func runHelper(t *testing.T, settings string, fakeKeepalived bool, extraEnv ...s
 		os.WriteFile(filepath.Join(haDir, "cluster.env"), []byte(settings), 0640)
 	}
 	u, _ := user.Current()
-	cmd := exec.Command("bash", "deploy/zoraxy-ha-apply")
+	cmd := exec.Command("bash", "deploy/waymark-ha-apply")
 	env := append(os.Environ(), "HA_DIR="+haDir, "HA_STATE_DIR="+stateDir, "KEEPALIVED_CONF="+filepath.Join(dir, "etc", "keepalived.conf"),
 		"HA_OWNER="+u.Username, "HA_SKIP_IFCHECK=1", "HA_SKIP_SYSTEMCTL=1")
 	if fakeKeepalived {
@@ -164,7 +164,7 @@ func TestHelperRejectsSymlink(t *testing.T) {
 	os.WriteFile(secret, []byte("VIP=1.2.3.4\nroot:hash\n"), 0600)
 	os.Symlink(secret, filepath.Join(haDir, "cluster.env"))
 	u, _ := user.Current()
-	cmd := exec.Command("bash", "deploy/zoraxy-ha-apply")
+	cmd := exec.Command("bash", "deploy/waymark-ha-apply")
 	cmd.Env = append(os.Environ(), "HA_DIR="+haDir, "HA_STATE_DIR="+stateDir, "KEEPALIVED_CONF="+filepath.Join(dir, "k.conf"), "HA_OWNER="+u.Username, "HA_SKIP_IFCHECK=1", "HA_SKIP_SYSTEMCTL=1")
 	cmd.Run()
 	res, _ := (&Runtime{Dir: haDir, StateDir: stateDir}).ReadResult()
@@ -228,7 +228,7 @@ func TestRuntimeFiles(t *testing.T) {
 		t.Fatalf("role before notify: %+v", r)
 	}
 	// notify script writes the role
-	cmd := exec.Command("bash", "deploy/notify", "INSTANCE", "ZORAXY", "MASTER", "150")
+	cmd := exec.Command("bash", "deploy/notify", "INSTANCE", "WAYMARK", "MASTER", "150")
 	cmd.Env = append(os.Environ(), "HA_DIR="+rt.Dir)
 	if err := cmd.Run(); err != nil {
 		t.Fatal(err)
@@ -236,7 +236,7 @@ func TestRuntimeFiles(t *testing.T) {
 	if r := rt.ReadRole(); r.State != "MASTER" || r.Since == 0 {
 		t.Fatalf("role: %+v", r)
 	}
-	exec.Command("bash", "-c", "HA_DIR="+rt.Dir+" bash deploy/notify INSTANCE ZORAXY 'EVIL; rm' 1").Run()
+	exec.Command("bash", "-c", "HA_DIR="+rt.Dir+" bash deploy/notify INSTANCE WAYMARK 'EVIL; rm' 1").Run()
 	if r := rt.ReadRole(); r.State != "MASTER" {
 		t.Fatalf("invalid state accepted: %+v", r)
 	}
@@ -277,7 +277,7 @@ func TestExportInstaller(t *testing.T) {
 		if strings.Contains(string(b), "\r") {
 			t.Errorf("%s has CR line endings", n)
 		}
-		if (n == "install.sh" || n == "check" || n == "notify" || n == "zoraxy-ha-apply") && st.Mode()&0100 == 0 {
+		if (n == "install.sh" || n == "check" || n == "notify" || n == "waymark-ha-apply") && st.Mode()&0100 == 0 {
 			t.Errorf("%s not executable", n)
 		}
 	}
@@ -335,7 +335,7 @@ func (l *keepaliveLab) save(content string) {
 
 func (l *keepaliveLab) run() (ApplyResult, string, time.Duration) {
 	os.Remove(filepath.Join(l.dir, "calls"))
-	cmd := exec.Command("bash", "deploy/zoraxy-ha-apply")
+	cmd := exec.Command("bash", "deploy/waymark-ha-apply")
 	cmd.Env = append(os.Environ(), "HA_DIR="+l.haDir, "HA_STATE_DIR="+l.stateDir, "KEEPALIVED_CONF="+filepath.Join(l.dir, "etc", "keepalived.conf"),
 		"HA_OWNER="+l.user, "HA_SKIP_IFCHECK=1", "HA_SYSTEMCTL_TIMEOUT=1", "LAB="+l.dir, "PATH="+l.bin+":"+os.Getenv("PATH"))
 	start := time.Now()
@@ -402,7 +402,7 @@ func TestHelperManagesKeepalived(t *testing.T) {
 		t.Fatalf("restore: %+v\n%s", res, l.conf())
 	}
 
-	// Zoraxy saves again while the helper is busy: the newer save is applied too
+	// Waymark saves again while the helper is busy: the newer save is applied too
 	os.Remove(filepath.Join(l.dir, "hang"))
 	os.WriteFile(filepath.Join(l.dir, "kstate"), []byte("inactive"), 0644)
 	newer := l.settings(8, true, 110)

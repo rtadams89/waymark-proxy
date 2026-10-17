@@ -11,7 +11,7 @@ import (
 
 // CacheStatusHeader is added to responses for static files on cached rules:
 // HIT, REVALIDATED, MISS (fetched and stored) or BYPASS (fetched, not storable).
-const CacheStatusHeader = "X-Zoraxy-Cache"
+const CacheStatusHeader = "X-Waymark-Cache"
 
 // BeginOptions carries request facts the proxy knows and the cache does not.
 type BeginOptions struct {

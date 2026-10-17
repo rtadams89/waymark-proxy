@@ -1,541 +1,262 @@
-# v3.3.4 22 Aug 2026
-
-+ Fix: statistic bounded maps by [ElmoViggiani](https://github.com/ElmoViggiani) in [#1191](https://github.com/tobychui/zoraxy/issues/1191)
-+ Fix: Plugin Manager UI: iframe height and Developer Settings accordion by [ElmoViggiani](https://github.com/ElmoViggiani) in [#1211](https://github.com/tobychui/zoraxy/issues/1211)
-+ feat(forward-auth): add Ignored Paths by [CrazyWolf13](https://github.com/CrazyWolf13)
-+ fix: port80 listener toggle and default site routing on HTTP by @yannickid in [#1184](https://github.com/tobychui/zoraxy/issues/1184)
-+ tlscert: use name-based fallback cert instead of file renaming by [zen8841](https://github.com/zen8841)1 in [#1218](https://github.com/tobychui/zoraxy/issues/1218)
-+ fix 1217: frontend js forgot to call parameter by [zen8841](https://github.com/zen8841) in [#1221](https://github.com/tobychui/zoraxy/issues/1221)
-+ Docker hardening by [PassiveLemon](https://github.com/PassiveLemon)
-+ Fix: restore per-request TLS SNI for IP-addressed HTTPS upstreams by [ElmoViggiani](https://github.com/ElmoViggiani) in [#1228](https://github.com/tobychui/zoraxy/issues/1228)
-+ feat(forward-auth): bulk apply/remove vdir for forward auth hosts by [CrazyWolf13](https://github.com/CrazyWolf13)
-+ Feature (acme): custom acme preferred ca by [jacosta57](https://github.com/jacosta57)
-+ fix: bulk-vdir: handle edited virtual directories as conflict by [CrazyWolf13](https://github.com/CrazyWolf13) in [#1237](https://github.com/tobychui/zoraxy/issues/1237)
-+ Update to lego v5 by [zen8841](https://github.com/zen8841)
-+ Fix SSO redirect loop when SSO URL omits http(s) scheme by [@stantheman0128](https://github.com/@stantheman0128) in [#1238](https://github.com/tobychui/zoraxy/issues/1239)
-+ Fix HTTP proxy rate limit UI not loading per-host value (#1107) by [@stantheman0128](https://github.com/@stantheman0128) in [#1238](https://github.com/tobychui/zoraxy/issues/1238)
-
-
-# v3.3.3 09 Jun 2026
-
-+ ACME: url.URL support for dnsCredentials by [t510599](https://github.com/t510599)
-+ Add a basic CI script by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ Features: Turnstile for directory by [Klarulor](https://github.com/Klarulor)
-+ Fix: Allow Location header rewrite when target matches OriginalHost by [TuxLux40](https://github.com/TuxLux40)
-+ Fix certificate file permissions by [devilmonastery](https://github.com/devilmonastery)
-+ Update lego to v4.35.2 by [zen8841](https://github.com/zen8841)
-+ Update golang version in ci by [zen8841](https://github.com/zen8841)
-+ Fix typo in customHeaders.html by [jeremyy294]([zen8841](https://github.com/jeremyy294)
-+ Fix [#1169](https://github.com/tobychui/zoraxy/issues/1169) by [zen8841](https://github.com/zen8841)
-+ Chore: clean up Docker related files by [PassiveLemon](https://github.com/PassiveLemon)
-+ Sync docker change to dev branch by [tobychui]([zen8841](https://github.com/tobychui)
-+ Add custom URI for Uptime Monitor health check by [barto95100]([zen8841](https://github.com/barto95100)
-+ Fix: set ReadHeaderTimeout and IdleTimeout on main listeners by [ElmoViggiani](https://github.com/ElmoViggiani)
-+ Fixed: "Require TLS" upstream on a proxy breaks if upstream sends 302 redirects [#1089](https://github.com/tobychui/zoraxy/issues/1089)
-+ Fixed: Virtual Directory duplicating path in redirect [#1106](https://github.com/tobychui/zoraxy/issues/1106)
-+ Fixed: Custom check interval for the Uptime Montior [#1091](https://github.com/tobychui/zoraxy/issues/1091)
-+ Fixed: Ability to pause redirection rules [#1094](https://github.com/tobychui/zoraxy/issues/1094)
-+ Implemented: Disable request logging but don't disable statistical logging [#1072](https://github.com/tobychui/zoraxy/issues/1072)
-+ Fixed: Zoraxy crashes with SIGSEGV when using TCP Stream Proxy [#1157](https://github.com/tobychui/zoraxy/issues/1157)
-+ Fixed: Configurable WebSocket timeout per proxy rule [#1159](https://github.com/tobychui/zoraxy/issues/1159)
-
-# v3.3.2 21 Mar 2026
-
-+ Added Zoraxy Auth SSO
-+ Typo fixes by [coddec](https://github.com/coddec)
-+ Updated IP blacklist description text by [Psychoboy](https://github.com/Psychoboy)
-+ Fix: forward auth saving and defaults by [CrazyWolf13](https://github.com/CrazyWolf13)
-+ Update lego to v4.32.0, fix shell script and enable providers for lego by [zen8841](https://github.com/zen8841)
-+ Remove: docker webfm env var by [PassiveLemon](https://github.com/PassiveLemon)
-+ Fixed: missing headers for WebDAV [#1079](https://github.com/tobychui/zoraxy/issues/1079)
-+ Improved: fast-geoip mode takes much less RAM, around now 150MB (compared to previously 800+ MB) fixes [#1007](https://github.com/tobychui/zoraxy/issues/1007)
-+ Fixed: Uptime monitor fails when target requires https [#1076](https://github.com/tobychui/zoraxy/issues/1076)
-+ Fixed: DNS Challenge Breaks Zoraxy [#1019](https://github.com/tobychui/zoraxy/issues/1019)
-+ Fixed: Network Status auto stretch [#669](https://github.com/tobychui/zoraxy/issues/669)
-+ Fixed: logview.html executes javascript [#1028](https://github.com/tobychui/zoraxy/issues/1028)
-+ Updated dependencies
-
-# v3.3.1 28 Jan 2026
-
-+ Add captcha gating by [yeungalan](https://github.com/yeungalan)
-+ Address some Docker CVEs by [PassiveLemon](https://github.com/PassiveLemon)
-+ Add Proxy Protocol v1/v2 support behind reverse proxies by [jimmyGALLAND](https://github.com/jimmyGALLAND)
-+ [docs] Fix typo in SniffResult constant by [kuhnchris](https://github.com/kuhnchris)
-+ Fix incorrect status codes and missing error pages in production by [Restorn](https://github.com/kuhnchris)
-+ UPDATE_GEOIP should only update if true by [kuhnchris](https://github.com/kuhnchris)
-+ Allow plugin API to modify proxy upstreams by [kuhnchris](https://github.com/kuhnchris
-+ fix: error checking origin to avoid goroutine panic by [kuhnchris](https://github.com/kuhnchris)
-+ Error message & ":" parsing by [kuhnchris](https://github.com/kuhnchris)
-+ fix: ui error on null container ports by [eyerrock](https://github.com/eyerrock)
-+ Add authentication display to HTTP proxy list by [xaxy55](https://github.com/xaxy55)
-+ Update lego to v4.30.1 by [zen8841](https://github.com/zen8841)
-+ Fixed Tailscale network marked as country [#918](https://github.com/tobychui/zoraxy/issues/918)
-+ Added multiport support
-+ Added support for pasting certificates [#928](https://github.com/tobychui/zoraxy/issues/928)
-+ Reworked block AI crawler feature [#916](https://github.com/tobychui/zoraxy/issues/916)
-+ Fixed empty response on virtual directories on http while tls is enabled [#941](https://github.com/tobychui/zoraxy/issues/941)
-+ Fixed high speed toggling cause system panic [#952](https://github.com/tobychui/zoraxy/issues/952)
-+ support acme test/staging mode from flags by [jimmyGALLAND](https://github.com/jimmyGALLAND)
-+ Fix: Unable to remove path prefix authentication exclusions [#972](https://github.com/tobychui/zoraxy/issues/972)
-+ Fix: Zoraxy docker crash [#967](https://github.com/tobychui/zoraxy/issues/967)
-+ Fix: web Directory Loader not visible [#980](https://github.com/tobychui/zoraxy/issues/980)
-
-
-# v3.3.0 06 Dec 2025
-
-+ Added "Block common exploits"
-+ Added "Block AI and Crawlers"
-+ Added option to disable statistics
-+ Added option to remove user agent
-+ Show checkbox for dns challenge in zerossl by [zen8841](https://github.com/tobychui/zoraxy/commits?author=zen8841)
-+ Fixed Redirection: include sub-paths checkbox [#874](https://github.com/tobychui/zoraxy/issues/874)
-+ Fixed Disable load balance and do not pause upstream for 60s [#896](https://github.com/tobychui/zoraxy/issues/896)
-+ Fixed ACME bug [#903](https://github.com/tobychui/zoraxy/issues/903)
-+ Fixed redirection bug [#900](https://github.com/tobychui/zoraxy/issues/900)
-+ Smaller bugfixes
-+ Updated dependencies
-
-
-# v3.2.9 2 Nov 2025
-
-+ Add PKCE support with SHA256 challenge method for OAuth2 by [kjagosz](https://github.com/kjagosz) fixes [#852](https://github.com/tobychui/zoraxy/issues/852)
-+ Update lego to v4.28.0 by [zen8841](https://github.com/zen8841) fixes [778](https://github.com/tobychui/zoraxy/issues/778)
-+ Typo in plugins.html by [mlbarrow](mlbarrow)
-+ Moved log rotation options to webmin panel
-+ Supported opening tar.gz in the new log viewer
-+ Added disable logging function to HTTP proxy rule for high traffic sites
-+ Fixed other bugs / improvements [#855](https://github.com/tobychui/zoraxy/issues/855) [#866](https://github.com/tobychui/zoraxy/issues/866) [#867](https://github.com/tobychui/zoraxy/issues/867) [#855](https://github.com/tobychui/zoraxy/issues/856)
-
-# v3.2.8 16 Oct 2025
-
-+ Fixed wildcard certificate bug [#845](https://github.com/tobychui/zoraxy/issues/845) by [zen8841](https://github.com/zen8841)
-+ Move function:NormalizeDomain to netutils module by [zen8841](https://github.com/zen8841)
-+ Add support for Proxy Protocol V1 and V2 in streamproxy configuration by [jemmy1794](https://github.com/jemmy1794)
-+ Added user selectable versions for TLS
-
-# v3.2.7 09 Oct 2025
-
-+ Update Sidebar CSS by [Saeraphinx](https://github.com/Saeraphinx)
-+ fix restart after acme dns challenge by [jimmyGALLAND](https://github.com/jimmyGALLAND)
-+ fix acme renew by [jimmyGALLAND](https://github.com/jimmyGALLAND)
-
-
-# v3.2.6 (Prerelease) 16 Sep 2025
-
-+ feat(plugins): Implement plugin API key management and authentication middleware by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ fix: Handle existing symlink in start_zerotier function by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM) [#758](https://github.com/tobychui/zoraxy/issues/758)
-+ fix: panics when rewriting headers for websockets, and strange issue with logging across a month boundary by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM) [#771](https://github.com/tobychui/zoraxy/issues/771)
-+ add CODEOWNERS file by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ Update lego to v4.25.2 by [zen8841](https://github.com/zen8841)
-+ feat(sso): forward auth body and alternate headers by james-d-elliott [#819](https://github.com/tobychui/zoraxy/issues/819)
-+ feat(sso): clear settings by [james-d-elliott](https://github.com/james-d-elliott)
-+ feat(plugins): Implement event system w/ POC events by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ feature: new container environment vars by [PassiveLemon](https://github.com/PassiveLemon)
-+ Update example plugins by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ feat(event system): Flesh out EventPayload interface by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ feat(plugin API): Plugin-to-plugin-comms by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ put plugin API on separate mux not protected by CSRF by [AnthonyMichaelTDM](https://github.com/AnthonyMichaelTDM)
-+ fix Enable Lan and Loopback [#799](https://github.com/tobychui/zoraxy/issues/799)
-
-
-# v3.2.5 20 Jul 2025
-
-
-+ Added new API endpoint /api/proxy/setTlsConfig (for HTTP Proxy Editor TLS tab)
-+ Refactored TLS certificate management APIs with new handlers
-+ Removed redundant functions from src/cert.go and delegated to tlsCertManager
-+ Code optimization in tlscert module
-+ Introduced a new constant CONF_FOLDER and updated configuration storage paths (phasing out hard coded paths)
-+ Updated functions to set default TLS options when missing, default to SNI
-+ Added Proxy Protocol v1 support in stream proxy [jemmy1794](https://github.com/jemmy1794)
-+ Fixed Proxy UI bug [jemmy1794](https://github.com/jemmy1794)
-+ Fixed assign static server to localhost or all interfaces [#688](https://github.com/tobychui/zoraxy/issues/688)
-+ fixed empty SSO parameters by [7brend7](https://github.com/7brend7)
-+ sort list of loaded certificates by expire date by [7brend7](https://github.com/7brend7)
-+ Docker hardening by [PassiveLemon](https://github.com/PassiveLemon)
-+ Fixed sort by destination [#713](https://github.com/tobychui/zoraxy/issues/713)
-
-# v3.2.4 28 Jun 2025
-
-A big release since v3.1.9. Versions from 3.2.0 to 3.2.3 were prereleases.
-
-
-+ Added Authentik support by [JokerQyou](https://github.com/tobychui/zoraxy/commits?author=JokerQyou)
-+ Added pluginsystem and moved GAN and Zerotier to plugins
-+ Add loopback detection [#573](https://github.com/tobychui/zoraxy/issues/573)
-+ Fixed Dark theme not working with Advanced Option accordion [#591](https://github.com/tobychui/zoraxy/issues/591)
-+ Update logger to include UserAgent by [Raithmir](https://github.com/Raithmir)
-+ Fixed memory usage in UI [#600](https://github.com/tobychui/zoraxy/issues/600)
-+ Added docker-compose.yml by [SamuelPalubaCZ](https://github.com/tobychui/zoraxy/commits?author=SamuelPalubaCZ)
-+ Added more statistics for proxy hosts [#201](https://github.com/tobychui/zoraxy/issues/201) and [#608](https://github.com/tobychui/zoraxy/issues/608)
-+ Fixed origin field in logs [#618](https://github.com/tobychui/zoraxy/issues/618)
-+ Added FreeBSD support by Andreas Burri
-+ Fixed HTTP proxy redirect [#626](https://github.com/tobychui/zoraxy/issues/626)
-+ Fixed proxy handling #629](https://github.com/tobychui/zoraxy/issues/629)
-+ Move Scope ID handling into CIDR check by [Nirostar](https://github.com/tobychui/zoraxy/commits?author=Nirostar)
-+ Prevent the browser from filling the saved Zoraxy login account by [WHFo](https://github.com/tobychui/zoraxy/commits?author=WHFo)
-+ Added port number and http proto to http proxy list link
-+ Fixed headers for authelia by [james-d-elliott](https://github.com/tobychui/zoraxy/commits?author=james-d-elliott)
-+ Refactored docker container list and UI improvements by [eyerrock](https://github.com/tobychui/zoraxy/commits?author=eyerrock)
-+ Refactored Dockerfile by [PassiveLemon](https://github.com/tobychui/zoraxy/commits?author=PassiveLemon)
-+ Added new HTTP proxy UI
-+ Added inbound host name edit function
-+ Added static web server option to disable listen to all interface
-+ Merged SSO implementations (Oauth2) [#649](https://github.com/tobychui/zoraxy/pull/649)
-+ Merged forward-auth optimization [#692(https://github.com/tobychui/zoraxy/pull/692)
-+ Optimized SSO UI
-+ Refactored docker image workflows by [PassiveLemon](https://github.com/tobychui/zoraxy/commits?author=PassiveLemon)
-+ Added disable chunked transfer encoding checkbox (for upstreams that uses legacy HTTP implementations)
-+ Bug fixes [#694](https://github.com/tobychui/zoraxy/issues/694), [#659](https://github.com/tobychui/zoraxy/issues/659) by [jemmy1794](https://github.com/tobychui/zoraxy/commits?author=jemmy1794), [#695](https://github.com/tobychui/zoraxy/issues/695)
-
-# v3.1.9 1 Mar 2025
-
-+ Fixed netstat underflow bug
-+ Fixed origin picker cookie bug [#550](https://github.com/tobychui/zoraxy/issues/550)
-+ Added prototype plugin system
-+ Added plugin examples
-+ Added notice for build-in Zerotier network controller deprecation (and will be moved to plugins)
-+ Added country code display for quickban list [#247](https://github.com/tobychui/zoraxy/issues/247)
-+ Removed passive load balancer and default to active lb only [#554](https://github.com/tobychui/zoraxy/issues/554)
-
-
-# v3.1.8 16 Feb 2025
-
-+ Exposed timeout value from dpcore to UI
-+ Added active load balancing (if uptime monitor is enabled on that rule)
-+ Re-factorized io stats and remove dependencies over wmic by [eyerrock](https://github.com/eyerrock)
-+ Removed SMTP input validation [#497](https://github.com/tobychui/zoraxy/issues/497)
-+ Fixed sticky session bug
-+ Fixed passive load balancer bug
-+ Fixed dockerfile bug by [PassiveLemon](https://github.com/PassiveLemon)
-
-# v3.1.7 08 Feb 2025
-
-+ Merged and added new tagging system for HTTP Proxy rules [by @adoolaard](https://github.com/adoolaard)
-+ Added inline editing for redirection rules [#510](https://github.com/tobychui/zoraxy/issues/510)
-+ Added uptime monitor status dot detail info (now clickable) [#467](https://github.com/tobychui/zoraxy/issues/467)
-+ Added close connection support to port 80 listener [#405](https://github.com/tobychui/zoraxy/issues/450)
-+ Optimized port collision check on startup
-+ Optimized dark theme color scheme (Free consultation by 3S Design studio)
-+ Fixed capital letter rule unable to delete bug [#507](https://github.com/tobychui/zoraxy/issues/507)
-+ Fixed docker statistic not save bug [by @PassiveLemon](https://github.com/PassiveLemon) [#505](https://github.com/tobychui/zoraxy/issues/505)
-
-
-# v3.1.6 31 Dec 2024
-
-
-+ Exposed log file, sys.uuid and static web server path to start flag (customizable conf and sys.db path is still wip)
-+ Optimized connection close implementation
-+ Added toggle for uptime monitor
-+ Added optional copy HTTP custom headers to websocket connection [#444](https://github.com/tobychui/zoraxy/issues/444)
-
-# v3.1.5 28 Dec 2024
-
-+ Fixed hostname case sensitive bug [#435](https://github.com/tobychui/zoraxy/issues/435)
-+ Fixed ACME table too wide css bug [#422](https://github.com/tobychui/zoraxy/issues/422)
-+ Fixed HSTS toggle button bug [#415](https://github.com/tobychui/zoraxy/issues/415)
-+ Fixed slow GeoIP resolve mode concurrent r/w bug [#401](https://github.com/tobychui/zoraxy/issues/401)
-+ Added close connection as default site option [#430](https://github.com/tobychui/zoraxy/issues/430)
-+ Added experimental authelia support [#384](https://github.com/tobychui/zoraxy/issues/384)
-+ Added custom header support to websocket [#426](https://github.com/tobychui/zoraxy/issues/426)
-+ Added levelDB as database implementation (not currently used)
-+ Added external GeoIP db loading support
-+ Restructured a lot of modules
-
-# v3.1.4 24 Nov 2024
-
-+ **Added Dark Theme Mode** [#390](https://github.com/tobychui/zoraxy/issues/390) [#82](https://github.com/tobychui/zoraxy/issues/82)
-+ Added an auto sniffer for self-signed certificates
-+ Added robots.txt to the project
-+ Introduced an EU wrapper in the front-end for automatic registration of 26 countries [#378](https://github.com/tobychui/zoraxy/issues/378)
-+ Moved all hard-coded values to a dedicated def.go file
-+ Fixed a panic issue occurring on unsupported platform exits
-+ Integrated fixes for SSH proxy and Docker snippet updates [#330](https://github.com/tobychui/zoraxy/issues/330) [#348](https://github.com/tobychui/zoraxy/issues/348)
-+ **Changed the default listening port to 443 and enable TLS by default**
-+ Optimized GeoIP database slow-search mode CPU usage
-
-
-# v3.1.3 12 Nov 2024
-
-+ Fixed a critical security bug [CVE-2024-52010](https://github.com/advisories/GHSA-7hpf-g48v-hw3j)
-
-# v3.1.2 03 Nov 2024
-
-+ Added auto start port 80 listener on acme certificate generator
-+ Added polling interval and propagation timeout option in ACME module [#300](https://github.com/tobychui/zoraxy/issues/300)
-+ Added support for custom header variables [#318](https://github.com/tobychui/zoraxy/issues/318)
-+ Added support for X-Remote-User 
-+ Added port scanner [#342](https://github.com/tobychui/zoraxy/issues/342)
-+ Optimized code base for stream proxy and config file storage [#320](https://github.com/tobychui/zoraxy/issues/320)
-+ Removed sorting on cert list
-+ Fixed request certificate button bug 
-+ Fixed cert auto renew logic [#316](https://github.com/tobychui/zoraxy/issues/316)
-+ Fixed unable to remove new stream proxy bug
-+ Fixed many other minor bugs  [#328](https://github.com/tobychui/zoraxy/issues/328) [#297](https://github.com/tobychui/zoraxy/issues/297)
-+ Added more code to SSO system (disabled in release)
-
-
-# v3.1.1. 09 Sep 2024
-
-+ Updated country name in access list [#287](https://github.com/tobychui/zoraxy/issues/287)
-+ Added tour for basic operations
-+ Updated acme log to system wide logger implementation
-+ Fixed path traversal in file manager [#274](https://github.com/tobychui/zoraxy/issues/274)
-+ Removed Proxmox debug code
-+ Fixed trie tree implementations
-
-**Thanks to all contributors**
-
-+ Fix existing containers list in docker popup [7brend7](https://github.com/tobychui/zoraxy/issues?q=is%3Apr+author%3A7brend7)
-+ Fix network I/O chart not rendering [JokerQyou](https://github.com/tobychui/zoraxy/issues?q=is%3Apr+author%3AJokerQyou)
-+ Fix typo remvoeClass to removeClass [Aahmadsyamim](https://github.com/tobychui/zoraxy/issues?q=is%3Apr+author%3Aahmadsyamim)
-+ Updated weighted random upstream implementation [bouroo](https://github.com/tobychui/zoraxy/issues?q=is%3Apr+author%3Abouroo)
-
-# v3.1.0 31 Jul 2024
-
-+ Updated log viewer with filter and auto refresh [#243](https://github.com/tobychui/zoraxy/issues/243)
-+ Fixed csrf vulnerability [#267](https://github.com/tobychui/zoraxy/issues/267)
-+ Fixed promox issue
-+ Fixed status code bug in upstream log [#254](https://github.com/tobychui/zoraxy/issues/254)
-+ Added host overwrite and hop-by-hop header remover
-+ Added early renew days settings [#256](https://github.com/tobychui/zoraxy/issues/256)
-+ Updated make file to force no CGO in cicd process
-+ Fixed bug in updater
-+ Fixed wildcard certificate renew bug [#249](https://github.com/tobychui/zoraxy/issues/249)
-+ Added certificate download function [#227](https://github.com/tobychui/zoraxy/issues/227)
-
-# v3.0.9 16 Jul 2024
-
-+ Added certificate download [#227](https://github.com/tobychui/zoraxy/issues/227)
-+ Updated netcup timeout value [#231](https://github.com/tobychui/zoraxy/issues/231)
-+ Updated geoip db
-+ Removed debug print from log viewer
-+ Upgraded netstat log printing to new log formatter
-+ Improved update module implementation
-
-# v3.0.8 15 Jul 2024
-
-+ Added apache style logging mechanism (and build-in log viewer) [#218](https://github.com/tobychui/zoraxy/issues/218)
-+ Fixed keep alive flushing issues [#235](https://github.com/tobychui/zoraxy/issues/235)
-+ Added multi-upstream supports [#100](https://github.com/tobychui/zoraxy/issues/100)
-+ Added stick session load balancer
-+ Added weighted random load balancer
-+ Added domain cleaning logic to domain / IP input fields
-+ Added HSTS "include subdomain" auto injector
-+ Added work-in-progress SSO / Oauth Server UI
-+ Fixed uptime monitor not updating on proxy rule change bug
-+ Optimized UI for create new proxy rule
-+ Removed service expose proxy feature
-
-# v3.0.7 20 Jun 2024
-
-+ Fixed redirection enable bug [#199](https://github.com/tobychui/zoraxy/issues/199)
-+ Fixed header tool user agent rewrite sequence
-+ Optimized rate limit UI
-+ Added HSTS and Permission Policy Editor [#163](https://github.com/tobychui/zoraxy/issues/163)
-+ Docker UX optimization start parameter `-docker`
-+ Docker container selector implementation for conditional compilations for Windows
-
-From contributors:
-
-+ Add Rate Limits Limits to Zoraxy fixes [185](https://github.com/tobychui/zoraxy/issues/185) by [Kirari04](https://github.com/Kirari04)
-+ Add docker containers list to set rule by [7brend7](https://github.com/7brend7) [PR202](https://github.com/tobychui/zoraxy/pull/202)
-
-# v3.0.6 10 Jun 2024
-
-+ Added fastly_client_ip to X-Real-IP auto rewrite
-+ Added atomic accumulator to TCP proxy
-+ Added white logo for future dark theme
-+ Added multi selection for white / blacklist [#176](https://github.com/tobychui/zoraxy/issues/176)
-+ Moved custom header rewrite to dpcore
-+ Restructure dpcore header rewrite sequence
-+ Added advance custom header settings (zoraxy to upstream and zoraxy to downstream mode)
-+ Added header remove feature
-+ Removed password requirement for SMTP [#162](https://github.com/tobychui/zoraxy/issues/162) [#80](https://github.com/tobychui/zoraxy/issues/80) 
-+ Restructured TCP proxy into Stream Proxy (Support both TCP and UDP) [#147](https://github.com/tobychui/zoraxy/issues/147)
-+ Added stream proxy auto start [#169](https://github.com/tobychui/zoraxy/issues/169)
-+ Optimized UX for reminding user to click Apply after port change
-+ Added version number to footer [#160](https://github.com/tobychui/zoraxy/issues/160)
-
-From contributors:
-
-+ Fixed missing / unnecessary error check [PR187](https://github.com/tobychui/zoraxy/pull/187) by [Kirari04](https://github.com/Kirari04)
-
-# v3.0.5 May 26 2024
-
-
-+ Optimized uptime monitor error message [#121](https://github.com/tobychui/zoraxy/issues/121)
-+ Optimized detection logic for internal proxy target and header rewrite condition for HTTP_HOST [#164](https://github.com/tobychui/zoraxy/issues/164)
-+ Fixed ovh DNS challenge provider form generator bug [#161](https://github.com/tobychui/zoraxy/issues/161)
-+ Added permission policy module (not enabled)
-+ Added single-use cookiejar to uptime monitor request client to handle cookie issues on some poorly written back-end server [#149](https://github.com/tobychui/zoraxy/issues/149)
-
-
-# v3.0.4 May 18 2024
-
-## This release tidied up the contribution by [Teifun2](https://github.com/Teifun2) and added a new way to generate DNS challenge based certificate (e.g. wildcards) from Let's Encrypt without changing any environment variables. This also fixes a few previous ACME module EAB settings bug related to concurrent save.
-
-You can find the DNS challenge settings under TLS / SSL > ACME snippet > Generate New Certificate > (Check the "Use a DNS Challenge" checkbox)
-
-+ Optimized DNS challenge implementation [thanks to Teifun2](https://github.com/Teifun2) / Issues [#49](https://github.com/tobychui/zoraxy/issues/49) [#79](https://github.com/tobychui/zoraxy/issues/79)
-+ Removed dependencies on environment variable write and keep all data contained
-+ Fixed panic on loading certificate generated by Zoraxy v2
-+ Added automatic form generator for DNS challenge / providers
-+ Added CA name default value
-+ Added code generator for acmedns module (storing the DNS challenge provider contents extracted from lego)
-+ Fixed ACME snippet "Obtain Certificate" concurrent issues in save EAB and DNS credentials
-
-
-# v3.0.3 Apr 30 2024
-## Breaking Change
-
-For users using SMTP with older versions, you might need to update the settings by moving the domains (the part after @ in the username and domain setup field) into the username field.
-
-+ Updated SMTP UI for non email login username [#129](https://github.com/tobychui/zoraxy/issues/129)
-+ Fixed ACME cert store reload after cert request [#126](https://github.com/tobychui/zoraxy/issues/126)
-+ Fixed default rule not applying to default site when default site is set to proxy target [#130](https://github.com/tobychui/zoraxy/issues/130)
-+ Fixed blacklist-ip not working with CIDR bug
-+ Fixed minor vdir bug in tailing slash detection and redirect logic
-+ Added custom mdns name support (-mdnsname flag)
-+ Added LAN tag in statistic [#131](https://github.com/tobychui/zoraxy/issues/131)
-
-
-# v3.0.2 Apr 24 2024
-
-+ Added alias for HTTP proxy host names [#76](https://github.com/tobychui/zoraxy/issues/76)
-+ Added separator support for create new proxy rules (use "," to add alias when creating new proxy rule)
-+ Added HTTP proxy host based access rules [#69](https://github.com/tobychui/zoraxy/issues/69)
-+ Added EAD Configuration for ACME (by [yeungalan](https://github.com/yeungalan)) [#45](https://github.com/tobychui/zoraxy/issues/45)
-+ Fixed bug for bypassGlobalTLS endpoint do not support basic-auth
-+ Fixed panic due to empty domain field in json config [#120](https://github.com/tobychui/zoraxy/issues/120)
-+ Removed dependencies on management panel css for online font files
-
-# v3.0.1 Apr 04 2024
-
-## Bugfixupdate for big release of V3, read update notes from V3 if you are still on V2
-
-+ Added regex support for redirect (slow, don't use it unless you really needs it) [#42](https://github.com/tobychui/zoraxy/issues/42)
-+ Added new dpcore implementations for faster proxy speed
-+ Added support for CF-Connecting-IP to X-Real-IP auto rewrite [#114](https://github.com/tobychui/zoraxy/issues/114)
-+ Added enable / disable of HTTP proxy rules in runtime via slider [#108](https://github.com/tobychui/zoraxy/issues/108)
-+ Added better 404 page
-+ Added option to bypass websocket origin check [#107](https://github.com/tobychui/zoraxy/issues/107)
-+ Updated project homepage design
-+ Fixed recursive port detection logic
-+ Fixed UserAgent in resp bug
-+ Updated minimum required Go version to v1.22 (Notes: Windows 7 support is dropped) [#112](https://github.com/tobychui/zoraxy/issues/112)
-
-
-# v3.0.0 Feb 18 2024
-
-## IMPORTANT: V3 is a big rewrite and it is incompatible with V2! There is NO migration, if you want to stay on V2, please use V2 branch!
-
-+ Added comments for whitelist [#97](https://github.com/tobychui/zoraxy/issues/97)
-+ Added force-renew for certificates [#92](https://github.com/tobychui/zoraxy/issues/92)
-+ Added automatic cert pick for multi-host certs (SNI)
-+ Renamed .crt to .pem for cert store
-+ Added best-fit selection for wildcard matching rules
-+ Added x-proxy-by header / Added X-real-Ip header [#93](https://github.com/tobychui/zoraxy/issues/93)
-+ Added Development Mode (Cache-Control: no-store)
-+ Updated utm timeout to 10 seconds instead of 90
-+ Added "Add controller as member" feature to Global Area Network editor
-+ Added custom header
-+ Deprecated aroz subservice support
-+ Updated visuals, improving logical structure, less depressing colors [#95](https://github.com/tobychui/zoraxy/issues/95)
-+ Added virtual directory into host routing object (each host now got its own sets of virtual directories)
-+ Added support for wildcard host names (e.g. *.example.com)
-+ Added best-fit selection for wildcard matching rules (e.g. *.a.example.com > *.example.com in routing)
-+ Generalized root and hosts routing struct (no more conversion between runtime & save record object
-+ Added "Default Site" to replace "Proxy Root" interface
-+ Added Redirect & 404 page for "Default Site"
-
-
-# v2.6.8 Nov 25 2023
-
-+ Added opt-out for subdomains for global TLS settings: See [release notes](https://github.com/tobychui/zoraxy/releases/tag/2.6.8)
-+ Optimized subdomain / vdir editing interface
-+ Added system-wide logger (Work in progress)
-+ Fixed issue for uptime monitor bug [#77](https://github.com/tobychui/zoraxy/issues/77)
-+ Changed default static web port to 5487 (prevent already in use)
-+ Added automatic HTTP/2 to TLS mode
-+ Bug fix for webserver autostart [67](https://github.com/tobychui/zoraxy/issues/67)
-
-# v2.6.7 Sep 26 2023
-
-+ Added Static Web Server function [#56](https://github.com/tobychui/zoraxy/issues/56)
-+ Web Directory Manager (see static webserver tab)
-+ Added static web server and black / whitelist template [#38](https://github.com/tobychui/zoraxy/issues/38)
-+ Added default / preferred CA features for ACME [#47](https://github.com/tobychui/zoraxy/issues/47)
-+ Optimized TLS/SSL page and added dedicated section for ACME related features
-+ Bugfixes [#61](https://github.com/tobychui/zoraxy/issues/61) [#58](https://github.com/tobychui/zoraxy/issues/58)
-
-# v2.6.6 Aug 30 2023
-
-+ Added basic auth editor custom exception rules 
-+ Fixed redirection bug under another reverse proxy and Apache location headers [#39](https://github.com/tobychui/zoraxy/issues/39)
-+ Optimized memory usage (from 1.2GB to 61MB for low speed geoip lookup) [#52](https://github.com/tobychui/zoraxy/issues/52)
-+ Added unset subdomain custom redirection feature [#46](https://github.com/tobychui/zoraxy/issues/46)
-+ Fixed potential security issue in satori/go.uuid [#55](https://github.com/tobychui/zoraxy/issues/55)
-+ Added custom ACME feature in backend, thx [@daluntw](https://github.com/daluntw)
-+ Added bypass TLS check for custom acme server, thx [@daluntw](https://github.com/daluntw)
-+ Introduce new start parameter `-fastgeoip=true`: see [release notes](https://github.com/tobychui/zoraxy/releases/tag/2.6.6)
-
-# v2.6.5.1 Jul 26 2023
-
-+ Patch on memory leaking for Windows netstat module (do not effect any of the previous non Windows builds)
-+ Fixed potential memory leak in ACME handler logic
-+ Added "Do you want to get a TLS certificate for this subdomain?" dialogue when a new subdomain proxy rule is created
-
-# v2.6.5 Jul 19 2023
-
-+ Added Import / Export-Feature 
-+ Moved configuration files to a separate folder [#26](https://github.com/tobychui/zoraxy/issues/26)
-+ Added auto-renew with ACME [#6](https://github.com/tobychui/zoraxy/issues/6)
-+ Fixed Whitelistbug [#18](https://github.com/tobychui/zoraxy/issues/18)
-+ Added Whois
-
-# v2.6.4 Jun 15 2023
-
-+ Added force TLS v1.2 above toggle
-+ Added trace route
-+ Added ICMP ping
-+ Added special routing rules module for up-coming ACME integration
-+ Fixed IPv6 check bug in black/whitelist
-+ Optimized UI for TCP Proxy
-
-# v2.6.3 Jun 8 2023
-
-+ Added X-Forwarded-Proto for automatic proxy detector
-+ Split blacklist and whitelist from geodb script file
-+ Optimized compile binary size
-+ Added access control to TCP proxy
-+ Added "invalid config detect" in up time monitor for issue [#7](https://github.com/tobychui/zoraxy/issues/7)
-+ Fixed minor bugs in advance stats panel
-+ Reduced file size of embedded materials
-
-# v2.6.2 Jun 4 2023
-
-+ Added advance stats operation tab
-+ Added statistic reset [#13](https://github.com/tobychui/zoraxy/issues/13)
-+ Added statistic export to csv and json (please use json)
-+ Make subdomain clickable (not vdir) [#12](https://github.com/tobychui/zoraxy/issues/12)
-+ Added TCP Proxy
-+ Updates SMTP setup UI to make it more straight forward to setup
-
-# v2.6.1 May 31 2023
-
-+ Added reverse proxy TLS skip verification
-+ Added basic auth
-+ Edit proxy settings
-+ Whitelist
-+ TCP Proxy (experimental)
-+ Info (Utilities page)
-
-# v2.6 May 27 2023
-
-+ Basic auth
-+ Support TLS verification skip (for self signed certs)
-+ Added trend analysis
-+ Added referrer and file type analysis
-+ Added cert expire day display
-+ Moved subdomain proxy logic to dpcore
+# Waymark Proxy changelog
+
+Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors. This file lists Waymark's changes; for Zoraxy's own history see its [releases](https://github.com/tobychui/zoraxy/releases).
+
+**Versioning:** [semantic versioning](https://semver.org), `MAJOR.MINOR.PATCH`.
+
+- **PATCH** (1.0.1): bug and security fixes only.
+- **MINOR** (1.1.0): new features, including merged Zoraxy releases, that keep existing configuration working.
+- **MAJOR** (2.0.0): changes that need action when upgrading.
+- The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
+- The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
+
+## 1.0.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+The first release under the Waymark Proxy name. It contains everything from the Zoraxy-based builds `3.3.5-custom.1` to `custom.16` (listed below), plus the rename.
+
+**Renamed**
+- Zoraxy is now **Waymark Proxy** ("Waymark" for short), with a new logo, a new footer and About page that credit Zoraxy, and the version scheme above. The source code is at [github.com/rtadams89/waymark-proxy](https://github.com/rtadams89/waymark-proxy).
+- The release binary is `waymark_linux_amd64`, and `waymark -version` prints e.g. `Waymark Proxy 1.0.0 (based on Zoraxy 3.3.5)`.
+
+**Breaking changes** (see [Upgrading from the Zoraxy-based builds](README.md#upgrading-from-the-zoraxy-based-builds) in the README)
+- Suggested service user, folder and unit: `waymark`, `/opt/waymark` and `waymark.service` (previously `zoraxy`, `/opt/zoraxy`, `zoraxy.service`).
+- High availability:
+  - The helper is `waymark-ha-apply`, with units `waymark-ha-apply.path` and `waymark-ha-apply.service`, scripts in `/usr/local/lib/waymark-ha`, and folders `/var/lib/waymark/ha` and `/var/lib/waymark-ha`.
+  - The installer reads `WAYMARK_USER` and `WAYMARK_UNIT`. Rerunning it removes the old `zoraxy-ha-apply` integration.
+  - keepalived's instance and script are named `WAYMARK` and `waymark_health`.
+  - Nodes sync over `X-Waymark-Ha-*` headers, so both nodes need Waymark before sync resumes.
+- Cookie names changed (`Waymark` session, `waymark_csrf`, `waymark_captcha_session`), so everyone signs in again once, and visitors behind a CAPTCHA solve it again once. The CAPTCHA verify path is `/.waymark/captcha/verify`.
+- Headers and identifiers:
+  - Headers sent to upstreams are now `X-Forwarded-Server: waymark-<id>` and `X-Auth-Method: waymark_sso`.
+  - Responses carry `x-proxy-by: waymark/<version>` and `X-Waymark-Cache`.
+  - User-Agents are `waymark-healthcheck`, `waymark-uptime` and `waymark-wsproxy`.
+  - The mDNS identity, log file prefix (`waymark_…`) and configuration export file name (`waymark-config-…zip`) changed too.
+- The built-in SSO is called Waymark Auth: TOTP apps show the issuer "Waymark Auth" for newly enrolled users, and passkeys show "Waymark Auth". Existing TOTP codes and passkeys keep working.
+
+**Not changed**
+- Configuration (`conf/`, `sys.db`) is read as before: no migration is needed beyond the renames above.
+- Zoraxy plugins still work: the plugin protocol (`X-Zoraxy-*` plugin headers and the plugin SDK) and the Zoraxy plugin store are unchanged.
+
+## Before 1.0.0: the Zoraxy-based builds
+
+These builds were released as `3.3.5-custom.N`, a customised Zoraxy 3.3.5.
+
+### 3.3.5-custom.16
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Fixed**
+- The HA role badge (and the read-only note on a standby) now sits next to the logo instead of on a second line. The header is back to its normal height and no longer covers the top of each page and the menu.
+
+### 3.3.5-custom.15
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- HA cluster overview, on the High Availability page (**Cluster**) and as a **High Availability** panel on the Status page. The panel is shown only while HA is on and can be hidden in the panel settings.
+  - It lists every node with its role (Active, Standby, Fault, keepalived stopped), whether it holds the floating IP, its health, its configuration sync state (Source, In sync, Updating, or the problem), its Zoraxy version and how long it has been up.
+  - A summary line shows which node holds the floating IP and how many nodes are healthy, with warnings for unreachable or unhealthy nodes, version differences, and more than one active node.
+  - Other nodes' status comes over the configuration sync connection, so it is shown while sync is on. Every node now checks the others every 10 seconds, the active one included. An unreachable node shows its last known role, faded, and when it was last seen.
+- The active node reports it in its sync status when another node also claims to be active (both holding the floating IP).
+
+**Changed**
+- **Generate** for the cluster key makes the key in the browser instead of asking Zoraxy for one.
+- If your login on a node has ended (for example after signing in to another node on the same host name, even on another port), the HA page says so. Before, it put the login page's HTML into the cluster key field, or reported "Saved" for a save that never happened.
+
+### 3.3.5-custom.14
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- High availability, phase 2: configuration sync. Turn on **Copy the active node's configuration to the standby nodes** in the HA cluster settings, generate a cluster key, and use Copy settings / Paste settings once to put the same settings on the other node.
+  - **What is copied** from the active node: proxy and stream rules, redirects, access and path rules, SSO settings, certificates and keys, ACME settings and account, admin accounts and the login session key (so a login keeps working after failover), system settings, and this fork's settings including the HA settings. What stays per node: statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions.
+  - **How:**
+    - A standby checks the other nodes every 10 seconds.
+    - When the active node's configuration has changed and then stayed the same for one check, the standby downloads a snapshot, checks it, and restarts Zoraxy in place (same process) to load it. The snapshot is applied at startup, before anything loads its configuration.
+    - The configuration follows whichever node is active: after a failover, changes made on the new active node are copied to the old one when it returns as standby.
+  - **Security:**
+    - Each node listens on its own address and the sync port (default 9280), using TLS 1.3.
+    - Both sides prove they hold the cluster key with an HMAC tied to that TLS session, so a proof can't be replayed or relayed. Requests from addresses outside the node list are refused.
+    - Snapshots may only contain the files and tables listed above, and are refused if they come from a different Zoraxy version or their cluster settings don't include the receiving node.
+    - Staged and applied snapshot files are readable only by Zoraxy's user.
+  - **Read-only standby:** while sync is on, the standby refuses setting changes and names the active node. Its HA settings stay editable, so sync can be paused on a node. The menu bar shows "Read-only · make changes on <active node>".
+  - **HA page:** a Configuration sync panel shows the sync state, the last copy (when and from which node), which standby nodes are checking in and copying, the listener address, and a **Sync now** button.
+
+**Fixed**
+- HA settings: Save and apply gave up after 30 seconds and reported a failure while the server was still waiting for keepalived (up to 75 seconds).
+
+### 3.3.5-custom.13
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Fixed**
+- High availability: turning HA off left keepalived running with no VRRP instance. Debian's keepalived never reports ready to systemd in that state, so its start hung for 90 seconds and failed (also at every boot). keepalived now runs only while HA is on: turning HA off stops and disables it, turning it on enables and starts it. The installer no longer enables keepalived itself.
+- High availability: a save made while the apply helper was still running was ignored (systemd skips path changes while the helper runs). The helper now checks for a newer save after each apply and applies it too.
+- The apply helper limits each keepalived start or reload to 20 seconds and checks keepalived is actually running before reporting success. If keepalived does not come up, it restores the previous working config, or stops keepalived and says so when there is none. Before, it could report a restore that didn't happen.
+- Zoraxy waited only 20 seconds for the apply result and reported "no response" while keepalived was still starting. It now waits up to 75 seconds.
+
+**Added**
+- The installer finds Zoraxy's systemd service. If it is sandboxed (`ProtectSystem=strict`), the installer adds a drop-in (`ReadWritePaths=/var/lib/zoraxy/ha`) and asks you to restart Zoraxy. Set `ZORAXY_UNIT` if it can't find the service.
+- HA page: a **Services** row showing whether the settings watcher (`zoraxy-ha-apply.path`) and keepalived are running, with the command to fix each.
+- HA page: when Zoraxy can't write its HA folder because its service is sandboxed, the not-installed message says so and how to fix it.
+- The role badge in the menu bar shows the node name (for example "zrx-b · Standby"), so it's clear which node a page came from.
+
+**Changed**
+- If systemd reports keepalived is not running, the node counts as "keepalived stopped" even when keepalived was killed without reporting it. This holds certificate renewal and shows it in the badge.
+
+### 3.3.5-custom.12
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- High availability, phase 1: an active/passive pair (2 to 4 nodes) sharing a floating IP managed by keepalived (Networking > **High Availability**).
+  - Cluster settings in the UI: floating IP and prefix, VRRP router ID, optional VRRP password, and each node's name, address, interface and priority. Each node finds itself in the list by its own address. Uses unicast VRRP between the node addresses. By default the floating IP stays where it is when a higher-priority node recovers; it can be set to move back after 30 seconds.
+  - Zoraxy (running as the unprivileged `zoraxy` user) never writes keepalived's config. It writes a settings file; a root-owned helper (`zoraxy-ha-apply`, started by a systemd path unit) validates every value, builds `/etc/keepalived/keepalived.conf` from a fixed template, tests it with `keepalived -t`, and reloads keepalived. If the reload fails, the previous config is restored. The result is shown in the UI. The first time, a hand-written keepalived.conf is kept as `keepalived.conf.pre-zoraxy`.
+  - keepalived runs two root-owned scripts as the `zoraxy` user (`enable_script_security`). The health check needs a fresh heartbeat from Zoraxy, written every 2 seconds while the proxy listener answers (TCP connect plus TLS handshake). The notify script records the node's role. The floating IP moves to the other node within about 10 seconds when Zoraxy stops answering or exits, when keepalived stops, or when the machine goes down.
+  - Role badge in the menu bar (Active and holding the floating IP, Standby, Fault, keepalived stopped). The HA page shows this node's role, health, certificate renewal state, last apply result and a preview of the generated keepalived config.
+  - Automatic certificate renewal runs only on the active node. Standby, faulted and stopped nodes skip it; "Renew now" still works anywhere.
+  - Installer built into the binary: `zoraxy -ha-export-installer <folder>` writes `install.sh`, the helper, scripts and systemd units for review; then run `sudo bash <folder>/install.sh` on each node (needs `apt install keepalived`). The files can also be downloaded from the HA page.
+  - Settings are not synced between nodes yet. Enter them on each node, or use **Copy settings** / **Paste settings**. Syncing configuration, admin accounts and keys from the active node is planned for phase 2.
+
+### 3.3.5-custom.11
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Maintenance mode per rule (rule editor > **Maintenance**). While on, every request to the host, including its virtual directories, gets a "Down for maintenance" page (HTTP 503, `Cache-Control: no-store`) with an optional message and expected duration (also sent as `Retry-After`), instead of reaching the upstream. Access rules and authentication still apply first; health checks keep running. A preview button shows the page. Replace the built-in page with `<webroot>/templates/maintenance.html` (placeholders `{{message}}`, `{{retry}}`, `{{host}}`). The HTTP Proxy list marks the rule with an orange wrench.
+- Status page: **Upstream Health** panel with counts of healthy and down health-checked upstreams and rules in maintenance, and a list of what is down (rule, upstream, how long, reason) or in maintenance. Can be hidden in the panel settings.
+- Health checks: optional **Response must contain** text for HTTP GET checks. The upstream is healthy only if the status matches and the first 64 KB of the response include the text (catches apps that answer 200 with an error page).
+- Health checks for virtual directories: **Also check virtual directories** checks each of the rule's virtual directory backends with the rule's settings, including passive monitoring. While a backend is down its path gets the 521 page; the rest of the host is unaffected. Shown with a "virtual directory /path" label on the Health Checks page, in the log and in events, and with a red heart next to the virtual directory in the HTTP Proxy list.
+
+**Changed**
+- Static file caching now also covers a rule's virtual directories (using the rule's cache settings, keyed on the full request path) and rules that accept plain HTTP.
+
+### 3.3.5-custom.10
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Setting to turn Geo-IP lookups off (Utilities > System > Geo-IP Lookups). While off, the Geo-IP database is not loaded (about 170 MB less memory in testing), statistics record no visitor countries, and scheduled database downloads are skipped. It can't be turned off while an enabled access rule list contains countries; while it's off, countries can't be added and the access rule page says why. Turning it back on loads the database without a restart.
+- Upstream release tracking (GitHub Actions):
+  - **Watch upstream releases** runs daily. When tobychui/zoraxy publishes a final release (release candidates are skipped, but a newer one is noted in the run summary) that isn't merged into `custom` yet, it opens an issue (label `upstream-release`) and starts the merge workflow. Needs Issues turned on for the repository.
+  - **Merge upstream release** (also runnable by hand, including for a release candidate) merges the release into a new `upstream-merge/<tag>` branch, keeps the folders this fork removed removed, resets the version to `<new base>-custom.1` with a changelog entry, runs vet, tests and govulncheck, and opens a pull request into `custom` (a draft if a check failed). On merge conflicts it reports the files in an issue instead. Opening pull requests needs "Allow GitHub Actions to create and approve pull requests" in the repository's Actions settings.
+
+### 3.3.5-custom.9
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Changed**
+- On rules with health checks, the checks now decide routing whatever the number of upstreams. When every upstream is disabled (including a rule's only upstream), visitors get the "Web server is down" (521) error page at once instead of being forwarded to a dead server and timing out. Rules without health checks still always forward to their only upstream, as upstream Zoraxy does.
+- The legacy "disable auto fallback" option is ignored on rules with health checks, so a failed upstream is always taken out of the pool.
+
+**Added**
+- HTTP Proxy list: a red heart next to each upstream that is down (hover for the reason), and next to the host when all of its upstreams are down.
+
+**Fixed**
+- Health check settings: the Upstream status table's headings no longer stack above the values in the side panel. The single-upstream note now describes the actual behaviour.
+
+### 3.3.5-custom.8
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- HTTP Proxy list: a **Health / Cache** column showing whether each rule has health checks (active, passive or both) and static file caching on. The health indicator is green when all checked upstreams are healthy and red with "n of m down" otherwise, refreshed every 15 seconds; hovering shows the settings.
+- Status page: two new panels, each can be hidden in the panel settings.
+  - **Static File Cache (Today)**: today's hit rate and bandwidth saved across all hosts with caching on, compared with yesterday. Counters reset at local midnight and are kept across restarts.
+  - **Cache Memory**: how full the shared in-memory cache is (percentage, size against the limit, number of files).
+
+### 3.3.5-custom.7
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Static file caching, turned on per proxy rule in the rule editor's new **Caching** tab. Cached files are kept in memory and served without contacting the upstream.
+  - Only static file types are cached: a per-rule list of extensions (CSS, JS, images, fonts, audio/video, wasm by default). URLs without an extension can also be cached by response type (image, font, stylesheet, script, audio, video). Pages and API calls always go to the upstream.
+  - Freshness follows the upstream's `Cache-Control` / `Expires` headers, with a per-rule default lifetime (1 hour) when it sends none. Responses marked `no-store`, `no-cache` or `private`, responses that set cookies, error responses and files over the per-rule size limit (10 MB) are never stored.
+  - Expired files with an `ETag` or `Last-Modified` are revalidated with a conditional request, and the stored copy is kept when the upstream answers 304.
+  - Separate copies per `Vary` value (for example gzip and uncompressed). Browser conditional requests (304) and range requests (206) are answered from the cache.
+  - One memory limit shared by all rules (256 MB by default, adjustable in the Caching tab); least recently used files are dropped first. The cache starts empty after a restart.
+  - Per-rule stats (hit rate, files and bytes stored, data served from cache) and a button to clear a rule's cache. Responses carry `X-Zoraxy-Cache: HIT | REVALIDATED | MISS | BYPASS`.
+  - The cache runs after access rules, rate limiting, CAPTCHA and authentication. Requests carrying their own `Authorization` header for the upstream, WebSocket connections and virtual directories are never cached.
+
+### 3.3.5-custom.6
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Changed**
+- Health checks replace upstream's separate uptime monitor. The uptime monitor no longer probes anything; the Uptime Monitor page shows proxy rules with active health checks, fed by those checks in 5 minute blocks.
+- New proxy rules get an active health check by default (HTTP GET every 10s, disabled after 3 failures, re-enabled after 2 successes). The create form's uptime option is now "Enable health checks", with an optional health check path.
+- The rule editor's "Monitor Uptime" checkbox and health-check URI field are gone (hidden); health checks are configured under Upstream → Health Checks.
+
+**Migration**
+- On first start of this version, every rule that had "Monitor Uptime" on and no health check settings gets the default active health check, using its old health-check URI as the path, so failover and uptime history continue. This runs once per installation; rules that had "Monitor Uptime" off are left without health checks.
+
+**Fixed**
+- DNS Credential Sets: the table no longer stacks into a column of headers followed by a column of values in the narrow side panel; each set is one row under Name / Provider / Used By.
+- A certificate's own (per-certificate) DNS credentials can now be deleted from the credential set picker once the certificate uses a credential set or HTTP-01. While the certificate still renews with them, the delete button is hidden and a note explains why.
+
+**Note**
+- Rules without active health checks, including passive-only rules and virtual directories, no longer get automatic failover from the uptime monitor and are not shown on the Uptime Monitor page.
+
+### 3.3.5-custom.5
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Fixed**
+- Health Checks panel: the check type menu now always shows all four options. In the narrow side panel it was limited to about three entries and scrolled, which hid HTTP GET after picking another type.
+
+### 3.3.5-custom.4
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Changed**
+- Rules with active health checks now feed the Uptime Monitor page from those checks, and the uptime monitor's own 5 minute probe is skipped for their upstreams. Results are rolled up into one entry per 5 minutes (so the page still covers a day); an entry is down if the upstream was out of load balancing at any point in it, whether active checks or passive monitoring took it out.
+- Rules with passive monitoring only, virtual directories, and rules without health checks are still probed by the uptime monitor as before.
+
+### 3.3.5-custom.3
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Health checks for load balanced upstreams, set per proxy rule from the Upstream tab of the rule editor (**Health Checks** button).
+  - Active checks: HTTP GET, HTTP HEAD, TCP connect or ICMP ping, with path, healthy status codes, optional Host header, interval, timeout, and how many consecutive failures disable / successes re-enable an upstream.
+  - Passive monitoring, enabled separately: counts 5xx responses, timeouts and connection failures (each selectable) in real proxied traffic and disables an upstream after N errors within W seconds. It comes back through the active checks, or after a recovery time when no active check is configured.
+  - Every enable/disable is logged with its reason under `[healthcheck]`, and shown in the rule's Health Checks panel with live per-upstream status.
+  - The existing uptime monitor keeps recording history, but no longer switches upstreams on or off for rules that use health checks.
+- Status page: every panel below the server status banner can be shown or hidden (**Panels** button in the banner). Choices are saved on the server. The GeoIP visitor map and the countries card are hidden by default.
+
+**Changed**
+- Traffic flow diagram: the "Internet" node is now "Clients", with a people icon instead of a globe.
+
+### 3.3.5-custom.2
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Security**
+- Replaced github.com/gorilla/csrf with the Go standard library's `net/http.CrossOriginProtection`, as the advisory recommends. gorilla/csrf has an unpatched advisory affecting every version through 1.7.3 (hosts in TrustedOrigins also trust their `http://` origin). Zoraxy never set TrustedOrigins, so this build was not exploitable, but there is no fixed version to move to.
+- State-changing requests (POST, PUT, DELETE, ...) are now rejected when the browser reports them as cross-origin, using the `Sec-Fetch-Site` header (all browsers since 2023) or, for older browsers, an Origin/Host mismatch. This works the same over HTTP, HTTPS, an SSH tunnel, or behind Zoraxy's own proxy. CSRF tokens are no longer checked.
+
+**Removed**
+- The plain-HTTP workaround added in custom.1 (`src/csrf_plaintext.go`), which the standard library check makes unnecessary.
+
+### 3.3.5-custom.1
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Shared DNS challenge credential sets: save credentials once (for example a Cloudflare API token) and pick them when issuing a certificate. Existing certificates can be switched between a saved set, their own per-certificate credentials, or HTTP-01 from the key button in the TLS/SSL certificate list. Per-certificate credentials can be turned into a reusable set. Saved secrets are never sent back to the browser.
+- Version shown in the web UI and `zoraxy -version` includes the fork revision.
+
+**Fixed**
+- Admin UI saves failed with 403 over plain HTTP (direct `http://host:8000` or an SSH tunnel) after the gorilla/csrf 1.7.3 update. Requests are now marked as plaintext unless they arrived over TLS or through an HTTPS proxy. (Superseded in custom.2.)
+
+**Security**
+- golang.org/x/net 0.59.0 → 0.60.0 (HTTP/2 fixes GO-2026-6603, -6610, -6611, -6612, -6617).
+- github.com/gorilla/csrf 1.7.2 → 1.7.3 (GO-2025-3607).
+- Builds use the latest Go 1.26.x patch release instead of 1.26.0, and CI fails on any reachable known vulnerability (govulncheck).
+
+**Build**
+- GitHub Actions workflow (`custom-build.yml`): vet, test, govulncheck and a linux/amd64 build on every push to `custom`; GitHub Release on version tags.
+- `src/dist/` added to `.gitignore`.

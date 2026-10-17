@@ -43,7 +43,7 @@
 
             <div class="ui yellow message" id="acNoCacheNote" style="display:none;">
                 <i class="exclamation triangle icon"></i>
-                Zoraxy's global "no cache" option is on. It marks every response <code>no-store</code>, so nothing will be cached until it is turned off.
+                Waymark's global "no cache" option is on. It marks every response <code>no-store</code>, so nothing will be cached until it is turned off.
             </div>
 
             <div class="ui form" id="acForm">
@@ -93,7 +93,7 @@
 
             <div class="ui divider"></div>
             <h4 class="ui header">This host
-                <div class="sub header" id="acStatsSince">Since Zoraxy started or the cache was last cleared</div>
+                <div class="sub header" id="acStatsSince">Since Waymark started or the cache was last cleared</div>
             </h4>
             <div class="ui small statistics" id="acStats">
                 <div class="statistic"><div class="value" id="acHitRate">-</div><div class="label">Hit rate</div></div>
@@ -115,15 +115,15 @@
                     <div class="ui input"><input type="number" min="16" max="65536" id="acLimitMB"></div><span>MB</span>
                     <button class="ui basic button" id="acLimitBtn" onclick="saveLimit();"><i class="green save icon"></i> Set limit</button>
                 </div>
-                <div class="acHint" style="margin-top: 0.3em;">Shared by every host with caching on. When it's full, the least recently used files are dropped. The cache is kept in memory only and starts empty after Zoraxy restarts.</div>
+                <div class="acHint" style="margin-top: 0.3em;">Shared by every host with caching on. When it's full, the least recently used files are dropped. The cache is kept in memory only and starts empty after Waymark restarts.</div>
             </div>
 
             <div class="ui divider"></div>
             <div class="ui list acHint">
                 <div class="item">Files are stored only if the upstream allows it: responses marked <span class="acCode">no-store</span>, <span class="acCode">no-cache</span> or <span class="acCode">private</span>, responses that set a cookie, and error responses are always passed through.</div>
-                <div class="item">Cached files are shared between everyone who can reach this host (after Zoraxy's access rules and authentication). If the app itself protects some files with its own login, make sure it marks them <span class="acCode">private</span>, or leave their extension out of the list.</div>
-                <div class="item">When a cached file expires, Zoraxy asks the upstream whether it changed (using its <span class="acCode">ETag</span> or <span class="acCode">Last-Modified</span>) and keeps the stored copy if it didn't.</div>
-                <div class="item">Responses show <span class="acCode">X-Zoraxy-Cache: HIT</span>, <span class="acCode">REVALIDATED</span>, <span class="acCode">MISS</span> or <span class="acCode">BYPASS</span>, visible in the browser's developer tools.</div>
+                <div class="item">Cached files are shared between everyone who can reach this host (after Waymark's access rules and authentication). If the app itself protects some files with its own login, make sure it marks them <span class="acCode">private</span>, or leave their extension out of the list.</div>
+                <div class="item">When a cached file expires, Waymark asks the upstream whether it changed (using its <span class="acCode">ETag</span> or <span class="acCode">Last-Modified</span>) and keeps the stored copy if it didn't.</div>
+                <div class="item">Responses show <span class="acCode">X-Waymark-Cache: HIT</span>, <span class="acCode">REVALIDATED</span>, <span class="acCode">MISS</span> or <span class="acCode">BYPASS</span>, visible in the browser's developer tools.</div>
                 <div class="item">A browser hard reload fetches files from the upstream again. Virtual directories and WebSocket connections are never cached. Video seeking (range requests) is served from the cache only after the whole file has been stored once.</div>
             </div>
             <br>

@@ -90,7 +90,7 @@ func newWebAuthnFromRequest(r *http.Request) (*webauthnlib.WebAuthn, error) {
 	origin := fmt.Sprintf("%s://%s", proto, host)
 
 	return webauthnlib.New(&webauthnlib.Config{
-		RPDisplayName: "Zoraxy Auth",
+		RPDisplayName: "Waymark Auth",
 		RPID:          rpID,
 		RPOrigins:     []string{origin},
 	})

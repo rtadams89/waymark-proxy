@@ -219,11 +219,11 @@ var tourSteps = {
     "homepage": [
         tourStepFactory({
             title: "🎉 Congratulation on your first site!",
-            desc: "In this tour, you will be guided through the steps required to setup a basic static website using your own domain name with Zoraxy."
+            desc: "In this tour, you will be guided through the steps required to setup a basic static website using your own domain name with Waymark."
         }),
         tourStepFactory({
-            title: "👉 Pointing domain DNS to Zoraxy's IP",
-            desc: `Setup a DNS A Record that points your domain name to this Zoraxy instances public IP address. <br>
+            title: "👉 Pointing domain DNS to Waymark's IP",
+            desc: `Setup a DNS A Record that points your domain name to this Waymark instances public IP address. <br>
             Assume your public IP is 93.184.215.14, you should have an A record like this.
             <table class="ui celled collapsing basic striped table">
                 <thead>
@@ -241,7 +241,7 @@ var tourSteps = {
                     </tr>
                 </tbody>
             </table>
-            <br>If the IP of Zoraxy start from 192.168, you might want to use your router's public IP address and setup port forward for both port 80 and 443 as well.`,
+            <br>If the IP of Waymark start from 192.168, you might want to use your router's public IP address and setup port forward for both port 80 and 443 as well.`,
             callback: function(){
                 $.get("/api/acme/wizard?step=10", function(data){
                     if (data.error == undefined){
@@ -279,7 +279,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "🌐 Add DNS Record for WebDAV",
-            desc: `Before creating the proxy rule, add a DNS <b>A</b> or <b>CNAME</b> record for your chosen WebDAV subdomain (e.g. <code>webdav.example.com</code>) pointing to your Zoraxy server's public IP address — just like you did for your root domain.
+            desc: `Before creating the proxy rule, add a DNS <b>A</b> or <b>CNAME</b> record for your chosen WebDAV subdomain (e.g. <code>webdav.example.com</code>) pointing to your Waymark server's public IP address — just like you did for your root domain.
             <br><br>Once the DNS record is in place, fill in the subdomain in the <b>Matching Keyword / Domain</b> field.`,
             tab: "rules",
             element: "#rules .field[tourstep='matchingkeyword']",
@@ -316,7 +316,7 @@ var tourSteps = {
             pos: "center"
         }),
         tourStepFactory({
-            title: "👉 Pointing subdomain DNS to Zoraxy's IP",
+            title: "👉 Pointing subdomain DNS to Waymark's IP",
             desc: `Setup a DNS CNAME Record that points your subdomain to your root domain. <br>
             Assume your public IP is 93.184.215.14, you should have an CNAME record like this.
             <table class="ui celled collapsing basic striped table">
@@ -354,7 +354,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "➕ Create New Proxy Rule",
-            desc: `Next, you can now move on to create a proxy rule that reverse proxy your new subdomain in Zoraxy. You can easily add new rules using the "New Proxy Rule" web form.`,
+            desc: `Next, you can now move on to create a proxy rule that reverse proxy your new subdomain in Waymark. You can easily add new rules using the "New Proxy Rule" web form.`,
             tab: "rules",
             pos: "topright"
         }),
@@ -366,7 +366,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "🖥️ Target IP Address or Domain Name with port",
-            desc: `Fill in the Reverse Proxy Destination. e.g. localhost:8080 or 192.168.1.100:9096. <br><br>Please make sure your web services is accessible by Zoraxy.`,
+            desc: `Fill in the Reverse Proxy Destination. e.g. localhost:8080 or 192.168.1.100:9096. <br><br>Please make sure your web services is accessible by Waymark.`,
             element: "#rules .field[tourstep='targetdomain']",
             pos: "bottomright"
         }),
@@ -420,12 +420,12 @@ var tourSteps = {
     "tls":[
         tourStepFactory({
             title: "🔐 Enable HTTPS (TLS) for your site",
-            desc: `Some technologies only work with HTTPS for security reasons. In this tour, you will be guided through the steps to enable HTTPS in Zoraxy.`,
+            desc: `Some technologies only work with HTTPS for security reasons. In this tour, you will be guided through the steps to enable HTTPS in Waymark.`,
             pos: "center",
         }),
         tourStepFactory({
             title: "➡️ Change Listening Port",
-            desc: `HTTPS listen on port 443 instead of 80. If your Zoraxy is currently listening to ports other than 443, change it to 443 in incoming port option and click "Apply"`,
+            desc: `HTTPS listen on port 443 instead of 80. If your Waymark is currently listening to ports other than 443, change it to 443 in incoming port option and click "Apply"`,
             tab: "globalsettings",
             element: "#globalsettings div[tourstep='incomingPort']",
             scrollto: "#globalsettings div[tourstep='incomingPort']",
@@ -454,14 +454,14 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "🎉 HTTPS Enabled!",
-            desc: `Now, your Zoraxy instance is ready to serve HTTPS requests. 
-            <br><br>By default, Zoraxy serve all your host-names by its internal self-signed certificate which is not a proper setup. That is why you will need to request a proper certificate for your site from your ISP or CA. `,
+            desc: `Now, your Waymark instance is ready to serve HTTPS requests. 
+            <br><br>By default, Waymark serve all your host-names by its internal self-signed certificate which is not a proper setup. That is why you will need to request a proper certificate for your site from your ISP or CA. `,
             tab: "status",
             pos: "center",
         }),
         tourStepFactory({
             title: "🔐 TLS / SSL Certificates",
-            desc: `Zoraxy come with a simple and handy TLS management interface, where you can upload or request your certificates with a web form. You can click "TLS / SSL Certificate" from the side menu to open this page.`,
+            desc: `Waymark come with a simple and handy TLS management interface, where you can upload or request your certificates with a web form. You can click "TLS / SSL Certificate" from the side menu to open this page.`,
             tab: "cert",
             element: "#mainmenu",
             pos: "center",
@@ -498,7 +498,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "🔄 Enable Auto Renew",
-            desc:`Free certificates only last for a few months. If you want Zoraxy to automate the renewal process, enable <b>"Enable Certificate Auto Renew"</b> using the toggle switch.
+            desc:`Free certificates only last for a few months. If you want Waymark to automate the renewal process, enable <b>"Enable Certificate Auto Renew"</b> using the toggle switch.
             <br><br>You can fine-tune which certificates get renewed in the <b>Advanced Renew Policy</b> section just below — choose "Renew All Certs" or select individual certificates from the table.`,
             tab: "acme",
             element: "#acmeAutoRenewCheckbox",
@@ -513,7 +513,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "🎉 Certificate Installed!",
-            desc:`Now, your certificate is loaded into the database and it is ready to use! In Zoraxy, you do not need to manually assign the certificate to a domain. Zoraxy will do that automatically for you. 
+            desc:`Now, your certificate is loaded into the database and it is ready to use! In Waymark, you do not need to manually assign the certificate to a domain. Waymark will do that automatically for you. 
                 <br><br>Now, you can try to visit your website with https:// and see your green lock shows up next to your domain name!`,
             element: "#cert div[tourstep='certTable']",
             scrollto: "#cert div[tourstep='certTable']",
@@ -627,7 +627,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "📋 Existing Stream Rules",
-            desc: `This table lists all active stream proxy rules. Each row shows the rule name, the port Zoraxy is listening on, and the backend address traffic is forwarded to.`,
+            desc: `This table lists all active stream proxy rules. Each row shows the rule name, the port Waymark is listening on, and the backend address traffic is forwarded to.`,
             element: "#streamproxy #proxyTable",
             scrollto: "#streamproxy #proxyTable",
             pos: "bottomright",
@@ -642,7 +642,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "👂 Listening Address",
-            desc: `This is the port on <em>this</em> machine that Zoraxy will listen on for incoming connections.
+            desc: `This is the port on <em>this</em> machine that Waymark will listen on for incoming connections.
             <br><br>Minecraft's default port is <code>25565</code>, so enter <code>:25565</code> to listen on all interfaces, or <code>0.0.0.0:25565</code> explicitly.
             <br><br><b>Docker users:</b> you must also expose this port in your <code>docker-compose.yml</code> or <code>-p</code> flag.`,
             element: "#streamproxy #streamProxyForm .field:has(input[name='listenAddr'])",
@@ -651,7 +651,7 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "🎯 Proxy Target Address",
-            desc: `Enter the address of your actual Minecraft server backend — the machine Zoraxy should forward traffic to.
+            desc: `Enter the address of your actual Minecraft server backend — the machine Waymark should forward traffic to.
             <br><br>e.g. <code>192.168.1.100:25565</code> for a server on your local network, or <code>mc.myserver.com:25565</code> for a remote host.`,
             element: "#streamproxy #streamProxyForm .field:has(input[name='proxyAddr'])",
             scrollto: "#streamproxy #streamProxyForm .field:has(input[name='proxyAddr'])",
@@ -668,7 +668,7 @@ var tourSteps = {
         tourStepFactory({
             title: "🔬 Proxy Protocol (Advanced)",
             desc: `Leave this set to <b>Disabled</b> for most use cases like Minecraft.
-            <br><br>If your backend needs to know the <em>real client IP address</em> (e.g. a web server behind Zoraxy), enable <b>Proxy Protocol V1 or V2</b>. It prepends a small header to each connection so the backend can see where the traffic originally came from — think of it as writing the sender's return address on the envelope before forwarding it.
+            <br><br>If your backend needs to know the <em>real client IP address</em> (e.g. a web server behind Waymark), enable <b>Proxy Protocol V1 or V2</b>. It prepends a small header to each connection so the backend can see where the traffic originally came from — think of it as writing the sender's return address on the envelope before forwarding it.
             <br><br>Note: UDP does not support Proxy Protocol V1.`,
             element: "#streamproxy #streamProxyForm .field:has(select[name='proxyProtocolVersion'])",
             scrollto: "#streamproxy #streamProxyForm .field:has(select[name='proxyProtocolVersion'])",
@@ -676,8 +676,8 @@ var tourSteps = {
         }),
         tourStepFactory({
             title: "💾 Create the Stream Rule",
-            desc: `Click <b>"Create"</b> to start the stream proxy immediately. Your Minecraft server will now be accessible through Zoraxy on port <code>25565</code>.
-            <br><br>Players can connect using your Zoraxy host's domain or IP address — Zoraxy will transparently forward all traffic to your backend server.`,
+            desc: `Click <b>"Create"</b> to start the stream proxy immediately. Your Minecraft server will now be accessible through Waymark on port <code>25565</code>.
+            <br><br>Players can connect using your Waymark host's domain or IP address — Waymark will transparently forward all traffic to your backend server.`,
             element: "#streamproxy [tourstep='create_stream_proxy_btn']",
             scrollto: "#streamproxy [tourstep='create_stream_proxy_btn']",
             pos: "topright",
@@ -690,4 +690,4 @@ var tourSteps = {
             pos: "center",
         }),
     ],
-}
+}

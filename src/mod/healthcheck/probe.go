@@ -21,7 +21,7 @@ import (
 	"golang.org/x/net/ipv6"
 )
 
-const userAgent = "zoraxy-healthcheck/1"
+const userAgent = "waymark-healthcheck/1"
 
 // ProbeResult is the outcome of one active check.
 type ProbeResult struct {
@@ -226,7 +226,7 @@ func pingOnce(ip net.IP, deadline time.Time) (time.Duration, error) {
 	rand.Read(idb[:])
 	id := int(binary.BigEndian.Uint16(idb[:2]))
 	seq := int(binary.BigEndian.Uint16(idb[2:]))
-	payload := []byte("zoraxy-healthcheck")
+	payload := []byte("waymark-healthcheck")
 
 	var echoType, replyType icmp.Type
 	proto := 1

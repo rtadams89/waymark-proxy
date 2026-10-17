@@ -80,7 +80,7 @@ func main() {
 
 	/* Maintaince Function Modes */
 	if *showver {
-		fmt.Println(SYSTEM_NAME + " - Version " + DISPLAY_VERSION)
+		fmt.Println(PRODUCT_NAME + " " + DISPLAY_VERSION + " (based on Zoraxy " + UPSTREAM_BASE + ")")
 		os.Exit(0)
 	}
 	if *geoDbUpdate {

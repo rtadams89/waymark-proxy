@@ -149,7 +149,7 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Plugins</h2>
-        <p>Add custom features to your Zoraxy!</p>
+        <p>Add custom features to your Waymark!</p>
     </div>
     <div class="ui yellow message">
       <div class="header">Experimental Feature</div>
@@ -241,7 +241,7 @@
                 <div class="ui inverted message" style="margin-top: 0.6em;">
                   <div class="header">Developer Only</div>
                   <p>These functions are intended for developers only. Enabling them may add latency to plugin loading & routing. Proceed with caution.<br>
-                  <b>Tips: You can start zoraxy with -dev=true to enable auto-reload when start</b></p>
+                  <b>Tips: You can start waymark with -dev=true to enable auto-reload when start</b></p>
                 </div>
                 <br>
                 <div id="enablePluginAutoReload" class="ui toggle notloopbackOnly tlsEnabledOnly checkbox" style="margin-top: 0.6em;">
@@ -386,7 +386,7 @@ function initSelectablePluginList(){
       $("#selectablePluginList").append(`
         <div class="item" style="pointer-events: none; user-select: none; opacity: 0.6;">
           <p><i class="ui green circle check icon"></i> No plugins available to assign</p>
-          <p>Plugins can be installed to Zoraxy by placing the plugin files in the plugins directory.</p>
+          <p>Plugins can be installed to Waymark by placing the plugin files in the plugins directory.</p>
         </div>
       `);
     }
@@ -474,7 +474,7 @@ function removePluginFromTag(pluginId, tag){
 }
 
 /* Plugin List */
-//Render the plugin list to Zoraxy homepage side menu
+//Render the plugin list to Waymark homepage side menu
 function initPluginSideMenu(){
   $.get(`/api/plugins/list`, function(data){
     $("#pluginMenu").html("");

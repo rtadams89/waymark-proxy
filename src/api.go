@@ -72,6 +72,7 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/proxy/maintenance/set", HandleMaintenanceSet)
 	authRouter.HandleFunc("/api/proxy/maintenance/preview", HandleMaintenancePreview)
 	// Custom fork: high availability (ha_custom.go)
+	authRouter.HandleFunc("/api/info/brand", HandleBrandInfo) // product name and version (brand_custom.go)
 	authRouter.HandleFunc("/api/ha/status", HandleHAStatus)
 	authRouter.HandleFunc("/api/ha/config", HandleHAConfig)
 	authRouter.HandleFunc("/api/ha/apply", HandleHAApply)

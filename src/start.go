@@ -501,7 +501,7 @@ func ShutdownSeq() {
 
 	//Close the zorxauth router to save browser sessions
 	if zorxAuthRouter != nil {
-		SystemWideLogger.Println("Shutting down Zoraxy Auth Router")
+		SystemWideLogger.Println("Shutting down Waymark Auth Router")
 		zorxAuthRouter.Close()
 	}
 

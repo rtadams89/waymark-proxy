@@ -1,25 +1,24 @@
-# Build workflow for the "custom" branch of this fork.
+# Waymark Proxy build.
 #
-# - Every push to custom (or a manual run): vet, test, and build a
-#   linux/amd64 binary, uploaded as a workflow artifact (kept 30 days).
-# - Pushing a version tag v<base>-custom.<n> (e.g. v3.3.5-custom.1): does the
-#   same, then publishes a GitHub Release with the binary and its SHA-256
-#   checksum. The tag must match the version compiled into the binary
-#   (src/version_custom.go), or the release is refused.
-#
-# Upstream's ci.yaml only runs on main and pull requests, so it does not
-# overlap with this workflow.
+# - Every push to main, every pull request into main, and manual runs: vet,
+#   test, govulncheck, and a linux/amd64 build uploaded as a workflow
+#   artifact (kept 30 days).
+# - Pushing a version tag vMAJOR.MINOR.PATCH (e.g. v1.0.0): the same, then a
+#   GitHub Release with the binary and its SHA-256 checksum. The tag must
+#   match PRODUCT_VERSION in src/version_custom.go, or the release is refused.
 
-name: Custom build
+name: Build
 
 on:
   push:
-    branches: [custom]
-    tags: ["v*-custom.*"]
+    branches: [main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: custom-build-${{ github.ref }}
+  group: build-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -85,9 +84,9 @@ jobs:
           GOARCH: amd64
         run: |
           mkdir -p dist
-          go build -trimpath -ldflags "-s -w" -o "dist/zoraxy_${GOOS}_${GOARCH}" .
+          go build -trimpath -ldflags "-s -w" -o "dist/waymark_${GOOS}_${GOARCH}" .
           cd dist
-          sha256sum "zoraxy_${GOOS}_${GOARCH}" > "zoraxy_${GOOS}_${GOARCH}.sha256"
+          sha256sum "waymark_${GOOS}_${GOARCH}" > "waymark_${GOOS}_${GOARCH}.sha256"
 
       - name: Check version
         working-directory: src/dist
@@ -95,23 +94,24 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           TAG: ${{ github.ref_name }}
         run: |
-          # Prints e.g. "Zoraxy - Version 3.3.5-custom.1"
-          version="$(./zoraxy_linux_amd64 -version | sed -n 's/^Zoraxy - Version //p')"
-          echo "Built version: ${version}"
-          echo "Built **Zoraxy ${version}**" >> "$GITHUB_STEP_SUMMARY"
+          # Prints e.g. "Waymark Proxy 1.0.0 (based on Zoraxy 3.3.5)"
+          line="$(./waymark_linux_amd64 -version)"
+          version="$(echo "$line" | sed -n -E 's/^Waymark Proxy ([0-9]+\.[0-9]+\.[0-9]+) .*/\1/p')"
+          echo "Built: ${line}"
+          echo "Built **${line}**" >> "$GITHUB_STEP_SUMMARY"
           if [ -z "$version" ]; then
             echo "::error::Could not read the version from the binary"
             exit 1
           fi
           if [ "$REF_TYPE" = "tag" ] && [ "$TAG" != "v${version}" ]; then
-            echo "::error::Tag ${TAG} does not match the binary version v${version}. Bump FORK_REVISION in src/version_custom.go or fix the tag."
+            echo "::error::Tag ${TAG} does not match the binary version v${version}. Set PRODUCT_VERSION in src/version_custom.go or fix the tag."
             exit 1
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: zoraxy_linux_amd64
+          name: waymark_linux_amd64
           path: src/dist/*
           retention-days: 30
           if-no-files-found: error
@@ -136,5 +136,5 @@ jobs:
         run: |
           gh release create "$TAG" dist/* \
             --repo "$GITHUB_REPOSITORY" \
-            --title "$TAG" \
+            --title "Waymark Proxy $TAG" \
             --generate-notes

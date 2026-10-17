@@ -43,20 +43,20 @@ import (
 
 const (
 	/* Build Constants */
-	SYSTEM_NAME    = "Zoraxy"
+	SYSTEM_NAME    = "Waymark"
 	SYSTEM_VERSION = "3.3.5"
 
 	/* System Constants */
 	WEBSERV_DEFAULT_PORT         = 5487
-	MDNS_HOSTNAME_PREFIX         = "zoraxy_" /* Follow by node UUID */
+	MDNS_HOSTNAME_PREFIX         = "waymark_" /* Follow by node UUID */
 	MDNS_IDENTIFY_DEVICE_TYPE    = "Network Gateway"
-	MDNS_IDENTIFY_DOMAIN         = "zoraxy.aroz.org"
-	MDNS_IDENTIFY_VENDOR         = "imuslab.com"
+	MDNS_IDENTIFY_DOMAIN         = "waymark-proxy"
+	MDNS_IDENTIFY_VENDOR         = "Waymark Proxy"
 	MDNS_SCAN_TIMEOUT            = 30 /* Seconds */
 	MDNS_SCAN_UPDATE_INTERVAL    = 15 /* Minutes */
 	GEODB_CACHE_CLEAR_INTERVAL   = 15 /* Minutes */
-	CSRF_COOKIENAME              = "zoraxy_csrf"
-	LOG_PREFIX                   = "zr"
+	CSRF_COOKIENAME              = "waymark_csrf"
+	LOG_PREFIX                   = "waymark"
 	LOG_EXTENSION                = ".log"
 	STATISTIC_AUTO_SAVE_INTERVAL = 600 /* Seconds */
 )
@@ -69,8 +69,8 @@ var (
 	showver                    = flag.Bool("version", false, "Show version of this server")
 	allowSshLoopback           = flag.Bool("sshlb", false, "Allow loopback web ssh connection (DANGER)")
 	allowMdnsScanning          = flag.Bool("mdns", true, "Enable mDNS scanner and transponder")
-	mdnsName                   = flag.String("mdnsname", "", "mDNS name, leave empty to use default (zoraxy_{node-uuid}.local)")
-	runningInDocker            = flag.Bool("docker", false, "Run Zoraxy in docker compatibility mode")
+	mdnsName                   = flag.String("mdnsname", "", "mDNS name, leave empty to use default (waymark_{node-uuid}.local)")
+	runningInDocker            = flag.Bool("docker", false, "Run Waymark in docker compatibility mode")
 	enableHighSpeedGeoIPLookup = flag.Bool("fastgeoip", true, "Enable high speed geoip lookup, disable this if you are using a very small memory footprint device")
 	enableAutoUpdate           = flag.Bool("cfgupgrade", true, "Enable auto config upgrade if breaking change is detected")
 

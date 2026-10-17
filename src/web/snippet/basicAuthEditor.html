@@ -98,7 +98,7 @@
                     <div class="ui yellow message" style="margin-top: 0.6em;">
                         <i class="ui exclamation triangle icon"></i>
                         <b>Security Warning</b><br> 
-                        Enabling this option lets Zoraxy read the client IP from HTTP headers that can be set by any client on the internet. Only enable this if Zoraxy sits <em>behind a reverse proxy you trust</em> (e.g. Cloudflare).
+                        Enabling this option lets Waymark read the client IP from HTTP headers that can be set by any client on the internet. Only enable this if Waymark sits <em>behind a reverse proxy you trust</em> (e.g. Cloudflare).
                     </div>
                 </div>  
                 <div class="field" >
@@ -110,7 +110,7 @@
                         <p>All request URI that contains the given prefix will be allowed to bypass authentication and <b>the prefix must start with a slash.</b> For example, given the following prefix.<br>
                         <code>/public/res/</code><br>
                             <br>
-                            Zoraxy will allow authentication bypass of any subdirectories or resources under the /public/res/ directory. For example, the following paths access will be able to bypass basic auth mechanism under this setting.<br>
+                            Waymark will allow authentication bypass of any subdirectories or resources under the /public/res/ directory. For example, the following paths access will be able to bypass basic auth mechanism under this setting.<br>
                             <code>/public/res/photo.png</code><br>
                             <code>/public/res/far/boo/</code></p>
                     </div>
@@ -443,4 +443,4 @@
             }
         </script>
     </body>
-</html>
+</html>

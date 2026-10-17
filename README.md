@@ -1,264 +1,283 @@
-![](./img/title.png)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="branding/logo-dark.svg">
+    <img src="branding/logo.svg" alt="Waymark Proxy" width="420">
+  </picture>
+</p>
 
-# Zoraxy
+<p align="center">
+  A self-hosted reverse proxy with active/standby high availability, real health checks and static file caching, managed from a web UI.
+</p>
 
-A general purpose HTTP reverse proxy and forwarding tool. Now written in Go!
+Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more upstream servers, and can run as an active/standby pair that shares a floating IP address. It is built on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors, and adds the features below.
 
-### Features
+- [What Waymark adds to Zoraxy](#what-waymark-adds-to-zoraxy)
+- [Requirements](#requirements)
+- [Install](#install)
+- [Quick start: your first proxy](#quick-start-your-first-proxy)
+- [High availability (optional)](#high-availability-optional)
+- [Upgrading](#upgrading)
+- [Building from source](#building-from-source)
+- [Where your data lives](#where-your-data-lives)
+- [Relationship to Zoraxy, license and credits](#relationship-to-zoraxy-license-and-credits)
 
-- Simple to use interface with detail in-system instructions
-- Reverse Proxy (HTTP/2)
-  - Virtual Directory
-  - WebSocket Proxy (automatic, no set-up needed) 
-  - Basic Auth
-  - Alias Hostnames
-  - Custom Headers
-  - Load Balancing
-- Redirection Rules
-- TLS / SSL setup and deploy
-  - ACME features like auto-renew to serve your sites in http**s**
-  - SNI support (and SAN certs)
-  - DNS Challenge for Let's Encrypt and [these DNS providers](https://go-acme.github.io/lego/dns/)
-- Blacklist / Whitelist by country or IP address (single IP, CIDR or wildcard for beginners)
-- Stream Proxy (TCP & UDP)
-- Integrated Up-time Monitor
-- Web-SSH Terminal
-- Plugin System
-- Utilities
-  - CIDR IP converters
-  - mDNS Scanner
-  - Wake-On-Lan
-  - Debug Forward Proxy
-  - IP Scanner
-  - Port Scanner
-- Community Contributed Features
-  - Forward-Auth Support (e.g. Authelia, Authentik)
-  - Oauth2 Support 
-  - reCAPTCHA 
+## What Waymark adds to Zoraxy
 
-- Others
-  - Basic single-admin management mode
-  - External permission management system for easy system integration
-  - SMTP config for password reset
-  - Dark Theme Mode
+Everything Zoraxy does (HTTP and stream proxying, ACME certificates, access rules, SSO, the plugin store and so on) still works. On top of that:
 
-## Downloads
+**High availability**
+- **Active/standby pairs** (2 to 4 nodes) sharing a floating IP managed by keepalived. The floating IP moves to a healthy node within about 10 seconds when Waymark stops answering, keepalived stops or the machine goes down.
+- **Configured from the web UI.** Waymark itself runs unprivileged. A small root-owned helper validates the settings, writes keepalived's config from a fixed template, tests it and reloads keepalived.
+- **Configuration sync.** Standby nodes copy the active node's configuration (proxy rules, certificates and keys, access rules, admin accounts, settings) over TLS, authenticated with a shared cluster key. Standby nodes are read-only, so changes are made in one place.
+- **Cluster overview** on the HA page and the Status page: each node's role, health, sync state and version.
+- Automatic certificate renewal runs only on the active node.
 
-[Windows](https://github.com/tobychui/zoraxy/releases/latest/download/zoraxy_windows_amd64.exe)
-/ [Linux (amd64)](https://github.com/tobychui/zoraxy/releases/latest/download/zoraxy_linux_amd64)
-/ [Linux (arm64)](https://github.com/tobychui/zoraxy/releases/latest/download/zoraxy_linux_arm64)
+**Health checks** (per proxy rule)
+- Active checks: HTTP GET or HEAD (with expected status codes and optional "response must contain" text), TCP connect or ICMP ping, with interval, timeout and failure and recovery thresholds.
+- Passive monitoring of real traffic (5xx responses, timeouts, connection failures).
+- Upstreams that fail are taken out of load balancing. When all upstreams of a rule are down, visitors get a "Web server is down" page at once instead of waiting for a timeout. Virtual directories can be checked too.
+- Replaces Zoraxy's fixed 5-minute uptime monitor; the Uptime Monitor page is fed by the health checks.
 
-For other systems or architectures, please see [Releases](https://github.com/tobychui/zoraxy/releases/latest/) 
+**Static file caching**
+- Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the upstream's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
 
-## Getting Started
+**Operations**
+- **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
+- **Status page panels** can be shown or hidden. New panels show upstream health, cache hit rate and memory, and the HA cluster.
+- The HTTP Proxy list shows health check and cache state per rule, with a red heart on upstreams that are down.
+- **Shared DNS credential sets** for ACME DNS challenges: save a provider token once and pick it for any certificate.
+- **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
 
-[Installing Zoraxy Reverse Proxy: Your Gateway to Efficient Web Routing](https://geekscircuit.com/installing-zoraxy-reverse-proxy-your-gateway-to-efficient-web-routing/)
+**Security and maintenance**
+- Cross-site request protection uses Go's standard `CrossOriginProtection` instead of the unmaintained gorilla/csrf.
+- CI runs vet, tests and `govulncheck` on every change and builds with the latest Go 1.26 patch release.
+- A daily workflow watches Zoraxy for new releases and prepares a pull request that merges them.
 
-Thank you for the well written and easy to follow tutorial by Reddit user [itsvmn](https://www.reddit.com/user/itsvmn/)! 
-If you have no background in setting up reverse proxy or web routing, you should check this out before you start setting up your Zoraxy. 
+See [CHANGELOG.md](CHANGELOG.md) for details.
 
-### Switching from Nginx / NPM? 
-Check out our new (experimental) nginx to Zoraxy config converter!
+## Requirements
 
-[Launch Config Converter](https://zoraxy.aroz.org/nginx2zoraxy.html)
+- Linux on x86-64 (`linux/amd64`). Releases are built and tested for Debian 13; other systemd-based distributions should work. Other platforms can be [built from source](#building-from-source).
+- systemd (the instructions below use it, and HA needs it).
+- Ports 80 and 443 free for the proxy, and a port for the admin UI (8000 by default).
+- For high availability: [see below](#high-availability-optional).
 
-## Build from Source
+## Install
 
-Requires Go 1.23 or higher
+These steps install Waymark in `/opt/waymark`, running as an unprivileged `waymark` user. Run them as a user with `sudo`.
 
-```bash
-git clone https://github.com/tobychui/zoraxy
-cd ./zoraxy/src/
-go mod tidy
-go build
-
-sudo ./zoraxy -port=:8000
-```
-
-## Usage
-
-Zoraxy provides basic authentication system for standalone mode. To use it in standalone mode, follow the instructions below for your desired deployment platform.
-
-### Standalone Mode
-
-Standalone mode is the default mode for Zoraxy. This allows a single account to manage your reverse proxy server just like a basic home router. This mode is suitable for new owners to homelabs or makers starting growing their web services into multiple servers. A full "Getting Started" guide can be found [here](https://github.com/tobychui/zoraxy/wiki/Getting-Started).
-
-#### Linux
+**1. Create the service user and folder**
 
 ```bash
-sudo ./zoraxy -port=:8000
+sudo useradd --system --home-dir /opt/waymark --shell /usr/sbin/nologin waymark
+sudo install -d -o waymark -g waymark -m 0750 /opt/waymark
 ```
 
-#### Windows
-
-Download the binary executable and double click the binary file to start it.
-
-#### Raspberry Pi
-
-The installation method is same as Linux. If you are using a Raspberry Pi 4 or newer models, pick the arm64 release. For older version of Pis, use the arm (armv6) version instead.
-
-#### Other ARM SBCs or Android phone with Termux
-
-The installation method is same as Linux. For other ARM SBCs, please refer to your SBC's CPU architecture and pick the one that is suitable for your device. 
-
-#### Docker
-
-See the [/docker](https://github.com/tobychui/zoraxy/tree/main/docker) folder for more details.
-
-### Start Parameters
-
-```
-Usage of zoraxy:
-  -acmetestmode
-        Run ACME in test/staging mode
-  -autorenew int
-        ACME auto TLS/SSL certificate renew check interval (seconds) (default 86400)
-  -cfgupgrade
-        Enable auto config upgrade if breaking change is detected (default true)
-  -conf string
-        Configuration folder path (default "./conf")
-  -db string
-        Database backend to use (leveldb, boltdb, auto) Note that fsdb will be used on unsupported platforms like RISCV (default "auto")
-  -dbpath string
-        Database path (default "./sys.db")
-  -default_inbound_enabled
-        If web server is enabled by default (default true)
-  -default_inbound_port int
-        Default web server listening port (default 443)
-  -dev
-        Use external web folder for UI development
-  -docker
-        Run Zoraxy in docker compatibility mode
-  -earlyrenew int
-        Number of days to early renew a soon expiring certificate (days) (default 30)
-  -enablelog
-        Enable system wide logging, set to false for writing log to STDOUT only (default true)
-  -experimental_proxy_protocol
-        Enable PROXY protocol v1/v2 support for TLS listener (experimental)
-  -fastgeoip
-        Enable high speed geoip lookup, require 1GB extra memory (Not recommend for low end devices)
-  -log string
-        Log folder path (default "./log")
-  -mdns
-        Enable mDNS scanner and transponder (default true)
-  -mdnsname string
-        mDNS name, leave empty to use default (zoraxy_{node-uuid}.local)
-  -noauth
-        Disable authentication for management interface
-  -plugin string
-        Plugin folder path (default "./plugins")
-  -port string
-        Management web interface listening port (default ":8000")
-  -reset_ac
-        Reset admin account username and password to default and exit
-  -sshlb
-        Allow loopback web ssh connection (DANGER)
-  -tmp string
-        Temporary folder path (default "./tmp")
-  -update_geoip
-        Download the latest GeoIP data and exit
-  -uuid string
-        sys.uuid file path (default "./sys.uuid")
-  -version
-        Show version of this server
-  -webroot string
-        Static web server root folder. Only allow change in start paramters (default "./www")
-```
-
-### External Permission Management Mode
-
-If you already have an upstream reverse proxy server in place with permission management, you can use Zoraxy in noauth mode. To enable noauth mode, start Zoraxy with the following flag:
+**2. Download the binary** from the [latest release](https://github.com/rtadams89/waymark-proxy/releases/latest) and check it:
 
 ```bash
-./zoraxy -noauth=true
+cd /tmp
+curl -fLO https://github.com/rtadams89/waymark-proxy/releases/latest/download/waymark_linux_amd64
+curl -fLO https://github.com/rtadams89/waymark-proxy/releases/latest/download/waymark_linux_amd64.sha256
+sha256sum -c waymark_linux_amd64.sha256
+sudo install -o root -g root -m 0755 waymark_linux_amd64 /opt/waymark/waymark
+/opt/waymark/waymark -version
 ```
 
-> [!WARNING]
-> For security reasons, you should only enable no-auth if you are running Zoraxy in a trusted environment or with another authentication management proxy in front.*
+The binary is owned by root, so the service can't modify itself. Waymark keeps its data next to it in `/opt/waymark` (see [Where your data lives](#where-your-data-lives)).
 
-## Screenshots
+**3. Create the systemd service** as `/etc/systemd/system/waymark.service`:
 
-![](img/screenshots/1.png)
+```ini
+[Unit]
+Description=Waymark Proxy
+After=network-online.target
+Wants=network-online.target
 
-![](img/screenshots/2.png)
+[Service]
+Type=simple
+User=waymark
+Group=waymark
+WorkingDirectory=/opt/waymark
+# Admin UI on localhost only; see "Reaching the admin UI" below
+ExecStart=/opt/waymark/waymark -port=127.0.0.1:8000
+Restart=on-failure
+RestartSec=5
+# Bind ports 80 and 443 without running as root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/opt/waymark
+LimitNOFILE=65535
 
-More screenshots on the wikipage [Screenshots](https://github.com/tobychui/zoraxy/wiki/Screenshots)!
+[Install]
+WantedBy=multi-user.target
+```
 
-## FAQ
+ICMP health checks use unprivileged ping sockets, which systemd allows by default. If they fail with a permission error, add `CAP_NET_RAW` to both capability lines.
 
-There is a wikipage with [Frequently-Asked-Questions](https://github.com/tobychui/zoraxy/wiki/FAQ---Frequently-Asked-Questions)!
-
-## Global Area Network Controller
-
-Moved to official plugin repo, see [ztnc](https://github.com/aroz-online/zoraxy-official-plugins/tree/main/src/ztnc) plugin
-
-## Web SSH
-
-Web SSH currently only supports Linux based OSes. The following platforms are supported:
-
-- linux/amd64
-- linux/arm64
-- linux/armv6 (experimental)
-- linux/386 (experimental)
-
-### Loopback Connection
-
-Loopback web SSH connections, by default, are disabled. This means that if you are trying to connect to an address like 127.0.0.1 or localhost, the system will reject your connection for security reasons. To enable loopback for testing or development purpose, use the following flags to override the loopback checking:
+**4. Start it**
 
 ```bash
-./zoraxy -sshlb=true
+sudo systemctl daemon-reload
+sudo systemctl enable --now waymark
+sudo systemctl status waymark
 ```
 
-## Community Maintained Sections
+**Reaching the admin UI.** With `-port=127.0.0.1:8000` the admin UI only listens on the machine itself. From your workstation, open an SSH tunnel and browse to `http://localhost:8000`:
 
-Some section of Zoraxy are contributed by our amazing community and if you have any issues regarding those sections, it would be more efficient if you can tag them directly when creating an issue report.
+```bash
+ssh -L 8000:127.0.0.1:8000 you@your-waymark-host
+```
 
-- Forward Auth [@james-d-elliott](https://github.com/james-d-elliott)
+Later you can publish the admin UI under its own hostname through Waymark, with a proxy rule to `127.0.0.1:8000`. To listen on all interfaces instead, use `-port=:8000` and limit access with your firewall.
 
-  - (Legacy) Authelia Support added by [@7brend7](https://github.com/7brend7)
+**5. Create the admin account.** The first visit shows **Account Setup**: choose a username and password.
 
-  - (Legacy) Authentik Support added by [@JokerQyou](https://github.com/JokerQyou)
+## Quick start: your first proxy
 
-- Oauth2 [@kjagosz](https://github.com/kjagosz)
+This example publishes an app running at `http://10.0.0.20:8080` as `https://app.example.com`.
 
-- ACME
+1. **Point DNS at Waymark.** Create an `A` record for `app.example.com` with Waymark's IP address (the floating IP if you run HA).
+2. **Check that the proxy is running.** On **Status**, the banner should say *Online* and *listening on port 443*. Port 80 is served too and redirects to HTTPS.
+3. **Set up certificates.** Under **Security > ACME Client**, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
+   - **HTTP challenge**: works when the name is reachable from the internet on port 80.
+   - **DNS challenge**: also works for internal-only names. Pick your DNS provider and save its API token as a credential set (**Security > TLS / SSL certificates > Manage DNS Credentials**) so other certificates can reuse it.
+4. **Create the proxy rule.** Under **Reverse Proxy > Create Proxy Rule**:
+   - **Matching Keyword / Domain**: `app.example.com`
+   - **Target IP Address or Domain Name with port**: `10.0.0.20:8080`
+   - **Proxy Target require TLS Connection**: off (the app speaks plain HTTP)
+   - **Enable health checks**: on (the default)
+   - Click **Create Endpoint**.
+5. **Open `https://app.example.com`.** The rule now appears under **Reverse Proxy > HTTP Proxy**. Edit it there to add more upstreams for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
 
-  - ACME integration (Looking for maintainer)
+Tips:
+- For an app that uses HTTPS itself, turn on **Proxy Target require TLS Connection** (and **Ignore TLS/SSL Verification Error** if it has a self-signed certificate).
+- Hostnames that match no rule get the **Default Site** (**Ingress > Default Site**): an error page, a redirect, or the built-in static web server.
+- To export your configuration, use **Utilities > System Backup & Restore**.
 
-  - DNS Challenge by [@zen8841](https://github.com/zen8841)
+## High availability (optional)
 
-- Docker Container List by [@eyerrock](https://github.com/eyerrock)
+Two (up to four) Waymark nodes on the same network share a **floating IP**. keepalived gives it to the healthy node with the highest priority; the others are standby nodes. Point your DNS records at the floating IP.
 
-- Change Log [@Morethanevil](https://github.com/Morethanevil)
+**What you need**
+- Two Linux machines on the same VLAN, each installed as above and running **the same Waymark version**.
+- A free IP address in that subnet for the floating IP, and a VRRP router ID (1-255) that nothing else on the VLAN uses (including pfSense CARP).
+- keepalived on each node: `sudo apt install keepalived`.
+- Between the nodes: IP protocol 112 (VRRP), and TCP port 9280 for configuration sync (configurable).
 
-### Looking for Maintainer
+**1. Install the HA integration on each node.** It's built into the binary. Write it out, review it, and run it as root:
 
-- ACME integration (Auto-renew & Zoraxy integration)
+```bash
+/opt/waymark/waymark -ha-export-installer /tmp/waymark-ha
+less /tmp/waymark-ha/install.sh /tmp/waymark-ha/waymark-ha-apply
+sudo bash /tmp/waymark-ha/install.sh
+```
 
-- Zoraxy Auth (Build-in basic SSO feature) 
+The installer adds:
+- a root-owned helper, `/usr/local/sbin/waymark-ha-apply`;
+- two small scripts that keepalived runs as the `waymark` user;
+- a systemd path unit that applies new settings when Waymark saves them.
 
-- Logging (including analysis & attack prevention) Module
+Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because the service above is sandboxed, the installer adds a drop-in that allows this, so **restart Waymark** when it asks. If Waymark runs as another user or unit, set `WAYMARK_USER` or `WAYMARK_UNIT`.
 
-Thank you so much for your contributions!
+**2. Configure the cluster on the first node** under **Networking > High Availability**:
+- Turn on **Enable high availability**. Enter the **Floating IP**, its **Prefix length** and a **Router ID**, and optionally a VRRP password.
+- Under **Configuration sync**, turn on copying to the standby nodes and click **Generate** for the cluster key.
+- Add both nodes: a name, the node's own address, its network interface (e.g. `ens18`) and a priority. The node with the higher priority is active when both are healthy.
+- Click **Save and apply**. The node becomes **Active** and holds the floating IP; the badge next to the logo shows this.
 
-### Notes on Security Advisories
+**3. Join the second node.** On the first node, click **Copy settings**. On the second node, click **Paste settings**, then **Save and apply**. Within about 20 seconds the second node copies the first node's whole configuration (including admin accounts and certificates) and restarts once to load it. Both nodes then appear under **Cluster**, and the second one shows **Standby** and **Read-only**.
 
-Due to recent automated / AI generated advisories, we will no longer accept security advisories directly open on Github.
+**How it behaves**
+- Make all changes on the active node. Standby nodes refuse changes, apart from their own HA settings (so sync can be paused there), and copy the active node's configuration within about 20 seconds of each change.
+- If the active node fails, the standby takes over the floating IP. By default the floating IP doesn't move back when the other node recovers; it stays until the new active node fails. You can change this in the HA settings.
+- After a failover, make changes on the new active node. They are copied to the old one when it returns as standby.
+- Only the active node renews certificates automatically.
+- Not synced (kept per node): statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions.
+- Logs: `journalctl -u waymark-ha-apply` for applying settings, `journalctl -u keepalived` for VRRP.
 
-If you spot a secuity issue and want to create a security advisories, please contact us via Discord and provide your Github username. Then we will assign you an advisory number for filling in your advisory title. For advisories that do not have a advisory number, we will close it immediately.
+## Upgrading
 
-**Updates 2026-06-26**
+**Single node:** download the new binary as in [Install](#install) step 2, then run `sudo systemctl restart waymark`. Read [CHANGELOG.md](CHANGELOG.md) first: a new major version (2.0.0) lists the steps it needs.
 
-Due to recent floods of AI generated security advisory, Private vulnerability reporting feature of this repo is temporary closed. If you have a critical issue to report, you can reach our maintainer on Discord. 
+**HA pair:** nodes only sync while they run the same version, so upgrade them one at a time:
+1. Upgrade the standby node. Sync pauses; the active node keeps working.
+2. Upgrade the active node. Restarting it moves the floating IP to the upgraded standby, which becomes active.
+3. When the old active node is back as standby, sync resumes. Make changes on the new active node.
 
-## Sponsor This Project
+### Upgrading from the Zoraxy-based builds
 
-If you like the project and want to support us, please consider a donation. You can use the links below
+If you ran the earlier `3.3.5-custom.N` builds as `zoraxy` in `/opt/zoraxy`, move each node to the new names (in an HA pair, the standby first). Your configuration is kept as it is.
 
-- [tobychui (Primary author)](https://paypal.me/tobychui)
-- [PassiveLemon (Docker compatibility maintainer)](https://github.com/PassiveLemon)
+```bash
+# 1. Stop Zoraxy (and keepalived, which runs scripts as the zoraxy user)
+sudo systemctl stop zoraxy keepalived
+sudo systemctl disable zoraxy
 
-## License
+# 2. Rename the user, group and folder (files keep their owner)
+sudo usermod -l waymark -d /opt/waymark zoraxy
+sudo groupmod -n waymark zoraxy
+sudo mv /opt/zoraxy /opt/waymark
 
-This project is open-sourced under AGPL. I open-sourced this project so everyone can check for security issues and benefit all users. **This software is intended to be free of charge. If you have acquired this software from a third-party seller, the authors of this repository bears no responsibility for any technical difficulties assistance or support.**
+# 3. Install the Waymark binary (Install, step 2) and remove the old one
+sudo rm /opt/waymark/zoraxy
 
+# 4. Create /etc/systemd/system/waymark.service (Install, step 3, keeping
+#    your own ExecStart flags), then remove the old unit
+sudo rm -rf /etc/systemd/system/zoraxy.service /etc/systemd/system/zoraxy.service.d
+sudo systemctl daemon-reload
+
+# 5. HA nodes only: install the Waymark HA integration. It removes the old
+#    zoraxy-ha-apply helper, units and folders.
+/opt/waymark/waymark -ha-export-installer /tmp/waymark-ha
+sudo bash /tmp/waymark-ha/install.sh
+
+# 6. Start Waymark. On HA nodes it applies its HA settings again, which
+#    reconfigures and starts keepalived.
+sudo systemctl enable --now waymark
+```
+
+Sign in again afterwards (the session cookie was renamed). If you proxy the admin UI through Waymark, that rule keeps working. In an HA pair, sync resumes once both nodes run Waymark.
+
+## Building from source
+
+Requires Go 1.26 or later.
+
+```bash
+git clone https://github.com/rtadams89/waymark-proxy.git
+cd waymark-proxy/src
+CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o waymark .
+./waymark -version
+```
+
+`make` in `src/` cross-compiles for other platforms (Linux on ARM and others, Windows, FreeBSD, macOS). Only `linux/amd64` is tested.
+
+The logo files are generated by `branding/build_logos.py` (see the comment at its top).
+
+## Where your data lives
+
+Waymark keeps everything in its working directory (`/opt/waymark` above):
+
+| Path | Contents |
+|---|---|
+| `conf/` | Proxy rules, certificates and keys, access rules and other configuration files |
+| `sys.db` | Settings, admin accounts, ACME account and statistics |
+| `log/` | Logs (`waymark_*.log`) |
+| `www/` | Static web server files and custom error page templates |
+| `plugins/` | Installed plugins |
+
+Back up `conf/` and `sys.db`, or use **Utilities > System Backup & Restore**. HA nodes also have `/var/lib/waymark/ha` (the keepalived settings, role and sync state); it is recreated from the configuration if lost.
+
+## Relationship to Zoraxy, license and credits
+
+Waymark Proxy is a modified version of [Zoraxy](https://github.com/tobychui/zoraxy), created by [tobychui](https://github.com/tobychui) for [imuslab](https://imuslab.com) and developed with many contributors. It started as a set of changes to Zoraxy 3.3.5 and continues as a separate project; new Zoraxy releases are merged in when they're useful. It isn't affiliated with or endorsed by the Zoraxy project. Please report Waymark issues [here](https://github.com/rtadams89/waymark-proxy/issues), not to Zoraxy.
+
+Waymark Proxy is free software under the [GNU Affero General Public License v3.0](LICENSE), the same license as Zoraxy. Copyright © 2021-2026 tobychui and the Zoraxy contributors; changes and additions © 2026 Ryan Adams. It comes with no warranty. If you run a modified version that other people use over a network, the AGPL requires you to offer them its source code.
+
+Zoraxy plugins work with Waymark, and Waymark's App Store lists the plugins published for Zoraxy.
+
+The wordmark uses [Inter](https://rsms.me/inter/) (SIL Open Font License).

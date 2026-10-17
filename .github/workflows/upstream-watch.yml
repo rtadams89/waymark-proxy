@@ -1,7 +1,7 @@
-# Custom fork: daily check for a new upstream Zoraxy release.
+# Waymark Proxy: daily check for a new upstream Zoraxy release.
 #
 # When tobychui/zoraxy publishes a final release (release candidates are
-# skipped) that is not merged into custom yet, it opens an issue (label
+# skipped) that is not merged into main yet, it opens an issue (label
 # "upstream-release") and starts the "Merge upstream release" workflow,
 # which prepares a pull request. Each release is reported once. See
 # .github/scripts/check-upstream.sh.
@@ -30,10 +30,10 @@ jobs:
       issues: write
       actions: write  # start the merge workflow
     steps:
-      - name: Checkout custom
+      - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: custom
+          ref: main
           fetch-depth: 0  # to tell whether a release is already merged
 
       - name: Compare with the latest upstream release

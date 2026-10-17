@@ -1,0 +1,9 @@
+[Unit]
+Description=Apply Waymark HA (keepalived) settings when Waymark changes them
+
+[Path]
+PathChanged=/var/lib/waymark/ha/cluster.env
+Unit=waymark-ha-apply.service
+
+[Install]
+WantedBy=multi-user.target

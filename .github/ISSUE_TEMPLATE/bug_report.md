@@ -35,7 +35,7 @@ If applicable, add screenshots to help explain your problem.
  - Version [e.g.  23.02 Bullseye ]
  - Are you using Docker? (yes / no)
  - Docker Version (fill in "N/A" for native deployment): [e.g. 3.0.4]
- - Zoraxy Version [e.g. 3.2.8]
+ - Waymark Proxy version [e.g. 1.0.0] (shown in the footer, or `waymark -version`)
 
 **Supplementary links**
 If your issue is related to a particular open source project, paste the link here.

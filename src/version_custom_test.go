@@ -2,18 +2,17 @@ package main
 
 import (
 	"regexp"
-	"strings"
 	"testing"
 
 	"imuslab.com/zoraxy/mod/update"
 )
 
-func TestDisplayVersionFormat(t *testing.T) {
-	if !regexp.MustCompile(`^\d+\.\d+\.\d+-custom\.[1-9]\d*$`).MatchString(DISPLAY_VERSION) {
-		t.Errorf("DISPLAY_VERSION %q does not match <x.y.z>-custom.<n>", DISPLAY_VERSION)
+func TestProductVersionIsSemVer(t *testing.T) {
+	if !regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`).MatchString(PRODUCT_VERSION) {
+		t.Errorf("PRODUCT_VERSION %q is not MAJOR.MINOR.PATCH", PRODUCT_VERSION)
 	}
-	if !strings.HasPrefix(DISPLAY_VERSION, SYSTEM_VERSION+"-custom.") {
-		t.Errorf("DISPLAY_VERSION %q must start with the upstream base %q", DISPLAY_VERSION, SYSTEM_VERSION)
+	if DISPLAY_VERSION != PRODUCT_VERSION {
+		t.Errorf("DISPLAY_VERSION %q must equal PRODUCT_VERSION %q", DISPLAY_VERSION, PRODUCT_VERSION)
 	}
 }
 

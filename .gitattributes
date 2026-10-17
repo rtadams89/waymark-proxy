@@ -1,2 +1,4 @@
-# Custom fork: the HA installer scripts run under bash on Linux; keep them LF in every checkout
+# The HA installer scripts run under bash on Linux; keep them LF in every checkout
 src/mod/hacluster/deploy/* text eol=lf
+# Shell scripts run on Linux (including GitHub Actions); keep them LF
+*.sh text eol=lf

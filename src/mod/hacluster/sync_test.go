@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// memStore is an in-memory Store that encodes values like Zoraxy's database.
+// memStore is an in-memory Store that encodes values like Waymark's database.
 type memStore map[string]map[string][]byte
 
 func (m memStore) NewTable(t string) error {
@@ -205,20 +205,20 @@ func TestSyncAuth(t *testing.T) {
 	key := NewClusterKey()
 	addr := startSyncServer(t, key, true)
 	var st map[string]string
-	if err := SyncFetch(addr, KeyBytes(key), "/zoraxy-ha/v1/state", &st, 3*time.Second); err != nil || st["role"] != "MASTER" {
+	if err := SyncFetch(addr, KeyBytes(key), "/waymark-ha/v1/state", &st, 3*time.Second); err != nil || st["role"] != "MASTER" {
 		t.Fatalf("state: %v %v", st, err)
 	}
 	var snap Snapshot
-	if err := SyncFetch(addr, KeyBytes(key), "/zoraxy-ha/v1/snapshot", &snap, 3*time.Second); err != nil || snap.Validate() != nil {
+	if err := SyncFetch(addr, KeyBytes(key), "/waymark-ha/v1/snapshot", &snap, 3*time.Second); err != nil || snap.Validate() != nil {
 		t.Fatalf("snapshot: %v", err)
 	}
 	// Wrong key: refused
-	if err := SyncFetch(addr, KeyBytes(NewClusterKey()), "/zoraxy-ha/v1/state", &st, 3*time.Second); !errors.Is(err, ErrSyncAuth) {
+	if err := SyncFetch(addr, KeyBytes(NewClusterKey()), "/waymark-ha/v1/state", &st, 3*time.Second); !errors.Is(err, ErrSyncAuth) {
 		t.Fatalf("wrong key: %v", err)
 	}
 	// Not a cluster node: refused
 	addr2 := startSyncServer(t, key, false)
-	if err := SyncFetch(addr2, KeyBytes(key), "/zoraxy-ha/v1/state", &st, 3*time.Second); err == nil || !strings.Contains(err.Error(), "403") {
+	if err := SyncFetch(addr2, KeyBytes(key), "/waymark-ha/v1/state", &st, 3*time.Second); err == nil || !strings.Contains(err.Error(), "403") {
 		t.Fatalf("unlisted address: %v", err)
 	}
 	// A proof made on one TLS session is useless on another (replay)
@@ -227,7 +227,7 @@ func TestSyncAuth(t *testing.T) {
 	proof, _ := syncProof(KeyBytes(key), "client", &cs)
 	conn.Close()
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	req, _ := http.NewRequest("GET", "https://"+addr+"/zoraxy-ha/v1/state", nil)
+	req, _ := http.NewRequest("GET", "https://"+addr+"/waymark-ha/v1/state", nil)
 	req.Header.Set(SyncAuthHeader, proof)
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusUnauthorized {

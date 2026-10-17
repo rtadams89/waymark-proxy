@@ -1,24 +1,32 @@
 package main
 
 /*
-	version_custom.go (custom fork)
+	version_custom.go: product name and version of Waymark Proxy.
 
-	Version numbering for this fork:  <upstream base>-custom.<revision>
-	e.g. 3.3.5-custom.1, 3.3.5-custom.2, ... then 3.3.6-custom.1 after
-	rebasing onto upstream 3.3.6.
+	Waymark Proxy uses semantic versioning: MAJOR.MINOR.PATCH.
+	- PATCH (1.0.1): bug and security fixes only.
+	- MINOR (1.1.0): new features that keep existing configuration working.
+	- MAJOR (2.0.0): changes that need action when upgrading (renamed paths,
+	  removed features, configuration that has to be migrated).
+	Release tags are v<PRODUCT_VERSION> (v1.0.0); CI refuses a tag that does
+	not match the version built into the binary. Keep CHANGELOG.md in step.
 
-	- SYSTEM_VERSION (def.go) stays the upstream base version. Do not add a
-	  suffix there: Zoraxy converts it to an integer ("3.3.5" -> 335) to run
-	  config migrations (mod/update), and plugins and mDNS also read it.
-	- FORK_REVISION is bumped with every change to this fork that ships, and
-	  reset to 1 when SYSTEM_VERSION changes after an upstream rebase.
-	- DISPLAY_VERSION is what people see: the web UI, `zoraxy -version`, and
-	  the release tag (v<DISPLAY_VERSION>), which CI checks matches this file.
-
-	Keep CHANGELOG-custom.md (repo root) in step with FORK_REVISION.
+	SYSTEM_VERSION (def.go) is the Zoraxy release Waymark is built on
+	(UPSTREAM_BASE). Leave it as a plain x.y.z: Zoraxy converts it to a number
+	("3.3.5" -> 335) to run its config migrations, and plugins read it as the
+	host version. It only changes when a Zoraxy release is merged in.
 */
 
 const (
-	FORK_REVISION   = "16"
-	DISPLAY_VERSION = SYSTEM_VERSION + "-custom." + FORK_REVISION
+	PRODUCT_NAME       = "Waymark Proxy"
+	PRODUCT_SHORT_NAME = "Waymark"
+	PRODUCT_VERSION    = "1.0.0"
+	PRODUCT_REPO       = "https://github.com/rtadams89/waymark-proxy"
+
+	// UPSTREAM_BASE is the Zoraxy release this build is based on.
+	UPSTREAM_BASE = SYSTEM_VERSION
+
+	// DISPLAY_VERSION is shown in the web UI and by `waymark -version`, and
+	// compared between HA nodes (they must run the same build).
+	DISPLAY_VERSION = PRODUCT_VERSION
 )

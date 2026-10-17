@@ -18,12 +18,12 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>High Availability</h2>
-        <p>Run two Zoraxy instances as an active/passive pair. keepalived moves a floating IP to the healthy node with the highest priority; Zoraxy writes its settings and reports its health.</p>
+        <p>Run two Waymark instances as an active/passive pair. keepalived moves a floating IP to the healthy node with the highest priority; Waymark writes its settings and reports its health.</p>
     </div>
 
     <div class="ui segment" id="haNotInstalled" style="display:none;">
         <h4 class="ui header"><i class="orange exclamation triangle icon"></i><div class="content">keepalived integration not installed on this node<div class="sub header" id="haNotInstalledWhy"></div></div></h4>
-        <p>Zoraxy runs as an unprivileged user and never writes keepalived's config itself. A small root-owned helper does that from the settings below, after checking them. Install it once on each node:</p>
+        <p>Waymark runs as an unprivileged user and never writes keepalived's config itself. A small root-owned helper does that from the settings below, after checking them. Install it once on each node:</p>
         <pre class="haPre" id="haInstallCmds"></pre>
         <p class="haHint" style="margin-top: 0.6em;">Review the files before running the installer: <span id="haInstallerLinks"></span>. Settings can be saved before installing; they are applied when the integration is installed.</p>
     </div>
@@ -156,11 +156,11 @@
         <div class="ui bulleted list haHint">
             <div class="item">keepalived uses unicast VRRP between the listed node addresses. If a firewall sits between the nodes, allow IP protocol 112 (VRRP) between them.</div>
             <div class="item">keepalived runs only while high availability is on: turning it off here stops and disables keepalived on this node, and turning it on enables and starts it.</div>
-            <div class="item">A node gives up the floating IP when Zoraxy's proxy listener stops answering (checked every 2 seconds; the floating IP moves within about 10 seconds), when Zoraxy stops, or when the machine goes down.</div>
+            <div class="item">A node gives up the floating IP when Waymark's proxy listener stops answering (checked every 2 seconds; the floating IP moves within about 10 seconds), when Waymark stops, or when the machine goes down.</div>
             <div class="item">Configuration sync copies, from the active node: proxy and stream rules, redirects, access and path rules, SSO settings, certificates and keys, ACME settings and account, admin accounts and the login session key, system settings and these HA settings. Statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions stay per node.</div>
-            <div class="item">A standby checks the active node every 10 seconds. When its configuration changes (and then stays the same for one check), the standby copies it and restarts Zoraxy to load it, which takes a few seconds. All nodes must run the same Zoraxy version.</div>
+            <div class="item">A standby checks the active node every 10 seconds. When its configuration changes (and then stays the same for one check), the standby copies it and restarts Waymark to load it, which takes a few seconds. All nodes must run the same Waymark version.</div>
             <div class="item">Only the active node renews certificates automatically. "Renew now" still works on any node.</div>
-            <div class="item">Installer files: <span id="haInstallerLinks2"></span>. Log of each apply: <span class="haMono">journalctl -u zoraxy-ha-apply</span>; keepalived: <span class="haMono">journalctl -u keepalived</span>.</div>
+            <div class="item">Installer files: <span id="haInstallerLinks2"></span>. Log of each apply: <span class="haMono">journalctl -u waymark-ha-apply</span>; keepalived: <span class="haMono">journalctl -u keepalived</span>.</div>
         </div>
     </div>
 </div>
@@ -178,9 +178,9 @@
             if (s < 86400) return Math.round(s/3600) + " h ago";
             return new Date(ts*1000).toLocaleString();
         }
-        // A response that is not JSON is Zoraxy's login page: the session ended
+        // A response that is not JSON is Waymark's login page: the session ended
         // (for example after signing in to another node on the same host name)
-        const LOGGED_OUT = "Your login on this node has ended (signing in to another Zoraxy node on the same host name, even on another port, replaces this node's login cookie). Reload the page and sign in again.";
+        const LOGGED_OUT = "Your login on this node has ended (signing in to another Waymark node on the same host name, even on another port, replaces this node's login cookie). Reload the page and sign in again.";
         function loggedOut(d){ return d == null || typeof d != "object"; }
         function showMsg(text, ok){
             $("#haMsg").removeClass("green red yellow").addClass(ok === true ? "green" : (ok === false ? "red" : "yellow"))
@@ -190,7 +190,7 @@
         function nodeRow(n){
             n = n || {name: "", address: "", interface: "", priority: ""};
             return `<tr>
-                <td><input type="text" class="haNodeName" value="${esc(n.name)}" placeholder="zoraxy1"></td>
+                <td><input type="text" class="haNodeName" value="${esc(n.name)}" placeholder="waymark1"></td>
                 <td><input type="text" class="haNodeAddr" value="${esc(n.address)}" placeholder="10.10.20.10"></td>
                 <td><input type="text" class="haNodeIface" value="${esc(n.interface)}" placeholder="ens18"></td>
                 <td><input type="number" class="haNodePrio" min="1" max="254" value="${esc(n.priority)}" placeholder="150"></td>
@@ -262,9 +262,9 @@
             $("#haNotInstalledWhy").text(d.installedReason || "");
             $("#haInstallCmds").text(
                 "sudo apt install keepalived\n" +
-                d.executable + " -ha-export-installer /tmp/zoraxy-ha\n" +
-                "less /tmp/zoraxy-ha/install.sh /tmp/zoraxy-ha/zoraxy-ha-apply   # review\n" +
-                "sudo bash /tmp/zoraxy-ha/install.sh");
+                d.executable + " -ha-export-installer /tmp/waymark-ha\n" +
+                "less /tmp/waymark-ha/install.sh /tmp/waymark-ha/waymark-ha-apply   # review\n" +
+                "sudo bash /tmp/waymark-ha/install.sh");
             let links = d.installerFiles.map(f => `<a href="/api/ha/installer?file=${encodeURIComponent(f)}" target="_blank">${esc(f)}</a>`).join(", ");
             $("#haInstallerLinks, #haInstallerLinks2").html(links);
             $("#haLocalAddrs").text(d.localAddresses.join(", ") || "none");
@@ -295,7 +295,7 @@
                 return `<i class="red times circle icon"></i>${label} ${esc(state)}` + (fix ? ` <span class="haHint">- run <code>${fix}</code></span>` : "");
             };
             $("#haServicesCell").html(!d.installed ? `<span class="haHint">-</span>` :
-                svc("Settings watcher", sv.applyWatcher, true, "sudo systemctl enable --now zoraxy-ha-apply.path") + "<br>" +
+                svc("Settings watcher", sv.applyWatcher, true, "sudo systemctl enable --now waymark-ha-apply.path") + "<br>" +
                 svc("keepalived", sv.keepalived, c.enabled, "sudo journalctl -u keepalived"));
             let a = d.lastApply;
             $("#haApplyCell").html(a && a.status ? `${a.status == "ok" ? `<i class="green check circle icon"></i>` : `<i class="red times circle icon"></i>`}${esc(a.message)} <span class="haHint">${ago(a.time)}</span>` : `<span class="haHint">Not applied yet</span>`);
@@ -320,7 +320,7 @@
             if (a.error) applied += `<br><i class="red times circle icon"></i>Last attempt failed: ${esc(a.error)}`;
             $("#haSyncApplied").html(applied);
             let served = (sy.servedTo || []).map(p => `<b>${esc(p.node)}</b> checked ${ago(p.lastCheck)}` + (p.lastCopy ? `, copied ${ago(p.lastCopy)}` : "")).join("<br>");
-            $("#haSyncServed").html(served || `<span class="haHint">No standby node has checked in since Zoraxy started</span>`);
+            $("#haSyncServed").html(served || `<span class="haHint">No standby node has checked in since Waymark started</span>`);
             $("#haSyncListen").html(sy.listenErr ? `<i class="red times circle icon"></i>${esc(sy.listenErr)}` :
                 (sy.listen ? `<span class="haMono">${esc(sy.listen)}</span> <span class="haHint">(TLS, cluster key)</span>` : `<span class="haHint">Not listening (sync off or this node not in the list)</span>`));
             $("#haSyncNowBtn").toggleClass("disabled", !c.syncEnabled);
@@ -335,7 +335,7 @@
                     $("#haSyncNowBtn").removeClass("loading disabled");
                     if (loggedOut(d)){ $("#haSyncNowMsg").text(LOGGED_OUT); return; }
                     if (d.error != undefined){ $("#haSyncNowMsg").text(d.error); return; }
-                    $("#haSyncNowMsg").text(d.message + (d.restarting ? ". This page reconnects when Zoraxy is back." : ""));
+                    $("#haSyncNowMsg").text(d.message + (d.restarting ? ". This page reconnects when Waymark is back." : ""));
                     haLoad(false);
                 },
                 error: function(){

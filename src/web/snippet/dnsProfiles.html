@@ -114,7 +114,7 @@
         <div class="ui bulleted list" style="font-size: 0.9em;">
           <div class="item">For Cloudflare, an API token with Zone:DNS:Edit (and Zone:Zone:Read) permission is enough: put it in AuthToken and ZoneToken, and leave AuthEmail and AuthKey empty.</div>
           <div class="item">Not sure which fields to fill in? See the <a href="https://go-acme.github.io/lego/dns/" target="_blank">lego DNS provider docs</a>.</div>
-          <div class="item">Credentials are stored in Zoraxy's database on this server, as with per-certificate credentials.</div>
+          <div class="item">Credentials are stored in Waymark's database on this server, as with per-certificate credentials.</div>
         </div>
         <button class="ui basic button" id="saveProfileButton" onclick="saveProfile();"><i class="green save icon"></i> Save</button>
         <button class="ui basic button" onclick="closeEditor();"><i class="remove icon"></i> Cancel</button>
@@ -127,7 +127,7 @@
   </div>
 
   <script>
-    //Works both inside Zoraxy's side panel and opened standalone in a new tab
+    //Works both inside Waymark's side panel and opened standalone in a new tab
     const embedded = (window.parent && window.parent !== window && window.parent.msgbox);
     function notify(msg, succ=true, delay=undefined){
       if (embedded){ window.parent.msgbox(msg, succ, delay); } else { alert(msg); }

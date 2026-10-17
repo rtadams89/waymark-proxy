@@ -213,7 +213,7 @@
             </div>
         </div>
         <div class="ui small input"  style="width: 300px; height: 38px;">
-            <!-- Prevent the browser from filling the saved Zoraxy login account into the  input searchInput below -->
+            <!-- Prevent the browser from filling the saved Waymark login account into the  input searchInput below -->
             <input type="password"  autocomplete="off" hidden/>
             <input type="text" id="searchInput"  placeholder="Quick Search" onkeydown="handleSearchInput(event);" onchange="handleSearchInput(event);" onblur="handleSearchInput(event);">
         </div>
@@ -432,7 +432,7 @@
                     <div class="rpconfig_content" rpcfg="websocket">
                         <div class="ui segment">
                             <div class="ui visible message">
-                                <p><i class="exchange icon"></i> WebSocket connections are detected and forwarded automatically in Zoraxy, but you can optionally disable it.</p>
+                                <p><i class="exchange icon"></i> WebSocket connections are detected and forwarded automatically in Waymark, but you can optionally disable it.</p>
                             </div>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="EnableWebSocket" checked>
@@ -476,7 +476,7 @@
                     <!-- TLS / SSL -->
                     <div class="rpconfig_content" rpcfg="ssl">
                         <div class="ui segment">
-                            <p>The table below shows which certificate will be served by Zoraxy when a client request the following hostnames.</p>
+                            <p>The table below shows which certificate will be served by Waymark when a client request the following hostnames.</p>
                             <div class="ui blue message sni_grey_out_info" style="margin-bottom: 1em; display:none;">
                                 <i class="info circle icon"></i>
                                 Certificate dropdowns are greyed out because SNI is enabled
@@ -574,7 +574,7 @@
                                 <div class="field">
                                     <div class="ui radio checkbox">
                                         <input type="radio" value="4" name="authProviderType">
-                                        <label>Zoraxy Auth</label>
+                                        <label>Waymark Auth</label>
                                     </div>
                                 </div>
                             </div>
@@ -896,7 +896,7 @@
                     } else if (subd.AuthenticationProvider.AuthMethod == 0x3) {
                         authDisplay = `<i class="ui yellow key icon"></i> OAuth2`;
                     } else if (subd.AuthenticationProvider.AuthMethod == 0x4) {
-                        authDisplay = `<i class="ui purple key icon"></i> Zoraxy Auth`;
+                        authDisplay = `<i class="ui purple key icon"></i> Waymark Auth`;
                     } else {
                         authDisplay = `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
                     }
@@ -938,7 +938,7 @@
                             ${subd.AuthenticationProvider.AuthMethod == 0x1?`<i class="ui grey key icon"></i> Basic Auth`:``}
                             ${subd.AuthenticationProvider.AuthMethod == 0x2?`<i class="ui blue key icon"></i> Forward Auth`:``}
                             ${subd.AuthenticationProvider.AuthMethod == 0x3?`<i class="ui yellow key icon"></i> OAuth2`:``}
-                            ${subd.AuthenticationProvider.AuthMethod == 0x4?`<i class="ui purple key icon"></i> Zoraxy Auth`:``}
+                            ${subd.AuthenticationProvider.AuthMethod == 0x4?`<i class="ui purple key icon"></i> Waymark Auth`:``}
                             ${subd.AuthenticationProvider.AuthMethod != 0x0 && subd.RequireRateLimit?"<br>":""}
                             ${subd.RequireRateLimit?`<i class="ui green check icon"></i> Rate Limit @ ${subd.RateLimit} req/s`:``}
                             ${subd.AuthenticationProvider.AuthMethod == 0x0 && !subd.RequireRateLimit?`<small style="opacity: 0.3; pointer-events: none; user-select: none;">No Special Settings</small>`:""}

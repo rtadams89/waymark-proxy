@@ -54,7 +54,7 @@ func (wd *WebDAVServer) basicAuthMiddleware(next http.Handler) http.Handler {
 		if wd.options.UseCustomCredentials {
 			// Use custom credentials from database
 			if !ok || !wd.validateCustomCredentials(username, password) {
-				w.Header().Set("WWW-Authenticate", `Basic realm="Zoraxy WebDAV"`)
+				w.Header().Set("WWW-Authenticate", `Basic realm="Waymark WebDAV"`)
 				w.Header().Set("Dav", "1, 2")
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
@@ -62,7 +62,7 @@ func (wd *WebDAVServer) basicAuthMiddleware(next http.Handler) http.Handler {
 		} else {
 			// Use global admin credentials
 			if !ok || !wd.authAgent.ValidateUsernameAndPassword(username, password) {
-				w.Header().Set("WWW-Authenticate", `Basic realm="Zoraxy WebDAV"`)
+				w.Header().Set("WWW-Authenticate", `Basic realm="Waymark WebDAV"`)
 				w.Header().Set("Dav", "1, 2")
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return

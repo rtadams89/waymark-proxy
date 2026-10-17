@@ -3,7 +3,7 @@ package main
 /*
 	ha_custom.go (custom fork)
 
-	Active/passive pairs with keepalived (see mod/hacluster). Zoraxy:
+	Active/passive pairs with keepalived (see mod/hacluster). Waymark:
 	- stores the cluster definition (shared by all nodes; synced in a
 	  later phase) and writes this node's settings file for the root
 	  helper, then reports the helper's result
@@ -60,7 +60,7 @@ func init() {
 	acme.RenewalHold = haRenewalHold
 }
 
-// handleHAMaintenanceFlags runs -ha-export-installer. Returns true if Zoraxy
+// handleHAMaintenanceFlags runs -ha-export-installer. Returns true if Waymark
 // should exit.
 func handleHAMaintenanceFlags() bool {
 	if *haExportInstaller == "" {
@@ -119,11 +119,11 @@ func haOwner() string {
 	if u, err := user.Current(); err == nil {
 		return u.Username
 	}
-	return "zoraxy"
+	return "waymark"
 }
 
 // initHA starts the heartbeat and re-applies this node's settings if they
-// changed while Zoraxy was not running. Called once at startup.
+// changed while Waymark was not running. Called once at startup.
 func initHA() {
 	ha.mu.Lock()
 	if ha.started {
@@ -190,7 +190,7 @@ func haNodeName(cfg *hacluster.Config) string {
 }
 
 // haProbeListener connects to the proxy listener and, when it serves TLS,
-// completes a handshake (Zoraxy always has its built-in default
+// completes a handshake (Waymark always has its built-in default
 // certificate). A bare connect-and-close would make the TLS server log a
 // handshake error every 2 seconds, and a finished handshake also shows the
 // listener is actually serving rather than only accepting connections.
@@ -262,7 +262,7 @@ func haApply(cfg *hacluster.Config) (hacluster.ApplyResult, error) {
 	if res.Status == "ok" {
 		SystemWideLogger.PrintAndLog("ha", "HA settings applied: "+res.Message, nil)
 	} else {
-		SystemWideLogger.PrintAndLog("ha", "HA settings rejected by zoraxy-ha-apply: "+res.Message, nil)
+		SystemWideLogger.PrintAndLog("ha", "HA settings rejected by waymark-ha-apply: "+res.Message, nil)
 	}
 	return res, nil
 }
@@ -286,7 +286,7 @@ func haRenewalHold() (bool, string) {
 }
 
 // haServiceState asks systemd whether a unit is running (active, inactive,
-// failed, ...). Read-only, so it works as the unprivileged zoraxy user.
+// failed, ...). Read-only, so it works as the unprivileged waymark user.
 // Returns "unknown" when systemd can't be asked.
 func haServiceState(unit string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -348,7 +348,7 @@ func HandleHAStatus(w http.ResponseWriter, r *http.Request) {
 		"localAddresses":  local,
 		"role":            haEffectiveRole(rt),
 		"services": map[string]string{
-			"applyWatcher": haServiceState("zoraxy-ha-apply.path"),
+			"applyWatcher": haServiceState("waymark-ha-apply.path"),
 			"keepalived":   haServiceState("keepalived"),
 		},
 		"vipHeld":        vipHeld,
@@ -478,5 +478,5 @@ func haExecutable() string {
 	if p, err := os.Executable(); err == nil {
 		return p
 	}
-	return "./zoraxy"
+	return "./waymark"
 }

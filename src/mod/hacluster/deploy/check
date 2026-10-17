@@ -1,8 +1,8 @@
 #!/bin/bash
-# Zoraxy HA health check for keepalived (custom fork). Runs as the zoraxy
-# user. Healthy when Zoraxy has written a fresh "ok" heartbeat: Zoraxy only
+# Waymark HA health check for keepalived (custom fork). Runs as the waymark
+# user. Healthy when Waymark has written a fresh "ok" heartbeat: Waymark only
 # does that while its proxy listener accepts connections.
-f="${HA_DIR:-/var/lib/zoraxy/ha}/heartbeat"
+f="${HA_DIR:-/var/lib/waymark/ha}/heartbeat"
 read -r status ts _ <"$f" 2>/dev/null || exit 1
 [ "$status" = "ok" ] || exit 1
 [[ "$ts" =~ ^[0-9]{1,20}$ ]] || exit 1

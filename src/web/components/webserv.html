@@ -40,7 +40,7 @@
                 <label>Document Root Folder</label>
                 <input id="webserv_docRoot" type="text" readonly="true">
                 <small>
-                    The web server root folder can only be changed via startup flags of zoraxy for security reasons. 
+                    The web server root folder can only be changed via startup flags of waymark for security reasons. 
                     See the -webserv flag for more details.
                 </small>
             </div>
@@ -63,16 +63,16 @@
                 There are three ways to access the static web server. <br>
                 <div class="ui ordered list">
                     <div class="item">
-                        If you are using Zoraxy as your gateway reverse proxy server, 
+                        If you are using Waymark as your gateway reverse proxy server, 
                         you can add a new subdomain proxy rule that points to 
                         <a>http://127.0.0.1:<span class="webserv_port">8081</span></a>
                     </div>
                     <div class="item">
-                        If you are using Zoraxy under another reverse proxy server, 
+                        If you are using Waymark under another reverse proxy server, 
                         add <a>http://127.0.0.1:<span class="webserv_port">8081</span></a> to the config of your upper layer reverse proxy server's config file. 
                     </div>
                     <div class="item">
-                        Directly access the web server via <a>http://{zoraxy_host_ip}:<span class="webserv_port">8081</span></a> (Not recommended)
+                        Directly access the web server via <a>http://{waymark_host_ip}:<span class="webserv_port">8081</span></a> (Not recommended)
                     </div>
                     <br>
                 </div>
@@ -119,7 +119,7 @@
                     <div class="ui toggle checkbox">
                         <input id="webdav_useCustomCredentials" type="checkbox" class="hidden">
                         <label>Use Custom Credentials</label>
-                        <small>Use custom username and password for WebDAV instead of Zoraxy admin credentials.</small>
+                        <small>Use custom username and password for WebDAV instead of Waymark admin credentials.</small>
                     </div>
                 </div>
                 <div id="webdav_customCredentialsForm">
@@ -166,7 +166,7 @@
                                     <li>Open File Explorer</li>
                                     <li>Right-click "This PC" → "Map network drive"</li>
                                     <li>Enter: <code>\\webdav.example.com@SSL\</code> (or <code>http://webdav.example.com</code>)</li>
-                                    <li>Use your Zoraxy admin username and password</li>
+                                    <li>Use your Waymark admin username and password</li>
                                 </ol>
                             </div>
                         </div>
@@ -180,7 +180,7 @@
                                 <ol>
                                     <li>Press <kbd>Cmd</kbd>+<kbd>K</kbd></li>
                                     <li>Enter: <code>https://webdav.example.com</code></li>
-                                    <li>Click "Connect" and enter your Zoraxy admin credentials</li>
+                                    <li>Click "Connect" and enter your Waymark admin credentials</li>
                                 </ol>
                             </div>
                         </div>
@@ -200,8 +200,8 @@
                 <h4>Important Notes</h4>
                 <ul>
                     <li>Use HTTPS (SSL/TLS) for secure connections</li>
-                    <li>Authenticate with your Zoraxy admin username and password</li>
-                    <li>The WebDAV server serves the entire <code>www/</code> folder, including both <code>html/</code> (static web files) and <code>templates/</code> (Zoraxy templates)</li>
+                    <li>Authenticate with your Waymark admin username and password</li>
+                    <li>The WebDAV server serves the entire <code>www/</code> folder, including both <code>html/</code> (static web files) and <code>templates/</code> (Waymark templates)</li>
                 </ul>
             </div>
         </div>
@@ -451,7 +451,7 @@
                                 if (enable) {
                                     msgbox("Custom credentials enabled. Please set username and password.");
                                 } else {
-                                    msgbox("Using Zoraxy admin credentials for WebDAV");
+                                    msgbox("Using Waymark admin credentials for WebDAV");
                                 }
                             }
                         }
@@ -504,4 +504,4 @@
             $(".webdav_port").text(newport);
         }
     </script>
-</div>
+</div>

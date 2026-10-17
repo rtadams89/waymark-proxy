@@ -4,28 +4,28 @@ temp = $(subst /, ,$@)
 os = $(word 1, $(temp))
 arch = $(word 2, $(temp))
 
-#all:  web.tar.gz $(PLATFORMS) fixwindows zoraxy_file_checksum.sha1
+#all:  web.tar.gz $(PLATFORMS) fixwindows waymark_file_checksum.sha1
 all:  clear_old $(PLATFORMS) fixwindows
 
 binary: $(PLATFORMS)
 
-hash: zoraxy_file_checksum.sha1
+hash: waymark_file_checksum.sha1
 
 web: web.tar.gz
 
 clean: 
-	rm -f zoraxy_*_*
+	rm -f waymark_*_*
 	rm -f web.tar.gz
 
 $(PLATFORMS):
 	@echo "Building $(os)/$(arch)"
-	GOROOT_FINAL=Git/ GOOS=$(os) GOARCH=$(arch) $(if $(filter linux/arm,$(os)/$(arch)),GOARM=6,) CGO_ENABLED="0" go build -o './dist/zoraxy_$(os)_$(arch)'  -ldflags "-s -w" -trimpath
-#	GOROOT_FINAL=Git/ GOOS=$(os) GOARCH=$(arch) GOARM=6 go build -o './dist/zoraxy_$(os)_$(arch)'  -ldflags "-s -w" -trimpath
+	GOROOT_FINAL=Git/ GOOS=$(os) GOARCH=$(arch) $(if $(filter linux/arm,$(os)/$(arch)),GOARM=6,) CGO_ENABLED="0" go build -o './dist/waymark_$(os)_$(arch)'  -ldflags "-s -w" -trimpath
+#	GOROOT_FINAL=Git/ GOOS=$(os) GOARCH=$(arch) GOARM=6 go build -o './dist/waymark_$(os)_$(arch)'  -ldflags "-s -w" -trimpath
 
 
 fixwindows:
-	-mv ./dist/zoraxy_windows_amd64 ./dist/zoraxy_windows_amd64.exe
-#	-mv ./dist/zoraxy_windows_arm64 ./dist/zoraxy_windows_arm64.exe
+	-mv ./dist/waymark_windows_amd64 ./dist/waymark_windows_amd64.exe
+#	-mv ./dist/waymark_windows_arm64 ./dist/waymark_windows_arm64.exe
 
 
 clear_old:
@@ -56,6 +56,6 @@ web.tar.gz:
 	-rm -rf "./dist/web"
 	-rm -rf "./dist/system"
 
-zoraxy_file_checksum.sha1:
+waymark_file_checksum.sha1:
 	@echo "Generating the checksum, if sha1sum installed"
-	-sha1sum ./dist/web.tar.gz > ./dist/zoraxy_file_checksum.sha1
+	-sha1sum ./dist/web.tar.gz > ./dist/waymark_file_checksum.sha1

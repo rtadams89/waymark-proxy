@@ -156,7 +156,7 @@ func (h *ProxyHandler) upstreamHostSwap(w http.ResponseWriter, r *http.Request, 
 // Handle host request
 func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, target *ProxyEndpoint) {
 	r.Header.Set("X-Forwarded-Host", r.Host)
-	r.Header.Set("X-Forwarded-Server", "zoraxy-"+h.Parent.Option.HostUUID)
+	r.Header.Set("X-Forwarded-Server", "waymark-"+h.Parent.Option.HostUUID)
 	reqHostname := r.Host
 
 	//Custom fork: maintenance mode
@@ -339,7 +339,7 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 	rewriteURL := h.Parent.rewriteURL(target.MatchingPath, r.RequestURI)
 	r.URL, _ = url.Parse(rewriteURL)
 	r.Header.Set("X-Forwarded-Host", r.Host)
-	r.Header.Set("X-Forwarded-Server", "zoraxy-"+h.Parent.Option.HostUUID)
+	r.Header.Set("X-Forwarded-Server", "waymark-"+h.Parent.Option.HostUUID)
 
 	if isWebSocketRequest(r) {
 		if target.parent.DisableWebSocket {

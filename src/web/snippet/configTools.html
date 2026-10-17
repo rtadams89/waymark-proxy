@@ -21,7 +21,7 @@
                 </div>
             </div>
             <h3>Backup Current Configs</h3>
-            <p>This will download all your configuration on zoraxy in a zip file. This includes all the proxy configs and certificates. Please keep it somewhere safe and after migration, delete this if possible.</p>
+            <p>This will download all your configuration on Waymark in a zip file. This includes all the proxy configs and certificates. Please keep it somewhere safe and after migration, delete this if possible.</p>
             <div class="ui form">
                 <div class="grouped fields">
                   <label>Backup Mode</label>
@@ -45,7 +45,7 @@
 
             <h3>Restore from Config</h3>
             <p>You can restore your previous settings and database from a zip file config backup. 
-            <br><b style="color: rgba(255, 0, 0, 0.644);">RESTORE FULL SYSTEM SNAPSHOT WILL CAUSE THE SYSTEM TO SHUTDOWN AFTER COMPLETED. Make sure your Zoraxy is configured to work with systemd to automatic restart Zoraxy after system restore completed.<br>
+            <br><b style="color: rgba(255, 0, 0, 0.644);">RESTORE FULL SYSTEM SNAPSHOT WILL CAUSE THE SYSTEM TO SHUTDOWN AFTER COMPLETED. Make sure your Waymark is configured to work with systemd to automatic restart Waymark after system restore completed.<br>
                 
             </b></p>
             <form class="ui form" id="uploadForm" action="/api/conf/import" method="POST" enctype="multipart/form-data">
@@ -94,7 +94,7 @@
                     processData: false, // Not to process the data
                     contentType: false, // Not to set contentType
                     success: function(response) {
-                        parent.msgbox("Config restore succeed. Restart Zoraxy to apply changes.");
+                        parent.msgbox("Config restore succeed. Restart Waymark to apply changes.");
                     },
                     error: function(xhr) {
                         parent.msgbox("Restore failed: " + xhr.responseText, false, 5000);
@@ -103,4 +103,4 @@
             });
         </script>
     </body>
-</html>
+</html>
