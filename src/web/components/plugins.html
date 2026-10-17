@@ -148,7 +148,7 @@
 </style>
 <div class="standardContainer">
     <div class="ui basic segment">
-        <h2>Plugins</h2>
+        <h2>Installed Plugins</h2>
         <p>Add custom features to your Waymark!</p>
     </div>
     <div class="ui yellow message">
@@ -485,7 +485,7 @@ function initPluginSideMenu(){
         return;
       }
       $("#pluginMenu").append(`
-        <a class="item" tag="pluginContextWindow" pluginid="${plugin.Spec.id}">
+        <a class="item" tag="pluginContextWindow" tab_group="plugins" pluginid="${plugin.Spec.id}">
             <img style="width: 20px;" class="ui mini right spaced image" src="/api/plugins/icon?plugin_id=${plugin.Spec.id}"> ${plugin.Spec.name}
         </a>
       `);

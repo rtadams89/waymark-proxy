@@ -9,9 +9,10 @@
   A self-hosted reverse proxy with active/standby high availability, real health checks and static file caching, managed from a web UI.
 </p>
 
-Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more upstream servers, and can run as an active/standby pair that shares a floating IP address. It is built on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors, and adds the features below.
+Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more upstream servers, and can run as an active/standby pair that shares floating IP addresses. Everything is managed from a web UI; there are no configuration files to edit. It is built on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors.
 
-- [What Waymark adds to Zoraxy](#what-waymark-adds-to-zoraxy)
+- [Why Waymark](#why-waymark)
+- [What's different from Zoraxy](#whats-different-from-zoraxy)
 - [Requirements](#requirements)
 - [Install](#install)
 - [Quick start: your first proxy](#quick-start-your-first-proxy)
@@ -21,22 +22,45 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 - [Where your data lives](#where-your-data-lives)
 - [Relationship to Zoraxy, license and credits](#relationship-to-zoraxy-license-and-credits)
 
-## What Waymark adds to Zoraxy
+## Why Waymark
 
-Everything Zoraxy does (HTTP and stream proxying, ACME certificates, access rules, SSO, the plugin store and so on) still works. On top of that:
+- **No single point of failure.** Two to four nodes share up to 16 floating IPs through keepalived, and the standby nodes keep an exact copy of the active node's configuration, certificates and admin accounts. If the active node fails, another takes over within about 10 seconds, already configured. All of it is set up from the web UI.
+- **Real health checks.** Each proxy rule can check its upstreams actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed upstreams leave load balancing at once, and visitors get a clear "down" page instead of a timeout.
+- **Faster sites with static file caching**, per rule, in memory, honouring the upstream's cache headers.
+- **Everything in one web UI:** proxy rules, load balancing, TLS certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), access rules by IP or country, SSO, redirects, TCP/UDP stream proxies, maintenance mode and a live status dashboard.
+- **Hardened and focused.** Waymark runs as an unprivileged user; the only root component is a small helper that checks every HA setting before writing keepalived's config. Passwords are stored with bcrypt, code scanning (CodeQL) and `govulncheck` run on every change, and features that don't belong in a reverse proxy (network scanners, a web SSH client, a forward proxy) were removed.
+- **One binary, no dependencies** beyond keepalived for HA: no database server, no containers required.
+
+How it compares, out of the box, at the time of writing:
+
+| | Waymark | Zoraxy | Nginx Proxy Manager | Traefik | Caddy |
+|---|---|---|---|---|---|
+| Manage everything from a web UI | Yes | Yes | Yes | Dashboard is read-only | No (config file or API) |
+| Automatic certificates (HTTP and DNS challenges) | Yes | Yes | Yes | Yes | Yes |
+| Built-in active/standby failover with config sync | Yes | No | No | No | No |
+| Active and passive upstream health checks | Yes | Fixed 5-minute uptime check | No | Yes | Yes |
+| Static file caching | Built in | No | Custom nginx config | Plugin | Plugin |
+| TCP/UDP stream proxying | Yes | Yes | Yes | Yes | Plugin |
+
+Traefik and Caddy are excellent when your configuration lives in files or container labels. Waymark is for people who want a web UI and high availability without assembling them themselves.
+
+## What's different from Zoraxy
+
+Waymark keeps Zoraxy's core: HTTP and stream proxying, load balancing, ACME certificates, access rules, SSO, the static web server and the plugin system (Zoraxy plugins and its plugin store work unchanged). It adds and changes the following.
 
 **High availability**
 - **Active/standby pairs** (2 to 4 nodes) sharing up to 16 floating IPs managed by keepalived. The floating IP moves to a healthy node within about 10 seconds when Waymark stops answering, keepalived stops or the machine goes down.
 - **Configured from the web UI.** Waymark itself runs unprivileged. A small root-owned helper validates the settings, writes keepalived's config from a fixed template, tests it and reloads keepalived.
 - **Configuration sync.** Standby nodes copy the active node's configuration (proxy rules, certificates and keys, access rules, admin accounts, settings) over TLS, authenticated with a shared cluster key. Standby nodes are read-only, so changes are made in one place.
 - **Cluster overview** on the HA page and the Status page: each node's role, health, sync state and version.
+- Failovers are reported plainly ("Failed over to waymark02 · waymark01 unreachable"), and the HA page checks that the installed root helper matches the Waymark version.
 - Automatic certificate renewal runs only on the active node.
 
 **Health checks** (per proxy rule)
 - Active checks: HTTP GET or HEAD (with expected status codes and optional "response must contain" text), TCP connect or ICMP ping, with interval, timeout and failure and recovery thresholds.
 - Passive monitoring of real traffic (5xx responses, timeouts, connection failures).
 - Upstreams that fail are taken out of load balancing. When all upstreams of a rule are down, visitors get a "Web server is down" page at once instead of waiting for a timeout. Virtual directories can be checked too.
-- Replaces Zoraxy's fixed 5-minute uptime monitor; the Uptime Monitor page is fed by the health checks.
+- Replaces Zoraxy's fixed 5-minute uptime monitor; the **Health & Uptime** page is fed by the health checks.
 
 **Static file caching**
 - Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the upstream's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
@@ -48,10 +72,20 @@ Everything Zoraxy does (HTTP and stream proxying, ACME certificates, access rule
 - **DNS credential sets** for ACME DNS challenges: save a provider token once and use it for any number of certificates.
 - **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
 
-**Security and maintenance**
+**Security**
+- Passwords (admin accounts, Waymark Auth users, basic auth and WebDAV) are stored with bcrypt instead of unsalted SHA-512; existing passwords are upgraded automatically.
+- Redirects after SSO login stay on the protected host, error pages load no third-party scripts, and the web UI escapes the values it shows.
 - Cross-site request protection uses Go's standard `CrossOriginProtection` instead of the unmaintained gorilla/csrf.
-- CI runs vet, tests and `govulncheck` on every change and builds with the latest Go 1.26 patch release.
+- CI runs vet, tests, `govulncheck` and CodeQL on every change and builds with the latest Go 1.26 patch release.
 - A daily workflow watches Zoraxy for new releases and prepares a pull request that merges them.
+
+**Removed from Zoraxy**
+- Network tools (IP and port scanners, mDNS browser, traceroute, ping, WHOIS, Wake-on-LAN), the web SSH client and the HTTP forward proxy. The SSH client's embedded terminal binaries alone added about 10 MB to the binary.
+- The Quick Start page, the Utilities toolbox, and per-certificate DNS credentials (credential sets replace them).
+
+**Look and feel**
+- New name and logo, and a navy and teal colour scheme in light and dark mode.
+- A reorganised side menu (Proxy, Access, Certificates, Monitoring, System, Plugins) with fewer, merged pages and no "Recent" section.
 
 See [CHANGELOG.md](CHANGELOG.md) for details.
 
@@ -143,21 +177,21 @@ This example publishes an app running at `http://10.0.0.20:8080` as `https://app
 
 1. **Point DNS at Waymark.** Create an `A` record for `app.example.com` with Waymark's IP address (the floating IP if you run HA).
 2. **Check that the proxy is running.** On **Status**, the banner should say *Online* and *listening on port 443*. Port 80 is served too and redirects to HTTPS.
-3. **Set up certificates.** Under **Security > ACME Client**, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
+3. **Set up certificates.** Under **Certificates**, open the **ACME and auto-renew** tab, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
    - **HTTP challenge**: works when the name is reachable from the internet on port 80.
-   - **DNS challenge**: also works for internal-only names. Pick your DNS provider and save its API token as a credential set (**Security > TLS / SSL certificates > Manage DNS Credentials**) so other certificates can reuse it.
-4. **Create the proxy rule.** Under **Reverse Proxy > Create Proxy Rule**:
+   - **DNS challenge**: also works for internal-only names. Pick your DNS provider and save its API token as a credential set (**Certificates > DNS credentials**) so other certificates can reuse it.
+4. **Create the proxy rule.** Under **Proxy > HTTP Proxies**, click **Add Proxy Rule**:
    - **Matching Keyword / Domain**: `app.example.com`
    - **Target IP Address or Domain Name with port**: `10.0.0.20:8080`
    - **Proxy Target require TLS Connection**: off (the app speaks plain HTTP)
    - **Enable health checks**: on (the default)
    - Click **Create Endpoint**.
-5. **Open `https://app.example.com`.** The rule now appears under **Reverse Proxy > HTTP Proxy**. Edit it there to add more upstreams for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
+5. **Open `https://app.example.com`.** The rule now appears under **Proxy > HTTP Proxies**. Edit it there to add more upstreams for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
 
 Tips:
 - For an app that uses HTTPS itself, turn on **Proxy Target require TLS Connection** (and **Ignore TLS/SSL Verification Error** if it has a self-signed certificate).
-- Hostnames that match no rule get the **Default Site** (**Ingress > Default Site**): an error page, a redirect, or the built-in static web server.
-- To export your configuration, use **Utilities > System Backup & Restore**.
+- Hostnames that match no rule get the **Default Site** (**Proxy > Default Site**): an error page, a redirect, or the built-in static web server.
+- To export your configuration, use **System Backup & Restore** under **System > Settings**.
 
 ## High availability (optional)
 
@@ -184,7 +218,7 @@ The installer adds:
 
 Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because the service above is sandboxed, the installer adds a drop-in that allows this, so **restart Waymark** when it asks. If Waymark runs as another user or unit, set `WAYMARK_USER` or `WAYMARK_UNIT`.
 
-**2. Configure the cluster on the first node** under **Networking > High Availability**:
+**2. Configure the cluster on the first node** under **System > High Availability**:
 - Turn on **Enable high availability**. Under **Floating IPs**, enter the address and prefix length (more can be added with **Add floating IP**; they all move together, and the node addresses must be in the first one's subnet). Enter a **Router ID**, and optionally a VRRP password.
 - Under **Configuration sync**, turn on copying to the standby nodes and click **Generate** for the cluster key.
 - Add both nodes: a name, the node's own address, its network interface (e.g. `ens18`) and a priority. The node with the higher priority is active when both are healthy.
@@ -239,7 +273,7 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 | `www/` | Static web server files and custom error page templates |
 | `plugins/` | Installed plugins |
 
-Back up `conf/` and `sys.db`, or use **Utilities > System Backup & Restore**. HA nodes also have `/var/lib/waymark/ha` (the keepalived settings, role and sync state); it is recreated from the configuration if lost.
+Back up `conf/` and `sys.db`, or use **System Backup & Restore** under **System > Settings**. HA nodes also have `/var/lib/waymark/ha` (the keepalived settings, role and sync state); it is recreated from the configuration if lost.
 
 ## Relationship to Zoraxy, license and credits
 
@@ -247,6 +281,6 @@ Waymark Proxy is a modified version of [Zoraxy](https://github.com/tobychui/zora
 
 Waymark Proxy is free software under the [GNU Affero General Public License v3.0](LICENSE), the same license as Zoraxy. Copyright © 2021-2026 tobychui and the Zoraxy contributors; changes and additions © 2026 Ryan Adams. It comes with no warranty. If you run a modified version that other people use over a network, the AGPL requires you to offer them its source code.
 
-Zoraxy plugins work with Waymark, and Waymark's App Store lists the plugins published for Zoraxy.
+Zoraxy plugins work with Waymark, and Waymark's **Plugin Store** (**Plugins > Plugin Store**) lists the plugins published for Zoraxy.
 
 The wordmark uses [Inter](https://rsms.me/inter/) (SIL Open Font License).

@@ -11,10 +11,15 @@
 </style>
 <div class="standardContainer">
     <div class="ui basic segment">
-        <h2>Certificate Authority (CA) and Auto Renew (ACME)</h2>
-        <p>Management features regarding CA and ACME</p>
+        <h2>Certificates</h2>
+        <p>Preferred certificate authority, automatic renewal, and requesting new certificates with ACME</p>
     </div>
-    <div class="ui divider"></div>
+    <!-- Certificates sub-pages: certificates, ACME and DNS credentials -->
+    <div class="ui secondary pointing menu" style="margin-top: -0.5em;">
+        <a class="item" style="cursor: pointer;" onclick="openTabById('cert');"><i class="lock icon"></i> Installed certificates</a>
+        <a class="item active" style="cursor: pointer;" onclick="openTabById('acme');"><i class="sync alternate icon"></i> ACME and auto-renew</a>
+        <a class="item" style="cursor: pointer;" onclick="showSideWrapper('snippet/dnsProfiles.html');"><i class="key icon"></i> DNS credentials</a>
+    </div>
     <div class="ui basic segment acmeRenewStateWrapper">
         <h4 class="ui header" id="acmeAutoRenewer">
             <i class="white remove icon"></i>

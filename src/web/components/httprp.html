@@ -1,6 +1,6 @@
 <div class="standardContainer">
     <div class="ui basic segment">
-        <h2>HTTP Proxy</h2>
+        <h2>HTTP Proxies</h2>
         <p>Proxy HTTP server with HTTP or HTTPS for multiple hosts. If you are only proxying for one host / domain, use Default Site instead.</p>
     </div>
     <style>
@@ -191,6 +191,7 @@
         }
     </style>
     <div class="httpProxyListTools" style="margin-bottom: 1em;">
+        <button class="ui basic green button" onclick="openTabById('rules');"><i class="plus icon"></i> Add Proxy Rule</button>
         <div id="tagFilterDropdown" class="ui floating basic dropdown labeled icon button" style="min-width: 150px;">
             <i class="filter icon"></i>
             <span class="text">Filter by tags</span>
@@ -1440,7 +1441,7 @@
     //Custom fork: one-line summary of a rule's health check settings
     function describeHealthCheck(hc){
         if (!hc || (!hc.activeEnabled && !hc.passiveEnabled)){
-            return "Health checks: off. No automatic failover, and this rule is not shown on the Uptime Monitor.";
+            return "Health checks: off. No automatic failover, and this rule is not shown on Health &amp; Uptime.";
         }
         let parts = [];
         if (hc.activeEnabled){
@@ -1452,9 +1453,9 @@
         }
         let summary = "Health checks: " + parts.join(", ");
         if (hc.activeEnabled){
-            summary += ". Also feeds the Uptime Monitor.";
+            summary += ". Also feeds Health &amp; Uptime.";
         }else{
-            summary += ". Not shown on the Uptime Monitor (needs active checks).";
+            summary += ". Not shown on Health &amp; Uptime (needs active checks).";
         }
         return summary;
     }

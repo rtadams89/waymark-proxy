@@ -27,7 +27,8 @@
     <div class="ui stackable grid">
         <div class="ten wide column">
             <div class="ui basic segment" style="border-radius: 1em; padding: 1em !important;">
-                <h2>New Proxy Rule</h2>
+                <a class="ui basic tiny button" style="margin-bottom: 0.6em;" onclick="openTabById('httprp');"><i class="arrow left icon"></i> Back to HTTP Proxies</a>
+                <h2>Add Proxy Rule</h2>
                 <p>You can add more proxy rules to support more site via domain / subdomains</p>
                 <div class="ui form">
                     <div class="field">
@@ -67,7 +68,7 @@
                                     <div class="ui checkbox">
                                         <input type="checkbox" id="enableUtm" checked>
                                         <!-- Custom fork: this option now creates a health check (HTTP GET every 10s; fine-tune it in the rule editor) -->
-                                        <label>Enable health checks<br><small>Check upstreams with HTTP GET every 10s, take them out of load balancing when they fail, and show them on the Uptime Monitor. Adjust under Upstream &rarr; Health Checks in the rule editor.</small>
+                                        <label>Enable health checks<br><small>Check upstreams with HTTP GET every 10s, take them out of load balancing when they fail, and show them on Monitoring &gt; Health &amp; Uptime. Adjust under Upstream &rarr; Health Checks in the rule editor.</small>
                                         </label>
                                     </div>
                                 </div>

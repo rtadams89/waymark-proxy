@@ -14,11 +14,15 @@
 </style>
 <div class="standardContainer">
     <div class="ui basic segment">
-        <h2>TLS / SSL Certificates</h2>
-        <p>Setup TLS cert for different domains of your reverse proxy server names</p>
+        <h2>Certificates</h2>
+        <p>TLS certificates for the host names Waymark serves: upload them, or get and renew them automatically with ACME</p>
     </div>
-    
-    <div class="ui divider"></div>
+    <!-- Certificates sub-pages: certificates, ACME and DNS credentials -->
+    <div class="ui secondary pointing menu" style="margin-top: -0.5em;">
+        <a class="item active" style="cursor: pointer;" onclick="openTabById('cert');"><i class="lock icon"></i> Installed certificates</a>
+        <a class="item" style="cursor: pointer;" onclick="openTabById('acme');"><i class="sync alternate icon"></i> ACME and auto-renew</a>
+        <a class="item" style="cursor: pointer;" onclick="showSideWrapper('snippet/dnsProfiles.html');"><i class="key icon"></i> DNS credentials</a>
+    </div>
     <h3>Hosts Certificates</h3>
     <p>Provide certificates for multiple domains reverse proxy</p>
     <div class="ui fluid form">

@@ -10,6 +10,26 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.3.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Changed**
+- The side menu is reorganised into **Proxy** (HTTP Proxies, Stream Proxies, Redirects, Default Site), **Access** (Access Rules, Authentication (SSO), Trusted Proxies), **Certificates**, **Monitoring** (Health & Uptime, Statistics, Logs), **System** (Listeners, High Availability, Static Web Server, Settings) and **Plugins** (Installed Plugins, Plugin Store, and pages added by plugins). Status stays at the top.
+- **Add Proxy Rule** is a button on HTTP Proxies instead of a menu entry, and virtual directories are opened from each rule. Both pages have a link back to HTTP Proxies.
+- **Certificates** and **ACME and auto-renew** are tabs of one Certificates page, which also opens the DNS credentials.
+- **Logs** (log rotation settings and the log viewer) is its own page under Monitoring. Utilities is now **Settings** with Accounts, System (Geo-IP, backup and restore, statistics operations) and About tabs; About includes the supporters list.
+- Renamed: Ingress to **Listeners**, Uptime Monitor to **Health & Uptime**, Statistical Analysis to **Statistics**, Plugin Manager to **Installed Plugins**, App Store to **Plugin Store**. Page headings match the menu.
+- Links to pages that no longer exist (such as an old `#iface` bookmark) open Status.
+
+**Removed**
+- The **Recent** section at the top of the side menu (recently opened and pinned pages), with its code, styles and icons. Browsers keep the old `zoraxy_recent_tabs` and `zoraxy_pinned_tabs` entries in local storage, unused.
+- The **Network Interfaces** page. High Availability shows the addresses that matter for the cluster; the `/api/stats/listnic` API stays for plugins.
+
+**Documentation**
+- README: quick start and HA instructions use the new menu paths.
+- README: new **Why Waymark** section with a comparison to Zoraxy, Nginx Proxy Manager, Traefik and Caddy, and an updated list of what's different from Zoraxy (security changes, removed features, new look).
+
 ## 2.2.3
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

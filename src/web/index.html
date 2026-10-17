@@ -43,163 +43,149 @@
         <div class="wrapper">
             <div class="toolbar">
                 <div id="mainmenu" class="ui secondary vertical menu">
-                    <!-- Recent Items Section -->
-                    <div class="recent-section-header menugroup-header" onclick="toggleMenuGroup('recent')">
-                        <img class="menugroup-icon theme-icon-light" src="img/icons/recent_black.svg" alt="Recent">
-                        <img class="menugroup-icon theme-icon-dark" src="img/icons/recent_white.svg" alt="Recent">
-                        <span style="flex:1; margin-left:0.35em;">Recent</span>
-                        <i class="chevron down icon menugroup-chevron" id="chevron-recent"></i>
-                    </div>
-                    <div id="group-recent">
-                        <div class="recent-empty-hint">No recent items</div>
-                    </div>
-                    <div class="ui divider recent-section-divider"></div>
 
                     <a class="item active" tag="status">
                         <i class="simplistic info circle icon"></i>Status
                     </a>
-                    <a class="item" tag="globalsettings">
-                        <i class="arrow alternate circle right icon"></i>Ingress
-                    </a>
-                    <a class="item" tag="setroot">
-                        <i class="simplistic home icon"></i> Default Site
-                    </a>
 
-                    <!-- Reverse Proxy Group -->
+                    <!-- Proxy Group -->
                     <div class="menugroup-container">
-                        <div class="menugroup-header" onclick="toggleMenuGroup('reverseproxy')">
-                            <img class="menugroup-icon theme-icon-light" src="img/icons/proxy_black.svg" alt="Reverse Proxy">
-                            <img class="menugroup-icon theme-icon-dark" src="img/icons/proxy_white.svg" alt="Reverse Proxy">
-                            <span>Reverse Proxy</span>
-                            <i class="chevron down icon menugroup-chevron" id="chevron-reverseproxy"></i>
+                        <div class="menugroup-header" onclick="toggleMenuGroup('proxy')">
+                            <img class="menugroup-icon theme-icon-light" src="img/icons/proxy_black.svg" alt="Proxy">
+                            <img class="menugroup-icon theme-icon-dark" src="img/icons/proxy_white.svg" alt="Proxy">
+                            <span>Proxy</span>
+                            <i class="chevron down icon menugroup-chevron" id="chevron-proxy"></i>
                         </div>
-                        <div class="menugroup-items" id="group-reverseproxy">
-                            <a class="item" tag="httprp" tab_group="reverseproxy">
-                                <i class="simplistic sitemap icon"></i> HTTP Proxy
+                        <div class="menugroup-items" id="group-proxy">
+                            <a class="item" tag="httprp" tab_group="proxy">
+                                <i class="simplistic sitemap icon"></i> HTTP Proxies
                             </a>
-                            <a class="item" tag="vdir" tab_group="reverseproxy">
-                                <i class="simplistic folder icon"></i> Virtual Directory
+                            <a class="item" tag="rules" tab_group="proxy" highlight="httprp" style="display: none;">
+                                <i class="simplistic plus square icon"></i> Add Proxy Rule
                             </a>
-                            <a class="item" tag="rules" tab_group="reverseproxy">
-                                <i class="simplistic plus square icon"></i> Create Proxy Rule
+                            <a class="item" tag="vdir" tab_group="proxy" highlight="httprp" style="display: none;">
+                                <i class="simplistic folder icon"></i> Virtual Directories
                             </a>
-                            <a class="item" tag="streamproxy" tab_group="reverseproxy">
-                                <i class="simplistic exchange icon"></i> Stream Proxy
+                            <a class="item" tag="streamproxy" tab_group="proxy">
+                                <i class="simplistic exchange icon"></i> Stream Proxies
+                            </a>
+                            <a class="item" tag="redirectset" tab_group="proxy">
+                                <i class="simplistic level up alternate icon"></i> Redirects
+                            </a>
+                            <a class="item" tag="setroot" tab_group="proxy">
+                                <i class="simplistic home icon"></i> Default Site
                             </a>
                         </div>
                     </div>
 
-                    <!-- Access & Connections Group -->
+                    <!-- Access Group -->
                     <div class="menugroup-container">
-                        <div class="menugroup-header" onclick="toggleMenuGroup('accessconn')">
-                            <img class="menugroup-icon theme-icon-light" src="img/icons/access_black.svg" alt="Access and Connections">
-                            <img class="menugroup-icon theme-icon-dark" src="img/icons/access_white.svg" alt="Access and Connections">
-                            <span>Access & Connections</span>
-                            <i class="chevron down icon menugroup-chevron" id="chevron-accessconn"></i>
+                        <div class="menugroup-header" onclick="toggleMenuGroup('access')">
+                            <img class="menugroup-icon theme-icon-light" src="img/icons/access_black.svg" alt="Access">
+                            <img class="menugroup-icon theme-icon-dark" src="img/icons/access_white.svg" alt="Access">
+                            <span>Access</span>
+                            <i class="chevron down icon menugroup-chevron" id="chevron-access"></i>
                         </div>
-                        <div class="menugroup-items" id="group-accessconn">
-                            <a class="item" tag="redirectset" tab_group="accessconn">
-                                <i class="simplistic level up alternate icon"></i> Redirection
+                        <div class="menugroup-items" id="group-access">
+                            <a class="item" tag="access" tab_group="access">
+                                <i class="simplistic ban icon"></i> Access Rules
                             </a>
-                            <a class="item" tag="access" tab_group="accessconn">
-                                <i class="simplistic ban icon"></i> Access Control
+                            <a class="item" tag="sso" tab_group="access">
+                                <i class="simplistic user circle icon"></i> Authentication (SSO)
                             </a>
-                             <a class="item" tag="trustproxy" tab_group="accessconn">
-                                <i class="shield alternate icon"></i> Trusted Proxy
+                            <a class="item" tag="trustproxy" tab_group="access">
+                                <i class="shield alternate icon"></i> Trusted Proxies
                             </a>
                         </div>
                     </div>
 
-                    <!-- Security Group -->
+                    <!-- Certificates Group -->
                     <div class="menugroup-container">
-                        <div class="menugroup-header" onclick="toggleMenuGroup('security')">
-                            <img class="menugroup-icon theme-icon-light" src="img/icons/security_black.svg" alt="Security">
-                            <img class="menugroup-icon theme-icon-dark" src="img/icons/security_white.svg" alt="Security">
-                            <span>Security</span>
-                            <i class="chevron down icon menugroup-chevron" id="chevron-security"></i>
+                        <div class="menugroup-header" onclick="toggleMenuGroup('certificates')">
+                            <img class="menugroup-icon theme-icon-light" src="img/icons/security_black.svg" alt="Certificates">
+                            <img class="menugroup-icon theme-icon-dark" src="img/icons/security_white.svg" alt="Certificates">
+                            <span>Certificates</span>
+                            <i class="chevron down icon menugroup-chevron" id="chevron-certificates"></i>
                         </div>
-                        <div class="menugroup-items" id="group-security">
-                            <a class="item" tag="cert" tab_group="security">
-                                <i class="simplistic lock icon"></i> TLS / SSL certificates
+                        <div class="menugroup-items" id="group-certificates">
+                            <a class="item" tag="cert" tab_group="certificates">
+                                <i class="simplistic lock icon"></i> Certificates
                             </a>
-                            <a class="item" tag="acme" tab_group="security">
-                                <i class="simplistic asterisk icon"></i> ACME Client
-                            </a>
-                            <a class="item" tag="sso" tab_group="security">
-                                <i class="simplistic user circle icon"></i> SSO / OAuth2
+                            <a class="item" tag="acme" tab_group="certificates" highlight="cert" style="display: none;">
+                                <i class="simplistic sync alternate icon"></i> ACME and auto-renew
                             </a>
                         </div>
                     </div>
 
-                    <!-- Services Group -->
+                    <!-- Monitoring Group -->
                     <div class="menugroup-container">
-                        <div class="menugroup-header" onclick="toggleMenuGroup('services')">
-                            <img class="menugroup-icon theme-icon-light" src="img/icons/service_black.svg" alt="Services">
-                            <img class="menugroup-icon theme-icon-dark" src="img/icons/service_white.svg" alt="Services">
-                            <span>Services</span>
-                            <i class="chevron down icon menugroup-chevron" id="chevron-services"></i>
+                        <div class="menugroup-header" onclick="toggleMenuGroup('monitoring')">
+                            <img class="menugroup-icon theme-icon-light" src="img/icons/monitor_black.svg" alt="Monitoring">
+                            <img class="menugroup-icon theme-icon-dark" src="img/icons/monitor_white.svg" alt="Monitoring">
+                            <span>Monitoring</span>
+                            <i class="chevron down icon menugroup-chevron" id="chevron-monitoring"></i>
                         </div>
-                        <div class="menugroup-items" id="group-services">
-                            <a class="item" tag="webserv" tab_group="services">
-                                <i class="simplistic globe icon"></i> Static Web Server
+                        <div class="menugroup-items" id="group-monitoring">
+                            <a class="item" tag="utm" tab_group="monitoring">
+                                <i class="simplistic heartbeat icon"></i> Health &amp; Uptime
                             </a>
-                            <a class="item" tag="utm" tab_group="services">
-                                <i class="simplistic time icon"></i> Uptime Monitor
+                            <a class="item" tag="stats" tab_group="monitoring">
+                                <i class="simplistic chart bar icon"></i> Statistics
+                            </a>
+                            <a class="item" tag="logs" tab_group="monitoring">
+                                <i class="simplistic file alternate outline icon"></i> Logs
                             </a>
                         </div>
                     </div>
 
-                    <!-- Networking Group -->
+                    <!-- System Group -->
                     <div class="menugroup-container">
-                        <div class="menugroup-header" onclick="toggleMenuGroup('networking')">
-                            <img class="menugroup-icon theme-icon-light" src="img/icons/lan_black.svg" alt="Networking">
-                            <img class="menugroup-icon theme-icon-dark" src="img/icons/lan_white.svg" alt="Networking">
-                            <span>Networking</span>
-                            <i class="chevron down icon menugroup-chevron" id="chevron-networking"></i>
+                        <div class="menugroup-header" onclick="toggleMenuGroup('system')">
+                            <img class="menugroup-icon theme-icon-light" src="img/icons/lan_black.svg" alt="System">
+                            <img class="menugroup-icon theme-icon-dark" src="img/icons/lan_white.svg" alt="System">
+                            <span>System</span>
+                            <i class="chevron down icon menugroup-chevron" id="chevron-system"></i>
                         </div>
-                        <div class="menugroup-items" id="group-networking">
-                            <a class="item" tag="iface" tab_group="networking">
-                                <i class="wifi icon"></i> Network Interfaces
+                        <div class="menugroup-items" id="group-system">
+                            <a class="item" tag="globalsettings" tab_group="system">
+                                <i class="arrow alternate circle right icon"></i> Listeners
                             </a>
-                            <!-- Custom fork: high availability -->
-                            <a class="item" tag="ha" tab_group="networking">
+                            <a class="item" tag="ha" tab_group="system">
                                 <i class="clone outline icon"></i> High Availability
                             </a>
+                            <a class="item" tag="webserv" tab_group="system">
+                                <i class="simplistic globe icon"></i> Static Web Server
+                            </a>
+                            <a class="item" tag="utils" tab_group="system">
+                                <i class="simplistic cog icon"></i> Settings
+                            </a>
                         </div>
                     </div>
 
-                    <!-- Others Group -->
+                    <!-- Plugins Group -->
                     <div class="menugroup-container">
-                        <div class="menugroup-header" onclick="toggleMenuGroup('others')">
-                            <img class="menugroup-icon theme-icon-light" src="img/icons/others_black.svg" alt="Others">
-                            <img class="menugroup-icon theme-icon-dark" src="img/icons/others_white.svg" alt="Others">
-                            <span>Others</span>
-                            <i class="chevron down icon menugroup-chevron" id="chevron-others"></i>
+                        <div class="menugroup-header" onclick="toggleMenuGroup('plugins')">
+                            <img class="menugroup-icon theme-icon-light" src="img/icons/plugin_black.svg" alt="Plugins">
+                            <img class="menugroup-icon theme-icon-dark" src="img/icons/plugin_white.svg" alt="Plugins">
+                            <span>Plugins</span>
+                            <i class="chevron down icon menugroup-chevron" id="chevron-plugins"></i>
                         </div>
-                        <div class="menugroup-items" id="group-others">
-                            <a class="item" tag="stats" tab_group="others">
-                                <i class="simplistic database icon"></i> Statistical Analysis
+                        <div class="menugroup-items" id="group-plugins">
+                            <a class="item" tag="plugins" tab_group="plugins">
+                                <i class="simplistic puzzle piece icon"></i> Installed Plugins
                             </a>
-                            <a class="item" tag="utils" tab_group="others">
-                                <i class="simplistic paperclip icon"></i> Utilities
+                            <a class="item" tag="appstore" tab_group="plugins">
+                                <i class="simplistic shopping bag icon"></i> Plugin Store
                             </a>
+                            <!-- Plugins that add their own pages -->
+                            <cx id="pluginMenu">
+                                <a class="item" style="pointer-events: none; user-select: none; opacity: 0.6;">
+                                    <i class="green circle check icon"></i> No Plugins Installed
+                                </a>
+                            </cx>
                         </div>
                     </div>
-                    <div class="ui divider"></div>
-                    <!-- App Store -->
-                    <a class="item" tag="appstore">
-                        <i class="simplistic shopping bag icon"></i> App Store
-                    </a>
-                    <!-- Plugin Manager -->
-                    <a class="item" tag="plugins">
-                        <i class="simplistic puzzle piece icon"></i> Plugin Manager
-                    </a>
-                    <!-- Installed Plugins -->
-                    <cx id="pluginMenu">
-                        <a class="item" style="pointer-events: none; user-select: none; opacity: 0.6;">
-                            <i class="green circle check icon"></i> No Plugins Installed
-                        </a>
-                    </cx>
+
                     <!-- Add more components here -->
                 </div>
             </div>
@@ -257,8 +243,8 @@
                 <!-- Up Time Monitor -->
                 <div id="utm" class="functiontab" target="uptime.html"></div>
 
-                <!-- Interface -->
-                <div id="iface" class="functiontab" target="iface.html"></div>
+                <!-- Logs -->
+                <div id="logs" class="functiontab" target="logs.html"></div>
 
                 <!-- Custom fork: High Availability -->
                 <div id="ha" class="functiontab" target="ha.html"></div>
@@ -361,9 +347,8 @@
             initTabs(function(){
                 initRPStaste();
 
-                // Initialize collapsible group states and recent items before any tab navigation
+                // Initialize collapsible group states before any tab navigation
                 initMenuGroupStates();
-                renderRecentItems();
 
                 if (window.location.hash.length > 1){
                     let tabID = window.location.hash.substr(1);
@@ -393,8 +378,11 @@
                         } catch (e) {
                             console.error("Invalid JSON data:", e);
                         }
-                    }else{
+                    }else if (getTabButtonById(tabID) != undefined){
                         openTabById(tabID);
+                    }else{
+                        //Bookmark to a page that no longer exists (e.g. #iface), show the status page
+                        openTabById("status");
                     }
                 }else{
                     openTabById("status");
@@ -412,9 +400,6 @@
 
                 //Initialize all table that is sortable
                 $('table').tablesort();
-
-                // Menu is fully initialized; future tab switches will be recorded in recent history
-                _menuInitDone = true;
             });
 
             //Function to open a plugin tab by its plugin id
@@ -520,7 +505,10 @@
                 }
 
                 $("#mainmenu").find(".item").removeClass("active");
-                $(targetBtn).addClass("active");
+                //Sub-pages without their own menu entry (e.g. Add Proxy Rule) mark their parent page as active
+                let highlightTab = $(targetBtn).attr("highlight");
+                let highlightBtn = highlightTab ? getTabButtonById(highlightTab) : undefined;
+                $(highlightBtn != undefined ? highlightBtn : targetBtn).addClass("active");
                 $(".functiontab").hide();
                 $("#" + tabID).fadeIn('fast', function(){
                     setTimeout(function(){
@@ -551,9 +539,7 @@
                 document.title = (tabLabel ? tabLabel + ' | ' : '') + 'Waymark';
 
                 // Expand the group containing this tab if it is collapsed
-                expandGroupContaining(tabID);
-                // Record in recent navigation history (skip during initial page load)
-                if (_menuInitDone) { recordRecentTab(tabID, $(targetBtn)); }
+                expandGroupContaining(tabID, $(targetBtn).attr("tab_group"));
             }
 
             $(window).on("resize", function(){
@@ -686,7 +672,6 @@
             /* 
                 Collapsible Side Menu Groups
             */
-            var _menuInitDone = false;
 
             // Build tab → group map at runtime from tab_group attributes on menu items
             var TAB_TO_GROUP = (function() {
@@ -737,8 +722,9 @@
                 return groups;
             })();
 
-            function expandGroupContaining(tabID) {
-                var groupId = TAB_TO_GROUP[tabID];
+            function expandGroupContaining(tabID, groupHint) {
+                //Plugin pages are added to the menu after load, so they pass their group directly
+                var groupId = groupHint || TAB_TO_GROUP[tabID];
                 if (!groupId) return;
                 var states = getMenuGroupStates();
                 COLLAPSIBLE_GROUPS.forEach(function(gid) {
@@ -765,7 +751,7 @@
 
             function initMenuGroupStates() {
                 var states = getMenuGroupStates();
-                // Discover all group containers from DOM (includes recent + all menugroup-items)
+                // Discover all group containers from DOM
                 $('#mainmenu [id^="group-"]').each(function() {
                     var gid = $(this).attr('id').slice('group-'.length);
                     if (states[gid] === false) {
@@ -773,110 +759,6 @@
                         $('#chevron-' + gid).addClass('collapsed');
                     }
                 });
-            }
-
-            /* Recent Items */
-            var RECENT_DISPLAY_MAX = 5; // max number of (non-pinned) recent items shown
-            var RECENT_HISTORY_MAX = 15; // how many recent entries to retain in storage
-
-            function getRecentTabs() {
-                try { return JSON.parse(localStorage.getItem('zoraxy_recent_tabs') || '[]'); }
-                catch(e) { return []; }
-            }
-
-            function getPinnedTabs() {
-                try { return JSON.parse(localStorage.getItem('zoraxy_pinned_tabs') || '[]'); }
-                catch(e) { return []; }
-            }
-
-            function savePinnedTabs(pinned) {
-                localStorage.setItem('zoraxy_pinned_tabs', JSON.stringify(pinned));
-            }
-
-            function isTabPinned(tabID) {
-                return getPinnedTabs().some(function(t) { return t.tag === tabID; });
-            }
-
-            function pinTab(tabID, label, icon) {
-                if (!tabID || isTabPinned(tabID)) return;
-                var pinned = getPinnedTabs();
-                pinned.push({ tag: tabID, label: label, icon: icon });
-                savePinnedTabs(pinned);
-                renderRecentItems();
-            }
-
-            function unpinTab(tabID) {
-                var pinned = getPinnedTabs().filter(function(t) { return t.tag !== tabID; });
-                savePinnedTabs(pinned);
-                renderRecentItems();
-            }
-
-            function recordRecentTab(tabID, $btn) {
-                if (!tabID || tabID === 'pluginContextWindow') return;
-                // Extract label (strip icon element text) and icon class
-                var label     = $btn.clone().children('i').remove().end().text().trim();
-                var iconClass = $btn.children('i').first().attr('class') || '';
-                var recent    = getRecentTabs().filter(function(t) { return t.tag !== tabID; });
-                recent.unshift({ tag: tabID, label: label, icon: iconClass });
-                recent = recent.slice(0, RECENT_HISTORY_MAX);
-                localStorage.setItem('zoraxy_recent_tabs', JSON.stringify(recent));
-                renderRecentItems();
-            }
-
-            // Build a single recent/pinned menu entry. `pinned` controls whether
-            // the pin toggle is shown as active (filled) and which action it fires.
-            function buildRecentItem(tab, pinned) {
-                var $item = $('<a class="recent-item"></a>');
-                $item.append($('<i style="margin-top: -8px;"></i>').addClass(tab.icon));
-                $item.append($('<span class="recent-item-label"></span>').text(tab.label));
-                $item.attr('title', tab.label);
-                $item.on('click', function() { openTabById(tab.tag); });
-
-                var $pin = $('<i class="thumbtack icon recent-pin-toggle"></i>');
-                if (pinned) {
-                    $pin.addClass('pinned');
-                    $pin.attr('title', 'Unpin');
-                } else {
-                    $pin.attr('title', 'Pin to top');
-                }
-                $pin.on('click', function(e) {
-                    e.stopPropagation();
-                    if (pinned) {
-                        unpinTab(tab.tag);
-                    } else {
-                        pinTab(tab.tag, tab.label, tab.icon);
-                    }
-                });
-                $item.append($pin);
-                return $item;
-            }
-
-            function renderRecentItems() {
-                var $container = $('#group-recent');
-                $container.empty();
-
-                var pinned = getPinnedTabs();
-                var pinnedTags = pinned.map(function(t) { return t.tag; });
-
-                // Pinned items always shown on top (and do not count towards the
-                // recent display limit).
-                pinned.forEach(function(tab) {
-                    $container.append(buildRecentItem(tab, true));
-                });
-
-                // Recent items, excluding anything already pinned, capped at the
-                // display limit.
-                var recent = getRecentTabs().filter(function(t) {
-                    return pinnedTags.indexOf(t.tag) === -1;
-                }).slice(0, RECENT_DISPLAY_MAX);
-
-                recent.forEach(function(tab) {
-                    $container.append(buildRecentItem(tab, false));
-                });
-
-                if (pinned.length === 0 && recent.length === 0) {
-                    $container.html('<div class="recent-empty-hint">No recent items</div>');
-                }
             }
         </script>
         <script src="script/haCluster.js"></script>
