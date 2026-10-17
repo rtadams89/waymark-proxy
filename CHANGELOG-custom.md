@@ -9,6 +9,19 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 - New upstream releases are picked up by the "Watch upstream releases" workflow (daily), which opens an issue and starts "Merge upstream release" to prepare a pull request. Merge those pull requests with a merge commit.
 
+## 3.3.5-custom.11
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- Maintenance mode per rule (rule editor > **Maintenance**). While on, every request to the host, including its virtual directories, gets a "Down for maintenance" page (HTTP 503, `Cache-Control: no-store`) with an optional message and expected duration (also sent as `Retry-After`), instead of reaching the upstream. Access rules and authentication still apply first; health checks keep running. A preview button shows the page. Replace the built-in page with `<webroot>/templates/maintenance.html` (placeholders `{{message}}`, `{{retry}}`, `{{host}}`). The HTTP Proxy list marks the rule with an orange wrench.
+- Status page: **Upstream Health** panel with counts of healthy and down health-checked upstreams and rules in maintenance, and a list of what is down (rule, upstream, how long, reason) or in maintenance. Can be hidden in the panel settings.
+- Health checks: optional **Response must contain** text for HTTP GET checks. The upstream is healthy only if the status matches and the first 64 KB of the response include the text (catches apps that answer 200 with an error page).
+- Health checks for virtual directories: **Also check virtual directories** checks each of the rule's virtual directory backends with the rule's settings, including passive monitoring. While a backend is down its path gets the 521 page; the rest of the host is unaffected. Shown with a "virtual directory /path" label on the Health Checks page, in the log and in events, and with a red heart next to the virtual directory in the HTTP Proxy list.
+
+**Changed**
+- Static file caching now also covers a rule's virtual directories (using the rule's cache settings, keyed on the full request path) and rules that accept plain HTTP.
+
 ## 3.3.5-custom.10
 
 Base: upstream v3.3.5 (`310b0cc`).

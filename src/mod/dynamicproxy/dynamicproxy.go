@@ -445,11 +445,26 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	//Custom fork: maintenance mode
+	if router.serveMaintenance(w, r, sep) {
+		return
+	}
+
 	//Custom fork: health checks found every upstream down, answer with the error page
 	if proxyHandler.allUpstreamsDown(sep) {
 		serveProxyRequestError(w, 521, router, ErrorTemplateRPError)
 		router.logRequest(r, false, 521, "host-http", r.Host, "health-check-down", sep)
 		return
+	}
+
+	//Custom fork: static file cache (answers hits, stores misses on the way past)
+	cacheSession := proxyHandler.assetCacheBegin(w, r, sep)
+	if cacheSession != nil {
+		if cacheSession.Served() {
+			return
+		}
+		w, r = cacheSession, cacheSession.UpstreamRequest()
+		defer cacheSession.Finish()
 	}
 
 	selectedUpstream, err := router.loadBalancer.GetRequestUpstreamTarget(w, r, sep.ActiveOrigins, sep.UseStickySession, autoFallbackOff(sep))
@@ -497,6 +512,7 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 	if observer := router.Option.UpstreamResultObserver; observer != nil {
 		observer(sep.RootOrMatchingDomain, selectedUpstream.OriginIpOrDomain, statusCode, err)
 	}
+	cacheSession.SetUpstreamResult(statusCode, err)
 }
 
 func (router *Router) handleCaptchaGating(w http.ResponseWriter, r *http.Request, sep *ProxyEndpoint) (handled bool, challenged bool) {

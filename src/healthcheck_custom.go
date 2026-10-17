@@ -54,9 +54,12 @@ func refreshHealthCheckTargets() {
 			SystemWideLogger.PrintAndLog("healthcheck", "Ignoring invalid health check settings on rule "+ep.RootOrMatchingDomain, err)
 			continue
 		}
+		ruleID := strings.ToLower(ep.RootOrMatchingDomain)
+		seen := map[string]bool{}
 		for _, origin := range ep.ActiveOrigins {
+			seen[origin.OriginIpOrDomain] = true
 			targets = append(targets, healthcheck.Target{
-				RuleID: strings.ToLower(ep.RootOrMatchingDomain),
+				RuleID: ruleID,
 				Upstream: healthcheck.Upstream{
 					Addr:          origin.OriginIpOrDomain,
 					RequireTLS:    origin.RequireTLS,
@@ -64,6 +67,25 @@ func refreshHealthCheckTargets() {
 				},
 				Config: *cfg,
 			})
+		}
+		// Virtual directory backends, checked with the same settings
+		if cfg.IncludeVirtualDirs {
+			for _, vdir := range ep.VirtualDirectories {
+				if vdir.Disabled || seen[vdir.Domain] {
+					continue
+				}
+				seen[vdir.Domain] = true
+				targets = append(targets, healthcheck.Target{
+					RuleID: ruleID,
+					Upstream: healthcheck.Upstream{
+						Addr:          vdir.Domain,
+						RequireTLS:    vdir.RequireTLS,
+						SkipTLSVerify: vdir.SkipCertValidations,
+					},
+					Config: *cfg,
+					Label:  "vdir " + vdir.MatchingPath,
+				})
+			}
 		}
 	}
 	healthCheckManager.SetTargets(targets)
@@ -110,9 +132,16 @@ func HandleHealthCheckGet(w http.ResponseWriter, r *http.Request) {
 	for _, o := range ep.ActiveOrigins {
 		upstreams = append(upstreams, o.OriginIpOrDomain)
 	}
+	vdirs := []map[string]string{}
+	for _, v := range ep.VirtualDirectories {
+		if !v.Disabled {
+			vdirs = append(vdirs, map[string]string{"path": v.MatchingPath, "upstream": v.Domain})
+		}
+	}
 	resp := map[string]any{
 		"config":    cfg,
 		"upstreams": upstreams,
+		"vdirs":     vdirs,
 		"disabled":  ep.Disabled,
 		"statuses":  []healthcheck.Status{},
 		"events":    []healthcheck.Event{},

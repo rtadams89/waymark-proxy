@@ -159,6 +159,11 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	r.Header.Set("X-Forwarded-Server", "zoraxy-"+h.Parent.Option.HostUUID)
 	reqHostname := r.Host
 
+	//Custom fork: maintenance mode
+	if h.Parent.serveMaintenance(w, r, target) {
+		return
+	}
+
 	//Custom fork: health checks found every upstream down, answer with the error page
 	if h.allUpstreamsDown(target) {
 		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
@@ -309,6 +314,28 @@ func (h *ProxyHandler) hostWebSocketRequest(w http.ResponseWriter, r *http.Reque
 
 // Handle vdir type request
 func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, target *VirtualDirectoryEndpoint) {
+	//Custom fork: maintenance mode covers the rule's virtual directories too
+	if h.Parent.serveMaintenance(w, r, target.parent) {
+		return
+	}
+
+	//Custom fork: health checks found this virtual directory's backend down
+	if h.vdirDown(target) {
+		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
+		h.Parent.logRequest(r, false, 521, "vdir-http", r.Host, "health-check-down", target.parent)
+		return
+	}
+
+	//Custom fork: static file cache, keyed on the original (unrewritten) URL
+	cacheSession := h.assetCacheBegin(w, r, target.parent)
+	if cacheSession != nil {
+		if cacheSession.Served() {
+			return
+		}
+		w, r = cacheSession, cacheSession.UpstreamRequest()
+		defer cacheSession.Finish()
+	}
+
 	rewriteURL := h.Parent.rewriteURL(target.MatchingPath, r.RequestURI)
 	r.URL, _ = url.Parse(rewriteURL)
 	r.Header.Set("X-Forwarded-Host", r.Host)
@@ -392,6 +419,12 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 		DevelopmentMode:                 target.parent.parent.Option.DevelopmentMode,
 		AltSvc:                         h.Parent.getAltSvcValue(),
 	})
+
+	//Custom fork: passive health monitoring and the static file cache
+	if observer := h.Parent.Option.UpstreamResultObserver; observer != nil {
+		observer(target.parent.RootOrMatchingDomain, target.Domain, statusCode, err)
+	}
+	cacheSession.SetUpstreamResult(statusCode, err)
 
 	var dnsError *net.DNSError
 	if err != nil {

@@ -31,3 +31,13 @@ func (h *ProxyHandler) allUpstreamsDown(target *ProxyEndpoint) bool {
 func autoFallbackOff(target *ProxyEndpoint) bool {
 	return target.DisableAutoFallback && !target.HealthCheck.Enabled()
 }
+
+// vdirDown reports whether health checks have taken a virtual directory's
+// backend out of service (only when the rule checks its virtual directories).
+func (h *ProxyHandler) vdirDown(target *VirtualDirectoryEndpoint) bool {
+	rule := target.parent
+	if rule == nil || !rule.HealthCheck.Enabled() || !rule.HealthCheck.IncludeVirtualDirs || h.Parent.loadBalancer == nil {
+		return false
+	}
+	return !h.Parent.loadBalancer.IsTargetOnline(target.Domain)
+}

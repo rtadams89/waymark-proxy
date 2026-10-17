@@ -42,6 +42,8 @@ const (
 	minRecoverySeconds = 5
 	maxRecoverySeconds = 3600
 	maxPathLength      = 512
+	maxBodyMatchLength = 256
+	bodyReadLimit      = 64 << 10
 )
 
 // Config is stored on each proxy rule (ProxyEndpoint.HealthCheck).
@@ -65,6 +67,12 @@ type Config struct {
 	Threshold              int  `json:"threshold"`             // counted errors ...
 	WindowSeconds          int  `json:"windowSeconds"`         // ... within this many seconds
 	PassiveRecoverySeconds int  `json:"passiveRecoverySeconds"`
+
+	// HTTP GET: healthy only if the response body contains this text (empty = not checked)
+	BodyContains string `json:"bodyContains"`
+
+	// Also check the rule's virtual directory backends with the same settings
+	IncludeVirtualDirs bool `json:"includeVirtualDirs"`
 }
 
 // DefaultConfig is what the UI starts from. Both mechanisms are off until
@@ -104,6 +112,7 @@ func (c *Config) Validate() (*Config, error) {
 	n.Path = strings.TrimSpace(n.Path)
 	n.HostHeader = strings.TrimSpace(n.HostHeader)
 	n.ExpectedStatus = strings.TrimSpace(n.ExpectedStatus)
+	n.BodyContains = strings.TrimSpace(n.BodyContains)
 
 	switch n.Type {
 	case CheckHTTPGet, CheckHTTPHead, CheckTCP, CheckICMP:
@@ -131,6 +140,14 @@ func (c *Config) Validate() (*Config, error) {
 		}
 		if _, err := ParseStatusRanges(n.ExpectedStatus); err != nil {
 			return nil, err
+		}
+	}
+	if n.BodyContains != "" {
+		if n.Type != CheckHTTPGet {
+			return nil, errors.New("matching the response body needs the HTTP GET check type")
+		}
+		if len(n.BodyContains) > maxBodyMatchLength || strings.ContainsAny(n.BodyContains, "\r\n") {
+			return nil, fmt.Errorf("body text to match must be a single line of at most %d characters", maxBodyMatchLength)
 		}
 	}
 

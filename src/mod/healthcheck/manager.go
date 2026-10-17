@@ -23,6 +23,7 @@ type Target struct {
 	RuleID   string // the rule's matching domain, lowercased
 	Upstream Upstream
 	Config   Config // validated
+	Label    string // "vdir /path" for a virtual directory backend, empty for a rule upstream
 }
 
 func (t Target) key() string { return t.RuleID + "\x00" + t.Upstream.Addr }
@@ -34,6 +35,7 @@ type Event struct {
 	Addr    string `json:"upstream"`
 	Enabled bool   `json:"enabled"`
 	Reason  string `json:"reason"`
+	Label   string `json:"label,omitempty"` // see Target.Label
 }
 
 // Status describes one upstream's current health for the UI.
@@ -50,7 +52,8 @@ type Status struct {
 	LastLatencyMs   int64  `json:"lastLatencyMs,omitempty"`
 	ConsecutiveOK   int    `json:"consecutiveOk"`
 	ConsecutiveFail int    `json:"consecutiveFail"`
-	PassiveErrors   int    `json:"passiveErrors"` // counted errors in the current window
+	PassiveErrors   int    `json:"passiveErrors"`   // counted errors in the current window
+	Label           string `json:"label,omitempty"` // see Target.Label
 }
 
 type state struct {
@@ -370,8 +373,12 @@ func (m *Manager) transitionLocked(st *state, up bool, reason string) []pendingN
 	if up {
 		action = "ENABLED"
 	}
-	m.logf(fmt.Sprintf("Upstream %s on rule %s %s: %s", st.target.Upstream.Addr, st.target.RuleID, action, reason))
-	m.events = append(m.events, Event{Time: st.since.Unix(), RuleID: st.target.RuleID, Addr: st.target.Upstream.Addr, Enabled: up, Reason: reason})
+	who := st.target.Upstream.Addr
+	if st.target.Label != "" {
+		who += " (" + st.target.Label + ")"
+	}
+	m.logf(fmt.Sprintf("Upstream %s on rule %s %s: %s", who, st.target.RuleID, action, reason))
+	m.events = append(m.events, Event{Time: st.since.Unix(), RuleID: st.target.RuleID, Addr: st.target.Upstream.Addr, Enabled: up, Reason: reason, Label: st.target.Label})
 	if len(m.events) > m.maxEvents {
 		m.events = m.events[len(m.events)-m.maxEvents:]
 	}
@@ -453,6 +460,7 @@ func (m *Manager) Statuses(ruleID string) []Status {
 			Reason:          st.reason,
 			ConsecutiveOK:   st.consecOK,
 			ConsecutiveFail: st.consecFail,
+			Label:           st.target.Label,
 		}
 		if cfg.ActiveEnabled {
 			s.Check = cfg.Describe()

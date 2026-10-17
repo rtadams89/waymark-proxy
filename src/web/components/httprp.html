@@ -278,6 +278,10 @@
                     <a class="item hrpedit_menu_item" cfgpage="cache">
                         <i class="archive icon"></i> <span class="editorSideMenuText">Caching</span>
                     </a>
+                    <!-- Custom fork: maintenance mode (snippet/maintenance.html) -->
+                    <a class="item hrpedit_menu_item" cfgpage="maintenance">
+                        <i class="wrench icon"></i> <span class="editorSideMenuText">Maintenance</span>
+                    </a>
                     <a class="item hrpedit_menu_item" cfgpage="accessrule">
                         <i class="star icon"></i> <span class="editorSideMenuText">Access Rules</span>
                     </a>
@@ -521,6 +525,12 @@
                     </div>
                     <!-- Custom fork: Caching -->
                     <div class="rpconfig_content" rpcfg="cache">
+                        <iframe src="" class="wrapper_frame">
+
+                        </iframe>
+                    </div>
+                    <!-- Custom fork: Maintenance -->
+                    <div class="rpconfig_content" rpcfg="maintenance">
                         <iframe src="" class="wrapper_frame">
 
                         </iframe>
@@ -947,6 +957,7 @@
             initDetailView();
             filterProxyList();
             updateHealthIndicators();
+            markMaintenanceHosts();
         });
     }
 
@@ -1316,6 +1327,10 @@
     function renderHealthCacheCell(subd){
         let hc = subd.HealthCheck;
         let parts = [];
+        if (subd.Maintenance && subd.Maintenance.enabled){
+            let since = subd.Maintenance.since ? new Date(subd.Maintenance.since * 1000).toLocaleString() : "";
+            parts.push(`<span class="maintenanceIndicator" style="color: #f2711c;" title="Maintenance mode${since ? " since " + since : ""}: visitors see the maintenance page"><i class="orange wrench icon"></i>Maintenance</span>`);
+        }
         if (hc && (hc.activeEnabled || hc.passiveEnabled)){
             let kind = hc.activeEnabled && hc.passiveEnabled ? "Active + passive" : (hc.activeEnabled ? "Active" : "Passive");
             let title = describeHealthCheck(hc).replace(/"/g, "&quot;");
@@ -1351,8 +1366,22 @@
                     return;
                 }
                 let row = $(this).closest("tr");
-                let list = byRule[String($(this).attr("eptuuid")).toLowerCase()] || [];
+                let all = byRule[String($(this).attr("eptuuid")).toLowerCase()] || [];
+                let list = all.filter(s => !s.label);
                 let down = list.filter(s => !s.enabled || !s.receivesTraffic);
+
+                // Virtual directory backends that are down
+                let vdirDown = all.filter(s => s.label && (!s.enabled || !s.receivesTraffic));
+                vdirDown.forEach(s => {
+                    let path = s.label.replace(/^vdir /, "");
+                    row.find("td[datatype='vdir'] .item").each(function(){
+                        let t = $(this).text().trim();
+                        if (t.startsWith(path) && t.endsWith(s.upstream)){
+                            let why = (s.reason || "Failed its health checks").replace(/"/g, "&quot;");
+                            $(this).append(`<i class="red heartbeat icon hcUpstreamDown" style="margin-left: 0.3em;" title="Down: ${why}"></i>`);
+                        }
+                    });
+                });
 
                 // Red heart next to each upstream that is out of the pool
                 down.forEach(s => {
@@ -1382,6 +1411,9 @@
                     ind.attr("data-state", "down");
                     ind.append(`<span class="hcDownNote" style="color: #db2828;"> · ${down.length} of ${list.length} down</span>`);
                 }
+                if (vdirDown.length > 0){
+                    ind.append(`<span class="hcDownNote" style="color: #db2828;"> · ${vdirDown.length} virtual dir${vdirDown.length == 1 ? "" : "s"} down</span>`);
+                }
             });
         });
     }
@@ -1390,6 +1422,20 @@
             updateHealthIndicators();
         }
     }, 15000);
+
+    //Custom fork: orange wrench next to hosts in maintenance mode
+    function markMaintenanceHosts(){
+        $("#httpProxyList .maintenanceHost").remove();
+        (httpProxyList || []).forEach(subd => {
+            if (!subd.Maintenance || !subd.Maintenance.enabled){
+                return;
+            }
+            let hostCell = $(`#httpProxyList tr[eptuuid='${subd.RootOrMatchingDomain}'] td[datatype='inbound']`);
+            let marker = `<i class="orange wrench icon maintenanceHost" title="Maintenance mode: visitors see the maintenance page"></i>`;
+            let br = hostCell.children("br").first();
+            if (br.length){ br.before(marker); } else { hostCell.append(marker); }
+        });
+    }
 
     //Custom fork: one-line summary of a rule's health check settings
     function describeHealthCheck(hc){
@@ -2061,6 +2107,7 @@
             }));
             let frameURL = "snippet/assetCache.html?t=" + Date.now() + "#" + payload;
             editor.find(".rpconfig_content[rpcfg='cache'] .wrapper_frame").attr('src', frameURL);
+            editor.find(".rpconfig_content[rpcfg='maintenance'] .wrapper_frame").attr('src', "snippet/maintenance.html?t=" + Date.now() + "#" + payload);
         })();
 
         /* ------------ Access Rule ------------ */

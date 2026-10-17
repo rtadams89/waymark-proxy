@@ -82,6 +82,12 @@
                                 <input type="text" name="hostHeader" placeholder="Leave empty to use the upstream address" autocomplete="off">
                                 <div class="hcHint">For backends that route by hostname. Also used as the TLS server name for HTTPS upstreams.</div>
                             </div>
+                            <!-- Custom fork: response body match -->
+                            <div class="field hcGetOnly">
+                                <label>Response must contain <span class="hcHint">(optional)</span></label>
+                                <input type="text" name="bodyContains" placeholder='e.g. "status":"ok"' maxlength="256" autocomplete="off">
+                                <div class="hcHint">Healthy only if the first 64 KB of the response include this text. Catches apps that answer 200 with an error page.</div>
+                            </div>
                         </div>
                         <div class="four fields hcInline">
                             <div class="field">
@@ -137,6 +143,13 @@
                     </div>
                 </div>
 
+                <!-- Custom fork: virtual directory backends -->
+                <div class="hcSection" id="hcVdirSection" style="display:none;">
+                    <div class="ui checkbox" id="hcVdirToggle">
+                        <input type="checkbox" name="includeVirtualDirs">
+                        <label><b>Also check virtual directories</b><br><span class="hcHint">Check this rule's virtual directory backends (<span id="hcVdirList" class="hcMono"></span>) with the same settings. While a backend is down, its path gets the "Web server is down" (521) page.</span></label>
+                    </div>
+                </div>
                 <button class="ui basic button" id="hcSaveBtn" onclick="saveHealthCheck(); return false;"><i class="green save icon"></i> Save</button>
             </div>
 
@@ -201,6 +214,7 @@
                 $("#hcActiveSection").toggleClass("off", !active);
                 $("#hcPassiveSection").toggleClass("off", !passive);
                 $(".hcHttpOnly").toggle(type == "http-get" || type == "http-head");
+                $(".hcGetOnly").toggle(type == "http-get");
                 $("#hcTypeHint").text(typeHints[type] || "");
                 if (active){
                     $("#hcRecoveryField").addClass("disabled");
@@ -216,7 +230,8 @@
                 $("#hcActiveToggle").checkbox(cfg.activeEnabled ? "set checked" : "set unchecked");
                 $("#hcPassiveToggle").checkbox(cfg.passiveEnabled ? "set checked" : "set unchecked");
                 $("#hcType").dropdown("set selected", cfg.type || "http-get");
-                ["path","expectedStatus","hostHeader","intervalSeconds","timeoutSeconds","rise","fall","threshold","windowSeconds","passiveRecoverySeconds"].forEach(k => {
+                $("#hcVdirToggle").checkbox(cfg.includeVirtualDirs ? "set checked" : "set unchecked");
+                ["path","expectedStatus","hostHeader","bodyContains","intervalSeconds","timeoutSeconds","rise","fall","threshold","windowSeconds","passiveRecoverySeconds"].forEach(k => {
                     f.find(`[name=${k}]`).val(cfg[k] == undefined ? "" : cfg[k]);
                 });
                 ["countServerErrors","countTimeouts","countConnectionErrors"].forEach(k => {
@@ -235,6 +250,8 @@
                     path: f.find("[name=path]").val().trim(),
                     hostHeader: f.find("[name=hostHeader]").val().trim(),
                     expectedStatus: f.find("[name=expectedStatus]").val().trim(),
+                    bodyContains: $("#hcType").dropdown("get value") == "http-get" ? f.find("[name=bodyContains]").val().trim() : "",
+                    includeVirtualDirs: $("#hcVdirToggle input")[0].checked,
                     intervalSeconds: num("intervalSeconds"),
                     timeoutSeconds: num("timeoutSeconds"),
                     rise: num("rise"),
@@ -267,16 +284,28 @@
             function renderStatus(data){
                 let body = $("#hcStatusBody");
                 body.empty();
-                if (data.upstreams.length == 0){
+                //Custom fork: virtual directory backends
+                let vdirs = data.vdirs || [];
+                $("#hcVdirSection").toggle(vdirs.length > 0);
+                $("#hcVdirList").text(vdirs.map(v => v.path).join(", "));
+                if (data.upstreams.length == 0 && vdirs.length == 0){
                     body.append(`<tr><td colspan="3" class="hcHint">This rule has no active upstreams.</td></tr>`);
                     return;
                 }
-                let byAddr = {};
-                data.statuses.forEach(s => byAddr[s.upstream] = s);
-                data.upstreams.forEach(addr => {
-                    let s = byAddr[addr];
+                let byAddr = {}, byLabel = {};
+                data.statuses.forEach(s => { if (s.label){ byLabel[s.label] = s; } else { byAddr[s.upstream] = s; } });
+                let rows = data.upstreams.map(addr => ({addr: addr, s: byAddr[addr], note: ""}));
+                vdirs.forEach(v => {
+                    let s = byLabel["vdir " + v.path] || (data.upstreams.includes(v.upstream) ? byAddr[v.upstream] : undefined);
+                    if (s || data.config.includeVirtualDirs){
+                        rows.push({addr: v.upstream, s: s, note: "virtual directory " + v.path});
+                    }
+                });
+                rows.forEach(row => {
+                    let addr = row.addr, s = row.s;
+                    let addrCell = `<td class="hcMono">${esc(addr)}${row.note ? `<div class="hcReason" style="font-family: inherit;">${esc(row.note)}</div>` : ""}</td>`;
                     if (!s){
-                        body.append(`<tr><td class="hcMono">${esc(addr)}</td><td colspan="2" class="hcHint">Not health checked${data.disabled ? " (rule is disabled)" : ""}</td></tr>`);
+                        body.append(`<tr>${addrCell}<td colspan="2" class="hcHint">Not health checked${data.disabled ? " (rule is disabled)" : (row.note ? " yet" : "")}</td></tr>`);
                         return;
                     }
                     let dot = "hcUp", label = "Healthy";
@@ -289,7 +318,7 @@
                     if (s.consecutiveOk > 0 && !s.enabled) counters.push(`${s.consecutiveOk} passed in a row`);
                     if (s.passiveErrors > 0) counters.push(`${s.passiveErrors} recent proxy error(s)`);
                     body.append(`<tr>
-                        <td class="hcMono">${esc(addr)}</td>
+                        ${addrCell}
                         <td><span class="hcStateDot ${dot}"></span><b>${label}</b> <span class="hcReason">${ago(s.since)}</span>
                             <div class="hcReason">${esc(s.reason)}</div>
                             ${counters.length ? `<div class="hcReason">${esc(counters.join(" · "))}</div>` : ""}</td>
@@ -308,7 +337,7 @@
                 events.forEach(e => {
                     list.append(`<div class="item">
                         <i class="${e.enabled ? "green check circle" : "red times circle"} icon"></i>
-                        <div class="content"><b>${e.enabled ? "Enabled" : "Disabled"}</b> <span class="hcMono">${esc(e.upstream)}</span> · ${esc(new Date(e.time*1000).toLocaleString())}
+                        <div class="content"><b>${e.enabled ? "Enabled" : "Disabled"}</b> <span class="hcMono">${esc(e.upstream)}</span>${e.label ? " (" + esc(e.label) + ")" : ""} · ${esc(new Date(e.time*1000).toLocaleString())}
                             <div class="hcReason">${esc(e.reason)}</div></div>
                     </div>`);
                 });

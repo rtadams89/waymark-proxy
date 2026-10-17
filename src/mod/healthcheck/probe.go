@@ -110,7 +110,7 @@ func probeHTTP(ctx context.Context, up Upstream, cfg *Config, timeout time.Durat
 	if err != nil {
 		return ProbeResult{Detail: describeError(err, timeout), Latency: latency}
 	}
-	io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, bodyReadLimit))
 	resp.Body.Close()
 
 	ranges, _ := ParseStatusRanges(cfg.ExpectedStatus) // validated on save
@@ -118,6 +118,17 @@ func probeHTTP(ctx context.Context, up Upstream, cfg *Config, timeout time.Durat
 	detail := fmt.Sprintf("status %d", resp.StatusCode)
 	if !ok {
 		detail += " (expected " + cfg.ExpectedStatus + ")"
+	} else if cfg.BodyContains != "" && cfg.Type == CheckHTTPGet {
+		switch {
+		case readErr != nil:
+			ok = false
+			detail += ", but the response body could not be read: " + describeError(readErr, timeout)
+		case !strings.Contains(string(body), cfg.BodyContains):
+			ok = false
+			detail += fmt.Sprintf(", but the response does not contain %q", cfg.BodyContains)
+		default:
+			detail += fmt.Sprintf(", contains %q", cfg.BodyContains)
+		}
 	}
 	return ProbeResult{OK: ok, Detail: detail, Latency: latency, StatusCode: resp.StatusCode}
 }

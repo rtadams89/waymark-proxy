@@ -324,6 +324,9 @@ type ProxyEndpoint struct {
 
 	//Custom fork: in-memory caching of static files (nil = off)
 	AssetCache *assetcache.Config `json:",omitempty"`
+
+	//Custom fork: maintenance mode, serves a maintenance page instead of proxying (nil = off)
+	Maintenance *MaintenanceConfig `json:",omitempty"`
 }
 
 /*

@@ -548,6 +548,33 @@
     </div>
 </div>
 
+<!-- Custom fork: upstream health (script/statusUpstreams.js) -->
+<div class="standardContainer nobottom" id="zrHealthRow">
+    <div class="ui one column grid" style="margin: 0;">
+        <div class="column" style="padding-left: 0; padding-right: 0;">
+            <div class="dashboard-card dbstatCard" id="zrHealthCard">
+                <h4>Upstream Health</h4>
+                <p class="cardSubtitle" id="zrHealthSub">Health-checked upstreams and rules in maintenance</p>
+                <div class="certOverviewBox">
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="green heartbeat icon"></i>Healthy</div>
+                        <div class="certOverviewValue" id="zrHealthUp">-</div>
+                    </div>
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="red heartbeat icon"></i>Down</div>
+                        <div class="certOverviewValue" id="zrHealthDown">-</div>
+                    </div>
+                    <div class="certOverviewItem">
+                        <div class="certOverviewLabel"><i class="orange wrench icon"></i>In maintenance</div>
+                        <div class="certOverviewValue" id="zrHealthMaint">-</div>
+                    </div>
+                </div>
+                <div id="zrHealthList" style="margin-top: 0.8em;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Custom fork: static file cache (script/statusCache.js) -->
 <div class="standardContainer nobottom" id="zrCacheRow">
     <div class="ui two column stackable grid" style="margin: 0;">
@@ -1354,3 +1381,4 @@
 <!-- Custom fork: per-panel show/hide settings -->
 <script src="script/statusPanels.js"></script>
 <script src="script/statusCache.js"></script>
+<script src="script/statusUpstreams.js"></script>

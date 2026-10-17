@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Custom fork: per-rule maintenance mode. Shown in the rule editor's
+             Maintenance tab as snippet/maintenance.html#{"ept":"host","ep":"<rule>"} -->
+        <meta charset="utf-8">
+        <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
+        <link rel="stylesheet" href="../script/semantic/semantic.min.css">
+        <script src="../script/jquery-3.6.0.min.js"></script>
+        <script src="../script/semantic/semantic.min.js"></script>
+        <script src="../script/utils.js"></script>
+        <style>
+            .mtSection{ padding: 1em; border-radius: 0.4em; border: 1px solid rgba(128,128,128,0.25); margin-bottom: 1em; }
+            .mtHint{ opacity: 0.7; font-size: 0.9em; }
+            .mtMono{ font-family: monospace; word-break: break-all; }
+            .mtCode{ font-family: monospace; white-space: nowrap; }
+            .mtInline{ display: flex; gap: 0.5em; align-items: center; flex-wrap: nowrap; }
+            .ui.form .mtInline .ui.input{ flex: 0 0 7em; width: 7em !important; }
+            .ui.form .mtInline .ui.input input{ width: 100% !important; }
+            #mtState.on{ border-color: #f2711c; background: rgba(242,113,28,0.08); }
+        </style>
+    </head>
+    <body>
+        <link rel="stylesheet" href="../darktheme.css">
+        <script src="../script/darktheme.js"></script>
+        <br>
+        <div class="ui container">
+            <div class="ui header">
+                <div class="content">
+                    Maintenance Mode
+                    <div class="sub header">Rule: <span class="mtMono" id="mtRuleName"></span></div>
+                </div>
+            </div>
+
+            <div class="mtSection" id="mtState">
+                <div id="mtStateText"><i class="grey wrench icon"></i> Off. Requests are proxied as usual.</div>
+            </div>
+
+            <div class="ui form" id="mtForm">
+                <div class="field">
+                    <div class="ui toggle checkbox" id="mtEnabledToggle">
+                        <input type="checkbox" name="enabled">
+                        <label><b>Show the maintenance page</b><br><span class="mtHint">Every request to this host, including its virtual directories, gets a "Down for maintenance" page (HTTP 503) instead of reaching the upstream</span></label>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Message</label>
+                    <textarea rows="3" name="message" maxlength="2000"></textarea>
+                    <div class="mtHint" style="margin-top: 0.3em;">Leave empty for the default message.</div>
+                </div>
+                <div class="field">
+                    <label>Expected duration</label>
+                    <div class="mtInline">
+                        <div class="ui input"><input type="number" min="0" max="10080" name="retryAfterMinutes" placeholder="0"></div><span>minutes</span>
+                    </div>
+                    <div class="mtHint" style="margin-top: 0.3em;">Shown as "Expected back in about …" and sent as <span class="mtCode">Retry-After</span>, counting from when maintenance was turned on. 0 leaves it out.</div>
+                </div>
+                <button class="ui basic button" id="mtSaveBtn" onclick="saveMaintenance(); return false;"><i class="green save icon"></i> Save</button>
+                <button class="ui basic button" onclick="previewMaintenance(); return false;"><i class="blue eye icon"></i> Preview page</button>
+            </div>
+
+            <div class="ui divider"></div>
+            <div class="ui bulleted list mtHint">
+                <div class="item">Access rules, rate limits, CAPTCHA and authentication still apply first; the maintenance page replaces only the proxying.</div>
+                <div class="item">Health checks keep running, so you can watch the upstream come back on the Health Checks page and the Status page before turning maintenance off.</div>
+                <div class="item">The HTTP Proxy list marks rules in maintenance with an orange wrench.</div>
+                <div class="item">To use your own page, put a <span class="mtCode">maintenance.html</span> in the <span class="mtCode">templates</span> folder of Zoraxy's web root (default <span class="mtCode">./www/templates/</span>). The placeholders <span class="mtCode">{{message}}</span>, <span class="mtCode">{{retry}}</span> and <span class="mtCode">{{host}}</span> are filled in.</div>
+            </div>
+            <br>
+        </div>
+
+        <script>
+            let editingEndpoint = {};
+            let formDirty = false;
+            let defaultMessage = "";
+
+            function notify(msg, ok=true, ms=undefined){
+                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { alert(msg); }
+            }
+            function ago(ts){
+                let s = Math.max(0, Math.round(Date.now()/1000 - ts));
+                if (s < 60) return "just now";
+                if (s < 3600) return Math.round(s/60) + " min ago";
+                if (s < 86400) return Math.round(s/3600) + " h ago";
+                return new Date(ts*1000).toLocaleString();
+            }
+
+            $("#mtEnabledToggle").checkbox({ onChange: function(){ formDirty = true; } });
+            $("#mtForm textarea, #mtForm input[type=number]").on("input", function(){ formDirty = true; });
+
+            function renderState(cfg){
+                if (cfg.enabled){
+                    let text = `<i class="orange wrench icon"></i> <b>On</b> since ${ago(cfg.since)}. Visitors see the maintenance page.`;
+                    $("#mtState").addClass("on");
+                    $("#mtStateText").html(text);
+                }else{
+                    $("#mtState").removeClass("on");
+                    $("#mtStateText").html(`<i class="grey wrench icon"></i> Off. Requests are proxied as usual.`);
+                }
+            }
+
+            function load(fill){
+                $.get("/api/proxy/maintenance/get?ep=" + encodeURIComponent(editingEndpoint.ep), function(data){
+                    if (data.error != undefined){
+                        if (fill){ notify(data.error, false); }
+                        return;
+                    }
+                    defaultMessage = data.defaultMessage;
+                    $("#mtForm [name=message]").attr("placeholder", defaultMessage);
+                    renderState(data.config);
+                    if (fill || !formDirty){
+                        $("#mtEnabledToggle").checkbox(data.config.enabled ? "set checked" : "set unchecked");
+                        $("#mtForm [name=message]").val(data.config.message || "");
+                        $("#mtForm [name=retryAfterMinutes]").val(data.config.retryAfterMinutes || "");
+                        formDirty = false;
+                    }
+                });
+            }
+
+            function saveMaintenance(){
+                let enabled = $("#mtEnabledToggle input")[0].checked;
+                $("#mtSaveBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/proxy/maintenance/set",
+                    method: "POST",
+                    data: {
+                        ep: editingEndpoint.ep,
+                        enabled: enabled,
+                        message: $("#mtForm [name=message]").val(),
+                        retryAfterMinutes: $("#mtForm [name=retryAfterMinutes]").val() || "0"
+                    },
+                    success: function(data){
+                        $("#mtSaveBtn").removeClass("loading disabled");
+                        if (data.error != undefined){
+                            notify(data.error, false, 6000);
+                            return;
+                        }
+                        notify(enabled ? "Maintenance mode on" : "Maintenance mode off");
+                        formDirty = false;
+                        load(true);
+                        //Refresh the rule list markers behind the editor
+                        try { if (parent && parent.listProxyEndpoints){ parent.listProxyEndpoints(); } } catch (e) {}
+                    },
+                    error: function(){
+                        $("#mtSaveBtn").removeClass("loading disabled");
+                        notify("Failed to save maintenance settings", false);
+                    }
+                });
+            }
+
+            function previewMaintenance(){
+                let q = "ep=" + encodeURIComponent(editingEndpoint.ep) +
+                    "&message=" + encodeURIComponent($("#mtForm [name=message]").val()) +
+                    "&retryAfterMinutes=" + encodeURIComponent($("#mtForm [name=retryAfterMinutes]").val() || "0");
+                window.open("/api/proxy/maintenance/preview?" + q, "_blank");
+            }
+
+            if (window.location.hash.length > 1){
+                try{
+                    editingEndpoint = JSON.parse(decodeURIComponent(window.location.hash.substr(1)));
+                    $("#mtRuleName").text(editingEndpoint.ep);
+                    load(true);
+                    setInterval(function(){ load(false); }, 15000);
+                }catch(ex){
+                    console.log("Unable to load endpoint data from hash", ex);
+                }
+            }
+        </script>
+    </body>
+</html>
