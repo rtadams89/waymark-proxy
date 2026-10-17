@@ -38,7 +38,7 @@
         <div class="haGrid">
             <div class="haLabel">Node</div><div id="haSelf">-</div>
             <div class="haLabel">Role</div><div id="haRoleCell">-</div>
-            <div class="haLabel">Floating IP</div><div id="haVipCell">-</div>
+            <div class="haLabel">Floating IPs</div><div id="haVipCell">-</div>
             <div class="haLabel">Health reported to keepalived</div><div id="haHeartbeatCell">-</div>
             <div class="haLabel">Services</div><div id="haServicesCell">-</div>
             <div class="haLabel">Certificate renewal</div><div id="haRenewCell">-</div>
@@ -69,19 +69,21 @@
                     <label><b>Enable high availability</b></label>
                 </div>
             </div>
-            <div class="three fields">
-                <div class="field">
-                    <label>Floating IP</label>
-                    <input type="text" id="haVip" placeholder="10.10.20.5" autocomplete="off">
-                </div>
-                <div class="field">
-                    <label>Prefix length</label>
-                    <input type="number" id="haPrefix" min="1" max="32" placeholder="24">
-                </div>
-                <div class="field">
-                    <label>Router ID</label>
-                    <input type="number" id="haRouterId" min="1" max="255" placeholder="51">
-                </div>
+            <h4>Floating IPs</h4>
+            <table class="ui very basic compact unstackable table" id="haVipTable">
+                <thead><tr><th>Address</th><th style="width: 9em;">Prefix length</th><th>Label <span class="haHint">(optional)</span></th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <button class="ui basic small button" id="haAddVipBtn" onclick="haAddVip(); return false;"><i class="add icon"></i> Add floating IP</button>
+            <div class="haHint" style="margin-top: 0.5em;">All floating IPs move together: the active node holds every one of them, on the nodes' interface. The first one is the primary: the node addresses below must be in its subnet. Up to 16.</div>
+            <div class="haHint" style="margin-top: 0.4em;">HTTP proxying listens on all addresses, so a new floating IP works straight away. A stream proxy (TCP/UDP) that listens on one specific floating IP can only start on the node holding it; to let it start on the standby too, set <span class="haMono">net.ipv4.ip_nonlocal_bind=1</span> on every node:
+                <pre class="haPre">echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf
+sudo sysctl --system</pre></div>
+            <div class="ui yellow message" id="haNonlocalWarn" style="display:none;"></div>
+
+            <div class="field" style="margin-top: 1em; max-width: 14em;">
+                <label>Router ID</label>
+                <input type="number" id="haRouterId" min="1" max="255" placeholder="51">
             </div>
             <div class="haHint" style="margin: -0.5em 0 1em 0;">The router ID (1-255) must not be used by any other VRRP or CARP group on this VLAN, including pfSense CARP.</div>
             <div class="two fields">
@@ -198,6 +200,33 @@
             </tr>`;
         }
 
+        const MAX_FLOATING_IPS = 16;
+        function vipRow(f){
+            f = f || {address: "", prefix: "", label: ""};
+            return `<tr>
+                <td><input type="text" class="haVipAddr" value="${esc(f.address)}" placeholder="10.10.20.5" autocomplete="off"></td>
+                <td><input type="number" class="haVipPrefix" min="1" max="32" value="${esc(f.prefix)}" placeholder="24"></td>
+                <td><input type="text" class="haVipLabel" maxlength="32" value="${esc(f.label)}" placeholder="e.g. Public sites"></td>
+                <td style="white-space: nowrap;"><span class="haVipPrimary"></span> <button class="ui basic mini icon button" title="Remove" onclick="$(this).closest('tr').remove(); haMarkVips(); return false;"><i class="red trash icon"></i></button></td>
+            </tr>`;
+        }
+        window.haMarkVips = function(){
+            let rows = $("#haVipTable tbody tr");
+            rows.find(".haVipPrimary").html("");
+            rows.first().find(".haVipPrimary").html(`<span class="ui mini basic label" title="Node addresses must be in this floating IP's subnet">primary</span>`);
+            $("#haAddVipBtn").toggleClass("disabled", rows.length >= MAX_FLOATING_IPS);
+        };
+        window.haAddVip = function(f){
+            if ($("#haVipTable tbody tr").length >= MAX_FLOATING_IPS) return;
+            if (!f){
+                // New rows start with the previous row's prefix length
+                let last = $("#haVipTable tbody tr").last().find(".haVipPrefix").val();
+                f = {address: "", prefix: last || 24, label: ""};
+            }
+            $("#haVipTable tbody").append(vipRow(f));
+            haMarkVips();
+        };
+
         window.haMarkSelf = function(){
             let local = haStatus ? haStatus.localAddresses : [];
             $("#haNodesTable tbody tr").each(function(){
@@ -219,10 +248,20 @@
         };
 
         function readForm(){
+            let vips = $("#haVipTable tbody tr").map(function(){
+                return {
+                    address: $(this).find(".haVipAddr").val().trim(),
+                    prefix: parseInt($(this).find(".haVipPrefix").val()) || 0,
+                    label: $(this).find(".haVipLabel").val().trim()
+                };
+            }).get().filter(f => f.address != "" || f.label != "");
+            let primary = vips.shift() || {address: "", prefix: 0, label: ""};
             return {
                 enabled: $("#haEnabled")[0].checked,
-                vip: $("#haVip").val().trim(),
-                prefix: parseInt($("#haPrefix").val()) || 0,
+                vip: primary.address,
+                prefix: primary.prefix,
+                vipLabel: primary.label,
+                extraVips: vips,
                 routerId: parseInt($("#haRouterId").val()) || 0,
                 password: $("#haPassword").val().trim(),
                 preempt: $("#haPreempt")[0].checked,
@@ -242,8 +281,11 @@
 
         function fillForm(c){
             $("#haEnabled").prop("checked", !!c.enabled);
-            $("#haVip").val(c.vip || "");
-            $("#haPrefix").val(c.prefix || "");
+            $("#haVipTable tbody").empty();
+            let vips = (c.vip ? [{address: c.vip, prefix: c.prefix, label: c.vipLabel || ""}] : []).concat(c.extraVips || []);
+            if (vips.length == 0) vips = [{address: "", prefix: c.prefix || 24, label: ""}];
+            vips.forEach(f => $("#haVipTable tbody").append(vipRow(f)));
+            haMarkVips();
             $("#haRouterId").val(c.routerId || "");
             $("#haPassword").val(c.password || "");
             $("#haPreempt").prop("checked", !!c.preempt);
@@ -281,7 +323,18 @@
             let roleText = {MASTER: "Active", BACKUP: "Standby", FAULT: "Fault", STOP: "keepalived stopped"}[role] || "Unknown";
             let roleHint = role ? ` <span class="haHint">since ${ago(d.role.since)}</span>` : ` <span class="haHint">(keepalived has not reported a state yet)</span>`;
             $("#haRoleCell").html(c.enabled ? `<span class="haRole ${role || "UNKNOWN"}">${roleText}</span>${roleHint}` : `<span class="haHint">-</span>`);
-            $("#haVipCell").html(c.vip ? `<span class="haMono">${esc(c.vip)}/${c.prefix}</span> · ${d.vipHeld ? `<b style="color:#1a9c3a;">held by this node</b>` : "held by another node (or nobody)"}` : `<span class="haHint">-</span>`);
+            let fips = d.floatingIPs || [];
+            $("#haVipCell").html(fips.length == 0 ? `<span class="haHint">-</span>` : fips.map(f =>
+                `<span class="haMono">${esc(f.address)}/${f.prefix}</span>` + (f.label ? ` <span class="haHint">${esc(f.label)}</span>` : "") +
+                ` · ${f.held ? `<b style="color:#1a9c3a;">held by this node</b>` : `<span class="haHint">held by another node (or nobody)</span>`}`).join("<br>"));
+            let nb = d.nonlocalBind || {};
+            let boundProxies = nb.streamProxies || [];
+            if (c.enabled && nb.known && !nb.enabled && boundProxies.length > 0){
+                $("#haNonlocalWarn").html(`<i class="exclamation triangle icon"></i>These stream proxies listen on a floating IP, but <span class="haMono">net.ipv4.ip_nonlocal_bind</span> is off on this node, so they can't start while this node doesn't hold that address: ` +
+                    boundProxies.map(p => `<b>${esc(p.name || "unnamed")}</b> <span class="haMono">${esc(p.address)}</span>`).join(", ") + `. Set it on every node (commands above), or make them listen on all addresses.`).show();
+            }else{
+                $("#haNonlocalWarn").hide();
+            }
             let hb = d.heartbeat;
             $("#haHeartbeatCell").html(!c.enabled ? `<span class="haHint">Not reported while HA is off</span>` :
                 (hb.ok ? `<i class="green check circle icon"></i>Healthy <span class="haHint">(proxy listener answering, ${ago(hb.time)})</span>`
@@ -294,16 +347,21 @@
                 if (!expectActive) return `<i class="grey minus circle icon"></i>${label} ${esc(state)} <span class="haHint">(expected while HA is off)</span>`;
                 return `<i class="red times circle icon"></i>${label} ${esc(state)}` + (fix ? ` <span class="haHint">- run <code>${fix}</code></span>` : "");
             };
+            let helper = d.helper || {};
+            let helperLine = !helper.checked ? `<i class="grey question circle icon"></i>HA helper: <span class="haHint">version could not be checked</span>` :
+                (helper.outdated.length == 0 ? `<i class="green check circle icon"></i>HA helper matches this Waymark version` :
+                 `<i class="orange exclamation triangle icon"></i>HA helper is from another Waymark version (${helper.outdated.map(esc).join(", ")}). <span class="haHint">Run the installer again on this node:</span>` +
+                 `<pre class="haPre">${esc(d.executable)} -ha-export-installer /tmp/waymark-ha\nsudo bash /tmp/waymark-ha/install.sh</pre>`);
             $("#haServicesCell").html(!d.installed ? `<span class="haHint">-</span>` :
                 svc("Settings watcher", sv.applyWatcher, true, "sudo systemctl enable --now waymark-ha-apply.path") + "<br>" +
-                svc("keepalived", sv.keepalived, c.enabled, "sudo journalctl -u keepalived"));
+                svc("keepalived", sv.keepalived, c.enabled, "sudo journalctl -u keepalived") + "<br>" + helperLine);
             let a = d.lastApply;
             $("#haApplyCell").html(a && a.status ? `${a.status == "ok" ? `<i class="green check circle icon"></i>` : `<i class="red times circle icon"></i>`}${esc(a.message)} <span class="haHint">${ago(a.time)}</span>` : `<span class="haHint">Not applied yet</span>`);
             $("#haPreview").text(d.preview);
             $("#haReadOnlyNote").toggle(!!d.readOnly);
             $("#haClusterSegment").toggle(!!c.enabled && (c.nodes || []).length > 0);
             if (c.enabled && window.haRenderCluster){
-                haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, nodes: d.cluster || []});
+                haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, floatingIPs: fips, nodes: d.cluster || []});
             }
             renderSync(d);
         }

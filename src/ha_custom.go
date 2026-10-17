@@ -352,6 +352,9 @@ func HandleHAStatus(w http.ResponseWriter, r *http.Request) {
 			"keepalived":   haServiceState("keepalived"),
 		},
 		"vipHeld":        vipHeld,
+		"floatingIPs":    haFloatingIPsHeld(cfg),
+		"helper":         haHelperState(),
+		"nonlocalBind":   haNonlocalBind(cfg),
 		"heartbeat":      hb,
 		"lastApply":      lastApply,
 		"preview":        cfg.Preview(self, haOwner(), hacluster.DefaultScriptsDir),
@@ -390,6 +393,10 @@ func HandleHAConfig(w http.ResponseWriter, r *http.Request) {
 	cfg, err := submitted.Validate()
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+	if len(cfg.ExtraVIPs) > 0 && haHelperOutdated() {
+		utils.SendErrorResponse(w, "the HA integration on this node is older than this Waymark version and supports one floating IP only. Run the installer again on each node (see the High Availability page), then save")
 		return
 	}
 	if cfg.Enabled && haSelf(cfg) < 0 {

@@ -84,7 +84,7 @@ while IFS= read -r line || [ -n "$line" ]; do
 	key="${line%%=*}"
 	val="${line#*=}"
 	case "$key" in
-	APPLY_ID | ENABLED | NODE_NAME | INTERFACE | LOCAL_IP | PEER_IPS | VIP | PREFIX | ROUTER_ID | PRIORITY | PASSWORD | PREEMPT) ;;
+	APPLY_ID | ENABLED | NODE_NAME | INTERFACE | LOCAL_IP | PEER_IPS | VIP | PREFIX | EXTRA_VIPS | ROUTER_ID | PRIORITY | PASSWORD | PREEMPT) ;;
 	*) fail "unknown setting in settings file" ;;
 	esac
 	[ -z "${cfg[$key]+x}" ] || fail "duplicate setting $key"
@@ -124,6 +124,28 @@ if [ "${cfg[ENABLED]}" = "1" ]; then
 	is_ipv4 "${cfg[VIP]:-}" || fail "VIP is not an IPv4 address"
 	vip="${cfg[VIP]}"
 	in_range "${cfg[PREFIX]:-}" 1 32 || fail "PREFIX must be 1-32"
+	[ "$vip" != "$local_ip" ] || fail "VIP must differ from this node's address"
+	for p in "${peers[@]}"; do [ "$p" != "$vip" ] || fail "VIP must differ from the other nodes' addresses"; done
+	# More floating IPs (optional), moved together with VIP: address/prefix,...
+	vip_lines="        $vip/${cfg[PREFIX]} dev $iface"$'\n'
+	if [ -n "${cfg[EXTRA_VIPS]:-}" ]; then
+		[[ "${cfg[EXTRA_VIPS]}" =~ ^[0-9./,]{9,300}$ ]] || fail "EXTRA_VIPS is invalid"
+		IFS=',' read -r -a extra <<<"${cfg[EXTRA_VIPS]}"
+		[ "${#extra[@]}" -le 15 ] || fail "EXTRA_VIPS lists more than 15 addresses"
+		seen=" $vip "
+		for e in "${extra[@]}"; do
+			[[ "$e" == */* ]] || fail "EXTRA_VIPS entries must be address/prefix"
+			a="${e%/*}"
+			n="${e#*/}"
+			is_ipv4 "$a" || fail "EXTRA_VIPS contains an invalid address"
+			in_range "$n" 1 32 || fail "EXTRA_VIPS contains an invalid prefix length"
+			[ "$a" != "$local_ip" ] || fail "EXTRA_VIPS must not contain this node's address"
+			for p in "${peers[@]}"; do [ "$p" != "$a" ] || fail "EXTRA_VIPS must not contain the other nodes' addresses"; done
+			[[ "$seen" != *" $a "* ]] || fail "EXTRA_VIPS lists an address twice"
+			seen+="$a "
+			vip_lines+="        $a/$n dev $iface"$'\n'
+		done
+	fi
 	in_range "${cfg[ROUTER_ID]:-}" 1 255 || fail "ROUTER_ID must be 1-255"
 	in_range "${cfg[PRIORITY]:-}" 1 254 || fail "PRIORITY must be 1-254"
 	[[ "${cfg[PASSWORD]:-}" =~ ^[A-Za-z0-9]{0,8}$ ]] || fail "PASSWORD must be up to 8 letters or digits"
@@ -169,8 +191,7 @@ $preempt
     unicast_peer {
 $peer_lines    }
 ${auth}    virtual_ipaddress {
-        $vip/${cfg[PREFIX]} dev $iface
-    }
+$vip_lines    }
     track_script {
         waymark_health
     }

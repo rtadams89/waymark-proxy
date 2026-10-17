@@ -33,7 +33,8 @@
             }
             let s = styles[d.role.state] || ["HA state unknown", "#767676", "rgba(128,128,128,0.15)", "question circle"];
             let name = d.self >= 0 ? d.config.nodes[d.self].name : "";
-            let vip = d.vipHeld ? " · holds " + d.config.vip : "";
+            let held = (d.floatingIPs || []).filter(f => f.held);
+            let vip = held.length == 0 ? "" : " · holds " + esc(held[0].address) + (held.length > 1 ? " +" + (held.length - 1) : "");
             badge.html(`<span style="display:inline-block; padding: 0.25em 0.8em; border-radius: 1em; font-weight: 600; font-size: 0.85em; color: ${s[1]}; background: ${s[2]};" title="High availability role of this node${name ? " (" + name + ")" : ""}"><i class="${s[3]} icon"></i>${name ? esc(name) + " · " : ""}${s[0]}${vip}</span>` + readOnlyPill(d));
             // inline-flex keeps it on the logo's line, so the header keeps its height
             badge.css({"display": "inline-flex", "align-items": "center", "vertical-align": "middle", "margin-left": "0.8em",

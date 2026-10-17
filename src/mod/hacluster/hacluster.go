@@ -30,11 +30,28 @@ type Node struct {
 	Priority  int    `json:"priority"`  // 1-254; the highest healthy node holds the floating IP
 }
 
+// FloatingIP is one additional floating address. All floating IPs belong
+// to one VRRP group: the active node holds every one of them.
+type FloatingIP struct {
+	Address string `json:"address"` // IPv4 address
+	Prefix  int    `json:"prefix"`  // its prefix length, e.g. 24
+	Label   string `json:"label"`   // optional note, shown in Waymark only
+}
+
+// MaxFloatingIPs is the most floating IPs a cluster can have (VIP + extras).
+const MaxFloatingIPs = 16
+
 // Config is the cluster definition, shared by all nodes.
 type Config struct {
 	Enabled  bool   `json:"enabled"`
-	VIP      string `json:"vip"`      // floating IPv4 address
+	VIP      string `json:"vip"`      // primary floating IPv4 address; node addresses are in its subnet
 	Prefix   int    `json:"prefix"`   // its prefix length, e.g. 24
+	VIPLabel string `json:"vipLabel"` // optional note for the primary floating IP
+
+	// ExtraVIPs are more floating IPs on the same interface, moved together
+	// with VIP
+	ExtraVIPs []FloatingIP `json:"extraVips"`
+
 	RouterID int    `json:"routerId"` // VRRP virtual router ID, 1-255, unique on the VLAN
 	Password string `json:"password"` // optional VRRP password, up to 8 letters/digits
 	Preempt  bool   `json:"preempt"`  // take the floating IP back when a higher-priority node recovers
@@ -52,13 +69,14 @@ const DefaultSyncPort = 9280
 
 // DefaultConfig is the starting point shown in the UI.
 func DefaultConfig() *Config {
-	return &Config{Prefix: 24, RouterID: 51, Nodes: []Node{}, SyncPort: DefaultSyncPort}
+	return &Config{Prefix: 24, RouterID: 51, Nodes: []Node{}, ExtraVIPs: []FloatingIP{}, SyncPort: DefaultSyncPort}
 }
 
 var (
 	namePattern     = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 	ifacePattern    = regexp.MustCompile(`^[A-Za-z0-9._-]{1,15}$`)
 	passwordPattern = regexp.MustCompile(`^[A-Za-z0-9]{0,8}$`)
+	labelPattern    = regexp.MustCompile(`^[A-Za-z0-9 ._()/+-]{0,32}$`)
 )
 
 func parseIPv4(s string) (net.IP, bool) {
@@ -78,8 +96,10 @@ func (c *Config) Validate() (*Config, error) {
 	}
 	v := *c
 	v.VIP = strings.TrimSpace(v.VIP)
+	v.VIPLabel = strings.TrimSpace(v.VIPLabel)
 	v.Nodes = append([]Node{}, c.Nodes...)
-	if !v.Enabled && v.VIP == "" && len(v.Nodes) == 0 {
+	v.ExtraVIPs = append([]FloatingIP{}, c.ExtraVIPs...)
+	if !v.Enabled && v.VIP == "" && len(v.Nodes) == 0 && len(v.ExtraVIPs) == 0 {
 		return &v, nil
 	}
 	vip, ok := parseIPv4(v.VIP)
@@ -88,6 +108,34 @@ func (c *Config) Validate() (*Config, error) {
 	}
 	if v.Prefix < 1 || v.Prefix > 32 {
 		return nil, errors.New("prefix length must be 1-32")
+	}
+	if !labelPattern.MatchString(v.VIPLabel) {
+		return nil, errors.New("floating IP label: up to 32 letters, digits, spaces and . _ ( ) / + -")
+	}
+	if 1+len(v.ExtraVIPs) > MaxFloatingIPs {
+		return nil, fmt.Errorf("at most %d floating IPs", MaxFloatingIPs)
+	}
+	floating := map[string]bool{vip.String(): true}
+	for i := range v.ExtraVIPs {
+		f := &v.ExtraVIPs[i]
+		f.Address, f.Label = strings.TrimSpace(f.Address), strings.TrimSpace(f.Label)
+		label := fmt.Sprintf("floating IP %d", i+2)
+		ip, ok := parseIPv4(f.Address)
+		if !ok {
+			return nil, fmt.Errorf("%s must be an IPv4 address", label)
+		}
+		label = "floating IP " + ip.String()
+		if f.Prefix < 1 || f.Prefix > 32 {
+			return nil, fmt.Errorf("%s: prefix length must be 1-32", label)
+		}
+		if !labelPattern.MatchString(f.Label) {
+			return nil, fmt.Errorf("%s: label can have up to 32 letters, digits, spaces and . _ ( ) / + -", label)
+		}
+		if floating[ip.String()] {
+			return nil, fmt.Errorf("%s is listed twice", label)
+		}
+		floating[ip.String()] = true
+		f.Address = ip.String()
 	}
 	if v.RouterID < 1 || v.RouterID > 255 {
 		return nil, errors.New("router ID must be 1-255")
@@ -127,8 +175,8 @@ func (c *Config) Validate() (*Config, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s: address must be an IPv4 address", label)
 		}
-		if ip.Equal(vip) {
-			return nil, fmt.Errorf("%s: address must differ from the floating IP", label)
+		if floating[ip.String()] {
+			return nil, fmt.Errorf("%s: address must differ from the floating IPs", label)
 		}
 		if !subnet.Contains(ip) {
 			return nil, fmt.Errorf("%s: address %s is not in the floating IP's subnet %s", label, n.Address, subnet)
@@ -147,6 +195,15 @@ func (c *Config) Validate() (*Config, error) {
 	}
 	v.VIP = vip.String()
 	return &v, nil
+}
+
+// FloatingIPs returns every floating IP, the primary one first.
+func (c *Config) FloatingIPs() []FloatingIP {
+	out := []FloatingIP{}
+	if c.VIP != "" {
+		out = append(out, FloatingIP{Address: c.VIP, Prefix: c.Prefix, Label: c.VIPLabel})
+	}
+	return append(out, c.ExtraVIPs...)
 }
 
 // FindSelf returns the index of the node whose address is assigned to this
@@ -192,6 +249,15 @@ func (c *Config) Settings(self int, applyID int64, nodeName string) string {
 	w("PEER_IPS", strings.Join(peers, ","))
 	w("VIP", c.VIP)
 	w("PREFIX", strconv.Itoa(c.Prefix))
+	if len(c.ExtraVIPs) > 0 {
+		// Only written when there are extra addresses, so a single floating
+		// IP still works with a helper from before 2.2.0
+		extra := []string{}
+		for _, f := range c.ExtraVIPs {
+			extra = append(extra, f.Address+"/"+strconv.Itoa(f.Prefix))
+		}
+		w("EXTRA_VIPS", strings.Join(extra, ","))
+	}
 	w("ROUTER_ID", strconv.Itoa(c.RouterID))
 	w("PRIORITY", strconv.Itoa(me.Priority))
 	w("PASSWORD", c.Password)

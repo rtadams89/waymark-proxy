@@ -26,7 +26,7 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 Everything Zoraxy does (HTTP and stream proxying, ACME certificates, access rules, SSO, the plugin store and so on) still works. On top of that:
 
 **High availability**
-- **Active/standby pairs** (2 to 4 nodes) sharing a floating IP managed by keepalived. The floating IP moves to a healthy node within about 10 seconds when Waymark stops answering, keepalived stops or the machine goes down.
+- **Active/standby pairs** (2 to 4 nodes) sharing up to 16 floating IPs managed by keepalived. The floating IP moves to a healthy node within about 10 seconds when Waymark stops answering, keepalived stops or the machine goes down.
 - **Configured from the web UI.** Waymark itself runs unprivileged. A small root-owned helper validates the settings, writes keepalived's config from a fixed template, tests it and reloads keepalived.
 - **Configuration sync.** Standby nodes copy the active node's configuration (proxy rules, certificates and keys, access rules, admin accounts, settings) over TLS, authenticated with a shared cluster key. Standby nodes are read-only, so changes are made in one place.
 - **Cluster overview** on the HA page and the Status page: each node's role, health, sync state and version.
@@ -185,7 +185,7 @@ The installer adds:
 Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because the service above is sandboxed, the installer adds a drop-in that allows this, so **restart Waymark** when it asks. If Waymark runs as another user or unit, set `WAYMARK_USER` or `WAYMARK_UNIT`.
 
 **2. Configure the cluster on the first node** under **Networking > High Availability**:
-- Turn on **Enable high availability**. Enter the **Floating IP**, its **Prefix length** and a **Router ID**, and optionally a VRRP password.
+- Turn on **Enable high availability**. Under **Floating IPs**, enter the address and prefix length (more can be added with **Add floating IP**; they all move together, and the node addresses must be in the first one's subnet). Enter a **Router ID**, and optionally a VRRP password.
 - Under **Configuration sync**, turn on copying to the standby nodes and click **Generate** for the cluster key.
 - Add both nodes: a name, the node's own address, its network interface (e.g. `ens18`) and a priority. The node with the higher priority is active when both are healthy.
 - Click **Save and apply**. The node becomes **Active** and holds the floating IP; the badge next to the logo shows this.
@@ -198,6 +198,7 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 - After a failover, make changes on the new active node. They are copied to the old one when it returns as standby.
 - Only the active node renews certificates automatically.
 - Not synced (kept per node): statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions.
+- HTTP proxying listens on all addresses, so every floating IP works on whichever node holds it. A stream proxy that listens on one specific floating IP can only start on the node holding that address, unless every node has `net.ipv4.ip_nonlocal_bind=1` (`echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf && sudo sysctl --system`). The HA page warns when this applies.
 - Logs: `journalctl -u waymark-ha-apply` for applying settings, `journalctl -u keepalived` for VRRP.
 
 ## Upgrading
@@ -208,6 +209,8 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 1. Upgrade the standby node. Sync pauses; the active node keeps working.
 2. Upgrade the active node. Restarting it moves the floating IP to the upgraded standby, which becomes active.
 3. When the old active node is back as standby, sync resumes. Make changes on the new active node.
+
+When a release changes the HA integration (the changelog says so, and the HA page's **Services** row shows "HA helper is from another Waymark version"), also run the installer again on each node after upgrading it: `/opt/waymark/waymark -ha-export-installer /tmp/waymark-ha && sudo bash /tmp/waymark-ha/install.sh`.
 
 ## Building from source
 

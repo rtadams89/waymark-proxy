@@ -52,6 +52,16 @@
         let me = nodes.find(n => n.self);
         let active = nodes.filter(n => n.reachable && n.role == "MASTER");
         if (active.length > 1) errors.push("More than one node is active (" + active.map(n => esc(n.name)).join(", ") + ")");
+        // All floating IPs belong to one group, so one node should hold all of them
+        let total = (data.floatingIPs || []).length;
+        if (total > 1){
+            let holders = nodes.filter(n => n.reachable && n.vipsHeld > 0);
+            if (holders.length > 1){
+                errors.push("Floating IPs are split between " + holders.map(n => esc(n.name)).join(" and "));
+            }else if (holders.length == 1 && holders[0].vipsHeld < total){
+                warnings.push(esc(holders[0].name) + " holds " + holders[0].vipsHeld + " of " + total + " floating IPs (settings not applied yet?)");
+            }
+        }
         if (data.syncEnabled){
             nodes.filter(n => !n.self && !n.reachable).forEach(n => {
                 let seen = n.lastSeen ? "last seen " + since(n.lastSeen) + " ago" : "not seen yet";
@@ -74,16 +84,20 @@
     }
 
     // haRenderCluster fills container with the overview. data: {enabled,
-    // syncEnabled, vip, nodes}. opts.compact drops the version column.
+    // syncEnabled, vip, floatingIPs, nodes}. opts.compact drops the version column.
     window.haRenderCluster = function(container, data, opts){
         opts = opts || {};
         let nodes = data.nodes || [];
         let holder = nodes.find(n => n.vipHeld);
         let healthy = nodes.filter(n => n.reachable && n.heartbeatOk && (n.role == "MASTER" || n.role == "BACKUP")).length;
         let probs = problems(data);
+        let fips = (data.floatingIPs || []).map(f => f.address);
+        if (fips.length == 0 && data.vip) fips = [data.vip];
+        let fipText = `<span style="font-family: monospace;">${fips.map(esc).join(", ")}</span>`;
+        let fipNoun = fips.length > 1 ? "Floating IPs" : "Floating IP";
         let summary = `<div style="margin-bottom: 0.6em;">` +
-            (holder ? `<i class="green map marker alternate icon"></i>Floating IP <span style="font-family: monospace;">${esc(data.vip)}</span> on <b>${esc(holder.name)}</b>`
-                    : `<i class="red map marker alternate icon"></i>Floating IP <span style="font-family: monospace;">${esc(data.vip)}</span> is not held by any node it can see`) +
+            (holder ? `<i class="green map marker alternate icon"></i>${fipNoun} ${fipText} on <b>${esc(holder.name)}</b>`
+                    : `<i class="red map marker alternate icon"></i>${fipNoun} ${fipText} ${fips.length > 1 ? "are" : "is"} not held by any node it can see`) +
             ` · ${healthy} of ${nodes.length} nodes healthy` +
             (probs.errors.length ? `<div style="margin-top: 0.3em; color: #db2828;"><i class="exclamation triangle icon"></i>${probs.errors.join(" · ")}</div>` : "") +
             (probs.warnings.length ? `<div style="margin-top: 0.3em; color: var(--warning_text, #a36b00);"><i class="exclamation circle icon"></i>${probs.warnings.join("<br>")}</div>` : "") +
@@ -99,7 +113,7 @@
                 health = `<span style="opacity: 0.7;" title="${esc(n.error)}"><i class="grey question circle icon"></i>${esc(n.error || "Unknown")}</span>`;
                 sync = ver = seen = `<span style="opacity: 0.6;">-</span>`;
             }else{
-                role = rolePill(n.role) + (n.vipHeld ? ` <i class="green map marker alternate icon" title="Holds the floating IP"></i>` : "");
+                role = rolePill(n.role) + (n.vipHeld ? ` <i class="green map marker alternate icon" title="Holds the floating IP${fips.length > 1 ? "s" : ""}"></i>` : "");
                 if (!n.reachable){
                     // Only the role it had when last seen, faded and labelled as history
                     role = `<span style="opacity: 0.45;" title="Role when last seen, ${since(n.lastSeen)} ago">${rolePill(n.lastRole)}</span><div style="font-size: 0.8em; opacity: 0.6;">when last seen</div>`;

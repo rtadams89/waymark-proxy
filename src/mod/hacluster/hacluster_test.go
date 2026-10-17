@@ -1,6 +1,7 @@
 package hacluster
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -43,6 +44,17 @@ func TestValidate(t *testing.T) {
 		"priority":     func(c *Config) { c.Nodes[0].Priority = 255 },
 		"dup prio":     func(c *Config) { c.Nodes[1].Priority = 150 },
 		"dup addr":     func(c *Config) { c.Nodes[1].Address = "10.10.20.10" },
+		"vip label":    func(c *Config) { c.VIPLabel = "bad;label" },
+		"extra addr":   func(c *Config) { c.ExtraVIPs = []FloatingIP{{Address: "10.10.20", Prefix: 24}} },
+		"extra ipv6":   func(c *Config) { c.ExtraVIPs = []FloatingIP{{Address: "fd00::6", Prefix: 64}} },
+		"extra prefix": func(c *Config) { c.ExtraVIPs = []FloatingIP{{Address: "10.10.20.6", Prefix: 0}} },
+		"extra = vip":  func(c *Config) { c.ExtraVIPs = []FloatingIP{{Address: "10.10.20.5", Prefix: 24}} },
+		"extra twice": func(c *Config) {
+			c.ExtraVIPs = []FloatingIP{{Address: "10.10.20.6", Prefix: 24}, {Address: "10.10.20.6", Prefix: 24}}
+		},
+		"extra = node": func(c *Config) { c.ExtraVIPs = []FloatingIP{{Address: "10.10.20.11", Prefix: 24}} },
+		"extra label":  func(c *Config) { c.ExtraVIPs = []FloatingIP{{Address: "10.10.20.6", Prefix: 24, Label: "<b>"}} },
+		"too many":     func(c *Config) { c.ExtraVIPs = make([]FloatingIP, MaxFloatingIPs) },
 	}
 	for name, mod := range bad {
 		c := sample()
@@ -50,6 +62,43 @@ func TestValidate(t *testing.T) {
 		if _, err := c.Validate(); err == nil {
 			t.Errorf("%s: expected an error", name)
 		}
+	}
+}
+
+func TestExtraFloatingIPs(t *testing.T) {
+	c := sample()
+	c.VIPLabel = "Main site"
+	c.ExtraVIPs = []FloatingIP{{Address: " 10.10.20.6 ", Prefix: 24, Label: "Internal"}, {Address: "192.168.50.5", Prefix: 32}}
+	v, err := c.Validate()
+	if err != nil {
+		t.Fatalf("valid extra floating IPs rejected: %v", err)
+	}
+	if v.ExtraVIPs[0].Address != "10.10.20.6" {
+		t.Errorf("address not normalised: %q", v.ExtraVIPs[0].Address)
+	}
+	ips := v.FloatingIPs()
+	if len(ips) != 3 || ips[0].Address != "10.10.20.5" || ips[0].Label != "Main site" || ips[2].Address != "192.168.50.5" {
+		t.Errorf("FloatingIPs() = %+v", ips)
+	}
+	if s := v.Settings(0, 1, ""); !strings.Contains(s, "\nEXTRA_VIPS=10.10.20.6/24,192.168.50.5/32\n") {
+		t.Errorf("settings missing EXTRA_VIPS:\n%s", s)
+	}
+	// With one floating IP the key is left out (a pre-2.2.0 helper rejects it)
+	if s := sample().Settings(0, 1, ""); strings.Contains(s, "EXTRA_VIPS") {
+		t.Errorf("EXTRA_VIPS written without extra addresses:\n%s", s)
+	}
+	// The maximum is accepted
+	c = sample()
+	for i := 0; i < MaxFloatingIPs-1; i++ {
+		c.ExtraVIPs = append(c.ExtraVIPs, FloatingIP{Address: fmt.Sprintf("10.10.30.%d", i+1), Prefix: 24})
+	}
+	v, err = c.Validate()
+	if err != nil {
+		t.Fatalf("%d floating IPs rejected: %v", MaxFloatingIPs, err)
+	}
+	conf, res, out := runHelper(t, v.Settings(0, 8, ""), true)
+	if res.Status != "ok" || strings.Count(conf, " dev ens18\n") != MaxFloatingIPs {
+		t.Fatalf("helper did not render %d floating IPs: %+v\n%s\n%s", MaxFloatingIPs, res, out, conf)
 	}
 }
 
@@ -116,6 +165,9 @@ func TestPreviewMatchesHelper(t *testing.T) {
 			c.Nodes = append(c.Nodes, Node{Name: "zoraxy3", Address: "10.10.20.12", Interface: "eth0", Priority: 50})
 		},
 		func(c *Config) { c.Enabled = false },
+		func(c *Config) {
+			c.ExtraVIPs = []FloatingIP{{Address: "10.10.20.6", Prefix: 24, Label: "Internal"}, {Address: "172.16.5.9", Prefix: 32}}
+		},
 	} {
 		c := sample()
 		mod(c)
@@ -140,6 +192,15 @@ func TestHelperRejectsBadInput(t *testing.T) {
 		"bad password":  strings.Replace(sample().Settings(0, 9, ""), "PASSWORD=s3cret", "PASSWORD=$(id)", 1),
 		"peer is self":  strings.Replace(sample().Settings(0, 9, ""), "PEER_IPS=10.10.20.11", "PEER_IPS=10.10.20.10", 1),
 		"duplicate key": sample().Settings(0, 9, "") + "VIP=10.10.20.6\n",
+		"vip is self":   strings.Replace(sample().Settings(0, 9, ""), "VIP=10.10.20.5", "VIP=10.10.20.10", 1),
+		"extra inject":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6/24;reboot\n",
+		"extra no pfx":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6\n",
+		"extra bad pfx": sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6/33\n",
+		"extra bad ip":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.256/24\n",
+		"extra is vip":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.5/24\n",
+		"extra is peer": sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.11/24\n",
+		"extra twice":   sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6/24,10.10.20.6/24\n",
+		"extra many":    sample().Settings(0, 9, "") + "EXTRA_VIPS=" + strings.Repeat("10.1.1.1/24,", 15) + "10.1.1.1/24\n",
 	}
 	for name, settings := range cases {
 		conf, res, out := runHelper(t, settings, true)
@@ -206,6 +267,12 @@ func TestRealKeepalivedAcceptsConfig(t *testing.T) {
 	if res.Status != "ok" {
 		t.Fatalf("keepalived -t rejected the config: %+v\n%s", res, out)
 	}
+	// Several floating IPs are accepted too
+	c.ExtraVIPs = []FloatingIP{{Address: "10.10.20.6", Prefix: 24}, {Address: "172.16.9.9", Prefix: 32}}
+	if _, res, out := runHelper(t, c.Settings(0, 5, ""), false, "HA_SCRIPTS_DIR="+scripts); res.Status != "ok" {
+		t.Fatalf("keepalived -t rejected several floating IPs: %+v\n%s", res, out)
+	}
+	c.ExtraVIPs = nil
 	// ...and a missing interface is caught by keepalived -t
 	c.Nodes[0].Interface = "nosuchif0"
 	if _, res, _ := runHelper(t, c.Settings(0, 4, ""), false, "HA_SCRIPTS_DIR="+scripts); res.Status != "error" || !strings.Contains(res.Message, "nosuchif0") {
@@ -411,5 +478,30 @@ func TestHelperManagesKeepalived(t *testing.T) {
 	res, _, _ = l.run()
 	if res.Status != "ok" || res.ApplyID != 8 || !strings.Contains(l.conf(), "priority 110") {
 		t.Fatalf("missed save: %+v\n%s", res, l.conf())
+	}
+}
+
+func TestOutdatedInstalledFiles(t *testing.T) {
+	dir := t.TempDir()
+	helper := filepath.Join(dir, "waymark-ha-apply")
+	scripts := filepath.Join(dir, "lib")
+	os.MkdirAll(scripts, 0755)
+	if _, ok := OutdatedInstalledFiles(helper, scripts); ok {
+		t.Fatal("missing files reported as readable")
+	}
+	b, _ := os.ReadFile("deploy/waymark-ha-apply")
+	// install.sh sets the service user; that alone is not a difference
+	b = []byte(strings.Replace(string(b), `OWNER="${HA_OWNER:-waymark}"`, `OWNER="${HA_OWNER:-proxy}"`, 1))
+	os.WriteFile(helper, b, 0755)
+	for _, n := range []string{"check", "notify"} {
+		c, _ := os.ReadFile("deploy/" + n)
+		os.WriteFile(filepath.Join(scripts, n), c, 0755)
+	}
+	if out, ok := OutdatedInstalledFiles(helper, scripts); !ok || len(out) != 0 {
+		t.Fatalf("current files reported outdated: %v %v", out, ok)
+	}
+	os.WriteFile(helper, append(b, []byte("# older\n")...), 0755)
+	if out, ok := OutdatedInstalledFiles(helper, scripts); !ok || len(out) != 1 || out[0] != "waymark-ha-apply" {
+		t.Fatalf("changed helper not detected: %v", out)
 	}
 }

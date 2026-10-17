@@ -10,6 +10,21 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.2.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Upgrading:** this release changes the HA integration. After upgrading each node, run the installer again on it (`/opt/waymark/waymark -ha-export-installer /tmp/waymark-ha && sudo bash /tmp/waymark-ha/install.sh`). With a single floating IP everything keeps working until you do; more than one needs the new helper on every node.
+
+**Added**
+- **Multiple floating IPs** (up to 16) on the HA page, with **Add floating IP** and a remove button per address, and an optional label for each.
+  - They form one VRRP group: the active node holds all of them, on the nodes' interface. The first one is the primary; node addresses must be in its subnet, while the others can be in any IPv4 subnet.
+  - Your existing floating IP becomes the primary one; no settings change.
+  - The root helper accepts the extra addresses as `EXTRA_VIPS` and checks each one (valid IPv4 address and prefix length, not a node address, no duplicates, at most 15). It also now rejects a primary floating IP that equals a node address.
+  - The cluster overview, the status page panel and the header badge list the floating IPs. A warning appears if the active node holds only some of them, and an error if they are split between nodes.
+- **HA helper version check:** the **Services** row on the HA page shows whether the installed helper and keepalived scripts match this Waymark version, with the commands to update them. Saving more than one floating IP is refused while the helper is older.
+- **Warning for stream proxies on a floating IP:** a stream proxy that listens on one specific floating IP can only start on the node holding it unless `net.ipv4.ip_nonlocal_bind=1` is set. The HA page explains this, with the commands, and warns when such stream proxies exist and the setting is off.
+
 ## 2.1.1
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

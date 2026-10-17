@@ -30,6 +30,10 @@ func (c *Config) Preview(self int, owner, scriptsDir string) string {
 	if c.Password != "" {
 		auth = "    authentication {\n        auth_type PASS\n        auth_pass " + c.Password + "\n    }\n"
 	}
+	var vips strings.Builder
+	for _, f := range c.FloatingIPs() {
+		vips.WriteString("        " + f.Address + "/" + strconv.Itoa(f.Prefix) + " dev " + me.Interface + "\n")
+	}
 	preempt := "    nopreempt"
 	if c.Preempt {
 		preempt = "    preempt_delay 30"
@@ -54,8 +58,7 @@ vrrp_instance WAYMARK {
     unicast_peer {
 ` + peers.String() + `    }
 ` + auth + `    virtual_ipaddress {
-        ` + c.VIP + "/" + strconv.Itoa(c.Prefix) + ` dev ` + me.Interface + `
-    }
+` + vips.String() + `    }
     track_script {
         waymark_health
     }

@@ -63,7 +63,8 @@ type haSyncPeerInfo struct {
 	Hash            string `json:"hash"`
 	HeartbeatOK     bool   `json:"heartbeatOk"`
 	HeartbeatReason string `json:"heartbeatReason"`
-	VIPHeld         bool   `json:"vipHeld"`
+	VIPHeld         bool   `json:"vipHeld"`    // holds the primary floating IP
+	VIPsHeld        int    `json:"vipsHeld"`   // how many floating IPs it holds
 	Keepalived      string `json:"keepalived"` // systemd state
 	SyncStatus      string `json:"syncStatus"`
 	SyncDetail      string `json:"syncDetail"`
@@ -241,7 +242,7 @@ func haLocalInfo() haSyncPeerInfo {
 	haSync.mu.Unlock()
 	return haSyncPeerInfo{
 		Node: haNodeName(cfg), Role: haEffectiveRole(haRuntime()).State, Version: DISPLAY_VERSION,
-		HeartbeatOK: hb.OK, HeartbeatReason: hb.Reason, VIPHeld: haVIPHeld(cfg),
+		HeartbeatOK: hb.OK, HeartbeatReason: hb.Reason, VIPHeld: haVIPHeld(cfg), VIPsHeld: haCountFloatingIPsHeld(cfg),
 		Keepalived: haServiceState("keepalived"), SyncStatus: st, SyncDetail: detail, Started: bootTime,
 	}
 }
@@ -622,6 +623,7 @@ func haClusterView() []map[string]any {
 			row["heartbeatOk"] = info.HeartbeatOK
 			row["heartbeatReason"] = info.HeartbeatReason
 			row["vipHeld"] = info.VIPHeld
+			row["vipsHeld"] = info.VIPsHeld
 			row["keepalived"] = info.Keepalived
 			row["version"] = info.Version
 			row["versionMatch"] = info.Version == DISPLAY_VERSION
@@ -662,6 +664,7 @@ func HandleHACluster(w http.ResponseWriter, r *http.Request) {
 		"enabled":     cfg.Enabled,
 		"syncEnabled": cfg.SyncEnabled,
 		"vip":         cfg.VIP,
+		"floatingIPs": cfg.FloatingIPs(),
 		"nodes":       haClusterView(),
 	})
 	utils.SendJSONResponse(w, string(js))
