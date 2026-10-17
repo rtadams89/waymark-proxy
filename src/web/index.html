@@ -29,6 +29,8 @@
             </div>
             <!-- Custom fork: HA role (script/haBanner.js) -->
             <div class="item" id="haRoleBadge" style="display:none; cursor: pointer;" onclick="openTabById('ha');"></div>
+            <!-- Custom fork: update available (script/updateNotice.js) -->
+            <div class="item" id="updateBadge" style="display:none; cursor: pointer; align-items: center; vertical-align: middle; margin-left: 0.4em;" onclick="updOpenAbout();"></div>
 
             <div class="ui right floated buttons menutoggle" style="padding-top: 2px;">
                 <button id="sidemenuBtn" class="ui basic icon button" onclick="$('.toolbar').fadeToggle('fast');"><i class="content icon"></i></button>
@@ -763,5 +765,6 @@
         </script>
         <script src="script/haCluster.js"></script>
         <script src="script/haBanner.js"></script>
+        <script src="script/updateNotice.js"></script>
     </body>
 </html>

@@ -118,6 +118,18 @@
         
     </div>
     <div class="ui bottom attached tab segment utilitiesTabs" data-tab="utiltab5">
+        <!-- Updates (script/updateNotice.js, selfupdate_custom.go) -->
+        <style>
+            #updateBox .updLabel{ display: inline-block; min-width: 9em; color: var(--text_color_secondary); }
+            #updateBox .updHint{ color: var(--text_color_secondary); font-size: 0.9em; }
+            #updateBox .updMono{ font-family: monospace; }
+            #updateBox pre.updNotes{ white-space: pre-wrap; word-break: break-word; max-height: 24em; overflow-y: auto; font-size: 0.85em; line-height: 1.45;
+                background: var(--theme_bg_secondary, rgba(128,128,128,0.08)); border: 1px solid var(--divider_color); border-radius: 0.5em; padding: 0.9em; margin-top: 0.5em; }
+            #updateBox > div{ margin-bottom: 0.3em; }
+        </style>
+        <h3 class="ui header">Updates</h3>
+        <div id="updateBox"><div class="ui active inline mini loader"></div></div>
+        <div class="ui divider"></div>
         <!-- System Information -->
         <div id="zoraxyinfo">
             <h3 class="ui header">

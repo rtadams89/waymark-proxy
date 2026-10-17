@@ -194,6 +194,16 @@ func startSyncServer(t *testing.T, key string, allowed bool) string {
 			c := &SyncContent{Files: map[string]SyncFile{"proxy/a": {Data: []byte("x")}}, Tables: map[string]map[string]json.RawMessage{}}
 			return &Snapshot{Hash: c.Hash(), Content: *c}, nil
 		},
+		Actions: map[string]func(string, []byte) (any, error){
+			"echo": func(remote string, body []byte) (any, error) {
+				var in map[string]string
+				json.Unmarshal(body, &in)
+				if in["fail"] != "" {
+					return nil, errors.New(in["fail"])
+				}
+				return map[string]string{"got": in["v"], "from": remote}, nil
+			},
+		},
 	}
 	srv := &http.Server{Handler: h}
 	go srv.Serve(ln)
@@ -254,5 +264,32 @@ func TestConfigSyncValidation(t *testing.T) {
 	c.SyncPort = 70000
 	if _, err := c.Validate(); err == nil {
 		t.Fatal("bad port accepted")
+	}
+}
+
+func TestSyncAction(t *testing.T) {
+	key := NewClusterKey()
+	addr := startSyncServer(t, key, true)
+	var out map[string]string
+	if err := SyncAction(addr, KeyBytes(key), "echo", map[string]string{"v": "hi"}, &out, 3*time.Second); err != nil || out["got"] != "hi" || out["from"] != "127.0.0.1" {
+		t.Fatalf("action: %v %v", out, err)
+	}
+	out = nil
+	if err := SyncAction(addr, KeyBytes(key), "echo", map[string]string{"fail": "nope"}, &out, 3*time.Second); err != nil || out["error"] != "nope" {
+		t.Fatalf("failing action: %v %v", out, err)
+	}
+	// Unknown action, bad names and the wrong key are refused
+	if err := SyncAction(addr, KeyBytes(key), "missing", nil, &out, 3*time.Second); err == nil || !strings.Contains(err.Error(), "404") {
+		t.Fatalf("unknown action: %v", err)
+	}
+	if err := SyncAction(addr, KeyBytes(key), "../state", nil, &out, 3*time.Second); err == nil {
+		t.Fatal("bad action name accepted")
+	}
+	if err := SyncAction(addr, KeyBytes(NewClusterKey()), "echo", nil, &out, 3*time.Second); !errors.Is(err, ErrSyncAuth) {
+		t.Fatalf("wrong key: %v", err)
+	}
+	// Actions are POST only; GET of an action path is not found
+	if err := SyncFetch(addr, KeyBytes(key), "/waymark-ha/v1/echo", &out, 3*time.Second); err == nil || !strings.Contains(err.Error(), "404") {
+		t.Fatalf("GET action: %v", err)
 	}
 }

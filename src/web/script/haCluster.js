@@ -8,7 +8,8 @@
     sync connection, so it is only known while sync is on.
 */
 (function(){
-    function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html(); }
+    // Also escapes quotes: values go into title="..." and data-... attributes
+    function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html().replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
     function since(ts){
         if (!ts) return "";
         let s = Math.max(0, Math.round(Date.now() / 1000 - ts));
@@ -83,8 +84,41 @@
         return {errors: errors, warnings: warnings};
     }
 
+    // versionNewer("2.4.0", "2.3.1") is true; anything that is not x.y.z is never newer
+    function versionNewer(a, b){
+        let pa = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(a || ""), pb = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(b || "");
+        if (!pa || !pb) return false;
+        for (let i = 1; i <= 3; i++){
+            if (+pa[i] != +pb[i]) return +pa[i] > +pb[i];
+        }
+        return false;
+    }
+    window.haVersionNewer = versionNewer;
+
+    // actionsCell: switch-over and update buttons (HA page only). The
+    // buttons call window.haSwitchTo(name) and window.haUpdateNode(name, self).
+    function actionsCell(n, data, act){
+        let out = [];
+        let busy = ["downloading", "verifying", "restarting"].includes(n.updatePhase);
+        if (busy){
+            out.push(`<span><i class="blue sync loading icon"></i>${esc(n.updateMessage || "Updating")}</span>`);
+        }else if (n.updatePhase == "error"){
+            out.push(`<div style="color: #db2828; font-size: 0.85em; max-width: 22em;"><i class="times circle icon"></i>${esc(n.updateMessage)}</div>`);
+        }
+        let someoneActive = (data.nodes || []).some(m => m.reachable && m.role == "MASTER");
+        if (!busy && !act.switching && data.syncEnabled && someoneActive && n.role == "BACKUP" && n.heartbeatOk && (n.keepalived == "active" || n.keepalived == "unknown" || !n.keepalived)){
+            out.push(`<button class="ui mini basic button haMakeActive" data-node="${esc(n.name)}" title="Move the floating IPs to ${esc(n.name)}"><i class="exchange icon"></i>Make active</button>`);
+        }
+        if (!busy && act.latest && versionNewer(act.latest, n.version) && (n.self || data.syncEnabled)){
+            out.push(`<button class="ui mini basic button haUpdateNode" data-node="${esc(n.name)}" data-self="${n.self ? 1 : 0}" title="Install Waymark ${esc(act.latest)} on ${esc(n.name)}"><i class="green download icon"></i>Update to ${esc(act.latest)}</button>`);
+        }
+        return `<td style="text-align: right; white-space: nowrap;">${out.join(" ")}</td>`;
+    }
+
     // haRenderCluster fills container with the overview. data: {enabled,
-    // syncEnabled, vip, floatingIPs, nodes}. opts.compact drops the version column.
+    // syncEnabled, vip, floatingIPs, nodes}. opts.compact drops the version
+    // column; opts.actions ({latest, switching}) adds switch-over and update
+    // buttons.
     window.haRenderCluster = function(container, data, opts){
         opts = opts || {};
         let nodes = data.nodes || [];
@@ -112,6 +146,8 @@
                 role = `<span style="opacity: 0.6;">-</span>`;
                 health = `<span style="opacity: 0.7;" title="${esc(n.error)}"><i class="grey question circle icon"></i>${esc(n.error || "Unknown")}</span>`;
                 sync = ver = seen = `<span style="opacity: 0.6;">-</span>`;
+                return `<tr><td>${name}</td><td>${role}</td><td>${health}</td><td>${sync}</td>` +
+                    (opts.compact ? "" : `<td>${ver}</td>`) + `<td>${seen}</td>` + (opts.actions ? "<td></td>" : "") + `</tr>`;
             }else{
                 role = rolePill(n.role) + (n.vipHeld ? ` <i class="green map marker alternate icon" title="Holds the floating IP${fips.length > 1 ? "s" : ""}"></i>` : "");
                 if (!n.reachable){
@@ -120,7 +156,7 @@
                     health = `<i class="red unlink icon"></i>Unreachable <span style="opacity: 0.7;" title="${esc(n.error)}">(last seen ${since(n.lastSeen)} ago)</span>`;
                     sync = seen = ver = `<span style="opacity: 0.6;">-</span>`;
                     return `<tr><td>${name}</td><td>${role}</td><td>${health}</td><td>${sync}</td>` +
-                        (opts.compact ? "" : `<td>${ver}</td>`) + `<td>${seen}</td></tr>`;
+                        (opts.compact ? "" : `<td>${ver}</td>`) + `<td>${seen}</td>` + (opts.actions ? "<td></td>" : "") + `</tr>`;
                 }else if (n.heartbeatOk){
                     health = `<i class="green check circle icon"></i>Healthy`;
                 }else{
@@ -134,11 +170,16 @@
                 seen = n.started ? `up ${since(n.started)}` : "";
             }
             return `<tr><td>${name}</td><td>${role}</td><td>${health}</td><td>${sync}</td>` +
-                (opts.compact ? "" : `<td>${ver}</td>`) + `<td style="white-space: nowrap; opacity: 0.8;">${seen}</td></tr>`;
+                (opts.compact ? "" : `<td>${ver}</td>`) + `<td style="white-space: nowrap; opacity: 0.8;">${seen}</td>` +
+                (opts.actions ? actionsCell(n, data, opts.actions) : "") + `</tr>`;
         }).join("");
 
         $(container).html(summary + `<table class="ui very basic compact unstackable table" style="margin-top: 0;">
-            <thead><tr><th>Node</th><th>Role</th><th>Health</th><th>Configuration</th>${opts.compact ? "" : "<th>Version</th>"}<th></th></tr></thead>
+            <thead><tr><th>Node</th><th>Role</th><th>Health</th><th>Configuration</th>${opts.compact ? "" : "<th>Version</th>"}<th></th>${opts.actions ? "<th></th>" : ""}</tr></thead>
             <tbody>${rows}</tbody></table>`);
+        if (opts.actions){
+            $(container).find(".haMakeActive").on("click", function(){ window.haSwitchTo && window.haSwitchTo($(this).attr("data-node")); });
+            $(container).find(".haUpdateNode").on("click", function(){ window.haUpdateNode && window.haUpdateNode($(this).attr("data-node"), $(this).attr("data-self") == "1"); });
+        }
     };
 })();

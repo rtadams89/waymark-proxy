@@ -53,6 +53,7 @@ Waymark keeps Zoraxy's core: HTTP and stream proxying, load balancing, ACME cert
 - **Configured from the web UI.** Waymark itself runs unprivileged. A small root-owned helper validates the settings, writes keepalived's config from a fixed template, tests it and reloads keepalived.
 - **Configuration sync.** Standby nodes copy the active node's configuration (proxy rules, certificates and keys, access rules, admin accounts, settings) over TLS, authenticated with a shared cluster key. Standby nodes are read-only, so changes are made in one place.
 - **Cluster overview** on the HA page and the Status page: each node's role, health, sync state and version.
+- **Manual switch-over** from the HA page: **Make active** moves the floating IPs to a healthy standby in a few seconds, without restarting anything.
 - Failovers are reported plainly ("Failed over to waymark02 · waymark01 unreachable"), and the HA page checks that the installed root helper matches the Waymark version.
 - Automatic certificate renewal runs only on the active node.
 
@@ -66,6 +67,7 @@ Waymark keeps Zoraxy's core: HTTP and stream proxying, load balancing, ACME cert
 - Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the upstream's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
 
 **Operations**
+- **Updates from the web interface.** Waymark checks GitHub for a new release daily. **Install** downloads it, verifies its SHA-256 checksum and that it starts, and restarts Waymark; if the new version doesn't stay up, the previous one is put back automatically. In a cluster, each node is updated from the HA page.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
 - **Status page panels** can be shown or hidden. New panels show upstream health, cache hit rate and memory, and the HA cluster.
 - The HTTP Proxy list shows health check and cache state per rule, with a red heart on upstreams that are down.
@@ -118,7 +120,7 @@ sudo install -o root -g root -m 0755 waymark_linux_amd64 /opt/waymark/waymark
 /opt/waymark/waymark -version
 ```
 
-The binary is owned by root, so the service can't modify itself. Waymark keeps its data next to it in `/opt/waymark` (see [Where your data lives](#where-your-data-lives)).
+Waymark keeps its data next to the binary in `/opt/waymark` (see [Where your data lives](#where-your-data-lives)). Because that folder belongs to the `waymark` user, Waymark can replace the binary when you [update from the web interface](#upgrading), whoever owns the file itself. If you'd rather the service could never change its own binary, install it in a root-owned folder such as `/usr/local/bin` (and point `ExecStart` there); then update by hand.
 
 **3. Create the systemd service** as `/etc/systemd/system/waymark.service`:
 
@@ -230,6 +232,7 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 - Make all changes on the active node. Standby nodes refuse changes, apart from their own HA settings (so sync can be paused there), and copy the active node's configuration within about 20 seconds of each change.
 - If the active node fails, the standby takes over the floating IP. By default the floating IP doesn't move back when the other node recovers; it stays until the new active node fails. You can change this in the HA settings.
 - After a failover, make changes on the new active node. They are copied to the old one when it returns as standby.
+- **Make active** (on the HA page's cluster table) moves the floating IPs to a healthy standby. The active node reports itself unhealthy for a few seconds so keepalived hands over, then becomes the standby. It needs configuration sync on, and can be started from either node. With "prefer the higher-priority node" on, a higher-priority node takes the floating IPs back about 30 seconds later.
 - Only the active node renews certificates automatically.
 - Not synced (kept per node): statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions.
 - HTTP proxying listens on all addresses, so every floating IP works on whichever node holds it. A stream proxy that listens on one specific floating IP can only start on the node holding that address, unless every node has `net.ipv4.ip_nonlocal_bind=1` (`echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf && sudo sysctl --system`). The HA page warns when this applies.
@@ -237,12 +240,24 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 
 ## Upgrading
 
-**Single node:** download the new binary as in [Install](#install) step 2, then run `sudo systemctl restart waymark`. Read [CHANGELOG.md](CHANGELOG.md) first: a new major version (2.0.0) lists the steps it needs.
+Read [CHANGELOG.md](CHANGELOG.md) first: a new major version (such as 2.0.0) lists the steps it needs.
 
-**HA pair:** nodes only sync while they run the same version, so upgrade them one at a time:
-1. Upgrade the standby node. Sync pauses; the active node keeps working.
-2. Upgrade the active node. Restarting it moves the floating IP to the upgraded standby, which becomes active.
-3. When the old active node is back as standby, sync resumes. Make changes on the new active node.
+**From the web interface** (2.4.0 and later): **Settings > About** shows the latest release (Waymark asks GitHub once a day; **Check now** asks again), its release notes and an **Install** button. A pill next to the logo says when an update is available. Install:
+1. downloads `waymark_linux_amd64` and its `.sha256` from the GitHub release, over HTTPS, and checks the checksum;
+2. runs the new binary with `-version` to check that it starts and is the expected version;
+3. keeps the running binary as `waymark.prev` and swaps the new one in;
+4. restarts Waymark in place (the page reloads when it is back).
+
+If the new version is started three times without staying up for two minutes (for example, systemd restarting a crashing binary), Waymark puts `waymark.prev` back. **Roll back** swaps the two binaries by hand. This needs the folder holding the binary to be writable by the `waymark` user (it is with the [Install](#install) steps); otherwise the page says so and you update by hand.
+
+**By hand:** download the new binary as in [Install](#install) step 2, then run `sudo systemctl restart waymark`.
+
+**HA pair:** nodes only sync while they run the same version, so update them one at a time. On the HA page, each node in the cluster table has an **Update** button (a node updates itself when another node asks it to, over the sync connection):
+1. Update the standby. Sync pauses; the active node keeps working.
+2. Click **Make active** on the updated standby, so the floating IPs move when you choose.
+3. Update the old active node, now the standby. Sync resumes when both run the same version.
+
+Updating the active node without switching first also works: its restart moves the floating IPs to the standby.
 
 When a release changes the HA integration (the changelog says so, and the HA page's **Services** row shows "HA helper is from another Waymark version"), also run the installer again on each node after upgrading it: `/opt/waymark/waymark -ha-export-installer /tmp/waymark-ha && sudo bash /tmp/waymark-ha/install.sh`.
 

@@ -444,14 +444,23 @@ func SyncServerTLSConfig(cert tls.Certificate) *tls.Config {
 }
 
 // SyncHandler serves /waymark-ha/v1/state and /waymark-ha/v1/snapshot to
-// peers that prove they have the cluster key.
+// peers that prove they have the cluster key, and runs the actions in
+// Actions (POST /waymark-ha/v1/<action>, small JSON body) for them.
 type SyncHandler struct {
 	Key      func() []byte                 // current cluster key (nil: refuse everything)
 	Allowed  func(remote net.IP) bool      // is this a cluster node?
 	State    func() any                    // JSON for /state
 	Snapshot func() (*Snapshot, error)     // for /snapshot
 	Served   func(remote string, p string) // called after a successful request
+	// Actions other nodes may ask this node to carry out (switch-over,
+	// update), keyed by name. The handler gets the request body (JSON, at
+	// most maxActionBody bytes) and the requesting node's address.
+	Actions map[string]func(remote string, body []byte) (any, error)
 }
+
+const maxActionBody = 4096
+
+var actionNamePattern = regexp.MustCompile(`^[a-z]{1,32}$`)
 
 func (h *SyncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -471,16 +480,34 @@ func (h *SyncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body any
-	switch r.URL.Path {
-	case "/waymark-ha/v1/state":
+	switch {
+	case r.Method == http.MethodGet && r.URL.Path == "/waymark-ha/v1/state":
 		body = h.State()
-	case "/waymark-ha/v1/snapshot":
+	case r.Method == http.MethodGet && r.URL.Path == "/waymark-ha/v1/snapshot":
 		snap, err := h.Snapshot()
 		if err != nil {
 			http.Error(w, "could not read configuration: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		body = snap
+	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/waymark-ha/v1/"):
+		name := strings.TrimPrefix(r.URL.Path, "/waymark-ha/v1/")
+		action := h.Actions[name]
+		if !actionNamePattern.MatchString(name) || action == nil {
+			http.NotFound(w, r)
+			return
+		}
+		in, err := io.ReadAll(io.LimitReader(r.Body, maxActionBody+1))
+		if err != nil || len(in) > maxActionBody || (len(in) > 0 && !json.Valid(in)) {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		result, err := action(host, in)
+		if err != nil {
+			// Errors are reported in the body, so the caller can show them
+			result = map[string]string{"error": err.Error()}
+		}
+		body = result
 	default:
 		http.NotFound(w, r)
 		return
@@ -507,6 +534,27 @@ var ErrSyncAuth = errors.New("the cluster key does not match")
 // SyncFetch requests p from the peer at addr (host:port) and decodes the
 // JSON response into out. Both sides prove they hold the cluster key.
 func SyncFetch(addr string, key []byte, p string, out any, timeout time.Duration) error {
+	return syncRequest(addr, key, http.MethodGet, p, nil, out, timeout)
+}
+
+// SyncAction asks the peer at addr to carry out action (see
+// SyncHandler.Actions) with the JSON body in, and decodes its answer into
+// out. An action that failed answers {"error": "..."}.
+func SyncAction(addr string, key []byte, action string, in any, out any, timeout time.Duration) error {
+	if !actionNamePattern.MatchString(action) {
+		return errors.New("invalid action name")
+	}
+	body, err := json.Marshal(in)
+	if err != nil {
+		return err
+	}
+	if len(body) > maxActionBody {
+		return errors.New("request too large")
+	}
+	return syncRequest(addr, key, http.MethodPost, "/waymark-ha/v1/"+action, body, out, timeout)
+}
+
+func syncRequest(addr string, key []byte, method string, p string, body []byte, out any, timeout time.Duration) error {
 	if key == nil {
 		return errors.New("no cluster key")
 	}
@@ -526,7 +574,14 @@ func SyncFetch(addr string, key []byte, p string, out any, timeout time.Duration
 	if err != nil {
 		return err
 	}
-	req, _ := http.NewRequest(http.MethodGet, "https://"+addr+p, nil)
+	var rb io.Reader
+	if body != nil {
+		rb = bytes.NewReader(body)
+	}
+	req, _ := http.NewRequest(method, "https://"+addr+p, rb)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set(SyncAuthHeader, auth)
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Close = true

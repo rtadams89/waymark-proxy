@@ -68,7 +68,9 @@ type haSyncPeerInfo struct {
 	Keepalived      string `json:"keepalived"` // systemd state
 	SyncStatus      string `json:"syncStatus"`
 	SyncDetail      string `json:"syncDetail"`
-	Started         int64  `json:"started"` // when Waymark started
+	Started         int64  `json:"started"`       // when Waymark started
+	UpdatePhase     string `json:"updatePhase"`   // selfupdate_custom.go: downloading, verifying, restarting, error
+	UpdateMessage   string `json:"updateMessage"` // its message
 }
 
 // haPeerStatus is the last poll of another node.
@@ -240,7 +242,11 @@ func haLocalInfo() haSyncPeerInfo {
 	haSync.mu.Lock()
 	st, detail := haSync.status, haSync.detail
 	haSync.mu.Unlock()
+	upd.mu.Lock()
+	uphase, umsg := upd.phase, upd.message
+	upd.mu.Unlock()
 	return haSyncPeerInfo{
+		UpdatePhase: uphase, UpdateMessage: umsg,
 		Node: haNodeName(cfg), Role: haEffectiveRole(haRuntime()).State, Version: DISPLAY_VERSION,
 		HeartbeatOK: hb.OK, HeartbeatReason: hb.Reason, VIPHeld: haVIPHeld(cfg), VIPsHeld: haCountFloatingIPsHeld(cfg),
 		Keepalived: haServiceState("keepalived"), SyncStatus: st, SyncDetail: detail, Started: bootTime,
@@ -313,6 +319,10 @@ func haSyncReconcileListener() {
 				haSync.servedPoll[remote] = time.Now().Unix()
 			}
 			haSync.mu.Unlock()
+		},
+		Actions: map[string]func(string, []byte) (any, error){
+			"switchover": haSwitchAction, // haswitch_custom.go
+			"update":     haUpdateAction, // selfupdate_custom.go
 		},
 	}
 	srv := &http.Server{Handler: handler, TLSConfig: hacluster.SyncServerTLSConfig(cert), ReadHeaderTimeout: 10 * time.Second, ErrorLog: log.New(io.Discard, "", 0)}
@@ -561,8 +571,9 @@ func haReadOnlyMessage() string {
 }
 
 // haReadOnly wraps the admin UI: on a read-only standby, requests that
-// change settings are refused. Signing in and out and the HA settings
-// (to pause sync on this node) still work.
+// change settings are refused. Signing in and out, the HA settings and
+// actions (to pause sync on this node, switch over) and updating this node
+// (per node, not configuration) still work.
 func haReadOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -571,7 +582,7 @@ func haReadOnly(next http.Handler) http.Handler {
 			return
 		}
 		p := r.URL.Path
-		if !strings.HasPrefix(p, "/api/") || p == "/api/auth/login" || p == "/api/auth/logout" || strings.HasPrefix(p, "/api/ha/") {
+		if !strings.HasPrefix(p, "/api/") || p == "/api/auth/login" || p == "/api/auth/logout" || strings.HasPrefix(p, "/api/ha/") || strings.HasPrefix(p, "/api/update/") {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -630,6 +641,8 @@ func haClusterView() []map[string]any {
 			row["syncStatus"] = info.SyncStatus
 			row["syncDetail"] = info.SyncDetail
 			row["started"] = info.Started
+			row["updatePhase"] = info.UpdatePhase
+			row["updateMessage"] = info.UpdateMessage
 		}
 		out = append(out, row)
 	}

@@ -229,6 +229,10 @@ func haWriteHeartbeat() {
 			ok, reason = false, "proxy listener "+addr+" is not answering"
 		}
 	}
+	if holding, why := haSwitchHolding(); holding && ok {
+		// Manual switch-over: report unhealthy so keepalived hands over (haswitch_custom.go)
+		ok, reason = false, why
+	}
 	now := time.Now()
 	ha.mu.Lock()
 	ha.heartbeat = haHeartbeat{OK: ok, Reason: reason, Time: now.Unix()}
@@ -366,6 +370,7 @@ func HandleHAStatus(w http.ResponseWriter, r *http.Request) {
 		"sync":           haSyncStatus(),
 		"cluster":        haClusterView(),
 		"readOnly":       haIsReadOnly(),
+		"switchover":     haSwitchStatus(),
 	}
 	js, _ := json.Marshal(resp)
 	utils.SendJSONResponse(w, string(js))

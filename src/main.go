@@ -90,6 +90,7 @@ func main() {
 	if handleHAMaintenanceFlags() { //Custom fork: -ha-export-installer
 		os.Exit(0)
 	}
+	updateStartupCheck() //Custom fork: roll back an update that does not stay up (selfupdate_custom.go)
 	if *reset_account {
 		//Reset admin account by removing all users from the system
 		auth.ResetAccount(databaseBackend, path_database)
@@ -136,6 +137,7 @@ func main() {
 
 	//Startup all modules, see start.go
 	startupSequence()
+	initSelfUpdate() //Custom fork: daily check for a new release (selfupdate_custom.go)
 
 	//Initiate APIs
 	requireAuth = !(*noauth)

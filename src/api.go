@@ -77,6 +77,12 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/ha/installer", HandleHAInstallerFile)
 	authRouter.HandleFunc("/api/ha/sync/now", HandleHASyncNow)
 	authRouter.HandleFunc("/api/ha/cluster", HandleHACluster)
+	authRouter.HandleFunc("/api/ha/switchover", HandleHASwitchover)     // haswitch_custom.go
+	authRouter.HandleFunc("/api/update/status", HandleUpdateStatus)     // selfupdate_custom.go
+	authRouter.HandleFunc("/api/update/check", HandleUpdateCheck)       // selfupdate_custom.go
+	authRouter.HandleFunc("/api/update/install", HandleUpdateInstall)   // selfupdate_custom.go
+	authRouter.HandleFunc("/api/update/rollback", HandleUpdateRollback) // selfupdate_custom.go
+	authRouter.HandleFunc("/api/update/peer", HandleUpdatePeer)         // selfupdate_custom.go
 	// Custom fork: static file cache (assetcache_custom.go)
 	authRouter.HandleFunc("/api/proxy/assetcache/get", HandleAssetCacheGet)
 	authRouter.HandleFunc("/api/proxy/assetcache/set", HandleAssetCacheSet)

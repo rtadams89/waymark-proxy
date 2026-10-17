@@ -31,6 +31,8 @@
     <div class="ui segment" id="haClusterSegment" style="display:none;">
         <h3>Cluster</h3>
         <div id="haClusterBox"></div>
+        <div class="ui message" id="haActionMsg" style="display:none;"></div>
+        <div class="haHint" style="margin-top: 0.6em;"><b>Make active</b> moves the floating IPs to a healthy standby: the active node reports itself unhealthy for a few seconds so keepalived hands over. <b>Update</b> installs the latest release on that node and restarts it; nodes on different versions pause configuration sync until they match. Both need configuration sync on.</div>
     </div>
 
     <div class="ui segment">
@@ -361,10 +363,88 @@ sudo sysctl --system</pre></div>
             $("#haReadOnlyNote").toggle(!!d.readOnly);
             $("#haClusterSegment").toggle(!!c.enabled && (c.nodes || []).length > 0);
             if (c.enabled && window.haRenderCluster){
-                haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, floatingIPs: fips, nodes: d.cluster || []});
+                let upd = window.updStatus ? updStatus() : null;
+                let sw = d.switchover || {};
+                haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, floatingIPs: fips, nodes: d.cluster || []},
+                    {actions: {latest: upd && upd.latest ? upd.latest.version : "",
+                               switching: sw.state == "switching" || (haActionLocal && haActionLocal.ok && Date.now() - haActionLocal.time < 20000)}});
+                renderSwitch(sw);
             }
             renderSync(d);
         }
+
+        // A switch-over this node is carrying out (it is handing over), or its
+        // outcome in the last two minutes
+        let haActionLocal = null; // message from the last button press, until the status has news
+        function renderSwitch(sw){
+            let box = $("#haActionMsg");
+            let recent = sw.state && sw.time && (Date.now() / 1000 - sw.time) < 120;
+            if (sw.state == "switching"){
+                box.attr("class", "ui info message").html(`<i class="sync loading icon"></i>${esc(sw.message)}`).show();
+            }else if (recent && sw.state == "done"){
+                box.attr("class", "ui positive message").html(`<i class="check circle icon"></i>${esc(sw.message)}`).show();
+            }else if (recent && sw.state == "failed"){
+                box.attr("class", "ui warning message").html(`<i class="exclamation triangle icon"></i>${esc(sw.message)}`).show();
+            }else if (haActionLocal && Date.now() - haActionLocal.time < 60000){
+                box.attr("class", "ui " + (haActionLocal.ok ? "info" : "negative") + " message").html(esc(haActionLocal.text)).show();
+            }else{
+                box.hide();
+            }
+        }
+        function actionMsg(text, ok){
+            haActionLocal = {text: text, ok: ok, time: Date.now()};
+            $("#haActionMsg").attr("class", "ui " + (ok ? "info" : "negative") + " message").text(text).show();
+        }
+
+        window.haSwitchTo = function(name){
+            if (!haStatus) return;
+            let c = haStatus.config, nodes = haStatus.cluster || [];
+            let active = nodes.find(n => n.reachable && n.role == "MASTER");
+            let target = (c.nodes || []).find(n => n.name == name);
+            let text = "Make " + name + " the active node?\n\nThe floating IPs move to it within a few seconds. Connections in progress through them are cut.";
+            let activeCfg = active ? (c.nodes || []).find(n => n.name == active.name) : null;
+            if (c.preempt && target && activeCfg && target.priority < activeCfg.priority){
+                text += "\n\nPreempt is on and " + active.name + " has the higher priority, so it takes the floating IPs back about 30 seconds later. Turn preempt off to keep " + name + " active.";
+            }
+            if (!confirm(text)) return;
+            actionMsg("Asking the active node to hand over to " + name + "...", true);
+            $.cjax({
+                url: "/api/ha/switchover", method: "POST", data: { target: name }, timeout: 30000,
+                success: function(d){
+                    if (d.error != undefined){ actionMsg(d.error, false); return; }
+                    actionMsg(d.message, true);
+                    setTimeout(function(){ haLoad(false); }, 1500);
+                },
+                error: function(){ actionMsg("Request failed", false); }
+            });
+        };
+
+        window.haUpdateNode = function(name, self){
+            let upd = window.updStatus ? updStatus() : null;
+            if (!upd || !upd.latest) return;
+            let v = upd.latest.version;
+            let row = (haStatus.cluster || []).find(n => n.name == name) || {};
+            let text = "Install Waymark " + v + " on " + name + "?\n\n" + name + " downloads it from GitHub, checks it and restarts Waymark (a few seconds).";
+            let behind = (haStatus.cluster || []).filter(n => n.name != name && n.version && n.version != v).map(n => n.name);
+            if (behind.length) text += " Configuration sync is paused until " + behind.join(", ") + (behind.length > 1 ? " run " : " runs ") + v + " too.";
+            if (row.role == "MASTER" && (haStatus.cluster || []).length > 1){
+                text += "\n\n" + name + " is the active node: the floating IPs move to the standby while it restarts. To choose when that happens, use Make active on the other node first.";
+            }
+            if (upd.major) text += "\n\n" + v + " is a new major version: read its release notes first.";
+            if (!confirm(text)) return;
+            let req = self ? { url: "/api/update/install", data: { version: v } } : { url: "/api/update/peer", data: { node: name, version: v } };
+            actionMsg("Starting the update on " + name + "...", true);
+            $.cjax({
+                url: req.url, method: "POST", data: req.data, timeout: 60000,
+                success: function(d){
+                    if (d.error != undefined){ actionMsg(d.error, false); return; }
+                    actionMsg(d.message, true);
+                    if (self && window.updWaitForRestart){ updWaitForRestart(); }
+                    setTimeout(function(){ haLoad(false); }, 2000);
+                },
+                error: function(){ actionMsg("Request failed", false); }
+            });
+        };
 
         function renderSync(d){
             let c = d.config, sy = d.sync || {};

@@ -8,7 +8,24 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - **MINOR** (1.1.0): new features, including merged Zoraxy releases, that keep existing configuration working.
 - **MAJOR** (2.0.0): changes that need action when upgrading.
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
-- The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
+- The Zoraxy release Waymark is based on is shown in **Settings > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
+
+## 2.4.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Added**
+- **Make active** on the HA page's cluster table moves the floating IPs to a healthy standby. The active node reports itself unhealthy for a few seconds so keepalived hands over, then goes back to being a healthy standby; nothing is restarted and keepalived's settings don't change. Either node can start it: a standby forwards the request to the active node over the sync connection, and the active node checks it again. Needs configuration sync on. With preempt on, a higher-priority node takes the floating IPs back about 30 seconds later (the confirmation says so).
+- **Updates from the web interface.** Waymark checks GitHub for the latest release once a day (and on **Check now**). **Settings > About** shows it with its release notes and an **Install** button, and a pill next to the logo says when an update is available. Install downloads the binary for this platform from the GitHub release (HTTPS, only from this project's release downloads), checks its SHA-256 checksum, runs it with `-version`, keeps the running binary as `waymark.prev`, swaps the new one in and restarts Waymark in place. If the new version is started three times without staying up for two minutes, the previous binary is put back. **Roll back** swaps the two by hand. Only newer releases are installed this way.
+- In a cluster, each node has an **Update** button on the HA page; a node asks another to update itself over the authenticated sync connection. Updating, switching over and rolling back work on read-only standby nodes too.
+- Updating needs the folder holding the binary to be writable by the `waymark` user, as it is with the README's install steps. If it isn't, the page says why.
+
+**Changed**
+- The sync connection between nodes also carries actions (switch-over, update) as authenticated POST requests, alongside the state and snapshot requests.
+- Cluster table values are escaped for attributes too.
+
+**Documentation**
+- README: switch-over, updating from the web interface, and a corrected note on binary ownership: in `/opt/waymark`, which belongs to `waymark`, the service can replace its binary whoever owns the file. Install it in a root-owned folder if you don't want that.
 
 ## 2.3.0
 
