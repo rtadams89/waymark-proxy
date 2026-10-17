@@ -41,9 +41,22 @@
         </div>
     </div>
 
+    <div class="ui segment" id="haSyncSegment">
+        <h3>Configuration sync</h3>
+        <div class="haGrid">
+            <div class="haLabel">State</div><div id="haSyncState">-</div>
+            <div class="haLabel">Last copy</div><div id="haSyncApplied">-</div>
+            <div class="haLabel">Standby nodes</div><div id="haSyncServed">-</div>
+            <div class="haLabel">Sync listener</div><div id="haSyncListen">-</div>
+        </div>
+        <button class="ui basic small button" id="haSyncNowBtn" style="margin-top: 0.8em;" onclick="haSyncNow(); return false;"><i class="sync icon"></i> Sync now</button>
+        <span class="haHint" id="haSyncNowMsg" style="margin-left: 0.5em;"></span>
+    </div>
+
     <div class="ui segment">
         <h3>Cluster settings</h3>
-        <p class="haHint">The same settings go on every node (enter them on each node for now; syncing between nodes comes next). Each node finds itself in the list by its own address.</p>
+        <p class="haHint">The same settings go on every node; each node finds itself in the list by its own address. To set up a new node, use Copy settings here and Paste settings there once. After that, with configuration sync on, change them on the active node and the standby nodes copy them.</p>
+        <div class="ui yellow message" id="haReadOnlyNote" style="display:none;"><i class="lock icon"></i>This node is a standby with configuration sync on, so its settings are copied from the active node. Changes saved here are replaced the next time the active node's configuration changes, unless you turn configuration sync off on this node (to pause it).</div>
         <div class="ui form" id="haForm">
             <div class="field">
                 <div class="ui toggle checkbox">
@@ -79,6 +92,29 @@
                     </div>
                 </div>
             </div>
+
+            <h4>Configuration sync</h4>
+            <div class="field">
+                <div class="ui toggle checkbox">
+                    <input type="checkbox" id="haSyncEnabled">
+                    <label><b>Copy the active node's configuration to the standby nodes</b><br><span class="haHint">Standby nodes become read-only and follow the active node: proxy rules, certificates and keys, access rules, admin accounts and other settings.</span></label>
+                </div>
+            </div>
+            <div class="two fields">
+                <div class="field">
+                    <label>Cluster key <span class="haHint">(the same on every node; keep it secret)</span></label>
+                    <div class="ui action input">
+                        <input type="password" id="haClusterKey" class="haMono" autocomplete="off" spellcheck="false">
+                        <button class="ui basic icon button" title="Show or hide" onclick="haToggleKey(); return false;"><i class="eye icon"></i></button>
+                        <button class="ui basic button" onclick="haNewKey(); return false;">Generate</button>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Sync port</label>
+                    <input type="number" id="haSyncPort" min="1" max="65535" placeholder="9280">
+                </div>
+            </div>
+            <div class="haHint" style="margin: -0.5em 0 1em 0;">Each node listens on its own address and this TCP port; the nodes must reach each other on it. Generating a new key stops sync until the new key is on every node.</div>
 
             <h4>Nodes</h4>
             <table class="ui very basic compact unstackable table" id="haNodesTable">
@@ -116,6 +152,8 @@
             <div class="item">keepalived uses unicast VRRP between the listed node addresses. If a firewall sits between the nodes, allow IP protocol 112 (VRRP) between them.</div>
             <div class="item">keepalived runs only while high availability is on: turning it off here stops and disables keepalived on this node, and turning it on enables and starts it.</div>
             <div class="item">A node gives up the floating IP when Zoraxy's proxy listener stops answering (checked every 2 seconds; the floating IP moves within about 10 seconds), when Zoraxy stops, or when the machine goes down.</div>
+            <div class="item">Configuration sync copies, from the active node: proxy and stream rules, redirects, access and path rules, SSO settings, certificates and keys, ACME settings and account, admin accounts and the login session key, system settings and these HA settings. Statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions stay per node.</div>
+            <div class="item">A standby checks the active node every 10 seconds. When its configuration changes (and then stays the same for one check), the standby copies it and restarts Zoraxy to load it, which takes a few seconds. All nodes must run the same Zoraxy version.</div>
             <div class="item">Only the active node renews certificates automatically. "Renew now" still works on any node.</div>
             <div class="item">Installer files: <span id="haInstallerLinks2"></span>. Log of each apply: <span class="haMono">journalctl -u zoraxy-ha-apply</span>; keepalived: <span class="haMono">journalctl -u keepalived</span>.</div>
         </div>
@@ -179,6 +217,9 @@
                 routerId: parseInt($("#haRouterId").val()) || 0,
                 password: $("#haPassword").val().trim(),
                 preempt: $("#haPreempt")[0].checked,
+                syncEnabled: $("#haSyncEnabled")[0].checked,
+                syncPort: parseInt($("#haSyncPort").val()) || 0,
+                clusterKey: $("#haClusterKey").val().trim(),
                 nodes: $("#haNodesTable tbody tr").map(function(){
                     return {
                         name: $(this).find(".haNodeName").val().trim(),
@@ -197,6 +238,9 @@
             $("#haRouterId").val(c.routerId || "");
             $("#haPassword").val(c.password || "");
             $("#haPreempt").prop("checked", !!c.preempt);
+            $("#haSyncEnabled").prop("checked", !!c.syncEnabled);
+            $("#haSyncPort").val(c.syncPort || "");
+            $("#haClusterKey").val(c.clusterKey || "");
             $("#haNodesTable tbody").empty();
             (c.nodes || []).forEach(n => $("#haNodesTable tbody").append(nodeRow(n)));
             haMarkSelf();
@@ -247,7 +291,57 @@
             let a = d.lastApply;
             $("#haApplyCell").html(a && a.status ? `${a.status == "ok" ? `<i class="green check circle icon"></i>` : `<i class="red times circle icon"></i>`}${esc(a.message)} <span class="haHint">${ago(a.time)}</span>` : `<span class="haHint">Not applied yet</span>`);
             $("#haPreview").text(d.preview);
+            $("#haReadOnlyNote").toggle(!!d.readOnly);
+            renderSync(d);
         }
+
+        function renderSync(d){
+            let c = d.config, sy = d.sync || {};
+            $("#haSyncSegment").toggle(!!c.enabled);
+            let icons = {"in-sync": "green check circle", "active": "green check circle", "waiting": "blue sync", "restarting": "blue sync", "starting": "blue sync",
+                         "no-active": "orange exclamation triangle", "error": "red times circle", "off": "grey minus circle"};
+            let detail = sy.detail || (c.syncEnabled ? "Starting" : "Configuration sync is off");
+            $("#haSyncState").html(`<i class="${icons[sy.status] || "grey question circle"} icon"></i>${esc(detail)}` + (sy.lastCheck ? ` <span class="haHint">(checked ${ago(sy.lastCheck)})</span>` : ""));
+            let a = sy.applied || {};
+            let applied = a.time ? `Copied from ${esc(a.from)} ${ago(a.time)} <span class="haHint haMono">${esc((a.hash || "").substring(0, 12))}</span>` : `<span class="haHint">Not copied yet</span>`;
+            if (a.error) applied += `<br><i class="red times circle icon"></i>Last attempt failed: ${esc(a.error)}`;
+            $("#haSyncApplied").html(applied);
+            let served = (sy.servedTo || []).map(p => `<b>${esc(p.node)}</b> checked ${ago(p.lastCheck)}` + (p.lastCopy ? `, copied ${ago(p.lastCopy)}` : "")).join("<br>");
+            $("#haSyncServed").html(served || `<span class="haHint">No standby node has checked in since Zoraxy started</span>`);
+            $("#haSyncListen").html(sy.listenErr ? `<i class="red times circle icon"></i>${esc(sy.listenErr)}` :
+                (sy.listen ? `<span class="haMono">${esc(sy.listen)}</span> <span class="haHint">(TLS, cluster key)</span>` : `<span class="haHint">Not listening (sync off or this node not in the list)</span>`));
+            $("#haSyncNowBtn").toggleClass("disabled", !c.syncEnabled);
+        }
+
+        window.haSyncNow = function(){
+            $("#haSyncNowBtn").addClass("loading disabled");
+            $("#haSyncNowMsg").text("");
+            $.cjax({
+                url: "/api/ha/sync/now", method: "POST", timeout: 60000,
+                success: function(d){
+                    $("#haSyncNowBtn").removeClass("loading disabled");
+                    if (d.error != undefined){ $("#haSyncNowMsg").text(d.error); return; }
+                    $("#haSyncNowMsg").text(d.message + (d.restarting ? ". This page reconnects when Zoraxy is back." : ""));
+                    haLoad(false);
+                },
+                error: function(){
+                    $("#haSyncNowBtn").removeClass("loading disabled");
+                    $("#haSyncNowMsg").text("Request failed");
+                }
+            });
+        };
+
+        window.haToggleKey = function(){
+            let f = $("#haClusterKey");
+            f.attr("type", f.attr("type") == "password" ? "text" : "password");
+        };
+
+        window.haNewKey = function(){
+            if ($("#haClusterKey").val().trim() != "" && !confirm("Replace the cluster key? Sync stops until the new key is on every node.")) return;
+            $.get("/api/ha/clusterkey", function(k){
+                if (typeof k == "string"){ $("#haClusterKey").val(k).attr("type", "text"); }
+            });
+        };
 
         window.haLoad = function(fill){
             $.get("/api/ha/status", function(d){
@@ -268,7 +362,7 @@
                 url: "/api/ha/config",
                 method: "POST",
                 data: { config: JSON.stringify(cfg) },
-                timeout: 30000,
+                timeout: 120000, // the server waits up to 75s for keepalived
                 success: function(d){
                     $("#haSaveBtn").removeClass("loading disabled");
                     if (d.error != undefined){

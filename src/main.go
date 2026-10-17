@@ -132,6 +132,7 @@ func main() {
 		csrf.Path("/"),
 		csrf.SameSite(csrf.SameSiteLaxMode),
 	)
+	csrfMiddleware = haWithReadOnly(csrfMiddleware) //Custom fork: settings are read-only on an HA standby
 
 	//Startup all modules, see start.go
 	startupSequence()

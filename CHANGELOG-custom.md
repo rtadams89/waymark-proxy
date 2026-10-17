@@ -9,6 +9,28 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 - New upstream releases are picked up by the "Watch upstream releases" workflow (daily), which opens an issue and starts "Merge upstream release" to prepare a pull request. Merge those pull requests with a merge commit.
 
+## 3.3.5-custom.14
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- High availability, phase 2: configuration sync. Turn on **Copy the active node's configuration to the standby nodes** in the HA cluster settings, generate a cluster key, and use Copy settings / Paste settings once to put the same settings on the other node.
+  - **What is copied** from the active node: proxy and stream rules, redirects, access and path rules, SSO settings, certificates and keys, ACME settings and account, admin accounts and the login session key (so a login keeps working after failover), system settings, and this fork's settings including the HA settings. What stays per node: statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions.
+  - **How:**
+    - A standby checks the other nodes every 10 seconds.
+    - When the active node's configuration has changed and then stayed the same for one check, the standby downloads a snapshot, checks it, and restarts Zoraxy in place (same process) to load it. The snapshot is applied at startup, before anything loads its configuration.
+    - The configuration follows whichever node is active: after a failover, changes made on the new active node are copied to the old one when it returns as standby.
+  - **Security:**
+    - Each node listens on its own address and the sync port (default 9280), using TLS 1.3.
+    - Both sides prove they hold the cluster key with an HMAC tied to that TLS session, so a proof can't be replayed or relayed. Requests from addresses outside the node list are refused.
+    - Snapshots may only contain the files and tables listed above, and are refused if they come from a different Zoraxy version or their cluster settings don't include the receiving node.
+    - Staged and applied snapshot files are readable only by Zoraxy's user.
+  - **Read-only standby:** while sync is on, the standby refuses setting changes and names the active node. Its HA settings stay editable, so sync can be paused on a node. The menu bar shows "Read-only · make changes on <active node>".
+  - **HA page:** a Configuration sync panel shows the sync state, the last copy (when and from which node), which standby nodes are checking in and copying, the listener address, and a **Sync now** button.
+
+**Fixed**
+- HA settings: Save and apply gave up after 30 seconds and reported a failure while the server was still waiting for keepalived (up to 75 seconds).
+
 ## 3.3.5-custom.13
 
 Base: upstream v3.3.5 (`310b0cc`).

@@ -140,6 +140,7 @@ func initHA() {
 			time.Sleep(2 * time.Second)
 		}
 	}()
+	initHASync()
 
 	cfg := haConfig()
 	if cfg.Enabled {
@@ -359,6 +360,8 @@ func HandleHAStatus(w http.ResponseWriter, r *http.Request) {
 		"haDir":          rt.Dir,
 		"installerFiles": hacluster.DeployFileNames,
 		"executable":     haExecutable(),
+		"sync":           haSyncStatus(),
+		"readOnly":       haIsReadOnly(),
 	}
 	js, _ := json.Marshal(resp)
 	utils.SendJSONResponse(w, string(js))
@@ -403,6 +406,7 @@ func HandleHAConfig(w http.ResponseWriter, r *http.Request) {
 	ha.cfg = cfg
 	ha.mu.Unlock()
 	SystemWideLogger.PrintAndLog("ha", "HA settings saved", nil)
+	haSyncReconcileListener()
 
 	resp := map[string]any{"saved": true}
 	if installed, why := haRuntime().Installed(); !installed {

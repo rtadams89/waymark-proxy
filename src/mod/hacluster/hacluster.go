@@ -39,11 +39,20 @@ type Config struct {
 	Password string `json:"password"` // optional VRRP password, up to 8 letters/digits
 	Preempt  bool   `json:"preempt"`  // take the floating IP back when a higher-priority node recovers
 	Nodes    []Node `json:"nodes"`
+
+	// Configuration sync (phase 2): standby nodes pull the active node's
+	// configuration over TLS, authenticated with the cluster key
+	SyncEnabled bool   `json:"syncEnabled"`
+	SyncPort    int    `json:"syncPort"`   // TCP port of each node's sync listener
+	ClusterKey  string `json:"clusterKey"` // 64 hex characters, the same on every node
 }
+
+// DefaultSyncPort is the sync listener's port unless set otherwise.
+const DefaultSyncPort = 9280
 
 // DefaultConfig is the starting point shown in the UI.
 func DefaultConfig() *Config {
-	return &Config{Prefix: 24, RouterID: 51, Nodes: []Node{}}
+	return &Config{Prefix: 24, RouterID: 51, Nodes: []Node{}, SyncPort: DefaultSyncPort}
 }
 
 var (
@@ -85,6 +94,19 @@ func (c *Config) Validate() (*Config, error) {
 	}
 	if !passwordPattern.MatchString(v.Password) {
 		return nil, errors.New("password must be up to 8 letters or digits (VRRP limit)")
+	}
+	if v.SyncPort == 0 {
+		v.SyncPort = DefaultSyncPort
+	}
+	v.ClusterKey = strings.ToLower(strings.TrimSpace(v.ClusterKey))
+	if v.SyncPort < 1 || v.SyncPort > 65535 {
+		return nil, errors.New("sync port must be 1-65535")
+	}
+	if v.SyncEnabled && !clusterKeyPattern.MatchString(v.ClusterKey) {
+		return nil, errors.New("configuration sync needs a cluster key (64 hex characters); use Generate")
+	}
+	if v.ClusterKey != "" && !clusterKeyPattern.MatchString(v.ClusterKey) {
+		return nil, errors.New("cluster key must be 64 hex characters")
 	}
 	if len(v.Nodes) < 2 || len(v.Nodes) > 4 {
 		return nil, errors.New("add 2 to 4 nodes")
