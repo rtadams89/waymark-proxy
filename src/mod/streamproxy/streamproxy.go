@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"imuslab.com/zoraxy/mod/access"
+	"imuslab.com/zoraxy/mod/healthcheck"
 	"imuslab.com/zoraxy/mod/info/logger"
 	"imuslab.com/zoraxy/mod/utils"
 )
@@ -72,6 +73,12 @@ type ProxyRelayInstance struct {
 	EnableLogging        bool                 //Enable logging for ProxyInstance
 	Timeout              int                  //Timeout for connection in sec
 
+	/* Custom fork: upstream pool (pool_custom.go) */
+	Upstreams           []string            //Upstream servers (host:port); ProxyTargetAddr mirrors the first one
+	LoadBalancing       string              //roundrobin (default), leastconn, sourcehash or failover
+	HealthCheck         *healthcheck.Config //Active checks and passive monitoring; nil for none
+	CloseOnUpstreamDown bool                //Close open connections to an upstream when health checks take it out
+
 	/* Internal */
 	tcpStopChan                 chan bool //Stop channel for TCP listener
 	udpStopChan                 chan bool //Stop channel for UDP listener
@@ -79,6 +86,12 @@ type ProxyRelayInstance struct {
 	bToaAccumulatedByteTransfer *int64    //Accumulated byte transfer from B to A
 	udpClientMap                sync.Map  //map storing the UDP client-server connections
 	parent                      *Manager  `json:"-"`
+
+	//Custom fork (pool_custom.go): per-upstream counters, and a lock for
+	//the pool settings while the rule runs
+	pool     *upstreamPool
+	poolOnce sync.Once
+	poolMu   sync.RWMutex
 }
 
 type Options struct {
@@ -87,6 +100,11 @@ type Options struct {
 	AccessController     *access.Controller //Access controller for per-instance access rules
 	ConfigStore          string             //Folder to store the config files, will be created if not exists
 	Logger               *logger.Logger     //Logger for the stream proxy
+
+	//Custom fork (pool_custom.go): passive health monitoring of upstream
+	//connection failures, and a callback after rules change
+	ObserveConnect func(ruleID string, upstreamAddr string, err error)
+	OnChange       func()
 }
 
 type Manager struct {
@@ -97,6 +115,9 @@ type Manager struct {
 	//Realtime Statistics
 	Connections int //currently connected connect counts
 
+	//Custom fork: upstreams health checks took out of load balancing
+	healthMu sync.Mutex
+	offline  map[string]bool
 }
 
 // NewStreamProxy creates a new stream proxy manager with the given options
@@ -213,6 +234,7 @@ func (m *Manager) NewConfig(config *ProxyRelayOptions) string {
 		Name:                        config.Name,
 		ListeningAddress:            config.ListeningAddr,
 		ProxyTargetAddr:             config.ProxyAddr,
+		Upstreams:                   []string{config.ProxyAddr}, //Custom fork: pool_custom.go
 		UseTCP:                      config.UseTCP,
 		UseUDP:                      config.UseUDP,
 		ProxyProtocolVersion:        config.ProxyProtocolVersion,
@@ -228,6 +250,7 @@ func (m *Manager) NewConfig(config *ProxyRelayOptions) string {
 	}
 	m.Configs = append(m.Configs, &thisConfig)
 	m.SaveConfigToDatabase()
+	m.changed() //Custom fork
 	return configUUID
 }
 
@@ -282,6 +305,9 @@ func (m *Manager) EditConfig(newConfig *ProxyRuleUpdateConfig) error {
 	}
 	if newConfig.NewProxyAddr != "" {
 		foundConfig.ProxyTargetAddr = newConfig.NewProxyAddr
+		if len(foundConfig.Upstreams) <= 1 { //Custom fork: a single upstream follows the target address
+			foundConfig.Upstreams = []string{newConfig.NewProxyAddr}
+		}
 	}
 
 	foundConfig.UseTCP = newConfig.UseTCP
@@ -305,6 +331,7 @@ func (m *Manager) EditConfig(newConfig *ProxyRuleUpdateConfig) error {
 	}
 
 	m.SaveConfigToDatabase()
+	m.changed() //Custom fork
 
 	//Check if config is running. If yes, restart it
 	if foundConfig.IsRunning() {
@@ -324,6 +351,7 @@ func (m *Manager) RemoveConfig(configUUID string) error {
 		if config.UUID == configUUID {
 			m.Configs = append(m.Configs[:i], m.Configs[i+1:]...)
 			m.SaveConfigToDatabase()
+			m.changed() //Custom fork
 			return nil
 		}
 	}

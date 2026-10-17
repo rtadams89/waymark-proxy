@@ -1,7 +1,7 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Stream Proxies</h2>
-        <p>Proxy traffic flow on layer 3 via TCP or UDP</p>
+        <p>Forward TCP and UDP traffic to one or more upstream servers, with load balancing and health checks</p>
     </div>
     <div class="ui divider"></div>
     <div class="ui basic segment" style="margin-top: 0;">
@@ -13,7 +13,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Listening Address</th>
-                        <th>Target Address</th>
+                        <th>Upstreams</th>
                         <th>Mode</th>
                         <th>Timeout (s)</th>
                         <th>Enable Logging</th>
@@ -37,6 +37,7 @@
             <div class="field" style="display:none;">
                 <label>UUID</label>
                 <input type="text" name="uuid">
+                <input type="text" name="proxyAddr">
             </div>
             <div class="field">
                 <label>Name</label>
@@ -48,10 +49,92 @@
                 <small>Address to listen on this host. e.g. :25565 or 127.0.0.1:25565. <br>
                     If you are using Docker, you will also need to expose this port to host network.</small>
             </div>
+            <!-- Custom fork: upstream pool and health checks (mod/streamproxy/pool_custom.go) -->
             <div class="field">
-                <label>Proxy Target Address with Port</label>
-                <input type="text" name="proxyAddr" placeholder="">
-                <small>Server address to forward TCP / UDP package. e.g. 192.168.1.100:25565</small>
+                <label>Upstream servers</label>
+                <textarea name="upstreams" rows="3" placeholder="192.168.1.100:25565&#10;192.168.1.101:25565" style="font-family: monospace;"></textarea>
+                <small>One per line, as host:port. With more than one, new connections are spread across the healthy ones.</small>
+            </div>
+            <div class="two fields">
+                <div class="field">
+                    <label>Load balancing</label>
+                    <select name="loadBalancing">
+                        <option value="roundrobin">Round robin</option>
+                        <option value="leastconn">Least connections</option>
+                        <option value="sourcehash">Source IP hash (sticky)</option>
+                        <option value="failover">Failover (first healthy in the list)</option>
+                    </select>
+                    <small id="streamLBHint"></small>
+                </div>
+                <div class="field" style="padding-top: 1.8em;">
+                    <div class="ui toggle checkbox">
+                        <input type="checkbox" tabindex="0" name="closeOnDown" class="hidden">
+                        <label>Close connections to an upstream when it goes down<br>
+                            <small>Off: open connections stay until they end; only new ones avoid the upstream</small>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="ui segment" style="margin-bottom: 1em;">
+                <h4 style="margin-top: 0;"><i class="heartbeat icon"></i>Health checks</h4>
+                <div class="field">
+                    <label>Active check</label>
+                    <select name="hcType">
+                        <option value="none">None</option>
+                        <option value="tcp">TCP connect</option>
+                        <option value="tcpx">TCP: send data and expect a reply</option>
+                        <option value="udp">UDP: send data and expect a reply</option>
+                        <option value="icmp">Ping (ICMP)</option>
+                    </select>
+                    <small id="streamHCTypeHint"></small>
+                </div>
+                <div id="streamHCPayload" style="display: none;">
+                    <div class="three fields">
+                        <div class="seven wide field">
+                            <label>Send</label>
+                            <input type="text" name="hcSend" style="font-family: monospace;" placeholder="PING\r\n">
+                        </div>
+                        <div class="six wide field">
+                            <label>Reply must contain</label>
+                            <input type="text" name="hcExpect" style="font-family: monospace;" placeholder="PONG">
+                        </div>
+                        <div class="three wide field">
+                            <label>Format</label>
+                            <select name="hcFormat">
+                                <option value="text">Text</option>
+                                <option value="hex">Hex</option>
+                            </select>
+                        </div>
+                    </div>
+                    <small id="streamHCPayloadHint" style="display: block; margin: -0.6em 0 1em 0; opacity: 0.8;"></small>
+                </div>
+                <div id="streamHCTiming" style="display: none;">
+                    <div class="four fields">
+                        <div class="field"><label>Every (s)</label><input type="number" name="hcInterval" min="2" max="3600" value="10"></div>
+                        <div class="field"><label>Timeout (s)</label><input type="number" name="hcTimeout" min="1" max="60" value="3"></div>
+                        <div class="field"><label>Disable after</label><input type="number" name="hcFall" min="1" max="20" value="3"><small>failed checks</small></div>
+                        <div class="field"><label>Re-enable after</label><input type="number" name="hcRise" min="1" max="20" value="2"><small>passed checks</small></div>
+                    </div>
+                </div>
+                <div class="field">
+                    <div class="ui toggle checkbox">
+                        <input type="checkbox" tabindex="0" name="hcPassive" class="hidden">
+                        <label>Passive monitoring<br>
+                            <small>Take an upstream out after repeated failed connections from real traffic (for UDP: when the upstream reports its port as unreachable)</small>
+                        </label>
+                    </div>
+                </div>
+                <div id="streamHCPassive" style="display: none;">
+                    <div class="inline fields">
+                        <div class="field"><div class="ui checkbox"><input type="checkbox" name="hcCountConn" checked><label>Connection failures</label></div></div>
+                        <div class="field"><div class="ui checkbox"><input type="checkbox" name="hcCountTimeout" checked><label>Timeouts</label></div></div>
+                    </div>
+                    <div class="three fields">
+                        <div class="field"><label>Disable after</label><input type="number" name="hcThreshold" min="1" max="1000" value="5"><small>failures ...</small></div>
+                        <div class="field"><label>Within (s)</label><input type="number" name="hcWindow" min="1" max="3600" value="30"></div>
+                        <div class="field"><label>Retry after (s)</label><input type="number" name="hcRecovery" min="5" max="3600" value="30"><small>when there is no active check</small></div>
+                    </div>
+                </div>
             </div>
             <div class="field">
                 <label>Timeout (s)</label>
@@ -148,7 +231,7 @@
                         } else if (rule.WhitelistEnabled && !rule.BlacklistEnabled) {
                             icon = `<i class="ui green filter icon"></i>`;
                         }
-                        $("#streamProxyAccessRuleList").append(`<div class="item" data-value="${rule.ID}">${icon} ${rule.Name}</div>`);
+                        $("#streamProxyAccessRuleList").append(`<div class="item" data-value="${htmlEscape(rule.ID)}">${icon} ${htmlEscape(rule.Name)}</div>`);
                     });
                     $("#streamProxyAccessRuleDropdown").dropdown();
                     if (callback != undefined) { callback(); }
@@ -171,6 +254,11 @@
             if (!formValid){
                 return;
             }
+            let pool = readStreamPool();
+            if (typeof pool == "string"){
+                msgbox(pool, false, 6000);
+                return;
+            }
 
             // Send the AJAX POST request
             $.cjax({
@@ -190,11 +278,18 @@
                 success: function(response) {
                     if (response.error) {
                         msgbox(response.error, false, 6000);
-                    }else{
-                        msgbox("Config Added");
+                        return;
                     }
-                    clearStreamProxyAddEditForm();
-                    initProxyConfigList();
+                    // response is the new rule's UUID: save its upstreams and health checks
+                    saveStreamPool(response, pool, function(err){
+                        if (err){
+                            msgbox("Rule created, but its upstreams and health checks were not saved: " + err, false, 8000);
+                        }else{
+                            msgbox("Config Added");
+                            clearStreamProxyAddEditForm();
+                        }
+                        initProxyConfigList();
+                    });
                 },
                 error: function() {
                     msgbox('An error occurred while processing the request', false);
@@ -203,7 +298,8 @@
         });
             
         function clearStreamProxyAddEditForm(){
-            $('#streamProxyForm').find('input:not([type=checkbox]), select').val('');
+            $('#streamProxyForm').find('input:not([type=checkbox]), select, textarea').val('');
+            fillStreamPool({});
             $('#streamProxyForm select[name=proxyProtocolVersion]').dropdown('set selected', '0');
             $("#streamProxyForm input[name=timeout]").val(10);
             $("#streamProxyForm .toggle.checkbox").checkbox("set unchecked");
@@ -291,10 +387,10 @@
 
                     var row = $(`<tr class="streamproxConfig ${runningClass}" uuid="${config.UUID}" config="${thisConfig}">`);
                     row.append($('<td>').html(`
-                        ${config.Name}
+                        ${htmlEscape(config.Name)}
                         <div class="statusText">${runningLogo}</div>`));
                     row.append($('<td>').text(config.ListeningAddress));
-                    row.append($('<td>').text(config.ProxyTargetAddr));
+                    row.append($('<td class="streamUpstreamsCell">').html(streamUpstreamsCell(config)));
                     row.append($('<td>').text(modeText));
                     row.append($('<td>').text(config.Timeout));
                     row.append($('<td>').html(config.EnableLogging ? 
@@ -378,6 +474,7 @@
                         field.val(value);  
                     }
                 });
+                fillStreamPool(targetConfig);
                 editingStreamProxyConfigUUID = configUUID;
             }else{
                 msgbox("Unable to load target config", false);
@@ -393,11 +490,17 @@
             $(btn).addClass("disabled");
 
             var formValid = validateTCPProxyConfig(form);
+            let pool = readStreamPool();
+            if (typeof pool == "string"){
+                msgbox(pool, false, 6000);
+                formValid = false;
+            }
             if (!formValid){
                 $(btn).html(originalButtonHTML);
                 $(btn).removeClass("disabled");
                 return;
             }
+            let editUUID = $("#streamProxyForm input[name=uuid]").val().trim();
 
             // Send the AJAX POST request
             $.cjax({
@@ -417,17 +520,25 @@
                     accessRuleUUID: $("#streamProxyForm input[name=accessRuleUUID]").val().trim(),
                 },
                 success: function(response) {
-                    $(btn).html(originalButtonHTML);
-                    $(btn).removeClass("disabled");
                     if (response.error) {
+                        $(btn).html(originalButtonHTML);
+                        $(btn).removeClass("disabled");
                         msgbox(response.error, false, 6000);
-                    }else{
-                        msgbox("Config Updated");
+                        return;
                     }
-                    initProxyConfigList();
-                    cancelStreamProxyEdit();
-                    clearStreamProxyAddEditForm();
-                    
+                    saveStreamPool(editUUID, pool, function(err){
+                        $(btn).html(originalButtonHTML);
+                        $(btn).removeClass("disabled");
+                        if (err){
+                            msgbox("Rule updated, but its upstreams and health checks were not saved: " + err, false, 8000);
+                            initProxyConfigList();
+                            return;
+                        }
+                        msgbox("Config Updated");
+                        initProxyConfigList();
+                        cancelStreamProxyEdit();
+                        clearStreamProxyAddEditForm();
+                    });
                 },
                 error: function() {
                     $(btn).html(originalButtonHTML);
@@ -489,12 +600,183 @@
             });
         }
 
+        /*
+            Custom fork: upstream pool and health checks (mod/streamproxy/pool_custom.go)
+        */
+        let streamUpstreamState = {};   // uuid -> [{address, online, active, total, failed}]
+        let streamHealthReasons = {};   // "stream:uuid|addr" -> reason it is down
+
+        const STREAM_LB_HINTS = {
+            roundrobin: "Each new connection or UDP client goes to the next healthy upstream.",
+            leastconn: "To the healthy upstream with the fewest open connections (UDP: client sessions).",
+            sourcehash: "A client IP address keeps going to the same upstream while the healthy set stays the same.",
+            failover: "Always the first healthy upstream in the list; the others are backups, in order."
+        };
+        const STREAM_HC_HINTS = {
+            none: "Upstreams are only taken out by passive monitoring, if on.",
+            tcp: "Healthy when a TCP connection opens.",
+            tcpx: "Connects, sends the data (if any), and is healthy when the reply contains the expected text. Leave Send empty to wait for a banner (e.g. SMTP's 220).",
+            udp: "Sends the data and is healthy when a reply arrives that contains the expected text (any reply if left empty).",
+            icmp: "Healthy when the upstream host answers ping. Says nothing about the service itself."
+        };
+
+        function streamHCSync(){
+            let f = $("#streamProxyForm");
+            let tcp = f.find("input[name=useTCP]")[0].checked, udp = f.find("input[name=useUDP]")[0].checked;
+            let sel = f.find("select[name=hcType]");
+            sel.find("option[value=tcp], option[value=tcpx]").prop("disabled", !tcp);
+            sel.find("option[value=udp]").prop("disabled", !udp);
+            if (sel.find("option:selected").prop("disabled")) sel.val("none");
+            let t = sel.val();
+            $("#streamHCTypeHint").text(STREAM_HC_HINTS[t] || "");
+            $("#streamHCPayload").toggle(t == "tcpx" || t == "udp");
+            $("#streamHCTiming").toggle(t != "none");
+            $("#streamHCPayloadHint").text(f.find("select[name=hcFormat]").val() == "hex"
+                ? "Hex bytes, e.g. 00 01 ff (spaces optional)."
+                : "Text; use \\r \\n \\t \\0 \\\\ and \\xHH for special bytes.");
+            $("#streamHCPassive").toggle(f.find("input[name=hcPassive]")[0].checked);
+            $("#streamLBHint").text(STREAM_LB_HINTS[f.find("select[name=loadBalancing]").val()] || "");
+        }
+        $("#streamProxyForm").on("change", "select[name=hcType], select[name=hcFormat], select[name=loadBalancing], input[name=useTCP], input[name=useUDP], input[name=hcPassive]", streamHCSync);
+
+        // fillStreamPool puts a rule's pool settings (or the defaults) into the form
+        function fillStreamPool(config){
+            let f = $("#streamProxyForm");
+            let ups = (config.Upstreams && config.Upstreams.length) ? config.Upstreams : (config.ProxyTargetAddr ? [config.ProxyTargetAddr] : []);
+            f.find("textarea[name=upstreams]").val(ups.join("\n"));
+            f.find("select[name=loadBalancing]").val(config.LoadBalancing || "roundrobin");
+            f.find("input[name=closeOnDown]").parent().checkbox(config.CloseOnUpstreamDown ? "set checked" : "set unchecked");
+            let hc = config.HealthCheck || {};
+            let type = "none";
+            if (hc.activeEnabled){
+                type = hc.type == "tcp" ? ((hc.send || hc.expect) ? "tcpx" : "tcp") : hc.type;
+            }
+            f.find("select[name=hcType]").val(type);
+            f.find("input[name=hcSend]").val(hc.send || "");
+            f.find("input[name=hcExpect]").val(hc.expect || "");
+            f.find("select[name=hcFormat]").val(hc.payloadFormat || "text");
+            f.find("input[name=hcInterval]").val(hc.intervalSeconds || 10);
+            f.find("input[name=hcTimeout]").val(hc.timeoutSeconds || 3);
+            f.find("input[name=hcFall]").val(hc.fall || 3);
+            f.find("input[name=hcRise]").val(hc.rise || 2);
+            f.find("input[name=hcPassive]").parent().checkbox(hc.passiveEnabled ? "set checked" : "set unchecked");
+            f.find("input[name=hcCountConn]").prop("checked", hc.countConnectionErrors !== false);
+            f.find("input[name=hcCountTimeout]").prop("checked", hc.countTimeouts !== false);
+            f.find("input[name=hcThreshold]").val(hc.threshold || 5);
+            f.find("input[name=hcWindow]").val(hc.windowSeconds || 30);
+            f.find("input[name=hcRecovery]").val(hc.passiveRecoverySeconds || 30);
+            streamHCSync();
+        }
+
+        // readStreamPool returns the pool settings from the form, or an error message
+        function readStreamPool(){
+            let f = $("#streamProxyForm");
+            let ups = f.find("textarea[name=upstreams]").val().split(/[\n,]+/).map(x => x.trim()).filter(x => x != "");
+            if (ups.length == 0) return "Add at least one upstream server (host:port)";
+            f.find("input[name=proxyAddr]").val(ups[0]);
+            let type = f.find("select[name=hcType]").val();
+            let passive = f.find("input[name=hcPassive]")[0].checked;
+            let num = name => parseInt(f.find(`input[name=${name}]`).val(), 10);
+            let hc = null;
+            if (type != "none" || passive){
+                let useTCP = f.find("input[name=useTCP]")[0].checked;
+                hc = {
+                    activeEnabled: type != "none",
+                    // a check type is always stored; with active checks off it is not used
+                    type: type == "none" ? (useTCP ? "tcp" : "icmp") : (type == "tcpx" ? "tcp" : type),
+                    send: (type == "tcpx" || type == "udp") ? f.find("input[name=hcSend]").val() : "",
+                    expect: (type == "tcpx" || type == "udp") ? f.find("input[name=hcExpect]").val() : "",
+                    payloadFormat: f.find("select[name=hcFormat]").val(),
+                    intervalSeconds: num("hcInterval"), timeoutSeconds: num("hcTimeout"),
+                    rise: num("hcRise"), fall: num("hcFall"),
+                    passiveEnabled: passive,
+                    countServerErrors: false,
+                    countConnectionErrors: f.find("input[name=hcCountConn]")[0].checked,
+                    countTimeouts: f.find("input[name=hcCountTimeout]")[0].checked,
+                    threshold: num("hcThreshold"), windowSeconds: num("hcWindow"), passiveRecoverySeconds: num("hcRecovery"),
+                    path: "/", expectedStatus: "200-399"
+                };
+                if (hc.type == "tcp" && type == "tcpx" && hc.send == "" && hc.expect == ""){
+                    return "Enter data to send, a reply to expect, or both (or choose TCP connect)";
+                }
+            }
+            return {
+                upstreams: ups,
+                loadBalancing: f.find("select[name=loadBalancing]").val(),
+                healthCheck: hc,
+                closeOnUpstreamDown: f.find("input[name=closeOnDown]")[0].checked
+            };
+        }
+
+        function saveStreamPool(uuid, pool, done){
+            $.cjax({
+                url: "/api/streamprox/config/pool", method: "POST",
+                data: { uuid: uuid, pool: JSON.stringify(pool) },
+                success: function(d){ done(d.error != undefined ? d.error : null); },
+                error: function(){ done("request failed"); }
+            });
+        }
+
+        const STREAM_LB_NAMES = {roundrobin: "Round robin", leastconn: "Least connections", sourcehash: "Source IP hash", failover: "Failover"};
+
+        // streamUpstreamsCell lists a rule's upstreams with their health
+        function streamUpstreamsCell(config){
+            let ups = (config.Upstreams && config.Upstreams.length) ? config.Upstreams : (config.ProxyTargetAddr ? [config.ProxyTargetAddr] : []);
+            let state = streamUpstreamState[config.UUID] || [];
+            let hc = config.HealthCheck;
+            let checked = hc && (hc.activeEnabled || hc.passiveEnabled);
+            let rows = ups.map(addr => {
+                let st = state.find(s => s.address == addr) || {};
+                let icon, title;
+                if (!config.Running){
+                    icon = `<i class="grey circle outline icon"></i>`; title = "Rule stopped";
+                }else if (st.online === false){
+                    let why = streamHealthReasons["stream:" + config.UUID.toLowerCase() + "|" + addr] || "taken out by health checks";
+                    icon = `<i class="red heartbeat icon"></i>`; title = "Down: " + why;
+                }else if (checked){
+                    icon = `<i class="green heart icon"></i>`; title = "Healthy";
+                }else{
+                    icon = `<i class="grey circle icon"></i>`; title = "Not health checked";
+                }
+                let conns = st.active ? ` <span style="opacity: 0.7;">· ${st.active} open</span>` : "";
+                return `<div title="${htmlEscape(title)}" style="white-space: nowrap;">${icon}<span style="font-family: monospace;">${htmlEscape(addr)}</span>${conns}</div>`;
+            }).join("");
+            let summary = [];
+            if (ups.length > 1) summary.push(STREAM_LB_NAMES[config.LoadBalancing] || "Round robin");
+            if (hc && hc.activeEnabled){
+                summary.push(hc.type == "icmp" ? "ping" : (hc.type == "udp" ? "UDP check" : ((hc.send || hc.expect) ? "TCP send/expect" : "TCP check")));
+            }
+            if (hc && hc.passiveEnabled) summary.push("passive");
+            return rows + (summary.length ? `<div style="font-size: 0.85em; opacity: 0.7; margin-top: 0.2em;">${htmlEscape(summary.join(" · "))}</div>` : "");
+        }
+
+        // Refresh the upstream health shown in the list
+        function refreshStreamUpstreamHealth(){
+            $.get("/api/streamprox/config/upstreams", function(state){
+                if (!state || state.error != undefined) return;
+                streamUpstreamState = state;
+                $.get("/api/proxy/healthcheck/status", function(statuses){
+                    streamHealthReasons = {};
+                    (Array.isArray(statuses) ? statuses : []).forEach(s => {
+                        if (!s.enabled) streamHealthReasons[s.rule + "|" + s.upstream] = s.reason;
+                    });
+                    $(".streamproxConfig").each(function(){
+                        let cfg = JSON.parse(decodeURIComponent($(this).attr("config")));
+                        $(this).find(".streamUpstreamsCell").html(streamUpstreamsCell(cfg));
+                    });
+                });
+            });
+        }
+        setInterval(function(){ if ($("#streamproxy").is(":visible")) refreshStreamUpstreamHealth(); }, 10000);
+        fillStreamPool({});
+
         function initProxyConfigList(){
             $.ajax({
                 type: 'GET',
                 url: '/api/streamprox/config/list',
                 success: function(response) {
                     renderProxyConfigs(response);
+                    refreshStreamUpstreamHealth();
                 },
                 error: function() {
                     msgbox('Unable to load proxy configs', false);

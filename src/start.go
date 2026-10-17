@@ -316,6 +316,8 @@ func startupSequence() {
 		AccessController:     accessController,
 		ConfigStore:          CONF_STREAM_PROXY,
 		Logger:               SystemWideLogger,
+		ObserveConnect:       observeStreamConnect,       //Custom fork: passive health monitoring (streampool_custom.go)
+		OnChange:             UpdateUptimeMonitorTargets, //Custom fork: health checks follow stream rule changes
 	})
 	if err != nil {
 		panic(err)
@@ -451,6 +453,7 @@ func ShutdownSeq() {
 		dashboardBandwidth.Close()
 	}
 	saveAssetCacheDaily() //Custom fork: keep today's cache stats across restarts
+	stopTrafficCapture()  //Custom fork: finish a running capture's file (capture_custom.go)
 
 	if mdnsTickerStop != nil {
 		SystemWideLogger.Println("Stopping mDNS Discoverer (might take a few minutes)")

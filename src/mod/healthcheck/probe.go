@@ -1,6 +1,7 @@
 package healthcheck
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -52,7 +53,13 @@ func DefaultProber(ctx context.Context, up Upstream, cfg *Config) ProbeResult {
 	case CheckHTTPGet, CheckHTTPHead:
 		res = probeHTTP(ctx, up, cfg, timeout)
 	case CheckTCP:
-		res = probeTCP(ctx, up, timeout)
+		if cfg.Send != "" || cfg.Expect != "" {
+			res = probeTCPExchange(ctx, up, cfg, timeout)
+		} else {
+			res = probeTCP(ctx, up, timeout)
+		}
+	case CheckUDP:
+		res = probeUDP(ctx, up, cfg, timeout)
 	case CheckICMP:
 		res = probeICMP(ctx, up, timeout)
 	default:
@@ -144,6 +151,98 @@ func probeTCP(ctx context.Context, up Upstream, timeout time.Duration) ProbeResu
 	}
 	conn.Close()
 	return ProbeResult{OK: true, Detail: "connected", Latency: latency}
+}
+
+// probeTCPExchange connects, sends cfg.Send (if any) and waits until the
+// reply contains cfg.Expect (if any). Custom fork: stream proxy checks.
+func probeTCPExchange(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
+	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat) // validated on save
+	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)
+	d := net.Dialer{Timeout: timeout}
+	start := time.Now()
+	conn, err := d.DialContext(ctx, "tcp", up.Addr)
+	if err != nil {
+		return ProbeResult{Detail: describeError(err, timeout), Latency: time.Since(start)}
+	}
+	defer conn.Close()
+	if deadline, ok := ctx.Deadline(); ok {
+		conn.SetDeadline(deadline)
+	}
+	if len(send) > 0 {
+		if _, err := conn.Write(send); err != nil {
+			return ProbeResult{Detail: "sending failed: " + describeError(err, timeout), Latency: time.Since(start)}
+		}
+	}
+	if len(expect) == 0 {
+		return ProbeResult{OK: true, Detail: "connected, data sent", Latency: time.Since(start)}
+	}
+	return readUntil(conn, expect, timeout, start)
+}
+
+// probeUDP sends cfg.Send and waits for a reply containing cfg.Expect (any
+// reply when Expect is empty). Custom fork: stream proxy checks.
+func probeUDP(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
+	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat)
+	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)
+	d := net.Dialer{Timeout: timeout}
+	start := time.Now()
+	conn, err := d.DialContext(ctx, "udp", up.Addr)
+	if err != nil {
+		return ProbeResult{Detail: describeError(err, timeout), Latency: time.Since(start)}
+	}
+	defer conn.Close()
+	if deadline, ok := ctx.Deadline(); ok {
+		conn.SetDeadline(deadline)
+	}
+	if _, err := conn.Write(send); err != nil {
+		return ProbeResult{Detail: "sending failed: " + describeError(err, timeout), Latency: time.Since(start)}
+	}
+	buf := make([]byte, 65535)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			if errors.Is(err, syscall.ECONNREFUSED) {
+				return ProbeResult{Detail: "port unreachable (nothing listening)", Latency: time.Since(start)}
+			}
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				return ProbeResult{Detail: fmt.Sprintf("no reply within %s", timeout), Latency: time.Since(start)}
+			}
+			return ProbeResult{Detail: describeError(err, timeout), Latency: time.Since(start)}
+		}
+		if len(expect) == 0 {
+			return ProbeResult{OK: true, Detail: fmt.Sprintf("reply of %d bytes", n), Latency: time.Since(start)}
+		}
+		if bytes.Contains(buf[:n], expect) {
+			return ProbeResult{OK: true, Detail: "reply contains the expected data", Latency: time.Since(start)}
+		}
+		// Another datagram may still bring the expected reply
+	}
+}
+
+// readUntil reads from conn until the data read contains expect, the
+// deadline passes, the peer closes, or replyReadLimit bytes arrive.
+func readUntil(conn net.Conn, expect []byte, timeout time.Duration, start time.Time) ProbeResult {
+	got := make([]byte, 0, 512)
+	buf := make([]byte, 1024)
+	for len(got) < replyReadLimit {
+		n, err := conn.Read(buf)
+		got = append(got, buf[:n]...)
+		if bytes.Contains(got, expect) {
+			return ProbeResult{OK: true, Detail: "reply contains the expected data", Latency: time.Since(start)}
+		}
+		if err != nil {
+			var netErr net.Error
+			switch {
+			case errors.As(err, &netErr) && netErr.Timeout():
+				return ProbeResult{Detail: fmt.Sprintf("expected reply not received within %s (got %d bytes)", timeout, len(got)), Latency: time.Since(start)}
+			case errors.Is(err, io.EOF):
+				return ProbeResult{Detail: fmt.Sprintf("connection closed before the expected reply (got %d bytes)", len(got)), Latency: time.Since(start)}
+			}
+			return ProbeResult{Detail: describeError(err, timeout), Latency: time.Since(start)}
+		}
+	}
+	return ProbeResult{Detail: fmt.Sprintf("expected reply not found in the first %d bytes", replyReadLimit), Latency: time.Since(start)}
 }
 
 // withDefaultPort adds :80 or :443 when the upstream address has no port.

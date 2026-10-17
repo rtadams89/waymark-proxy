@@ -78,6 +78,7 @@ func (c *ProxyRelayInstance) Start() error {
 	//Successfully spawned off the proxy routine
 	c.Running = true
 	c.parent.SaveConfigToDatabase()
+	c.parent.changed() //Custom fork: health checks follow running rules
 	return nil
 }
 
@@ -116,4 +117,5 @@ func (c *ProxyRelayInstance) Stop() {
 
 	//Update the running status
 	c.parent.SaveConfigToDatabase()
+	c.parent.changed() //Custom fork
 }

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"imuslab.com/zoraxy/mod/capture"
 )
 
 /*
@@ -31,6 +33,12 @@ import (
 */
 
 func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	//Custom fork: traffic capture records this request if a capture covers it (mod/capture)
+	if cw, cr, done := capture.Begin(w, r); done != nil {
+		defer done()
+		w, r = cw, cr
+	}
+
 	/*
 		Special Routing Rules, bypass most of the limitations
 	*/

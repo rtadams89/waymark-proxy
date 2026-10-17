@@ -572,8 +572,8 @@ func haReadOnlyMessage() string {
 
 // haReadOnly wraps the admin UI: on a read-only standby, requests that
 // change settings are refused. Signing in and out, the HA settings and
-// actions (to pause sync on this node, switch over) and updating this node
-// (per node, not configuration) still work.
+// actions (to pause sync on this node, switch over), updating this node and
+// traffic captures (per node, not configuration) still work.
 func haReadOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -582,7 +582,7 @@ func haReadOnly(next http.Handler) http.Handler {
 			return
 		}
 		p := r.URL.Path
-		if !strings.HasPrefix(p, "/api/") || p == "/api/auth/login" || p == "/api/auth/logout" || strings.HasPrefix(p, "/api/ha/") || strings.HasPrefix(p, "/api/update/") {
+		if !strings.HasPrefix(p, "/api/") || p == "/api/auth/login" || p == "/api/auth/logout" || strings.HasPrefix(p, "/api/ha/") || strings.HasPrefix(p, "/api/update/") || strings.HasPrefix(p, "/api/capture/") {
 			next.ServeHTTP(w, r)
 			return
 		}

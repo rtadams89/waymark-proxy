@@ -112,6 +112,7 @@ func healthCheckUptimeTargets(dp *dynamicproxy.Router) []*uptime.Target {
 			fed[uptimeFeedKey{ruleID, origin.OriginIpOrDomain}] = uptimeFeedTarget{id: id, name: id, url: t.URL, protocol: protocol}
 		}
 	}
+	targets = append(targets, streamUptimeTargets(fed)...) // streampool_custom.go
 	healthUptimeFeed.setTargets(fed)
 	return targets
 }

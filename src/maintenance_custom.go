@@ -173,8 +173,14 @@ func HandleUpstreamHealthSummary(w http.ResponseWriter, r *http.Request) {
 	if healthCheckManager != nil {
 		statuses = healthCheckManager.Statuses("")
 	}
+	for i := range statuses {
+		if strings.HasPrefix(statuses[i].RuleID, "stream:") {
+			statuses[i].RuleID = streamRuleDisplay(statuses[i].RuleID) // stream rules by name
+			statuses[i].Label = ""
+		}
+	}
 	maintenance := []maintenanceEntry{}
-	checkedRules := 0
+	checkedRules := countStreamCheckedRules()
 	if dynamicProxyRouter != nil {
 		for _, ep := range dynamicProxyRouter.GetProxyEndpointsAsMap() {
 			if ep.Disabled {

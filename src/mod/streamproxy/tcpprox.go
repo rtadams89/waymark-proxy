@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	proxyproto "github.com/pires/go-proxyproto"
@@ -33,16 +34,14 @@ func isValidPort(port string) bool {
 }
 
 func (c *ProxyRelayInstance) connCopy(conn1 net.Conn, conn2 net.Conn, wg *sync.WaitGroup, accumulator *int64) {
-	n, err := io.Copy(conn1, conn2)
-	if err != nil {
-		return
-	}
-	*accumulator += n //Add to accumulator
+	//Custom fork: always finish (an error used to skip wg.Done, so forward
+	//never returned) and close both sides, so the other copy ends too
+	defer wg.Done()
+	n, _ := io.Copy(conn1, conn2)
+	atomic.AddInt64(accumulator, n) //Add to accumulator
 	conn1.Close()
+	conn2.Close()
 	c.LogMsg("[←] close the connect at local:["+conn1.LocalAddr().String()+"] and remote:["+conn1.RemoteAddr().String()+"]", nil)
-	//conn2.Close()
-	//c.LogMsg("[←] close the connect at local:["+conn2.LocalAddr().String()+"] and remote:["+conn2.RemoteAddr().String()+"]", nil)
-	wg.Done()
 }
 
 func WriteProxyProtocolHeader(dst net.Conn, src net.Conn, version ProxyProtocolVersion) error {
@@ -160,17 +159,17 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 		}
 
 		go func(targetAddress string) {
-			c.LogMsg("[+] start connect host:["+targetAddress+"]", nil)
-			target, err := net.Dial("tcp", targetAddress)
+			//Custom fork: pick an upstream from the pool (pool_custom.go)
+			target, targetAddress, err := c.dialUpstream(conn)
 			if err != nil {
-				// temporarily unavailable, don't use fatal.
-				c.LogMsg("[x] connect target address ["+targetAddress+"] failed. retry in "+strconv.Itoa(c.Timeout)+" seconds.", nil)
+				c.LogMsg("[x] no upstream for client ["+conn.RemoteAddr().String()+"]: "+err.Error(), nil)
 				conn.Close()
-				c.LogMsg("[←] close the connect at local:["+conn.LocalAddr().String()+"] and remote:["+conn.RemoteAddr().String()+"]", nil)
-				time.Sleep(time.Duration(c.Timeout) * time.Second)
 				return
 			}
 			c.LogMsg("[→] connect target address ["+targetAddress+"] success.", nil)
+			release := c.track(targetAddress, target)
+			defer release()
+			conn, target = c.captureTCP(conn, target, targetAddress) //Custom fork: traffic capture (capture_custom.go)
 
 			if c.ProxyProtocolVersion != ProxyProtocolDisabled {
 				c.LogMsg("[+] write proxy protocol header to target address ["+targetAddress+"]", nil)

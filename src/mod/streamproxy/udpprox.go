@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	proxyproto "github.com/pires/go-proxyproto"
@@ -24,7 +25,16 @@ type udpClientServerConn struct {
 	ClientAddr *net.UDPAddr  // Address of the client
 	ServerConn *net.UDPConn  // UDP connection to server
 	timeout    time.Duration // Idle timeout for this session; 0 disables expiry
+
+	// Custom fork: upstream pool and capture (pool_custom.go, capture_custom.go)
+	upstream string       // upstream address this session uses
+	release  func()       // stops counting the session
+	capture  *udpCapture  // non-nil while the session is being captured
+	listener *net.UDPAddr // the address the client sent to
 }
+
+// Close ends the session (used by CloseOnUpstreamDown).
+func (u *udpClientServerConn) Close() error { return u.ServerConn.Close() }
 
 // udpIdleTimeout returns the timeout value of this rule
 func (c *ProxyRelayInstance) udpIdleTimeout() time.Duration {
@@ -61,10 +71,9 @@ func initUDPConnections(listenAddr string, targetAddress string) (*net.UDPConn, 
 
 	log.Println("[UDP] Proxy listening on " + listenAddr)
 
-	outboundConn, err := net.ResolveUDPAddr("udp", targetAddress)
-	if err != nil {
-		return nil, nil, err
-	}
+	// Custom fork: upstreams are resolved per session (pool_custom.go), so a
+	// name that does not resolve right now does not stop the listener
+	outboundConn, _ := net.ResolveUDPAddr("udp", targetAddress)
 
 	return inboundConn, outboundConn, nil
 }
@@ -76,6 +85,9 @@ func (c *ProxyRelayInstance) RunUDPConnectionRelay(conn *udpClientServerConn, li
 	saddr := conn.ClientAddr.String()
 	defer func() {
 		conn.ServerConn.Close()
+		if conn.release != nil {
+			conn.release()
+		}
 		// Only delete if the map still points to *this* connection so we never
 		// clobber a freshly recreated session for the same client address.
 		c.udpClientMap.CompareAndDelete(saddr, conn)
@@ -101,9 +113,14 @@ func (c *ProxyRelayInstance) RunUDPConnectionRelay(conn *udpClientServerConn, li
 				return
 			}
 
+			if errors.Is(err, syscall.ECONNREFUSED) && conn.upstream != "" {
+				// Custom fork: ICMP port unreachable from the upstream counts for passive monitoring
+				c.reportConnectFailure(conn.upstream, err)
+			}
 			c.LogMsg("[UDP] Read error for client "+saddr+", closing session: "+err.Error(), nil)
 			return
 		}
+		conn.captureFromUpstream(buffer[0:n]) //Custom fork: traffic capture
 		// Relay it to client
 		_, err = lisenter.WriteToUDP(buffer[0:n], conn.ClientAddr)
 		if err != nil {
@@ -156,7 +173,7 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 		address1 = "0.0.0.0" + address1
 	}
 
-	lisener, targetAddr, err := initUDPConnections(address1, address2)
+	lisener, _, err := initUDPConnections(address1, address2)
 	if err != nil {
 		return err
 	}
@@ -202,10 +219,13 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 				continue
 			}
 
-			conn = createNewUDPConn(targetAddr, cliaddr, c.udpIdleTimeout())
+			//Custom fork: pick an upstream from the pool (pool_custom.go)
+			conn = c.newUDPSession(cliaddr)
 			if conn == nil {
 				continue
 			}
+			conn.listener, _ = lisener.LocalAddr().(*net.UDPAddr)
+			c.setupUDPCapture(conn) //Custom fork: traffic capture (capture_custom.go)
 			c.udpClientMap.Store(saddr, conn)
 			c.LogMsg("[UDP] Created new connection for client "+saddr, nil)
 			// Fire up routine to manage new connection
@@ -213,7 +233,9 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 
 			// Send Proxy Protocol header if enabled
 			if c.ProxyProtocolVersion == ProxyProtocolV2 {
-				_ = WriteProxyProtocolHeaderUDP(conn.ServerConn, cliaddr, targetAddr)
+				if upAddr, ok := conn.ServerConn.RemoteAddr().(*net.UDPAddr); ok {
+					_ = WriteProxyProtocolHeaderUDP(conn.ServerConn, cliaddr, upAddr)
+				}
 			}
 		} else {
 			c.LogMsg("[UDP] Found connection for client "+saddr, nil)
@@ -226,6 +248,7 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 		}
 
 		// Relay to server
+		conn.captureFromClient(buffer[0:n]) //Custom fork: traffic capture
 		_, err = conn.ServerConn.Write(buffer[0:n])
 		if err != nil {
 			continue

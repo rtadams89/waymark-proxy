@@ -10,6 +10,32 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Settings > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.6.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Added: stream proxy upstream pools and health checks**
+- A stream proxy (TCP and/or UDP) can have up to 32 upstream servers. Existing rules keep their single target as the first upstream.
+- Load balancing: round robin, least connections (open TCP connections or UDP sessions), source IP hash (a client keeps going to the same upstream while the healthy set stays the same), or failover (the first healthy upstream in the list).
+- TCP: if the chosen upstream refuses or doesn't answer, the next one is tried before the client connection is given up. With no healthy upstream, new TCP connections are closed at once and UDP packets are dropped.
+- Health checks, using the same engine and thresholds as HTTP rules: TCP connect, TCP send data and expect a reply (or just a banner), UDP send data and expect a reply, ping, or none. Data can be text (with `\r \n \t \0 \\ \xHH`) or hex. Passive monitoring counts failed connections (and for UDP, an upstream reporting its port unreachable).
+- Option to close open connections and sessions to an upstream when it is taken out (off by default).
+- The Stream Proxies list shows each upstream's health and open connections; stream rules with active checks appear on **Health & Uptime** and in the Status page's upstream health panel.
+- Stream rule settings (in `conf/streamproxy`) are copied to HA standby nodes with the rest of the configuration, as before.
+
+**Added: traffic capture**
+- **Monitoring > Traffic Capture** records proxied traffic on this node as a pcapng file for Wireshark: HTTP and/or stream proxies, filtered by HTTP rule or host name, stream rule and client address; the client side, the upstream side or both.
+- HTTPS is recorded decrypted (Waymark terminates TLS). Each HTTP request and response is written as an HTTP/1.1 conversation on port 80, with a comment giving the real addresses, ports and protocol. Bodies are kept up to a set size per request. **Hide credentials** (on by default) replaces Authorization, Proxy-Authorization, Cookie and Set-Cookie values.
+- Stream proxy TCP connections and UDP sessions are recorded as they pass.
+- One capture at a time, always with a time limit (up to 60 minutes) and a size limit (up to 1 GB). Files are kept in `captures/` (mode 0700), deleted after 24 hours (at most 50 kept), and are not synced or backed up. Start, stop, download and delete are logged with who did it and the filters used. Captures work on read-only HA standby nodes.
+- The packets are reconstructed from what Waymark sent and received, so no privileges are needed; it doesn't show network-level detail such as retransmissions.
+
+**Fixed**
+- Stream proxy TCP: a copy that ended with an error never signalled completion, so the connection's goroutine waited forever and its other side was not closed. Both sides now close when either ends, and byte counters are updated safely.
+
+**Documentation**
+- README: stream proxy pools and health checks, and a **Traffic capture** section.
+
 ## 2.5.0
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

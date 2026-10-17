@@ -256,6 +256,8 @@ func RegisterStreamProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/streamprox/config/stop", streamProxyManager.HandleStopProxy)
 	authRouter.HandleFunc("/api/streamprox/config/delete", streamProxyManager.HandleRemoveProxy)
 	authRouter.HandleFunc("/api/streamprox/config/status", streamProxyManager.HandleGetProxyStatus)
+	authRouter.HandleFunc("/api/streamprox/config/pool", streamProxyManager.HandleSetPool)             //Custom fork: pool_custom.go
+	authRouter.HandleFunc("/api/streamprox/config/upstreams", streamProxyManager.HandleUpstreamStatus) //Custom fork: pool_custom.go
 }
 
 // Register the APIs for mDNS service management functions
@@ -482,6 +484,11 @@ func initAPIs(targetMux *http.ServeMux) {
 	authRouter.HandleFunc("/api/logger/config", handleLoggerConfig)
 	authRouter.HandleFunc("/api/logger/outputs", HandleLogOutputs)          // logoutputs_custom.go
 	authRouter.HandleFunc("/api/logger/outputs/test", HandleLogOutputsTest) // logoutputs_custom.go
+	authRouter.HandleFunc("/api/capture/status", HandleCaptureStatus)       // capture_custom.go
+	authRouter.HandleFunc("/api/capture/start", HandleCaptureStart)         // capture_custom.go
+	authRouter.HandleFunc("/api/capture/stop", HandleCaptureStop)           // capture_custom.go
+	authRouter.HandleFunc("/api/capture/download", HandleCaptureDownload)   // capture_custom.go
+	authRouter.HandleFunc("/api/capture/delete", HandleCaptureDelete)       // capture_custom.go
 
 	//Debug
 	authRouter.HandleFunc("/api/info/pprof", pprof.Index)

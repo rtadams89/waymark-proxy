@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"imuslab.com/zoraxy/mod/capture"
 	"imuslab.com/zoraxy/mod/dynamicproxy/domainsniff"
 	"imuslab.com/zoraxy/mod/dynamicproxy/permissionpolicy"
 )
@@ -445,7 +446,9 @@ func (p *ReverseProxy) ProxyHTTP(rw http.ResponseWriter, req *http.Request, rrr 
 	}
 
 	// Perform the request to the backend server
+	outreq, captured := capture.UpstreamRequest(outreq) //Custom fork: traffic capture (mod/capture)
 	res, err := transport.RoundTrip(outreq)
+	res = captured(res, err)
 	if err != nil {
 		if p.Verbal {
 			p.logf("http: proxy error: %v", err)

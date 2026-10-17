@@ -4,7 +4,8 @@
 // Each proxy rule can enable two independent mechanisms:
 //
 //   - Active checks probe every upstream on an interval (HTTP GET, HTTP HEAD,
-//     TCP connect or ICMP ping). An upstream is disabled after Fall
+//     TCP connect, optionally sending a payload and expecting a reply, UDP
+//     payload and reply, or ICMP ping). An upstream is disabled after Fall
 //     consecutive failures and re-enabled after Rise consecutive successes.
 //   - Passive monitoring watches real proxied traffic. An upstream is disabled
 //     when it produces Threshold counted errors (5xx responses, timeouts,
@@ -28,6 +29,13 @@ const (
 	CheckHTTPHead CheckType = "http-head"
 	CheckTCP      CheckType = "tcp"
 	CheckICMP     CheckType = "icmp"
+	CheckUDP      CheckType = "udp" // custom fork: stream proxies; send Send, expect a reply containing Expect
+)
+
+// Payload formats for Send and Expect.
+const (
+	PayloadText = "text" // with escapes \r \n \t \0 \\ and \xHH
+	PayloadHex  = "hex"  // hex digits, spaces allowed
 )
 
 // Limits keep a typo from turning a health check into a flood or a no-op.
@@ -44,6 +52,8 @@ const (
 	maxPathLength      = 512
 	maxBodyMatchLength = 256
 	bodyReadLimit      = 64 << 10
+	maxPayloadBytes    = 1024
+	replyReadLimit     = 4096
 )
 
 // Config is stored on each proxy rule (ProxyEndpoint.HealthCheck).
@@ -73,6 +83,14 @@ type Config struct {
 
 	// Also check the rule's virtual directory backends with the same settings
 	IncludeVirtualDirs bool `json:"includeVirtualDirs"`
+
+	// TCP and UDP checks (stream proxies): bytes to send after connecting,
+	// and text the reply must contain. TCP: both optional (Expect alone
+	// waits for a banner). UDP: Send is required; an empty Expect accepts
+	// any reply.
+	Send          string `json:"send,omitempty"`
+	Expect        string `json:"expect,omitempty"`
+	PayloadFormat string `json:"payloadFormat,omitempty"` // text (default) or hex
 }
 
 // DefaultConfig is what the UI starts from. Both mechanisms are off until
@@ -115,7 +133,7 @@ func (c *Config) Validate() (*Config, error) {
 	n.BodyContains = strings.TrimSpace(n.BodyContains)
 
 	switch n.Type {
-	case CheckHTTPGet, CheckHTTPHead, CheckTCP, CheckICMP:
+	case CheckHTTPGet, CheckHTTPHead, CheckTCP, CheckICMP, CheckUDP:
 	case "":
 		n.Type = CheckHTTPGet
 	default:
@@ -149,6 +167,28 @@ func (c *Config) Validate() (*Config, error) {
 		if len(n.BodyContains) > maxBodyMatchLength || strings.ContainsAny(n.BodyContains, "\r\n") {
 			return nil, fmt.Errorf("body text to match must be a single line of at most %d characters", maxBodyMatchLength)
 		}
+	}
+
+	if n.Type == CheckTCP || n.Type == CheckUDP {
+		switch n.PayloadFormat {
+		case "":
+			n.PayloadFormat = PayloadText
+		case PayloadText, PayloadHex:
+		default:
+			return nil, errors.New("payload format must be text or hex")
+		}
+		send, err := DecodePayload(n.Send, n.PayloadFormat)
+		if err != nil {
+			return nil, fmt.Errorf("data to send: %v", err)
+		}
+		if _, err := DecodePayload(n.Expect, n.PayloadFormat); err != nil {
+			return nil, fmt.Errorf("expected reply: %v", err)
+		}
+		if n.Type == CheckUDP && len(send) == 0 {
+			return nil, errors.New("a UDP check needs data to send (UDP has no connection to test)")
+		}
+	} else {
+		n.Send, n.Expect, n.PayloadFormat = "", "", ""
 	}
 
 	if err := inRange("interval", n.IntervalSeconds, minIntervalSeconds, maxIntervalSeconds); err != nil {
@@ -196,11 +236,80 @@ func (c *Config) Describe() string {
 	case CheckHTTPHead:
 		return "HTTP HEAD " + c.Path
 	case CheckTCP:
+		if c.Send != "" || c.Expect != "" {
+			return "TCP send/expect"
+		}
 		return "TCP connect"
+	case CheckUDP:
+		return "UDP send/expect"
 	case CheckICMP:
 		return "ICMP ping"
 	}
 	return string(c.Type)
+}
+
+// DecodePayload turns Send or Expect into bytes. Text understands \r \n
+// \t \0 \\ and \xHH; hex takes pairs of hex digits (spaces ignored).
+func DecodePayload(s string, format string) ([]byte, error) {
+	var out []byte
+	if format == PayloadHex {
+		clean := strings.Map(func(r rune) rune {
+			if r == ' ' || r == ':' || r == '\n' || r == '\t' {
+				return -1
+			}
+			return r
+		}, s)
+		if len(clean)%2 != 0 {
+			return nil, errors.New("hex needs pairs of digits")
+		}
+		for i := 0; i < len(clean); i += 2 {
+			v, err := strconv.ParseUint(clean[i:i+2], 16, 8)
+			if err != nil {
+				return nil, fmt.Errorf("%q is not a hex byte", clean[i:i+2])
+			}
+			out = append(out, byte(v))
+		}
+	} else {
+		for i := 0; i < len(s); i++ {
+			ch := s[i]
+			if ch != '\\' {
+				out = append(out, ch)
+				continue
+			}
+			if i+1 >= len(s) {
+				return nil, errors.New("text ends with a lone backslash")
+			}
+			i++
+			switch s[i] {
+			case 'r':
+				out = append(out, '\r')
+			case 'n':
+				out = append(out, '\n')
+			case 't':
+				out = append(out, '\t')
+			case '0':
+				out = append(out, 0)
+			case '\\':
+				out = append(out, '\\')
+			case 'x':
+				if i+2 >= len(s) {
+					return nil, errors.New("\\x needs two hex digits")
+				}
+				v, err := strconv.ParseUint(s[i+1:i+3], 16, 8)
+				if err != nil {
+					return nil, errors.New("\\x needs two hex digits")
+				}
+				out = append(out, byte(v))
+				i += 2
+			default:
+				return nil, fmt.Errorf("unknown escape \\%c (use \\r \\n \\t \\0 \\\\ or \\xHH)", s[i])
+			}
+		}
+	}
+	if len(out) > maxPayloadBytes {
+		return nil, fmt.Errorf("at most %d bytes", maxPayloadBytes)
+	}
+	return out, nil
 }
 
 func inRange(name string, v, lo, hi int) error {

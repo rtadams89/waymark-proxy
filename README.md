@@ -18,6 +18,7 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 - [Quick start: your first proxy](#quick-start-your-first-proxy)
 - [High availability (optional)](#high-availability-optional)
 - [Logs and syslog](#logs-and-syslog)
+- [Traffic capture](#traffic-capture)
 - [Upgrading](#upgrading)
 - [Building from source](#building-from-source)
 - [Where your data lives](#where-your-data-lives)
@@ -26,7 +27,8 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 ## Why Waymark
 
 - **No single point of failure.** Two to four nodes share up to 16 floating IPs through keepalived, and the standby nodes keep an exact copy of the active node's configuration, certificates and admin accounts. If the active node fails, another takes over within about 10 seconds, already configured. All of it is set up from the web UI.
-- **Real health checks.** Each proxy rule can check its upstreams actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed upstreams leave load balancing at once, and visitors get a clear "down" page instead of a timeout.
+- **Real health checks.** Each proxy rule can check its upstreams actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed upstreams leave load balancing at once, and visitors get a clear "down" page instead of a timeout. TCP/UDP stream proxies get the same upstream pools and checks.
+- **See what passed through.** Capture traffic from the web UI, on the client side, the upstream side or both, with HTTPS shown decrypted, and open it in Wireshark.
 - **Faster sites with static file caching**, per rule, in memory, honouring the upstream's cache headers.
 - **Everything in one web UI:** proxy rules, load balancing, TLS certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), access rules by IP or country, SSO, redirects, TCP/UDP stream proxies, maintenance mode, a live status dashboard, sending logs to syslog servers, and installing updates.
 - **Hardened and focused.** Waymark runs as an unprivileged user; the only root component is a small helper that checks every HA setting before writing keepalived's config. Passwords are stored with bcrypt, code scanning (CodeQL) and `govulncheck` run on every change, and features that don't belong in a reverse proxy (network scanners, a web SSH client, a forward proxy) were removed.
@@ -64,11 +66,17 @@ Waymark keeps Zoraxy's core: HTTP and stream proxying, load balancing, ACME cert
 - Upstreams that fail are taken out of load balancing. When all upstreams of a rule are down, visitors get a "Web server is down" page at once instead of waiting for a timeout. Virtual directories can be checked too.
 - Replaces Zoraxy's fixed 5-minute uptime monitor; the **Health & Uptime** page is fed by the health checks.
 
+**Stream proxies** (TCP and UDP)
+- **Upstream pools:** several upstream servers per rule, with round robin, least connections, source IP hash (sticky) or failover. A TCP connection that can't reach its upstream is retried on the next one, and with no healthy upstream new connections are closed at once.
+- **Health checks:** TCP connect, TCP send-and-expect (e.g. a banner or a PING/PONG), UDP send-and-expect, or ping, plus passive monitoring of failed connections. Optionally close open connections to an upstream when it goes down.
+- Upstream health in the Stream Proxies list, on **Health & Uptime** and in the Status page's upstream panel.
+
 **Static file caching**
 - Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the upstream's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
 
 **Operations**
 - **Updates from the web interface.** Waymark checks GitHub for a new release daily. **Install** downloads it, verifies its SHA-256 checksum and that it starts, and restarts Waymark; if the new version doesn't stay up, the previous one is put back automatically. In a cluster, each node is updated from the HA page.
+- **Traffic capture** (**Monitoring > Traffic Capture**): record HTTP and stream proxy traffic as a pcapng file for Wireshark, filtered by rule, host or client, on the client side, the upstream side or both. HTTPS is shown decrypted, with an option to hide credentials.
 - **Logs where you want them.** System logs and traffic (request) logs can each go to the log file, to up to 8 syslog servers (UDP, TCP or TLS; RFC 5424, RFC 3164 or JSON), to both, or to neither.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
 - **Status page panels** can be shown or hidden. New panels show upstream health, cache hit rate and memory, and the HA cluster.
@@ -237,7 +245,7 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 - After a failover, make changes on the new active node. They are copied to the old one when it returns as standby.
 - **Make active** (on the HA page's cluster table) moves the floating IPs to a healthy standby. The active node reports itself unhealthy for a few seconds so keepalived hands over, then becomes the standby. It needs configuration sync on, and can be started from either node. With "prefer the higher-priority node" on, a higher-priority node takes the floating IPs back about 30 seconds later.
 - Only the active node renews certificates automatically.
-- Not synced (kept per node): statistics, log files, the Geo-IP database, plugins, static web server files and live SSO sessions.
+- Not synced (kept per node): statistics, log files, traffic captures, the Geo-IP database, plugins, static web server files and live SSO sessions.
 - HTTP proxying listens on all addresses, so every floating IP works on whichever node holds it. A stream proxy that listens on one specific floating IP can only start on the node holding that address, unless every node has `net.ipv4.ip_nonlocal_bind=1` (`echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf && sudo sysctl --system`). The HA page warns when this applies.
 - Logs: `journalctl -u waymark-ha-apply` for applying settings, `journalctl -u keepalived` for VRRP.
 
@@ -262,6 +270,20 @@ Under **Monitoring > Logs**, choose where each stream goes: the log file, syslog
 The message ID (RFC 5424) is the stream name. The severity is informational (6), or error (3) for system messages that report an error. **Send test message** checks a server before you save; for UDP it can only confirm that the message was sent. Each server shows whether it is connected, how many messages were sent and how many were dropped.
 
 Each server has its own queue, so a slow or unreachable server never slows the proxy: up to 4,096 messages wait while Waymark reconnects (retrying every 1 to 30 seconds), and messages beyond that are dropped and counted. With high availability and configuration sync on, these settings are copied to the standby nodes, and each node sends with its own host name.
+
+## Traffic capture
+
+**Monitoring > Traffic Capture** records the traffic passing through Waymark on this node and saves it as a pcapng file to open in Wireshark.
+
+- **What:** HTTP proxy rules, stream proxy rules, or both. Narrow it to some HTTP rules or host names, some stream rules, and some client addresses or ranges.
+- **Which side:** client to Waymark, Waymark to the upstream, or both. With both, each HTTP request appears twice: as the client sent it and as Waymark forwarded it.
+- **Limits:** every capture stops after a time limit (up to 60 minutes) and a size limit (up to 1 GB). HTTP bodies are kept up to a limit per request (1 MB by default).
+- **Decrypted HTTPS:** Waymark terminates TLS, so it records the plaintext. Each HTTP request and its response is shown as an HTTP/1.1 conversation on port 80, so Wireshark decodes it, even when the client used HTTP/2 or HTTP/3. The first packet of each conversation has a comment with the real addresses and ports (filter `frame.comment`).
+- **Stream proxies** are recorded byte for byte on their real ports, for TCP connections and UDP sessions that start while the capture runs.
+
+It is not a packet capture. Waymark builds the packets from what it received and sent, so it needs no extra privileges and can filter by rule, but TCP handshakes, sequence numbers and timing below the application are made up. Use tcpdump for network-level problems such as retransmissions or MTU issues.
+
+Captures contain passwords, cookies, tokens and personal data. **Hide credentials** (on by default) replaces the `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie` values, but not data in bodies. Files are kept in `captures/` on the node that took them, readable only by Waymark's user, deleted after 24 hours, and never synced or included in backups. Starting, stopping, downloading and deleting a capture are written to the system log. Captures can also be taken on a read-only HA standby, since they don't change configuration.
 
 ## Upgrading
 
@@ -313,6 +335,7 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 | `waymark.prev` | The binary that ran before the last update or roll back (for **Roll back**) |
 | `.update-state.json` | The last update or roll back and its outcome |
 | `www/` | Static web server files and custom error page templates |
+| `captures/` | Traffic capture files (readable only by Waymark's user, deleted after 24 hours) |
 | `plugins/` | Installed plugins |
 
 Back up `conf/` and `sys.db`, or use **System Backup & Restore** under **System > Settings**. HA nodes also have `/var/lib/waymark/ha` (the keepalived settings, role and sync state); it is recreated from the configuration if lost.

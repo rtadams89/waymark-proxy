@@ -137,7 +137,8 @@ func main() {
 
 	//Startup all modules, see start.go
 	startupSequence()
-	initSelfUpdate() //Custom fork: daily check for a new release (selfupdate_custom.go)
+	initSelfUpdate()     //Custom fork: daily check for a new release (selfupdate_custom.go)
+	initTrafficCapture() //Custom fork: traffic capture (capture_custom.go)
 
 	//Initiate APIs
 	requireAuth = !(*noauth)

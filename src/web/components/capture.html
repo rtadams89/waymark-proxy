@@ -1,0 +1,280 @@
+<!-- Custom fork: traffic capture (capture_custom.go, mod/capture) -->
+<div class="standardContainer">
+    <style>
+        #capture .capHint{ color: var(--text_color_secondary); font-size: 0.9em; }
+        #capture .capMono{ font-family: monospace; word-break: break-all; }
+        #capture .capStats{ display: flex; flex-wrap: wrap; gap: 1.5em; margin: 0.8em 0; }
+        #capture .capStats > div > b{ display: block; font-size: 1.3em; }
+    </style>
+    <div class="ui basic segment">
+        <h2>Traffic Capture</h2>
+        <p>Record traffic through the proxy on this node as a capture file for Wireshark (pcapng). Waymark records what it receives and sends, so HTTPS is shown decrypted.</p>
+    </div>
+    <div class="ui warning message">
+        <i class="exclamation triangle icon"></i>Captures contain everything that passes through: passwords, cookies, tokens and personal data. Files stay on this node, readable only by Waymark's user, and are deleted after <span id="capRetention">24</span> hours. Hiding credentials removes the Authorization and Cookie headers, not data in request bodies.
+    </div>
+
+    <div class="ui segment" id="capRunning" style="display: none;">
+        <h3 style="margin-top: 0;"><i class="red circle icon"></i>Capturing</h3>
+        <div id="capRunningDetail"></div>
+        <button class="ui basic red button" id="capStopBtn" onclick="capStop();"><i class="stop icon"></i> Stop</button>
+    </div>
+
+    <div class="ui segment" id="capStartBox">
+        <h3 style="margin-top: 0;">New capture</h3>
+        <div class="ui form" id="capForm">
+            <div class="two fields">
+                <div class="field">
+                    <label>Traffic</label>
+                    <select name="scope">
+                        <option value="all">HTTP and stream proxies</option>
+                        <option value="http">HTTP proxies only</option>
+                        <option value="stream">Stream proxies only</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Side</label>
+                    <select name="sides">
+                        <option value="both">Both: client to Waymark, and Waymark to upstream</option>
+                        <option value="client">Client to Waymark</option>
+                        <option value="upstream">Waymark to upstream</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field capHTTP">
+                <label>HTTP proxy rules <span class="capHint">(none selected: all)</span></label>
+                <select name="httpRules" multiple class="ui fluid search dropdown" id="capHTTPRules"></select>
+            </div>
+            <div class="field capHTTP">
+                <label>Other host names <span class="capHint">(optional, comma separated; wildcards like *.example.com)</span></label>
+                <input type="text" name="hosts" placeholder="app.example.com, *.internal.example.com">
+            </div>
+            <div class="field capStream">
+                <label>Stream proxy rules <span class="capHint">(none selected: all)</span></label>
+                <select name="streamRules" multiple class="ui fluid search dropdown" id="capStreamRules"></select>
+            </div>
+            <div class="field">
+                <label>Client addresses <span class="capHint">(optional, comma separated IP addresses or CIDR ranges)</span></label>
+                <input type="text" name="clients" placeholder="192.168.1.50, 10.0.0.0/24">
+            </div>
+            <div class="four fields">
+                <div class="field"><label>Stop after (minutes)</label><input type="number" name="minutes" min="1" max="60" value="5"></div>
+                <div class="field"><label>Or at (MB)</label><input type="number" name="maxMb" min="1" max="1024" value="50"></div>
+                <div class="field"><label>Body kept per request (KB)</label><input type="number" name="maxBodyKb" min="1" max="16384" value="1024"></div>
+                <div class="field"><label>Note <span class="capHint">(optional)</span></label><input type="text" name="note" maxlength="64" placeholder="login problem"></div>
+            </div>
+            <div class="field">
+                <div class="ui checkbox"><input type="checkbox" name="redact" checked><label>Hide credentials in headers (Authorization, Proxy-Authorization, Cookie, Set-Cookie)</label></div>
+            </div>
+            <button class="ui basic green button" id="capStartBtn" onclick="capStart(); return false;"><i class="circle red icon"></i> Start capture</button>
+            <div class="ui message" id="capMsg" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="ui segment">
+        <h3 style="margin-top: 0;">Capture files on this node</h3>
+        <table class="ui very basic compact unstackable table" id="capFiles">
+            <thead><tr><th>File</th><th>Size</th><th>Taken</th><th>Deleted</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="ui segment">
+        <h3 style="margin-top: 0;">Reading a capture</h3>
+        <div class="ui bulleted list capHint">
+            <div class="item">Open the file in Wireshark. Each HTTP request and its response is its own TCP conversation, in HTTP/1.1 form even if HTTP/2 or HTTP/3 was used; filter with <span class="capMono">http</span>, or use Statistics &gt; Conversations.</div>
+            <div class="item">Decrypted HTTPS is shown on port 80 so Wireshark decodes it as HTTP. The first packet of each conversation has a comment with the real addresses and ports (filter <span class="capMono">frame.comment</span>, or add it as a column).</div>
+            <div class="item">Bodies longer than the limit are cut; the message then has an <span class="capMono">X-Waymark-Capture</span> header saying how much was kept.</div>
+            <div class="item">Stream proxies are recorded as they pass, byte for byte, on their real ports. Only connections that start while the capture runs are recorded.</div>
+            <div class="item">The packets are built from what Waymark sent and received: TCP handshakes, sequence numbers and timing below the application are made up, so this is not the tool for network-level problems (retransmissions, MTU).</div>
+            <div class="item">WebSocket and other upgraded connections: the request and the switch are recorded, the tunnel after it is not.</div>
+        </div>
+    </div>
+</div>
+<script>
+    (function(){
+        let capTimer = null;
+        let capRules = {http: [], stream: []};
+
+        function size(n){
+            if (n >= 1 << 20) return (n / (1 << 20)).toFixed(1) + " MB";
+            if (n >= 1 << 10) return (n / (1 << 10)).toFixed(1) + " KB";
+            return n + " B";
+        }
+        function when(ts){
+            return new Date(ts * 1000).toLocaleString();
+        }
+        function left(ts){
+            let s = Math.max(0, Math.round(ts - Date.now() / 1000));
+            return s >= 60 ? Math.floor(s / 60) + " min " + (s % 60) + " s" : s + " s";
+        }
+        function showMsg(text, ok){
+            $("#capMsg").attr("class", "ui " + (ok ? "positive" : "negative") + " message").text(text).show();
+        }
+        function list(v){
+            return String(v || "").split(",").map(x => x.trim()).filter(x => x != "");
+        }
+        function syncScope(){
+            let s = $("#capForm select[name=scope]").val();
+            $("#capture .capHTTP").toggle(s != "stream");
+            $("#capture .capStream").toggle(s != "http");
+        }
+        $("#capForm select[name=scope]").on("change", syncScope);
+
+        function fillRules(d){
+            let httpSel = $("#capHTTPRules"), streamSel = $("#capStreamRules");
+            let keepHTTP = httpSel.val() || [], keepStream = streamSel.val() || [];
+            let httpKey = JSON.stringify(d.httpRules), streamKey = JSON.stringify(d.streamRules);
+            if (httpKey != capRules.httpKey){
+                capRules.httpKey = httpKey;
+                capRules.http = (d.httpRules || []).sort((a, b) => a.name.localeCompare(b.name));
+                httpSel.empty();
+                capRules.http.forEach((r, i) => httpSel.append($("<option>").val(String(i)).text(r.name + (r.disabled ? " (disabled)" : ""))));
+                httpSel.dropdown({placeholder: "All HTTP proxy rules"}).dropdown("set selected", keepHTTP);
+            }
+            if (streamKey != capRules.streamKey){
+                capRules.streamKey = streamKey;
+                capRules.stream = (d.streamRules || []).sort((a, b) => a.name.localeCompare(b.name));
+                streamSel.empty();
+                capRules.stream.forEach(r => streamSel.append($("<option>").val(r.uuid).text(r.name + (r.running ? "" : " (stopped)"))));
+                streamSel.dropdown({placeholder: "All stream proxy rules"}).dropdown("set selected", keepStream);
+            }
+        }
+
+        function renderFiles(files){
+            let body = $("#capFiles tbody").empty();
+            if (files.length == 0){
+                body.append(`<tr><td colspan="5" class="capHint">No captures on this node</td></tr>`);
+                return;
+            }
+            files.forEach(f => {
+                let tr = $("<tr>");
+                let name = $("<td>").append($("<span class='capMono'>").text(f.name));
+                if (f.note) name.append($("<div class='capHint'>").text(f.note));
+                if (f.stopReason) name.append($("<div class='capHint'>").text("Stopped: " + f.stopReason));
+                tr.append(name);
+                tr.append($("<td>").text(size(f.size)));
+                tr.append($("<td>").text(when(f.created)));
+                tr.append($("<td>").text(f.running ? "-" : when(f.expires)));
+                let actions = $("<td style='text-align: right; white-space: nowrap;'>");
+                if (f.running){
+                    actions.append($("<span class='capHint'>").text("Recording"));
+                }else{
+                    actions.append($("<a class='ui mini basic button'><i class='download icon'></i> Download</a>").attr("href", "/api/capture/download?name=" + encodeURIComponent(f.name)));
+                    actions.append($("<button class='ui mini basic red button'><i class='trash alternate outline icon'></i> Delete</button>").on("click", () => capDelete(f.name)));
+                }
+                tr.append(actions);
+                body.append(tr);
+            });
+        }
+
+        function renderRunning(r){
+            if (!r){
+                $("#capRunning").hide();
+                $("#capStartBtn").removeClass("disabled");
+                return;
+            }
+            $("#capRunning").show();
+            $("#capStartBtn").addClass("disabled");
+            let c = r.config;
+            let what = {all: "HTTP and stream proxies", http: "HTTP proxies", stream: "Stream proxies"}[c.scope];
+            let side = {both: "both sides", client: "client to Waymark", upstream: "Waymark to upstream"}[c.sides];
+            let filters = [];
+            if (c.hosts && c.hosts.length) filters.push("hosts " + c.hosts.join(", "));
+            if (c.streamRules && c.streamRules.length){
+                filters.push("stream rules " + c.streamRules.map(id => { let s = capRules.stream.find(x => x.uuid.toLowerCase() == id); return s ? s.name : id; }).join(", "));
+            }
+            if (c.clients && c.clients.length) filters.push("clients " + c.clients.join(", "));
+            let detail = $("<div>");
+            detail.append($("<div class='capMono'>").text(r.file));
+            detail.append($("<div class='capHint'>").text(what + ", " + side + (filters.length ? " · " + filters.join(" · ") : "") + (c.redact ? " · credentials hidden" : "")));
+            detail.append($(`<div class="capStats">
+                <div><span class="capHint">Time left</span><b>${left(r.ends)}</b></div>
+                <div><span class="capHint">Size</span><b>${size(r.bytes)} of ${c.maxMb} MB</b></div>
+                <div><span class="capHint">HTTP requests</span><b>${r.requests}</b></div>
+                <div><span class="capHint">Connections</span><b>${r.connections}</b></div>
+                <div><span class="capHint">Packets</span><b>${r.packets}</b></div>
+            </div>`));
+            $("#capRunningDetail").empty().append(detail);
+        }
+
+        window.capLoad = function(){
+            $.get("/api/capture/status", function(d){
+                if (!d || typeof d != "object") return;
+                if (d.error != undefined){
+                    $("#capStartBox").hide();
+                    showMsg(d.error, false);
+                    return;
+                }
+                $("#capRetention").text(d.retentionHours);
+                fillRules(d);
+                renderRunning(d.running);
+                renderFiles(d.files || []);
+                clearTimeout(capTimer);
+                if (d.running && $("#capture").is(":visible")) capTimer = setTimeout(capLoad, 2000);
+            });
+        };
+
+        window.capStart = function(){
+            let f = $("#capForm");
+            let scope = f.find("select[name=scope]").val();
+            let hosts = [];
+            if (scope != "stream"){
+                (f.find("#capHTTPRules").val() || []).forEach(i => { let r = capRules.http[parseInt(i, 10)]; if (r) hosts = hosts.concat(r.hosts); });
+                hosts = hosts.concat(list(f.find("input[name=hosts]").val()));
+            }
+            let cfg = {
+                scope: scope,
+                sides: f.find("select[name=sides]").val(),
+                hosts: hosts,
+                streamRules: scope != "http" ? (f.find("#capStreamRules").val() || []) : [],
+                clients: list(f.find("input[name=clients]").val()),
+                durationSeconds: (parseInt(f.find("input[name=minutes]").val(), 10) || 0) * 60,
+                maxMb: parseInt(f.find("input[name=maxMb]").val(), 10) || 0,
+                maxBodyKb: parseInt(f.find("input[name=maxBodyKb]").val(), 10) || 0,
+                redact: f.find("input[name=redact]")[0].checked,
+                note: f.find("input[name=note]").val().trim()
+            };
+            if (!cfg.redact && !confirm("Credentials in headers (passwords, session cookies, tokens) will be readable in the file. Capture anyway?")) return;
+            $("#capStartBtn").addClass("loading disabled");
+            $.cjax({
+                url: "/api/capture/start", method: "POST", data: { config: JSON.stringify(cfg) },
+                success: function(d){
+                    if (d.error != undefined){ showMsg(d.error, false); return; }
+                    $("#capMsg").hide();
+                    capLoad();
+                },
+                error: function(){ showMsg("Request failed", false); },
+                complete: function(){ $("#capStartBtn").removeClass("loading"); }
+            });
+        };
+
+        window.capStop = function(){
+            $("#capStopBtn").addClass("loading disabled");
+            $.cjax({
+                url: "/api/capture/stop", method: "POST",
+                success: function(d){
+                    if (d.error != undefined){ msgbox(d.error, false); }
+                    capLoad();
+                },
+                complete: function(){ $("#capStopBtn").removeClass("loading disabled"); }
+            });
+        };
+
+        function capDelete(name){
+            if (!confirm("Delete " + name + "?")) return;
+            $.cjax({
+                url: "/api/capture/delete", method: "POST", data: { name: name },
+                success: function(d){
+                    if (d.error != undefined){ msgbox(d.error, false); }
+                    capLoad();
+                }
+            });
+        }
+
+        $("#capForm .ui.checkbox").checkbox();
+        syncScope();
+        capLoad();
+        tabSwitchEventBind["capture"] = capLoad;
+    })();
+</script>
