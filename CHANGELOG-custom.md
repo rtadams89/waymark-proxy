@@ -9,6 +9,13 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 - New upstream releases are picked up by the "Watch upstream releases" workflow (daily), which opens an issue and starts "Merge upstream release" to prepare a pull request. Merge those pull requests with a merge commit.
 
+## 3.3.5-custom.16
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Fixed**
+- The HA role badge (and the read-only note on a standby) now sits next to the logo instead of on a second line. The header is back to its normal height and no longer covers the top of each page and the menu.
+
 ## 3.3.5-custom.15
 
 Base: upstream v3.3.5 (`310b0cc`).

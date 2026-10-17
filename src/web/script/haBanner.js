@@ -35,7 +35,9 @@
             let name = d.self >= 0 ? d.config.nodes[d.self].name : "";
             let vip = d.vipHeld ? " · holds " + d.config.vip : "";
             badge.html(`<span style="display:inline-block; padding: 0.25em 0.8em; border-radius: 1em; font-weight: 600; font-size: 0.85em; color: ${s[1]}; background: ${s[2]};" title="High availability role of this node${name ? " (" + name + ")" : ""}"><i class="${s[3]} icon"></i>${name ? esc(name) + " · " : ""}${s[0]}${vip}</span>` + readOnlyPill(d));
-            badge.css("display", "flex").css("align-items", "center");
+            // inline-flex keeps it on the logo's line, so the header keeps its height
+            badge.css({"display": "inline-flex", "align-items": "center", "vertical-align": "middle", "margin-left": "0.8em",
+                       "white-space": "nowrap", "overflow": "hidden", "max-width": "calc(100vw - 300px)"});
         });
     }
     $(function(){ setTimeout(update, 800); });
