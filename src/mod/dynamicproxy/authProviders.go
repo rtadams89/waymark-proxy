@@ -150,10 +150,9 @@ func handleBasicAuth(w http.ResponseWriter, r *http.Request, pe *ProxyEndpoint) 
 	}
 
 	//Check for the credentials to see if there is one matching
-	hashedPassword := auth.Hash(p)
 	matchingFound := false
 	for _, cred := range pe.AuthenticationProvider.BasicAuthCredentials {
-		if u == cred.Username && hashedPassword == cred.PasswordHash {
+		if u == cred.Username && auth.PasswordMatchesCached(cred.PasswordHash, p) {
 			matchingFound = true
 
 			//Set the X-Remote-User header

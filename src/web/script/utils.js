@@ -6,6 +6,13 @@
 
 */
 
+// htmlEscape makes a value safe to insert into HTML text or a quoted attribute
+function htmlEscape(value) {
+    return String(value == undefined ? "" : value)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function abbreviateNumber(value) {
     var newValue = value;
     var suffixes = ["", "k", "m", "b", "t"];
@@ -40,4 +47,4 @@ $.cjax = function(payload){
     }
 
     $.ajax(payload);
-}
+}

@@ -18,7 +18,10 @@ FORK_REMOVED_PATHS="${FORK_REMOVED_PATHS:-docker docs example tools img .github/
 src/mod/ipscan src/mod/sshprox src/mod/wakeonlan src/mod/forwardproxy src/webssh.go \
 src/mod/netutils/pingip.go src/mod/netutils/traceroute.go src/mod/netutils/whois.go \
 src/web/components/quickstart.html src/web/script/quicksetup.js src/web/img/res src/web/components/networktools.html \
-src/web/tools/ipscan.html src/web/tools/mdns.html src/web/tools/portscan.html src/web/tools/sshconn.html}"
+src/web/tools/ipscan.html src/web/tools/mdns.html src/web/tools/portscan.html src/web/tools/sshconn.html \
+src/web/tools/fs.html src/web/tools/fs.css src/web/tools/img src/web/script/semantic/components \
+src/web/script/semantic/semantic.js src/web/script/semantic/semantic.css \
+src/web/forbidden.html src/web/hosterror.html src/web/notfound.html src/web/rperror.html}"
 # Files Waymark rewrote for its own branding: on a conflict, Waymark's version wins
 OURS_PATHS="${OURS_PATHS:-README.md CHANGELOG.md CODEOWNERS .github/ISSUE_TEMPLATE src/web/img src/web/favicon.png}"
 RESULT="${MERGE_RESULT_FILE:-merge-result.env}"

@@ -2,10 +2,9 @@ package zorxauth
 
 import (
 	"bytes"
-	"crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"imuslab.com/zoraxy/mod/auth"
 	"net/http"
 	"net/mail"
 	"sort"
@@ -57,10 +56,9 @@ func userToResponse(user *User) *UserResponse {
 	}
 }
 
-func hashPassword(raw string) string {
-	h := sha512.New()
-	h.Write([]byte(raw))
-	return hex.EncodeToString(h.Sum(nil))
+// hashPassword returns a bcrypt hash of raw (see mod/auth/password.go).
+func hashPassword(raw string) (string, error) {
+	return auth.HashPassword(raw)
 }
 
 func (ar *AuthRouter) userDbKey(username string) string {
@@ -302,9 +300,14 @@ func (ar *AuthRouter) HandleUserCreate(w http.ResponseWriter, r *http.Request) {
 		ID:           uuid.NewString(),
 		Username:     username,
 		Email:        email,
-		PasswordHash: hashPassword(password),
 		AllowedHosts: normalizeAllowedHosts(r.FormValue("allowedHosts")),
 	}
+	passwordHash, err := hashPassword(password)
+	if err != nil {
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+	user.PasswordHash = passwordHash
 
 	// Group policy settings
 	useGroupPolicy, _ := utils.PostBool(r, "useGroupPolicy")
@@ -371,7 +374,12 @@ func (ar *AuthRouter) HandleUserUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if password := strings.TrimSpace(r.FormValue("password")); password != "" {
-		user.PasswordHash = hashPassword(password)
+		passwordHash, err := hashPassword(password)
+		if err != nil {
+			utils.SendErrorResponse(w, err.Error())
+			return
+		}
+		user.PasswordHash = passwordHash
 	}
 
 	if _, ok := r.Form["allowedHosts"]; ok {
@@ -537,7 +545,18 @@ func (ar *AuthRouter) ValidateUsername(username, password string) bool {
 		user = matchedUser
 	}
 
-	return user.PasswordHash != "" && user.PasswordHash == hashPassword(password)
+	ok, upgrade := auth.PasswordMatches(user.PasswordHash, password)
+	if ok && upgrade {
+		// Replace the old unsalted hash now that the password is known
+		if newHash, err := hashPassword(password); err == nil {
+			previous := user.Username
+			user.PasswordHash = newHash
+			if err := ar.saveUser(user, previous); err != nil && ar.Logger != nil {
+				ar.Logger.PrintAndLog("zorxauth", "Could not upgrade the password hash of "+user.Username, err)
+			}
+		}
+	}
+	return ok
 }
 
 func (ar *AuthRouter) HandleDisableUserTOTP(w http.ResponseWriter, r *http.Request) {

@@ -398,9 +398,12 @@ func RegisterAuthAPIs(requireAuth bool, targetMux *http.ServeMux) {
 			return
 		}
 
-		//Change the password of the root user
-		authAgent.UnregisterUser(username)
-		authAgent.CreateUserAccount(username, newPassword, "")
+		//Change the password of the root user (the account is kept if hashing fails)
+		if err := authAgent.SetPassword(username, newPassword); err != nil {
+			utils.SendErrorResponse(w, "could not change the password: "+err.Error())
+			return
+		}
+		utils.SendOK(w)
 	})
 }
 

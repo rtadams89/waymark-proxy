@@ -460,9 +460,14 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 
 		//Convert and hash the passwords
 		for _, credObj := range preProcessCredentials {
+			passwordHash, err := auth.HashPassword(credObj.Password)
+			if err != nil {
+				utils.SendErrorResponse(w, "could not hash the password of "+credObj.Username)
+				return
+			}
 			basicAuthCredentials = append(basicAuthCredentials, &dynamicproxy.BasicAuthCredentials{
 				Username:     credObj.Username,
-				PasswordHash: auth.Hash(credObj.Password),
+				PasswordHash: passwordHash,
 			})
 		}
 	}
@@ -523,6 +528,11 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 					aliasHostnames = append(aliasHostnames, strings.TrimSpace(aliasHostname))
 				}
 			}
+		}
+
+		if !validProxyConfigName(rootOrMatchingDomain) {
+			utils.SendErrorResponse(w, "the host name cannot contain /, \\ or ..")
+			return
 		}
 
 		//Generate a default authenticaion provider
@@ -1057,6 +1067,10 @@ func ReverseProxyHandleSetHostname(w http.ResponseWriter, r *http.Request) {
 
 	originalRootnameOrMatchingDomain = strings.TrimSpace(originalRootnameOrMatchingDomain)
 	newHostname = strings.TrimSpace(newHostname)
+	if newHostname != "/" && !validProxyConfigName(newHostname) {
+		utils.SendErrorResponse(w, "the host name cannot contain /, \\ or ..")
+		return
+	}
 	if newHostname == "/" {
 		//Reserevd, reutrn error
 		utils.SendErrorResponse(w, "Invalid new hostname: system reserved path")
@@ -1227,9 +1241,14 @@ func UpdateProxyBasicAuthCredentials(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				//This username have given password
+				passwordHash, err := auth.HashPassword(credential.Password)
+				if err != nil {
+					utils.SendErrorResponse(w, "could not hash the password of "+credential.Username)
+					return
+				}
 				mergedCredentials = append(mergedCredentials, &dynamicproxy.BasicAuthCredentials{
 					Username:     credential.Username,
-					PasswordHash: auth.Hash(credential.Password),
+					PasswordHash: passwordHash,
 				})
 			}
 		}

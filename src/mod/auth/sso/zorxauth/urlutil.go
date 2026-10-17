@@ -150,3 +150,25 @@ func ssoRedirectWouldLoop(ssoBase string, r *http.Request) bool {
 	}
 	return strings.EqualFold(u.Hostname(), hostnameOnly(r.Host))
 }
+
+// sameHostRedirect returns raw if it is a path on this host, or an http(s)
+// URL whose host name is the request's (ports may differ); otherwise "/".
+// Used where the redirect target comes from the browser.
+func sameHostRedirect(raw string, r *http.Request) string {
+	raw = strings.TrimSpace(raw)
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "/"
+	}
+	if u.Scheme != "" || u.Host != "" {
+		if (!strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https")) || u.User != nil ||
+			!strings.EqualFold(u.Hostname(), hostnameOnly(r.Host)) {
+			return "/"
+		}
+		return u.String()
+	}
+	if !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") || strings.HasPrefix(raw, "/\\") {
+		return "/"
+	}
+	return u.String()
+}

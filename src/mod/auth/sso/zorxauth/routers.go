@@ -180,7 +180,8 @@ func (ar *AuthRouter) handleSessionSetCallback(w http.ResponseWriter, r *http.Re
 		MaxAge:   cookieDuration,
 	})
 
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	// The target comes from the query string: only follow it on this host
+	http.Redirect(w, r, sameHostRedirect(redirectURL, r), http.StatusSeeOther)
 	return errors.New("session callback handled")
 }
 

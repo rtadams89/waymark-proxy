@@ -141,7 +141,7 @@
 
     //List the Vdir of the given endpoint, use "root" for root router
     function loadVdirList(endpoint){
-        $("#currentVirtualDirectoryAttachingHost").html(`Editing Host: ${endpoint}`);
+        $("#currentVirtualDirectoryAttachingHost").html(`Editing Host: ${htmlEscape(endpoint)}`);
         let reqURL = "/api/proxy/vdir/list?type=host&ep=" + endpoint;
         if (endpoint == "root"){
             //Load root endpoint vdir list
@@ -173,11 +173,11 @@
                         let payload = JSON.stringify(vdir).hexEncode();
 
                         $("#vdirList").append(`<tr vdirid="${vdir.MatchingPath.hexEncode()}" class="vdirEntry" payload="${payload}">
-                            <td data-label="" editable="false" >${vdir.MatchingPath}</td>
-                            <td data-label="" editable="true" datatype="domain">${vdir.Domain} ${tlsIcon}</td>
+                            <td data-label="" editable="false" >${htmlEscape(vdir.MatchingPath)}</td>
+                            <td data-label="" editable="true" datatype="domain">${htmlEscape(vdir.Domain)} ${tlsIcon}</td>
                             <td class="center aligned" editable="true" datatype="action" data-label="">
-                                <button class="ui circular mini basic icon button editBtn" onclick='editVdir("${vdir.MatchingPath}", "${endpoint}")'><i class="edit icon"></i></button>
-                                <button class="ui circular mini red basic icon button"  onclick='deleteVdir("${vdir.MatchingPath}", "${endpoint}")'><i class="trash icon"></i></button>
+                                <button class="ui circular mini basic icon button editBtn" onclick='editVdir("${vdir.MatchingPath.hexEncode()}".hexDecode(), "${String(endpoint).hexEncode()}".hexDecode())'><i class="edit icon"></i></button>
+                                <button class="ui circular mini red basic icon button"  onclick='deleteVdir("${vdir.MatchingPath.hexEncode()}".hexDecode(), "${String(endpoint).hexEncode()}".hexDecode())'><i class="trash icon"></i></button>
                             </td>
                         </tr>`);
                     })
@@ -424,4 +424,4 @@
     }
 
     initVdirList();
-</script>
+</script>

@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -77,7 +78,8 @@ func handleInjectHTML(w http.ResponseWriter, r *http.Request, relativeFilepath s
 	}
 	if *development_build {
 		//Load from disk
-		targetFilePath := strings.ReplaceAll(filepath.Join("web/", relativeFilepath), "\\", "/")
+		// path.Clean on a rooted path drops any "..", so the file stays in web/
+		targetFilePath := strings.ReplaceAll(filepath.Join("web/", path.Clean("/"+relativeFilepath)), "\\", "/")
 		content, err = os.ReadFile(targetFilePath)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)

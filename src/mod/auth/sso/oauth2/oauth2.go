@@ -349,7 +349,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		if cookieExpiry.IsZero() || cookieExpiry.Before(time.Now()) {
 			cookieExpiry = time.Now().Add(time.Hour)
 		}
-		cookie := http.Cookie{Name: tokenCookie, Value: token.AccessToken, Path: "/", Expires: cookieExpiry}
+		cookie := http.Cookie{Name: tokenCookie, Value: token.AccessToken, Path: "/", Expires: cookieExpiry, HttpOnly: true}
 		if scheme == "https" {
 			cookie.Secure = true
 			cookie.SameSite = http.SameSiteLaxMode
@@ -357,7 +357,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		w.Header().Add("Set-Cookie", cookie.String())
 
 		if ar.options.OAuth2CodeChallengeMethod == "PKCE" || ar.options.OAuth2CodeChallengeMethod == "PKCE_S256" {
-			cookie := http.Cookie{Name: verifierCookie, Value: "", Path: "/", Expires: time.Now().Add(-time.Hour * 1)}
+			cookie := http.Cookie{Name: verifierCookie, Value: "", Path: "/", Expires: time.Now().Add(-time.Hour * 1), HttpOnly: true}
 			if scheme == "https" {
 				cookie.Secure = true
 				cookie.SameSite = http.SameSiteLaxMode
@@ -365,17 +365,9 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 			w.Header().Add("Set-Cookie", cookie.String())
 		}
 
-		//Fix for #695
-		location := strings.TrimPrefix(state, "/internal/")
-		//Check if the location starts with http:// or https://. if yes, this is full URL
-		decodedLocation, err := url.PathUnescape(location)
-		if err == nil && (strings.HasPrefix(decodedLocation, "http://") || strings.HasPrefix(decodedLocation, "https://")) {
-			//Redirect to the full URL
-			http.Redirect(w, r, decodedLocation, http.StatusTemporaryRedirect)
-		} else {
-			//Redirect to a relative path
-			http.Redirect(w, r, state, http.StatusTemporaryRedirect)
-		}
+		// Back to the page that started the login. The state comes back from
+		// the browser, so only addresses on this host are followed.
+		http.Redirect(w, r, oauth2ReturnLocation(state, r.Host), http.StatusTemporaryRedirect)
 
 		return errors.New("authorized")
 	}
@@ -405,7 +397,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		state := url.QueryEscape(reqUrl)
 		var url string
 		if ar.options.OAuth2CodeChallengeMethod == "PKCE" || ar.options.OAuth2CodeChallengeMethod == "PKCE_S256" {
-			cookie := http.Cookie{Name: verifierCookie, Value: oauth2.GenerateVerifier(), Path: "/", Expires: time.Now().Add(time.Hour * 1)}
+			cookie := http.Cookie{Name: verifierCookie, Value: oauth2.GenerateVerifier(), Path: "/", Expires: time.Now().Add(time.Hour * 1), HttpOnly: true}
 			if scheme == "https" {
 				cookie.Secure = true
 				cookie.SameSite = http.SameSiteLaxMode
@@ -427,4 +419,29 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		return errors.New("unauthorized")
 	}
 	return nil
+}
+
+// oauth2ReturnLocation turns the OAuth2 state (the query-escaped URL of the
+// page that started the login) into the address to return to. Only http(s)
+// URLs on host, or paths on it, are accepted; anything else goes to "/".
+func oauth2ReturnLocation(state string, host string) string {
+	location := strings.TrimPrefix(state, "/internal/") // fix for #695
+	if decoded, err := url.QueryUnescape(location); err == nil {
+		location = decoded
+	}
+	u, err := url.Parse(location)
+	if err != nil {
+		return "/"
+	}
+	if u.Scheme != "" || u.Host != "" {
+		if (u.Scheme != "http" && u.Scheme != "https") || !strings.EqualFold(u.Host, host) || u.User != nil {
+			return "/"
+		}
+		return u.String()
+	}
+	// A path on this host; "//x" and "/\\x" would be read as another host
+	if !strings.HasPrefix(location, "/") || strings.HasPrefix(location, "//") || strings.HasPrefix(location, "/\\") {
+		return "/"
+	}
+	return location
 }

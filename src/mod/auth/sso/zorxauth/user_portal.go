@@ -134,7 +134,12 @@ func (gs *GatewayServer) handleChangePassword(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	u.PasswordHash = hashPassword(newPassword)
+	passwordHash, err := hashPassword(newPassword)
+	if err != nil {
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+	u.PasswordHash = passwordHash
 	if err := gs.router.saveUser(u, u.Username); err != nil {
 		utils.SendErrorResponse(w, "failed to save new password: "+err.Error())
 		return

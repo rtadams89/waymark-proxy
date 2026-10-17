@@ -493,7 +493,7 @@
       }
 
       //Filename cannot contain wildcards, and wildcards are possible with DNS challenges
-      filename = filename.replace("*", "_");
+      filename = filename.replaceAll("*", "_");
       return filename;
     }
       

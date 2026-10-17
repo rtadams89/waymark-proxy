@@ -524,7 +524,7 @@
                 $(".functiontab").hide();
                 $("#" + tabID).fadeIn('fast', function(){
                     setTimeout(function(){
-                        if (tabSwitchEventBind[tabID]){
+                        if (Object.prototype.hasOwnProperty.call(tabSwitchEventBind, tabID) && typeof tabSwitchEventBind[tabID] == "function"){
                             tabSwitchEventBind[tabID]();
                         }
                     },100)

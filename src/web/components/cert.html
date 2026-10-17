@@ -253,7 +253,7 @@
                 return;
             }
             //Filename cannot contain wildcards, and wildcards are possible with DNS challenges
-            filename = filename.replace("*", "_");
+            filename = filename.replaceAll("*", "_");
 
             let requestCert = function(caURL="", skipTLSValue=false){
                 $.ajax({

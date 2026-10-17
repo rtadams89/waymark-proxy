@@ -10,6 +10,35 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.2.2
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+Security fixes from a review of GitHub code scanning (CodeQL) findings.
+
+**Security**
+- **OAuth2 SSO:** after login, the browser is only sent back to an address on the protected host. Before, the return address came from the `state` parameter and could point to any site (open redirect). The `z-token` access token cookie and the PKCE verifier cookie are now `HttpOnly`.
+- **Waymark Auth:** the login callback only redirects to the host that received it (open redirect). The gateway login page no longer carries on after redirecting a signed-in user who arrived without a return address.
+- **Passwords are hashed with bcrypt:** admin accounts, Waymark Auth users, HTTP basic auth credentials on proxy rules, and WebDAV credentials.
+  - Before, they were stored as unsalted SHA-512, which is quick to crack if the database leaks.
+  - Existing passwords keep working. Admin and Waymark Auth passwords are re-hashed with bcrypt at the next successful login. Basic auth and WebDAV passwords are re-hashed when they are next saved.
+  - Basic auth and WebDAV checks remember a verified password for 5 minutes, so the slower hash doesn't slow down every request.
+  - Passwords are limited to 72 bytes (bcrypt's limit).
+- **Error pages no longer load jQuery and Semantic UI scripts from CDNs:** the forbidden, host error and proxy error pages, which are served on your sites. They used them for two lines of text, now plain JavaScript.
+- **File names:** a certificate name from the ACME tool, or a proxy rule's host name, can no longer contain `/`, `\` or `..`, so their files always stay in `conf/`. In development mode (`-dev`), web UI file paths are cleaned.
+- **Admin web UI:** access rule names, virtual directory paths and targets, tags and listening ports are escaped when shown.
+
+**Fixed**
+- Error responses are built with a JSON encoder, so messages containing quotes no longer produce invalid JSON.
+- Changing the admin password no longer deletes and re-creates the account, so a failed change can't leave it without a password. The request now returns OK.
+- Wildcard certificate names replace every `*`, not only the first.
+
+**Removed**
+- Unused files: the unminified Semantic UI sources (`semantic.js`, `semantic.css`, `components/`; the UI loads the minified files), the old file manager page (`tools/fs.html`), and unused copies of the error pages in `src/web`.
+
+**Code scanning**
+- CodeQL now runs from `.github/workflows/codeql.yml` with `.github/codeql/codeql-config.yml`, which leaves out the Zoraxy plugin library (`src/mod/plugins/zoraxy_plugin`, compiled into plugins, not run by Waymark) and vendored minified libraries.
+
 ## 2.2.1
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

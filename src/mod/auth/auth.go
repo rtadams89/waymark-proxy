@@ -7,13 +7,10 @@ package auth
 
 import (
 	"crypto/rand"
-	"crypto/sha512"
 	"errors"
 	"net/http"
 	"net/mail"
 	"strings"
-
-	"encoding/hex"
 
 	"github.com/gorilla/sessions"
 	db "imuslab.com/zoraxy/mod/database"
@@ -146,7 +143,6 @@ func (a *AuthAgent) ValidateUsernameAndPassword(username string, password string
 
 // validate the username and password, return reasons if the auth failed
 func (a *AuthAgent) ValidateUsernameAndPasswordWithReason(username string, password string) (bool, string) {
-	hashedPassword := Hash(password)
 	var passwordInDB string
 	err := a.Database.Read("auth", "passhash/"+username, &passwordInDB)
 	if err != nil {
@@ -155,11 +151,19 @@ func (a *AuthAgent) ValidateUsernameAndPasswordWithReason(username string, passw
 		return false, "Invalid username or password"
 	}
 
-	if passwordInDB == hashedPassword {
-		return true, ""
-	} else {
+	ok, upgrade := PasswordMatches(passwordInDB, password)
+	if !ok {
 		return false, "Invalid username or password"
 	}
+	if upgrade {
+		// Replace the old unsalted hash now that the password is known
+		if newHash, err := HashPassword(password); err == nil {
+			if err := a.Database.Write("auth", "passhash/"+username, newHash); err != nil {
+				a.Logger.PrintAndLog("auth", "Could not upgrade the password hash of "+username, err)
+			}
+		}
+	}
+	return true, ""
 }
 
 // Login the user by creating a valid session for this user
@@ -453,6 +457,18 @@ func (a *AuthAgent) UpdateSessionExpireTime(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// SetPassword replaces an existing user's password.
+func (a *AuthAgent) SetPassword(username string, password string) error {
+	if !a.UserExists(username) {
+		return errors.New("user not found")
+	}
+	hashedPassword, err := HashPassword(password)
+	if err != nil {
+		return err
+	}
+	return a.Database.Write("auth", "passhash/"+username, hashedPassword)
+}
+
 // Create user account
 func (a *AuthAgent) CreateUserAccount(newusername string, password string, email string) error {
 	//Check user already exists
@@ -461,8 +477,11 @@ func (a *AuthAgent) CreateUserAccount(newusername string, password string, email
 	}
 
 	key := newusername
-	hashedPassword := Hash(password)
-	err := a.Database.Write("auth", "passhash/"+key, hashedPassword)
+	hashedPassword, err := HashPassword(password)
+	if err != nil {
+		return err
+	}
+	err = a.Database.Write("auth", "passhash/"+key, hashedPassword)
 	if err != nil {
 		return err
 	}
@@ -475,11 +494,4 @@ func (a *AuthAgent) CreateUserAccount(newusername string, password string, email
 	}
 
 	return nil
-}
-
-// Hash the given raw string into sha512 hash
-func Hash(raw string) string {
-	h := sha512.New()
-	h.Write([]byte(raw))
-	return hex.EncodeToString(h.Sum(nil))
 }

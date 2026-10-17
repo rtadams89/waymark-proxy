@@ -834,7 +834,7 @@
                 break;
             }
         }
-        $("#currentEditingAccessRule").html(`Editing Access Rule: ${name} <span style="font-weight: 300;">[${newRuleUUID}]</span>`);
+        $("#currentEditingAccessRule").html(`Editing Access Rule: ${htmlEscape(name)} <span style="font-weight: 300;">[${htmlEscape(newRuleUUID)}]</span>`);
         $("#accessRuleDesc").text(desc);
 
         initBlackWhitelistTables();
@@ -898,6 +898,7 @@
             }
 
             data.forEach((countryCode) => {
+                countryCode = String(countryCode).toLowerCase().replace(/[^a-z]/g, ""); //ISO codes are letters only
                 bannedListHtml += `
                 <tr>
                     <td><i class="${countryCode} flag"></i> ${getCountryName(countryCode)} (${countryCode.toUpperCase()})</td>
@@ -1002,7 +1003,7 @@
             }
             
             data.forEach((countryWhitelistEntry) => {
-                let countryCode = countryWhitelistEntry.CC;
+                let countryCode = String(countryWhitelistEntry.CC).toLowerCase().replace(/[^a-z]/g, ""); //ISO codes are letters only
                 whiteListHTML += `
                 <tr>
                     <td><i class="${countryCode} flag"></i> ${getCountryName(countryCode)} (${countryCode.toUpperCase()})</td>

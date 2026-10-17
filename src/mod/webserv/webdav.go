@@ -94,9 +94,7 @@ func (wd *WebDAVServer) validateCustomCredentials(username, password string) boo
 		return false
 	}
 
-	// Hash the provided password and compare with stored hash
-	hashedPassword := auth.Hash(password)
-	return hashedPassword == storedPasswordHash
+	return auth.PasswordMatchesCached(storedPasswordHash, password)
 }
 
 // Start starts the WebDAV server

@@ -91,7 +91,7 @@
                         startDate = s;
                         endDate = e;
 
-                        $("#daterange").html(startDate + ` <i class="arrow right icon" style="margin-right: 0;"></i> ` + endDate);
+                        $("#daterange").html(htmlEscape(startDate) + ` <i class="arrow right icon" style="margin-right: 0;"></i> ` + htmlEscape(endDate));
                     }catch(ex){
                         alert("Invalid usage: Invalid date range given");
                     }

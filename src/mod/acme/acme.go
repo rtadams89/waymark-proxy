@@ -485,7 +485,7 @@ func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Requ
 			// Apply normalization on each domain
 			nd, err := netutils.NormalizeDomain(d)
 			if err != nil {
-				utils.SendErrorResponse(w, jsonEscape(err.Error()))
+				utils.SendErrorResponse(w, err.Error())
 				return
 			}
 			cleanedDomains = append(cleanedDomains, nd)
@@ -493,21 +493,26 @@ func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err != nil {
-		utils.SendErrorResponse(w, jsonEscape(err.Error()))
+		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
 	filename, err := utils.PostPara(r, "filename")
 	if err != nil {
-		utils.SendErrorResponse(w, jsonEscape(err.Error()))
+		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 	// Make sure the wildcard * do not goes into the filename
 	filename = strings.ReplaceAll(filename, "*", "_")
+	// The name becomes a file name in the certificate folder
+	if !isValidCertName(filename) {
+		utils.SendErrorResponse(w, "invalid certificate name")
+		return
+	}
 
 	email, err := utils.PostPara(r, "email")
 	if err != nil {
-		utils.SendErrorResponse(w, jsonEscape(err.Error()))
+		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
@@ -595,21 +600,10 @@ func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Requ
 
 	result, err := a.ObtainCert(cleanedDomains, filename, email, ca, caUrl, skipTLS, dns, propagationTimeout, dnsServersString, disableRecursiveNssCheck, disableAuthoritativeNssCheck)
 	if err != nil {
-		utils.SendErrorResponse(w, jsonEscape(err.Error()))
+		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 	utils.SendJSONResponse(w, strconv.FormatBool(result))
-}
-
-// Escape JSON string
-func jsonEscape(i string) string {
-	b, err := json.Marshal(i)
-	if err != nil {
-		// log.Println("Unable to escape json data: " + err.Error())
-		return i
-	}
-	s := string(b)
-	return s[1 : len(s)-1]
 }
 
 // Helper function to check if a port is in use

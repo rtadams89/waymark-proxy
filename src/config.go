@@ -107,11 +107,21 @@ func filterProxyConfigFilename(filename string) string {
 	return filepath.ToSlash(filename)
 }
 
+// validProxyConfigName reports whether a host name can be used as a proxy
+// rule's config file name: no path separators or "..", so the file always
+// stays in the proxy rule folder.
+func validProxyConfigName(name string) bool {
+	return name != "" && !strings.ContainsAny(name, "/\\\x00") && !strings.Contains(name, "..")
+}
+
 func SaveReverseProxyConfig(endpoint *dynamicproxy.ProxyEndpoint) error {
 	//Get filename for saving
-	filename := filepath.Join(CONF_HTTP_PROXY, endpoint.RootOrMatchingDomain+".config")
-	if endpoint.ProxyType == dynamicproxy.ProxyTypeRoot {
-		filename = filepath.Join(CONF_HTTP_PROXY, "root.config")
+	filename := filepath.Join(CONF_HTTP_PROXY, "root.config")
+	if endpoint.ProxyType != dynamicproxy.ProxyTypeRoot {
+		if !validProxyConfigName(endpoint.RootOrMatchingDomain) {
+			return errors.New("invalid host name for a proxy rule: " + endpoint.RootOrMatchingDomain)
+		}
+		filename = filepath.Join(CONF_HTTP_PROXY, endpoint.RootOrMatchingDomain+".config")
 	}
 
 	filename = filterProxyConfigFilename(filename)
@@ -126,9 +136,12 @@ func SaveReverseProxyConfig(endpoint *dynamicproxy.ProxyEndpoint) error {
 }
 
 func RemoveReverseProxyConfig(endpoint string) error {
-	filename := filepath.Join(CONF_HTTP_PROXY, endpoint+".config")
-	if endpoint == "/" {
-		filename = filepath.Join(CONF_HTTP_PROXY, "/root.config")
+	filename := filepath.Join(CONF_HTTP_PROXY, "root.config")
+	if endpoint != "/" {
+		if !validProxyConfigName(endpoint) {
+			return errors.New("invalid proxy rule name")
+		}
+		filename = filepath.Join(CONF_HTTP_PROXY, endpoint+".config")
 	}
 
 	filename = filterProxyConfigFilename(filename)

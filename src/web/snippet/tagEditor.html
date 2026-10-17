@@ -202,10 +202,10 @@
 
             //Add a tag row to the table
             function addTagRow(tag) {
-                const row = `<tr class="tagEntry" value="${tag}">
-                    <td><div class="ui circular label tag-color" style="background-color: ${getTagColorByName(tag)};"></div> ${tag}</td>    
+                const row = `<tr class="tagEntry" value="${htmlEscape(tag)}">
+                    <td><div class="ui circular label tag-color" style="background-color: ${getTagColorByName(tag)};"></div> ${htmlEscape(tag)}</td>    
                     <td>
-                        <button title="Delete Tag" class="ui circular mini basic button" onclick="removeTag('${tag}')">
+                        <button title="Delete Tag" class="ui circular mini basic button" data-tag="${htmlEscape(tag)}" onclick="removeTag(this.dataset.tag)">
                             <i class="red trash icon"></i> Delete
                         </button>
                     </td>
@@ -215,7 +215,7 @@
             }
 
             function removeTag(tag) {
-                $(`#tagsTableBody .tagEntry[value="${tag}"]`).remove();
+                $("#tagsTableBody .tagEntry").filter(function(){ return $(this).attr("value") === tag; }).remove();
                 populateTagsDropdown();
                 saveTags();
 
@@ -251,4 +251,4 @@
             }
         </script>
     </body>
-</html>
+</html>
