@@ -330,7 +330,6 @@ func startupSequence() {
 	//Create a table just to store acme related preferences
 	sysdb.NewTable("acmepref")
 	acmeHandler = initACME()
-	acmeHandler.ConvertPerCertificateDNSCredentials()
 	acmeAutoRenewer, err = acme.NewAutoRenewer(
 		ACME_AUTORENEW_CONFIG_PATH,
 		CONF_CERT_STORE,

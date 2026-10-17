@@ -9,7 +9,7 @@ package acme
 	number of certificates can share. A certificate that uses the DNS
 	challenge has a binding key <certName>_dns_profile in the "acme" table
 	that holds a profile ID. (Upstream Zoraxy stores credentials per
-	certificate instead; dnsprofiles_convert.go turns those into sets.)
+	certificate instead; Waymark does not read those.)
 
 	Secrets are write-only from the web UI's point of view: the list API
 	reports which fields have a value set, but never returns the values.

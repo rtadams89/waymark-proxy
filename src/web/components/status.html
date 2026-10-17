@@ -175,13 +175,13 @@
     }
 
     #status .netIconBadge.netIn{
-        background: rgba(59, 130, 246, 0.12);
-        color: #3b82f6;
+        background: rgba(20, 184, 166, 0.14);
+        color: #0f9488;
     }
 
     #status .netIconBadge.netOut{
-        background: rgba(139, 92, 246, 0.12);
-        color: #8b5cf6;
+        background: rgba(58, 124, 184, 0.14);
+        color: #3a7cb8;
     }
 
     #status .netCardTitle{
@@ -283,7 +283,7 @@
         min-height: 140px;
         border-radius: 4px;
         margin: 0.5em 0;
-        background: linear-gradient(to bottom, #1c4e9c 0%, #dbe9fb 100%);
+        background: linear-gradient(to bottom, #123b5c 0%, #d6f3ef 100%);
     }
 
     #status .worldMapWrapper{
@@ -294,7 +294,7 @@
     }
 
     #status .worldMapWrapper .jvm-tooltip{
-        background-color: #1a1a1e;
+        background-color: #123b5c;
         font-size: 0.85em;
     }
 
@@ -913,9 +913,9 @@
     let worldMap = undefined;
     let currentMapValues = {};
     let coloredRegionCodes = [];
-    const mapColorLow = "#c7ddf7";
-    const mapColorHigh = "#1c4e9c";
-    const mapDefaultFill = "#dde6f0";
+    const mapColorLow = "#bfe9e2";
+    const mapColorHigh = "#123b5c";
+    const mapDefaultFill = "#e2eaed";
 
     function hexToRgbArr(hex){
         hex = hex.replace('#', '');
@@ -1048,7 +1048,7 @@
         Top Requested Paths & Request Methods
     */
     let methodChart = undefined;
-    const methodChartColors = ["#4b75ff", "#fbbd08", "#21ba45", "#a333c8", "#f2711c", "#00b5ad"];
+    const methodChartColors = ["#14b8a6", "#fbbd08", "#21ba45", "#a333c8", "#f2711c", "#3a7cb8"];
     function updatePathsAndMethods(){
         $.ajax({
             url: "/api/stats/summary",
@@ -1297,8 +1297,8 @@
         for (var i = netDataCount - 1; i >= 0; i--){
             netTimestamps.push(fmtClock(new Date(now - i * 1000)));
         }
-        networkInChart = createRealtimeChart('networkInChart', '#3b82f6', '59, 130, 246');
-        networkOutChart = createRealtimeChart('networkOutChart', '#8b5cf6', '139, 92, 246');
+        networkInChart = createRealtimeChart('networkInChart', '#14b8a6', '20, 184, 166');
+        networkOutChart = createRealtimeChart('networkOutChart', '#3a7cb8', '58, 124, 184');
         netIOChartInitialized = true;
         fetchNetIOData();
     }

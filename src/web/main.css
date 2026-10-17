@@ -46,8 +46,8 @@ body{
 }
 
 body.darkTheme .menubar{
-    background: rgb(18,19,23);
-    background: linear-gradient(48deg, rgba(18,19,23,1) 21%, rgba(50,59,66,1) 79%); 
+    background: #0a1520;
+    background: linear-gradient(48deg, #0a1520 21%, #173246 79%);
 }
 
 .menubar .logo{
@@ -124,7 +124,7 @@ body.darkTheme .menubar{
 }
 
 #confirmBox .ui.progress .bar{
-    background: #a9d1f3 !important;
+    background: var(--accent) !important;
 }
 
 #confirmBox .confirmBoxBody .button{
@@ -553,7 +553,7 @@ body.darkTheme .menudivider{
 }
 
 .bluefont{
-    color: #417ac1 !important;
+    color: var(--accent_strong, #0f766e) !important;
 }
 
 @keyframes blinker {
@@ -832,7 +832,7 @@ body.darkTheme .menudivider{
     background-color: #3bd671;
 }
 .fine.statusDot{
-    background-color: #5583ee;
+    background-color: #14b8a6;
 }
 .error.statusDot{
     background-color: #f29030;

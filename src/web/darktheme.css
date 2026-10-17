@@ -5,65 +5,77 @@
     This will override the default CSS (white theme) for semantic UI
 */
 
-/* Color Pallete */
-/* Theme Color Definition */
+/* Color Palette */
+/* Waymark brand colours (branding/build_logos.py): navy #123B5C, teal #14B8A6,
+   pale teal #CDEFEA. The --accent* tokens are used by the brand overrides at
+   the end of this file. */
 body:not(.darkTheme){
-    --theme_bg: #fafafa;
+    --theme_bg: #f5f8f9;
     --theme_bg_primary: #ffffff;
     --theme_bg_secondary: #ffffff;
-    --theme_bg_active: #ececec;
-    --theme_highlight: #a9d1f3;
-    --theme_bg_inverted: #27292d;
-    --theme_advance: #f7f7f7;
-    --item_color: #5e5d5d;
-    --item_color_select: rgba(0,0,0,.87);
-    --text_color: #414141;
-    --text_color_secondary: #4b4b4b;
+    --theme_bg_active: #e3f4f1;
+    --theme_highlight: #8fdccf;
+    --theme_bg_inverted: #123b5c;
+    --theme_advance: #f2f7f8;
+    --item_color: #4f6473;
+    --item_color_select: #123b5c;
+    --text_color: #24394a;
+    --text_color_secondary: #475d6c;
     --input_color: white;
-    --divider_color: #e2e2de;
+    --divider_color: #dbe5e8;
     --text_color_inverted: #fcfcfc;
-    --button_text_color: #878787;
-    --button_border_color: #dedede;
-    --buttom_toggle_active: #01dc64;
-    --buttom_toggle_disabled: #f2f2f2;
+    --button_text_color: #6b7f8c;
+    --button_border_color: #d5e0e4;
+    --buttom_toggle_active: #14b8a6;
+    --buttom_toggle_disabled: #eef3f5;
     --table_header_color: transparent;
     --table_header_text_color: var(--text_color);
     --table_bg_default: transparent;
-    --status_dot_bg: #e8e8e8;
+    --status_dot_bg: #e3eaed;
 
-    --theme_background: linear-gradient(60deg, rgb(84, 58, 183) 0%, rgb(0, 172, 193) 100%);
-    --theme_background_inverted: linear-gradient(45deg, rgba(18,19,23,1) 21%, rgba(50,59,66,1) 79%);
-    --theme_green: linear-gradient(45deg, rgba(65,199,175,1) 21%, rgba(84,227,142,1) 79%);
+    --accent: #14b8a6;
+    --accent_strong: #0f766e;      /* text, links and icons on light backgrounds */
+    --accent_soft: rgba(20, 184, 166, 0.12);
+    --accent_navy: #123b5c;
+
+    --theme_background: linear-gradient(60deg, #123b5c 0%, #14b8a6 100%);
+    --theme_background_inverted: linear-gradient(45deg, #0b2134 21%, #1d4466 79%);
+    --theme_green: linear-gradient(45deg, #0fa392 15%, #34c98a 85%);
     --theme_red: linear-gradient(203deg, rgba(250,172,38,1) 17%, rgba(202,0,37,1) 78%);
 }
 
 body.darkTheme{
-    --theme_bg: #121214;
-    --theme_bg_primary: #1a1a1e;
-    --theme_bg_secondary:#4a7bb8;
-    --theme_highlight: #5583ee;
-    --theme_bg_active: #202024;
-    --theme_bg_inverted: #f8f8f9;
-    --theme_advance: #1a1a1a;
-    --item_color: #b0b0b0;
-    --text_color: #fafafa;
-    --text_color_secondary: #94959c;
+    --theme_bg: #0d151c;
+    --theme_bg_primary: #13202a;
+    --theme_bg_secondary: #1d4561;
+    --theme_highlight: #0f7d72;
+    --theme_bg_active: #1a2a36;
+    --theme_bg_inverted: #e3f1f4;
+    --theme_advance: #13202a;
+    --item_color: #b3c3cb;
+    --text_color: #e3f1f4;
+    --text_color_secondary: #93a9b4;
     --input_color: black;
-    --divider_color: #3e3e42;
-    --item_color_select: rgba(255, 255, 255, 0.75);
-    --text_color_inverted: #414141;
-    --button_text_color: #cccccc;
-    --button_border_color: #555555;
-    --buttom_toggle_active: #00c853;
-    --buttom_toggle_disabled: #3a3a3a;
-    --table_header_color: #202024;
+    --divider_color: #283a47;
+    --item_color_select: rgba(227, 241, 244, 0.8);
+    --text_color_inverted: #24394a;
+    --button_text_color: #c4d3d9;
+    --button_border_color: #36505f;
+    --buttom_toggle_active: #14b8a6;
+    --buttom_toggle_disabled: #2a3a45;
+    --table_header_color: #172631;
     --table_header_text_color: var(--text_color);
-    --table_bg_default: #2a2a2d;
-    --status_dot_bg: #333333;
+    --table_bg_default: #16242f;
+    --status_dot_bg: #263845;
 
-    --theme_background: linear-gradient(45deg, rgba(85,131,238,1) 21%, rgba(65,216,221,1) 79%);
-    --theme_background_inverted:linear-gradient(45deg, rgba(18,19,23,1) 21%, rgba(50,59,66,1) 79%);
-    --theme_green: linear-gradient(45deg, rgba(65,199,175,1) 21%, rgba(84,227,142,1) 79%);
+    --accent: #14b8a6;
+    --accent_strong: #2dd4bf;      /* text, links and icons on dark backgrounds */
+    --accent_soft: rgba(45, 212, 191, 0.14);
+    --accent_navy: #1d4561;
+
+    --theme_background: linear-gradient(60deg, #1d5a80 0%, #14b8a6 100%);
+    --theme_background_inverted: linear-gradient(45deg, #0a1520 21%, #1a3346 79%);
+    --theme_green: linear-gradient(45deg, #0f9c8c 15%, #2fbf83 85%);
     --theme_red: linear-gradient(203deg, rgba(250,172,38,1) 17%, rgba(202,0,37,1) 78%);
 }
 
@@ -1132,4 +1144,91 @@ body.darkTheme .ui.horizontal.divider {
 body.darkTheme .ui.checkbox input:checked ~ .box::after,
 body.darkTheme .ui.checkbox input:checked ~ label::after {
     color: var(--text_color_inverted) !important;
-}
+}
+
+
+/*
+    Waymark brand accents (light and dark)
+
+    Semantic UI's default accent is blue (#2185d0 / #4183c4). Links, blue
+    icons and buttons, toggles and focused inputs use the brand teal instead.
+*/
+
+body a {
+    color: var(--accent_strong);
+}
+body a:hover {
+    color: var(--accent);
+}
+
+body i.blue.icon,
+body .bluefont {
+    color: var(--accent_strong) !important;
+}
+
+body .ui.blue.button,
+body .ui.primary.button,
+body .ui.blue.label {
+    background-color: var(--accent) !important;
+    color: #ffffff !important;
+}
+body .ui.blue.button:hover,
+body .ui.primary.button:hover {
+    background-color: #0d9488 !important;
+}
+body .ui.basic.blue.button,
+body .ui.basic.primary.button {
+    background: transparent !important;
+    color: var(--accent_strong) !important;
+    box-shadow: 0 0 0 1px var(--accent_strong) inset !important;
+}
+body .ui.basic.blue.label {
+    background: transparent !important;
+    color: var(--accent_strong) !important;
+    border-color: var(--accent_strong) !important;
+}
+
+body .ui.toggle.checkbox input:checked ~ label:before,
+body .ui.toggle.checkbox input:focus:checked ~ label:before {
+    background-color: var(--accent) !important;
+}
+
+body .ui.form input:not([type]):focus,
+body .ui.form input[type="text"]:focus,
+body .ui.form input[type="number"]:focus,
+body .ui.form input[type="password"]:focus,
+body .ui.form textarea:focus,
+body .ui.input input:focus,
+body .ui.selection.active.dropdown,
+body .ui.selection.active.dropdown .menu {
+    border-color: var(--accent) !important;
+}
+
+body:not(.darkTheme) .ui.pointing.secondary.menu .active.item,
+body:not(.darkTheme) .ui.secondary.pointing.menu .active.item:hover {
+    border-color: var(--accent) !important;
+    color: var(--accent_navy) !important;
+}
+
+body .ui.progress .bar {
+    background-color: var(--accent);
+}
+
+body .ui.blue.message,
+body .ui.info.message {
+    background-color: var(--accent_soft) !important;
+    color: var(--text_color) !important;
+    box-shadow: 0 0 0 1px var(--accent) inset, 0 0 0 0 transparent !important;
+}
+body .ui.blue.message .header,
+body .ui.info.message .header,
+body .ui.blue.message h4,
+body .ui.info.message h4 {
+    color: var(--accent_navy) !important;
+}
+body.darkTheme .ui.blue.message .header,
+body.darkTheme .ui.info.message .header,
+body.darkTheme .ui.blue.message h4,
+body.darkTheme .ui.info.message h4 {
+    color: var(--accent_strong) !important;
+}

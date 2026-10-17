@@ -10,6 +10,23 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.1.0
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Changed**
+- New colour scheme built on the Waymark logo colours (navy `#123B5C`, teal `#14B8A6`), in light and dark mode:
+  - Light mode uses cool grey-teal surfaces and navy text; dark mode uses navy-tinted backgrounds instead of neutral greys.
+  - The active menu item, header line, status banner, toggles, links, blue buttons, icons and info messages use the brand teal instead of blue and purple.
+  - The status page charts, world map and traffic flow diagram, and the login page backgrounds, use the same palette.
+
+**Removed**
+- The startup conversion of per-certificate DNS credentials into credential sets, added in 2.0.0. Upgrading straight from a version before 2.0.0 no longer converts them; upgrade through 2.0.0 first.
+
+**Fixed**
+- The TLS / SSL certificates page loaded a script that doesn't exist (`jsrsasign-all-min.js`); the reference is removed.
+- The HTTP Proxy list raised a script error while it had no proxy rules.
+
 ## 2.0.0
 
 Based on Zoraxy 3.3.5 (`310b0cc`).
