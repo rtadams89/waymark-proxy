@@ -1,0 +1,9 @@
+[Unit]
+Description=Apply Zoraxy HA (keepalived) settings when Zoraxy changes them
+
+[Path]
+PathChanged=/var/lib/zoraxy/ha/cluster.env
+Unit=zoraxy-ha-apply.service
+
+[Install]
+WantedBy=multi-user.target

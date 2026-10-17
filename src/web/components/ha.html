@@ -1,0 +1,301 @@
+<!-- Custom fork: high availability (ha_custom.go, mod/hacluster) -->
+<style>
+    #ha .haGrid{ display: grid; grid-template-columns: minmax(10em, max-content) 1fr; gap: 0.55em 1.2em; align-items: baseline; }
+    #ha .haGrid .haLabel{ color: var(--text_color_secondary); }
+    #ha .haMono{ font-family: monospace; word-break: break-all; }
+    #ha .haHint{ color: var(--text_color_secondary); font-size: 0.9em; }
+    #ha pre.haPre{ background: var(--theme_bg_secondary, rgba(128,128,128,0.08)); border: 1px solid var(--divider_color); border-radius: 0.5em;
+        padding: 0.9em; overflow-x: auto; font-size: 0.85em; line-height: 1.45; white-space: pre; margin: 0.5em 0 0 0; }
+    #ha .haRole{ display: inline-block; padding: 0.2em 0.7em; border-radius: 1em; font-weight: 600; font-size: 0.9em; }
+    #ha .haRole.MASTER{ background: rgba(33,186,69,0.15); color: #1a9c3a; }
+    #ha .haRole.BACKUP{ background: rgba(33,133,208,0.15); color: #2185d0; }
+    #ha .haRole.FAULT, #ha .haRole.STOP{ background: rgba(219,40,40,0.15); color: #db2828; }
+    #ha .haRole.UNKNOWN{ background: rgba(128,128,128,0.15); }
+    #ha #haNodesTable input{ min-width: 6em; }
+    #ha #haNodesTable td.haSelfCell{ white-space: nowrap; }
+    @media (max-width: 700px){ #ha .haGrid{ grid-template-columns: 1fr; gap: 0.15em; } #ha .haGrid .haLabel{ margin-top: 0.6em; } }
+</style>
+<div class="standardContainer">
+    <div class="ui basic segment">
+        <h2>High Availability</h2>
+        <p>Run two Zoraxy instances as an active/passive pair. keepalived moves a floating IP to the healthy node with the highest priority; Zoraxy writes its settings and reports its health.</p>
+    </div>
+
+    <div class="ui segment" id="haNotInstalled" style="display:none;">
+        <h4 class="ui header"><i class="orange exclamation triangle icon"></i><div class="content">keepalived integration not installed on this node<div class="sub header" id="haNotInstalledWhy"></div></div></h4>
+        <p>Zoraxy runs as an unprivileged user and never writes keepalived's config itself. A small root-owned helper does that from the settings below, after checking them. Install it once on each node:</p>
+        <pre class="haPre" id="haInstallCmds"></pre>
+        <p class="haHint" style="margin-top: 0.6em;">Review the files before running the installer: <span id="haInstallerLinks"></span>. Settings can be saved before installing; they are applied when the integration is installed.</p>
+    </div>
+
+    <div class="ui segment">
+        <h3>This node</h3>
+        <div class="haGrid">
+            <div class="haLabel">Node</div><div id="haSelf">-</div>
+            <div class="haLabel">Role</div><div id="haRoleCell">-</div>
+            <div class="haLabel">Floating IP</div><div id="haVipCell">-</div>
+            <div class="haLabel">Health reported to keepalived</div><div id="haHeartbeatCell">-</div>
+            <div class="haLabel">Certificate renewal</div><div id="haRenewCell">-</div>
+            <div class="haLabel">Last apply</div><div id="haApplyCell">-</div>
+        </div>
+    </div>
+
+    <div class="ui segment">
+        <h3>Cluster settings</h3>
+        <p class="haHint">The same settings go on every node (enter them on each node for now; syncing between nodes comes next). Each node finds itself in the list by its own address.</p>
+        <div class="ui form" id="haForm">
+            <div class="field">
+                <div class="ui toggle checkbox">
+                    <input type="checkbox" id="haEnabled">
+                    <label><b>Enable high availability</b></label>
+                </div>
+            </div>
+            <div class="three fields">
+                <div class="field">
+                    <label>Floating IP</label>
+                    <input type="text" id="haVip" placeholder="10.10.20.5" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label>Prefix length</label>
+                    <input type="number" id="haPrefix" min="1" max="32" placeholder="24">
+                </div>
+                <div class="field">
+                    <label>Router ID</label>
+                    <input type="number" id="haRouterId" min="1" max="255" placeholder="51">
+                </div>
+            </div>
+            <div class="haHint" style="margin: -0.5em 0 1em 0;">The router ID (1-255) must not be used by any other VRRP or CARP group on this VLAN, including pfSense CARP.</div>
+            <div class="two fields">
+                <div class="field">
+                    <label>VRRP password <span class="haHint">(optional, up to 8 letters or digits)</span></label>
+                    <input type="text" id="haPassword" maxlength="8" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label>&nbsp;</label>
+                    <div class="ui checkbox">
+                        <input type="checkbox" id="haPreempt">
+                        <label>Move the floating IP back when a higher-priority node recovers<br><span class="haHint">Off (recommended): it stays where it is until that node fails.</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <h4>Nodes</h4>
+            <table class="ui very basic compact unstackable table" id="haNodesTable">
+                <thead><tr><th>Name</th><th>Address on this VLAN</th><th>Interface</th><th>Priority</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <button class="ui basic small button" onclick="haAddNode(); return false;"><i class="add icon"></i> Add node</button>
+            <button class="ui basic small button" id="haAddSelfBtn" onclick="haAddSelf(); return false;"><i class="server icon"></i> Add this node</button>
+            <div class="haHint" style="margin-top: 0.5em;">This machine's addresses: <span class="haMono" id="haLocalAddrs">-</span>. The node with the highest priority is active when all are healthy.</div>
+
+            <div class="ui divider"></div>
+            <button class="ui basic button" id="haSaveBtn" onclick="haSave(); return false;"><i class="green save icon"></i> Save and apply</button>
+            <button class="ui basic button" onclick="haExport(); return false;"><i class="copy icon"></i> Copy settings</button>
+            <button class="ui basic button" onclick="$('#haImportBox').slideToggle('fast'); return false;"><i class="paste icon"></i> Paste settings</button>
+            <div id="haImportBox" style="display:none; margin-top: 0.8em;">
+                <div class="field">
+                    <label>Settings copied from the other node</label>
+                    <textarea id="haImportText" rows="5" class="haMono"></textarea>
+                </div>
+                <button class="ui basic small button" onclick="haImport(); return false;"><i class="check icon"></i> Load into the form</button>
+            </div>
+            <div class="ui message" id="haMsg" style="display:none;"></div>
+        </div>
+    </div>
+
+    <div class="ui segment">
+        <h3>Generated keepalived config for this node</h3>
+        <p class="haHint">What the root helper writes to <span class="haMono">/etc/keepalived/keepalived.conf</span> from the saved settings. It is tested with <span class="haMono">keepalived -t</span> before keepalived is reloaded, and the previous file is restored if the reload fails.</p>
+        <pre class="haPre" id="haPreview"></pre>
+    </div>
+
+    <div class="ui segment">
+        <h3>Notes</h3>
+        <div class="ui bulleted list haHint">
+            <div class="item">keepalived uses unicast VRRP between the listed node addresses. If a firewall sits between the nodes, allow IP protocol 112 (VRRP) between them.</div>
+            <div class="item">A node gives up the floating IP when Zoraxy's proxy listener stops answering (checked every 2 seconds; the floating IP moves within about 10 seconds), when Zoraxy stops, or when the machine goes down.</div>
+            <div class="item">Only the active node renews certificates automatically. "Renew now" still works on any node.</div>
+            <div class="item">Installer files: <span id="haInstallerLinks2"></span>. Log of each apply: <span class="haMono">journalctl -u zoraxy-ha-apply</span>; keepalived: <span class="haMono">journalctl -u keepalived</span>.</div>
+        </div>
+    </div>
+</div>
+<script>
+    (function(){
+        let haLoaded = false;
+        let haStatus = null;
+
+        function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html(); }
+        function ago(ts){
+            if (!ts) return "";
+            let s = Math.max(0, Math.round(Date.now()/1000 - ts));
+            if (s < 60) return s + "s ago";
+            if (s < 3600) return Math.round(s/60) + " min ago";
+            if (s < 86400) return Math.round(s/3600) + " h ago";
+            return new Date(ts*1000).toLocaleString();
+        }
+        function showMsg(text, ok){
+            $("#haMsg").removeClass("green red yellow").addClass(ok === true ? "green" : (ok === false ? "red" : "yellow"))
+                .html(esc(text)).stop().finish().show();
+        }
+
+        function nodeRow(n){
+            n = n || {name: "", address: "", interface: "", priority: ""};
+            return `<tr>
+                <td><input type="text" class="haNodeName" value="${esc(n.name)}" placeholder="zoraxy1"></td>
+                <td><input type="text" class="haNodeAddr" value="${esc(n.address)}" placeholder="10.10.20.10"></td>
+                <td><input type="text" class="haNodeIface" value="${esc(n.interface)}" placeholder="ens18"></td>
+                <td><input type="number" class="haNodePrio" min="1" max="254" value="${esc(n.priority)}" placeholder="150"></td>
+                <td class="haSelfCell"><span class="haSelfMark"></span> <button class="ui basic mini icon button" title="Remove" onclick="$(this).closest('tr').remove(); haMarkSelf(); return false;"><i class="red trash icon"></i></button></td>
+            </tr>`;
+        }
+
+        window.haMarkSelf = function(){
+            let local = haStatus ? haStatus.localAddresses : [];
+            $("#haNodesTable tbody tr").each(function(){
+                let addr = $(this).find(".haNodeAddr").val().trim();
+                $(this).find(".haSelfMark").html(local.includes(addr) ? `<span class="ui mini green label">this node</span>` : "");
+            });
+        };
+
+        window.haAddNode = function(n){
+            $("#haNodesTable tbody").append(nodeRow(n));
+            haMarkSelf();
+        };
+
+        window.haAddSelf = function(){
+            if (!haStatus || haStatus.localAddresses.length == 0) return;
+            let prios = $(".haNodePrio").map((i, e) => parseInt(e.value) || 0).get();
+            let prio = prios.length == 0 ? 150 : Math.max(1, Math.min(...prios.filter(p => p > 0).concat([150])) - 50);
+            haAddNode({name: haStatus.nodeName, address: haStatus.localAddresses[0], interface: "", priority: prio});
+        };
+
+        function readForm(){
+            return {
+                enabled: $("#haEnabled")[0].checked,
+                vip: $("#haVip").val().trim(),
+                prefix: parseInt($("#haPrefix").val()) || 0,
+                routerId: parseInt($("#haRouterId").val()) || 0,
+                password: $("#haPassword").val().trim(),
+                preempt: $("#haPreempt")[0].checked,
+                nodes: $("#haNodesTable tbody tr").map(function(){
+                    return {
+                        name: $(this).find(".haNodeName").val().trim(),
+                        address: $(this).find(".haNodeAddr").val().trim(),
+                        interface: $(this).find(".haNodeIface").val().trim(),
+                        priority: parseInt($(this).find(".haNodePrio").val()) || 0
+                    };
+                }).get()
+            };
+        }
+
+        function fillForm(c){
+            $("#haEnabled").prop("checked", !!c.enabled);
+            $("#haVip").val(c.vip || "");
+            $("#haPrefix").val(c.prefix || "");
+            $("#haRouterId").val(c.routerId || "");
+            $("#haPassword").val(c.password || "");
+            $("#haPreempt").prop("checked", !!c.preempt);
+            $("#haNodesTable tbody").empty();
+            (c.nodes || []).forEach(n => $("#haNodesTable tbody").append(nodeRow(n)));
+            haMarkSelf();
+        }
+
+        function renderStatus(d){
+            haStatus = d;
+            let c = d.config;
+            $("#haNotInstalled").toggle(!d.installed);
+            $("#haNotInstalledWhy").text(d.installedReason || "");
+            $("#haInstallCmds").text(
+                "sudo apt install keepalived\n" +
+                d.executable + " -ha-export-installer /tmp/zoraxy-ha\n" +
+                "less /tmp/zoraxy-ha/install.sh /tmp/zoraxy-ha/zoraxy-ha-apply   # review\n" +
+                "sudo bash /tmp/zoraxy-ha/install.sh");
+            let links = d.installerFiles.map(f => `<a href="/api/ha/installer?file=${encodeURIComponent(f)}" target="_blank">${esc(f)}</a>`).join(", ");
+            $("#haInstallerLinks, #haInstallerLinks2").html(links);
+            $("#haLocalAddrs").text(d.localAddresses.join(", ") || "none");
+
+            if (!c.enabled){
+                $("#haSelf").html(`<span class="haHint">High availability is off</span>`);
+            }else if (d.self >= 0){
+                let me = c.nodes[d.self];
+                $("#haSelf").html(`<b>${esc(me.name)}</b> <span class="haMono">${esc(me.address)}</span> · priority ${me.priority}`);
+            }else{
+                $("#haSelf").html(`<i class="orange exclamation triangle icon"></i>Not in the node list (this machine: ${esc(d.localAddresses.join(", "))})`);
+            }
+            let role = d.role.state || "";
+            let roleText = {MASTER: "Active", BACKUP: "Standby", FAULT: "Fault", STOP: "keepalived stopped"}[role] || "Unknown";
+            let roleHint = role ? ` <span class="haHint">since ${ago(d.role.since)}</span>` : ` <span class="haHint">(keepalived has not reported a state yet)</span>`;
+            $("#haRoleCell").html(c.enabled ? `<span class="haRole ${role || "UNKNOWN"}">${roleText}</span>${roleHint}` : `<span class="haHint">-</span>`);
+            $("#haVipCell").html(c.vip ? `<span class="haMono">${esc(c.vip)}/${c.prefix}</span> · ${d.vipHeld ? `<b style="color:#1a9c3a;">held by this node</b>` : "held by another node (or nobody)"}` : `<span class="haHint">-</span>`);
+            let hb = d.heartbeat;
+            $("#haHeartbeatCell").html(!c.enabled ? `<span class="haHint">Not reported while HA is off</span>` :
+                (hb.ok ? `<i class="green check circle icon"></i>Healthy <span class="haHint">(proxy listener answering, ${ago(hb.time)})</span>`
+                       : `<i class="red times circle icon"></i>Unhealthy: ${esc(hb.reason)}`));
+            $("#haRenewCell").html(d.renewalHeld ? `<i class="blue pause circle icon"></i>Held: ${esc(d.renewalReason)}` : `<i class="green check circle icon"></i>Runs on this node`);
+            let a = d.lastApply;
+            $("#haApplyCell").html(a && a.status ? `${a.status == "ok" ? `<i class="green check circle icon"></i>` : `<i class="red times circle icon"></i>`}${esc(a.message)} <span class="haHint">${ago(a.time)}</span>` : `<span class="haHint">Not applied yet</span>`);
+            $("#haPreview").text(d.preview);
+        }
+
+        window.haLoad = function(fill){
+            $.get("/api/ha/status", function(d){
+                if (!d || d.error != undefined) return;
+                renderStatus(d);
+                if (fill || !haLoaded){
+                    fillForm(d.config);
+                    haLoaded = true;
+                }
+            });
+        };
+
+        window.haSave = function(){
+            let cfg = readForm();
+            $("#haSaveBtn").addClass("loading disabled");
+            showMsg("Saving and applying...", null);
+            $.cjax({
+                url: "/api/ha/config",
+                method: "POST",
+                data: { config: JSON.stringify(cfg) },
+                timeout: 30000,
+                success: function(d){
+                    $("#haSaveBtn").removeClass("loading disabled");
+                    if (d.error != undefined){
+                        showMsg(d.error, false);
+                        return;
+                    }
+                    showMsg(d.message || "Saved", d.applied ? true : null);
+                    haLoad(true);
+                },
+                error: function(){
+                    $("#haSaveBtn").removeClass("loading disabled");
+                    showMsg("Failed to save HA settings", false);
+                }
+            });
+        };
+
+        window.haExport = function(){
+            let json = JSON.stringify(readForm());
+            if (navigator.clipboard && window.isSecureContext){
+                navigator.clipboard.writeText(json).then(() => showMsg("Settings copied. On the other node, use Paste settings, then Save and apply.", true));
+            }else{
+                $("#haImportBox").show();
+                $("#haImportText").val(json).select();
+                showMsg("Copy the text below, then on the other node use Paste settings.", null);
+            }
+        };
+
+        window.haImport = function(){
+            try{
+                fillForm(JSON.parse($("#haImportText").val()));
+                showMsg("Loaded. Check the values, then Save and apply.", null);
+                $("#haImportBox").slideUp("fast");
+            }catch(e){
+                showMsg("That is not valid settings text", false);
+            }
+        };
+
+        $(document).on("input", "#haNodesTable .haNodeAddr", haMarkSelf);
+        haLoad(true);
+        setInterval(function(){ if ($("#ha").is(":visible")){ haLoad(false); } }, 5000);
+    })();
+</script>

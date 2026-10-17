@@ -1,0 +1,2 @@
+# Custom fork: the HA installer scripts run under bash on Linux; keep them LF in every checkout
+src/mod/hacluster/deploy/* text eol=lf

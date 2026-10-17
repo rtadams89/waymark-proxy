@@ -100,7 +100,11 @@ func NewAutoRenewer(config string, certFolder string, renewCheckInterval int64, 
 		thisRenewer.StartAutoRenewTicker()
 
 		//Check and renew certificate on startup
-		go thisRenewer.CheckAndRenewCertificates()
+		go func() {
+			if !thisRenewer.renewalHeld() { //Custom fork: HA standby
+				thisRenewer.CheckAndRenewCertificates()
+			}
+		}()
 	}
 
 	return &thisRenewer, nil
@@ -128,6 +132,9 @@ func (a *AutoRenewer) StartAutoRenewTicker() {
 			case <-done:
 				return
 			case <-ticker.C:
+				if a.renewalHeld() { //Custom fork: HA standby
+					continue
+				}
 				a.Logf("Check and renew certificates in progress", nil)
 				a.CheckAndRenewCertificates()
 			}

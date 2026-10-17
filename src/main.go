@@ -87,6 +87,9 @@ func main() {
 		geodb.DownloadGeoDBUpdate(CONF_GEODB_PATH)
 		os.Exit(0)
 	}
+	if handleHAMaintenanceFlags() { //Custom fork: -ha-export-installer
+		os.Exit(0)
+	}
 	if *reset_account {
 		//Reset admin account by removing all users from the system
 		auth.ResetAccount(databaseBackend, path_database)

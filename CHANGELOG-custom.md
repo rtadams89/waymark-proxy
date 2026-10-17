@@ -9,6 +9,20 @@ Changes in this fork on top of upstream [tobychui/zoraxy](https://github.com/tob
 - Release tags are `v<version>` (for example `v3.3.5-custom.1`). CI refuses to publish a release whose tag doesn't match the version built into the binary.
 - New upstream releases are picked up by the "Watch upstream releases" workflow (daily), which opens an issue and starts "Merge upstream release" to prepare a pull request. Merge those pull requests with a merge commit.
 
+## 3.3.5-custom.12
+
+Base: upstream v3.3.5 (`310b0cc`).
+
+**Added**
+- High availability, phase 1: an active/passive pair (2 to 4 nodes) sharing a floating IP managed by keepalived (Networking > **High Availability**).
+  - Cluster settings in the UI: floating IP and prefix, VRRP router ID, optional VRRP password, and each node's name, address, interface and priority. Each node finds itself in the list by its own address. Uses unicast VRRP between the node addresses. By default the floating IP stays where it is when a higher-priority node recovers; it can be set to move back after 30 seconds.
+  - Zoraxy (running as the unprivileged `zoraxy` user) never writes keepalived's config. It writes a settings file; a root-owned helper (`zoraxy-ha-apply`, started by a systemd path unit) validates every value, builds `/etc/keepalived/keepalived.conf` from a fixed template, tests it with `keepalived -t`, and reloads keepalived. If the reload fails, the previous config is restored. The result is shown in the UI. The first time, a hand-written keepalived.conf is kept as `keepalived.conf.pre-zoraxy`.
+  - keepalived runs two root-owned scripts as the `zoraxy` user (`enable_script_security`). The health check needs a fresh heartbeat from Zoraxy, written every 2 seconds while the proxy listener answers (TCP connect plus TLS handshake). The notify script records the node's role. The floating IP moves to the other node within about 10 seconds when Zoraxy stops answering or exits, when keepalived stops, or when the machine goes down.
+  - Role badge in the menu bar (Active and holding the floating IP, Standby, Fault, keepalived stopped). The HA page shows this node's role, health, certificate renewal state, last apply result and a preview of the generated keepalived config.
+  - Automatic certificate renewal runs only on the active node. Standby, faulted and stopped nodes skip it; "Renew now" still works anywhere.
+  - Installer built into the binary: `zoraxy -ha-export-installer <folder>` writes `install.sh`, the helper, scripts and systemd units for review; then run `sudo bash <folder>/install.sh` on each node (needs `apt install keepalived`). The files can also be downloaded from the HA page.
+  - Settings are not synced between nodes yet. Enter them on each node, or use **Copy settings** / **Paste settings**. Syncing configuration, admin accounts and keys from the active node is planned for phase 2.
+
 ## 3.3.5-custom.11
 
 Base: upstream v3.3.5 (`310b0cc`).
