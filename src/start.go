@@ -169,7 +169,7 @@ func startupSequence() {
 
 	//Create a load balancer
 	loadBalancer = loadbalance.NewLoadBalancer(&loadbalance.Options{
-		SystemUUID: nodeUUID,
+		SessionKey: stickySessionKey(), //Custom fork: not the host UUID, which upstreams see (stickykey_custom.go)
 		Geodb:      geodbStore,
 		Logger:     SystemWideLogger,
 	})

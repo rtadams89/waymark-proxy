@@ -19,7 +19,7 @@ import (
 */
 
 type Options struct {
-	SystemUUID           string       //Use for the session store
+	SessionKey           string       //Custom fork: signs sticky session cookies; shared by HA nodes (stickykey_custom.go)
 	UseActiveHealthCheck bool         //Use active health check, default to false
 	Geodb                *geodb.Store //GeoIP resolver for checking incoming request origin country
 	Logger               *logger.Logger
@@ -55,9 +55,9 @@ type Upstream struct {
 
 // Create a new load balancer
 func NewLoadBalancer(options *Options) *RouteManager {
-	if options.SystemUUID == "" {
-		//System UUID not passed in. Use random key
-		options.SystemUUID = uuid.New().String()
+	if options.SessionKey == "" {
+		//No key passed in. Use a random one
+		options.SessionKey = uuid.New().String()
 	}
 
 	//Create a ticker for cache cleanup every 12 hours
@@ -77,7 +77,7 @@ func NewLoadBalancer(options *Options) *RouteManager {
 	}()
 
 	//Generate a session store for stickySession
-	store := sessions.NewCookieStore([]byte(options.SystemUUID))
+	store := sessions.NewCookieStore([]byte(options.SessionKey))
 	return &RouteManager{
 		SessionStore: store,
 		OnlineStatus: sync.Map{},
@@ -114,7 +114,7 @@ func GetUpstreamsAsString(upstreams []*Upstream) string {
 
 // Reset the current session store and clear all previous sessions
 func (m *RouteManager) ResetSessions() {
-	m.SessionStore = sessions.NewCookieStore([]byte(m.Options.SystemUUID))
+	m.SessionStore = sessions.NewCookieStore([]byte(m.Options.SessionKey))
 }
 
 func (m *RouteManager) Close() {

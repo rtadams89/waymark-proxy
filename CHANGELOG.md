@@ -10,6 +10,11 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.6.3
+
+**Security**
+- Sticky session cookies (load balancing) are signed with their own random key instead of the host UUID. The host UUID is sent to every upstream in the `X-Forwarded-Server` header, so an upstream could forge the cookies and choose which upstream its requests went to. The key is kept in the database and copied to standby nodes by HA configuration sync, so sticky sessions survive a failover; each node can keep its own host UUID (`sys.uuid`). Existing sticky session cookies stop matching once, so those clients are assigned an upstream again.
+
 ## 2.6.2
 
 2.6.1 was tagged but not released (a test failed in CI); its changes are included here.

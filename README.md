@@ -244,7 +244,7 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 - After a failover, make changes on the new active node. They are copied to the old one when it returns as standby.
 - **Make active** (on the HA page's cluster table) moves the floating IPs to a healthy standby. The active node reports itself unhealthy for a few seconds so keepalived hands over, then becomes the standby. It needs configuration sync on, and can be started from either node. With "prefer the higher-priority node" on, a higher-priority node takes the floating IPs back about 30 seconds later.
 - Only the active node renews certificates automatically.
-- Not synced (kept per node): statistics, log files, traffic captures, the Geo-IP database, plugins, static web server files and live SSO sessions.
+- Not synced (kept per node): the host UUID (`sys.uuid`), statistics, log files, traffic captures, the Geo-IP database, plugins, static web server files and live SSO sessions.
 - HTTP proxying listens on all addresses, so every floating IP works on whichever node holds it. A stream proxy that listens on one specific floating IP can only start on the node holding that address, unless every node has `net.ipv4.ip_nonlocal_bind=1` (`echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf && sudo sysctl --system`). The HA page warns when this applies.
 - Logs: `journalctl -u waymark-ha-apply` for applying settings, `journalctl -u keepalived` for VRRP.
 
@@ -329,7 +329,8 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 | Path | Contents |
 |---|---|
 | `conf/` | Proxy rules, certificates and keys, access rules, log settings (`log_conf.json`, `log_outputs.json`) and other configuration files |
-| `sys.db` | Settings, admin accounts, ACME account and statistics |
+| `sys.db` | Settings, admin accounts, ACME account, the sticky session key and statistics |
+| `sys.uuid` | This host's ID, created on first start (sent to upstreams in `X-Forwarded-Server`; each node has its own) |
 | `log/` | The log file (`waymark_<year>-<month>.log`) and rotated copies |
 | `waymark.prev` | The binary that ran before the last update or roll back (for **Roll back**) |
 | `.update-state.json` | The last update or roll back and its outcome |
