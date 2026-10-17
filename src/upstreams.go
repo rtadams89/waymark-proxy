@@ -177,6 +177,11 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
+	//Custom fork: the weight is now set in the upstream's edit form
+	if newUpstream.Weight < 0 || newUpstream.Weight > 100 {
+		utils.SendErrorResponse(w, "weight must be between 0 and 100")
+		return
+	}
 
 	//Replace the old upstream with the new one
 	err = targetEndpoint.RemoveUpstreamOrigin(originIP)

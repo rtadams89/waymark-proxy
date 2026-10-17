@@ -1796,8 +1796,9 @@
             success: function(data) {
                 let dropdown = $('<div class="ui fluid selection dropdown"></div>');
                 let menu = $('<div class="menu"></div>');
-                data.forEach(cert => {
-                    menu.append(`<div class="item" data-value="${cert}">${cert}</div>`);
+                //Custom fork: the list is null when no certificate is installed yet
+                (Array.isArray(data) ? data : []).forEach(cert => {
+                    menu.append(`<div class="item" data-value="${htmlEscape(cert)}">${htmlEscape(cert)}</div>`);
                 });
                 // Add a hidden input to store the selected certificate
                 dropdown.append('<input type="hidden" name="certificate">');

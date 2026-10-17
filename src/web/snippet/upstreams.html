@@ -15,10 +15,13 @@
                 right: 0.6em;
             }
 
+            /* Custom fork: keep host:port on one line; only very long names wrap, at any point */
             .upstreamLink{
-                max-width: 220px;
-                display: inline-block;
-                word-break: break-all;
+                display: inline;
+                overflow-wrap: anywhere;
+            }
+            .upstreamEntry > h4.ui.header > .content{
+                padding-right: 3em; /* room for the edit button */
             }
 
             .upstreamEntry .ui.toggle.checkbox input:checked ~ label::before{
@@ -87,7 +90,7 @@
                     </div>
                 </div>
                 <div class="ui message">
-                    <i class="ui blue info circle icon"></i> Weighted random will be used for load-balancing. Set weight to 0 for fallback only.
+                    <i class="ui blue info circle icon"></i> Requests are spread by weighted random. Set each upstream's weight with its edit button; weight 0 makes it a fallback only.
                  </div>
             </div>
             <div class="ui tab basic segment" data-tab="newupstream">
@@ -244,12 +247,6 @@
                     }
                 }
 
-                //Priority Arrows 
-                let downArrowClass = "";
-                if (upstream.Weight == 0 ){
-                    //Cannot go any lower
-                    downArrowClass = "disabled";
-                }
                 let url = `${upstream.RequireTLS?"https://":"http://"}${upstream.OriginIpOrDomain}`
                 let payload = encodeURIComponent(JSON.stringify(upstream));
                 let domUID = newUID();
@@ -262,7 +259,7 @@
                             <label></label>
                         </div>
                         <div class="content">
-                        <a href="${url}" target="_blank" class="upstreamLink">${upstream.OriginIpOrDomain} ${tlsIcon}</a>
+                        <a href="${htmlEscape(url)}" target="_blank" class="upstreamLink">${htmlEscape(upstream.OriginIpOrDomain)}</a>&nbsp;${tlsIcon}
                             <div class="sub header">${isActive?(upstream.Weight==0?"Fallback Only":"Active"):"Inactive"} | Weight: ${upstream.Weight}x </div>
                         </div>
                     </h4>
@@ -270,9 +267,17 @@
                         <div class="upstreamOriginField">
                             <p>New upstream origin IP address or domain</p>
                             <div class="ui small fluid input" style="margin-top: -0.6em;">
-                                <input type="text" class="newOrigin" value="${upstream.OriginIpOrDomain}" onchange="handleAutoOriginClean('${domUID}');">
+                                <input type="text" class="newOrigin" value="${htmlEscape(upstream.OriginIpOrDomain)}" onchange="handleAutoOriginClean('${domUID}');">
                             </div>
                             <small>e.g. 192.168.0.101:8000 or example.com</small>
+                        </div>
+                        <!-- Custom fork: weight is set here (it had up/down arrow buttons) -->
+                        <div class="upstreamWeightField" style="margin-top: 0.8em;">
+                            <p>Weight</p>
+                            <div class="ui small input" style="margin-top: -0.6em; width: 8em;">
+                                <input type="number" class="newWeight" min="0" max="100" step="1" value="${parseInt(upstream.Weight) || 0}">
+                            </div>
+                            <br><small>Share of requests compared with the other upstreams (weighted random): an upstream with weight 2 gets twice as many as one with 1. 0 makes it a fallback, used only when no upstream with a higher weight is available.</small>
                         </div>
                         <div class="ui divider"></div>
                         <div class="ui checkbox">
@@ -316,9 +321,6 @@
                         </div>
                     </div>
                     <div class="upstreamActions">
-                        <!-- Change Priority -->
-                        <button class="ui basic circular icon button highPriorityButton" title="Increase Weight" onclick="increaseUpstreamWeight('${domUID}');"><i class="ui arrow up icon"></i></button>
-                        <button class="ui basic circular icon button lowPriorityButton ${downArrowClass}" title="Reduce Weight"  onclick="decreaseUpstreamWeight('${domUID}');"><i class="ui arrow down icon"></i></button>
                         <button class="ui basic circular icon editbtn button" onclick="handleUpstreamOriginEdit('${domUID}');" title="Edit Upstream Destination"><i class="ui grey edit icon"></i></button>
                         <button style="display:none;" class="ui basic circular icon trashbtn button" onclick="removeUpstream('${domUID}');" title="Remove Upstream"><i class="ui red trash icon"></i></button>
                         <button style="display:none;" class="ui basic circular icon savebtn button" onclick="saveUpstreamUpdate('${domUID}');" title="Save Changes"><i class="ui green save icon"></i></button>
@@ -446,6 +448,7 @@
                 originalSettings.SkipWebSocketOriginCheck = skipWebSocketOriginCheck;
                 originalSettings.MaxConn = parseInt(maxConn);
                 originalSettings.RespTimeout = respTimeout;
+                originalSettings.Weight = parseInt($(upstream).find(".newWeight").val(), 10); //Custom fork: checked in saveUpstreamUpdate
 
                 //console.log(originalSettings);
                 return originalSettings;
@@ -458,7 +461,10 @@
                 originalSettings = JSON.parse(decodeURIComponent(originalSettings));
                 let newConfig = getUpstreamSettingFromDOM(targetDOM);
                 let isActive = $(targetDOM).find(".enableState")[0].checked;
-                console.log(newConfig);
+                if (isNaN(newConfig.Weight) || newConfig.Weight < 0 || newConfig.Weight > 100){
+                    parent.msgbox("Weight must be a whole number from 0 to 100", false);
+                    return;
+                }
                 $.cjax({
                     url: "/api/proxy/upstream/update",
                     method: "POST",
@@ -488,8 +494,6 @@
 
                 //Change the UI to edit mode
                 $(".editbtn").hide();
-                $(".lowPriorityButton").hide();
-                $(".highPriorityButton").hide();
                 $(targetDOM).find(".trashbtn").show();
                 $(targetDOM).find(".savebtn").show();
                 $(targetDOM).find(".cancelbtn").show();
@@ -537,41 +541,6 @@
                 let upstreamSettings = $(targetDOM).attr("data-payload");
                 upstreamSettings = JSON.parse(decodeURIComponent(upstreamSettings));
                 return upstreamSettings;
-            }
-
-            function increaseUpstreamWeight(domid){
-                let upstreamSetting = getUpstreamSettingsFromDomID(domid);
-                let originIP = upstreamSetting.OriginIpOrDomain;
-                let currentWeight = upstreamSetting.Weight;
-                setUpstreamWeight(originIP, currentWeight+1);
-            }
-
-            function decreaseUpstreamWeight(domid){
-                let upstreamSetting = getUpstreamSettingsFromDomID(domid);
-                let originIP = upstreamSetting.OriginIpOrDomain;
-                let currentWeight = upstreamSetting.Weight;
-                setUpstreamWeight(originIP, currentWeight-1);
-            }
-
-            //Set a weight of a upstream
-            function setUpstreamWeight(originIP, newWeight){
-                $.cjax({
-                    url: "/api/proxy/upstream/setPriority",
-                    method: "POST",
-                    data: {
-                        ep: editingEndpoint.ep,
-                        origin: originIP,
-                        weight: newWeight,
-                    },
-                    success: function(data){
-                        if (data.error != undefined){
-                            parent.msgbox(data.error, false);
-                        }else{
-                            parent.msgbox("Upstream Weight Updated");
-                            initOriginList();
-                        }
-                    }
-                })
             }
 
             //Handle removal of an upstream

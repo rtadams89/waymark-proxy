@@ -10,6 +10,18 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Settings > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.6.1
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Changed**
+- HTTP proxy destinations: an upstream's weight is set in its edit form (a number from 0 to 100, with an explanation), instead of with the up and down arrow buttons, which looked like they reordered the list. The weight is checked on the server too.
+- Long upstream addresses no longer wrap mid-word (`…:800` / `6`): the address stays on one line unless it is too long for the panel.
+
+**Fixed**
+- Opening a proxy rule's editor before any certificate was installed raised a script error (the certificate list is empty then), and the certificate dropdown in the TLS section did not appear. Certificate names in that dropdown are now escaped.
+- Upstream addresses in the destinations list are escaped.
+
 ## 2.6.0
 
 Based on Zoraxy 3.3.5 (`310b0cc`).
