@@ -14,7 +14,7 @@
 set -euo pipefail
 
 UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/tobychui/zoraxy.git}"
-FORK_REMOVED_PATHS="${FORK_REMOVED_PATHS:-docker docs example tools img CHANGELOG-custom.md .github/workflows/ci.yaml .github/workflows/docker.yml .github/workflows/custom-build.yml}"
+FORK_REMOVED_PATHS="${FORK_REMOVED_PATHS:-docker docs example tools img .github/workflows/ci.yaml .github/workflows/docker.yml}"
 # Files Waymark rewrote for its own branding: on a conflict, Waymark's version wins
 OURS_PATHS="${OURS_PATHS:-README.md CHANGELOG.md CODEOWNERS .github/ISSUE_TEMPLATE src/web/img src/web/favicon.png}"
 RESULT="${MERGE_RESULT_FILE:-merge-result.env}"

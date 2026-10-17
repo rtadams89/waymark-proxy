@@ -209,40 +209,6 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 2. Upgrade the active node. Restarting it moves the floating IP to the upgraded standby, which becomes active.
 3. When the old active node is back as standby, sync resumes. Make changes on the new active node.
 
-### Upgrading from the Zoraxy-based builds
-
-If you ran the earlier `3.3.5-custom.N` builds as `zoraxy` in `/opt/zoraxy`, move each node to the new names (in an HA pair, the standby first). Your configuration is kept as it is.
-
-```bash
-# 1. Stop Zoraxy (and keepalived, which runs scripts as the zoraxy user)
-sudo systemctl stop zoraxy keepalived
-sudo systemctl disable zoraxy
-
-# 2. Rename the user, group and folder (files keep their owner)
-sudo usermod -l waymark -d /opt/waymark zoraxy
-sudo groupmod -n waymark zoraxy
-sudo mv /opt/zoraxy /opt/waymark
-
-# 3. Install the Waymark binary (Install, step 2) and remove the old one
-sudo rm /opt/waymark/zoraxy
-
-# 4. Create /etc/systemd/system/waymark.service (Install, step 3, keeping
-#    your own ExecStart flags), then remove the old unit
-sudo rm -rf /etc/systemd/system/zoraxy.service /etc/systemd/system/zoraxy.service.d
-sudo systemctl daemon-reload
-
-# 5. HA nodes only: install the Waymark HA integration. It removes the old
-#    zoraxy-ha-apply helper, units and folders.
-/opt/waymark/waymark -ha-export-installer /tmp/waymark-ha
-sudo bash /tmp/waymark-ha/install.sh
-
-# 6. Start Waymark. On HA nodes it applies its HA settings again, which
-#    reconfigures and starts keepalived.
-sudo systemctl enable --now waymark
-```
-
-Sign in again afterwards (the session cookie was renamed). If you proxy the admin UI through Waymark, that rule keeps working. In an HA pair, sync resumes once both nodes run Waymark.
-
 ## Building from source
 
 Requires Go 1.26 or later.

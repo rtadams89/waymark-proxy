@@ -124,7 +124,7 @@ The CAPTCHA session store (`CaptchaSessionStore`) is a global component that:
 
 When a user successfully completes a CAPTCHA:
 - A random 64-character session ID is generated
-- A cookie named `zoraxy_captcha_session` is set
+- A cookie named `waymark_captcha_session` is set
 - Cookie attributes:
   - `HttpOnly`: Yes (prevents JavaScript access)
   - `Secure`: Yes if TLS is enabled
@@ -231,7 +231,7 @@ curl -i http://your-domain.com/
 
 # After solving CAPTCHA in browser, copy session cookie
 # Second request with session cookie - should proxy normally
-curl -i -H "Cookie: zoraxy_captcha_session=YOUR_SESSION_ID" http://your-domain.com/
+curl -i -H "Cookie: waymark_captcha_session=YOUR_SESSION_ID" http://your-domain.com/
 ```
 
 ## API Endpoints
