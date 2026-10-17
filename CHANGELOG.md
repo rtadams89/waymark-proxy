@@ -10,6 +10,15 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - The Zoraxy release Waymark is based on is shown in **Utilities > About** and by `waymark -version`. New Zoraxy releases are picked up by the "Watch upstream releases" workflow, which notes the merge under **Unreleased** here.
 
+## 2.2.1
+
+Based on Zoraxy 3.3.5 (`310b0cc`).
+
+**Removed**
+- Upgrade-only code from 2.2.0, now that the HA integration on every node is from 2.2.0 or later:
+  - Saving more than one floating IP is no longer refused while a node's HA helper is older. The **Services** row still shows when the helper doesn't match this Waymark version.
+  - The settings file always has `EXTRA_VIPS` (empty with one floating IP). Helpers from before 2.2.0 reject it, so a node still running one needs the installer run again.
+
 ## 2.2.0
 
 Based on Zoraxy 3.3.5 (`310b0cc`).

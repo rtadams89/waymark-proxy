@@ -83,9 +83,8 @@ func TestExtraFloatingIPs(t *testing.T) {
 	if s := v.Settings(0, 1, ""); !strings.Contains(s, "\nEXTRA_VIPS=10.10.20.6/24,192.168.50.5/32\n") {
 		t.Errorf("settings missing EXTRA_VIPS:\n%s", s)
 	}
-	// With one floating IP the key is left out (a pre-2.2.0 helper rejects it)
-	if s := sample().Settings(0, 1, ""); strings.Contains(s, "EXTRA_VIPS") {
-		t.Errorf("EXTRA_VIPS written without extra addresses:\n%s", s)
+	if s := sample().Settings(0, 1, ""); !strings.Contains(s, "\nEXTRA_VIPS=\n") {
+		t.Errorf("EXTRA_VIPS should be empty without extra addresses:\n%s", s)
 	}
 	// The maximum is accepted
 	c = sample()
@@ -193,14 +192,14 @@ func TestHelperRejectsBadInput(t *testing.T) {
 		"peer is self":  strings.Replace(sample().Settings(0, 9, ""), "PEER_IPS=10.10.20.11", "PEER_IPS=10.10.20.10", 1),
 		"duplicate key": sample().Settings(0, 9, "") + "VIP=10.10.20.6\n",
 		"vip is self":   strings.Replace(sample().Settings(0, 9, ""), "VIP=10.10.20.5", "VIP=10.10.20.10", 1),
-		"extra inject":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6/24;reboot\n",
-		"extra no pfx":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6\n",
-		"extra bad pfx": sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6/33\n",
-		"extra bad ip":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.256/24\n",
-		"extra is vip":  sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.5/24\n",
-		"extra is peer": sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.11/24\n",
-		"extra twice":   sample().Settings(0, 9, "") + "EXTRA_VIPS=10.10.20.6/24,10.10.20.6/24\n",
-		"extra many":    sample().Settings(0, 9, "") + "EXTRA_VIPS=" + strings.Repeat("10.1.1.1/24,", 15) + "10.1.1.1/24\n",
+		"extra inject":  withExtraVIPs("10.10.20.6/24;reboot"),
+		"extra no pfx":  withExtraVIPs("10.10.20.6"),
+		"extra bad pfx": withExtraVIPs("10.10.20.6/33"),
+		"extra bad ip":  withExtraVIPs("10.10.20.256/24"),
+		"extra is vip":  withExtraVIPs("10.10.20.5/24"),
+		"extra is peer": withExtraVIPs("10.10.20.11/24"),
+		"extra twice":   withExtraVIPs("10.10.20.6/24,10.10.20.6/24"),
+		"extra many":    withExtraVIPs(strings.Repeat("10.1.1.1/24,", 15) + "10.1.1.1/24"),
 	}
 	for name, settings := range cases {
 		conf, res, out := runHelper(t, settings, true)
@@ -210,10 +209,18 @@ func TestHelperRejectsBadInput(t *testing.T) {
 		if res.ApplyID != 9 {
 			t.Errorf("%s: error not matched to the apply ID: %+v", name, res)
 		}
+		if strings.Contains(name, "extra") && !strings.Contains(res.Message, "EXTRA_VIPS") {
+			t.Errorf("%s: rejected for another reason: %s", name, res.Message)
+		}
 		if strings.Contains(res.Message, "reboot") || strings.Contains(res.Message, "$(id)") {
 			t.Errorf("%s: message echoes the value: %s", name, res.Message)
 		}
 	}
+}
+
+// withExtraVIPs is sample()'s settings for node 0 with EXTRA_VIPS set to v.
+func withExtraVIPs(v string) string {
+	return strings.Replace(sample().Settings(0, 9, ""), "EXTRA_VIPS=\n", "EXTRA_VIPS="+v+"\n", 1)
 }
 
 func TestHelperRejectsSymlink(t *testing.T) {

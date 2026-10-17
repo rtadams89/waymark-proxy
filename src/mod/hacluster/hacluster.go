@@ -249,15 +249,11 @@ func (c *Config) Settings(self int, applyID int64, nodeName string) string {
 	w("PEER_IPS", strings.Join(peers, ","))
 	w("VIP", c.VIP)
 	w("PREFIX", strconv.Itoa(c.Prefix))
-	if len(c.ExtraVIPs) > 0 {
-		// Only written when there are extra addresses, so a single floating
-		// IP still works with a helper from before 2.2.0
-		extra := []string{}
-		for _, f := range c.ExtraVIPs {
-			extra = append(extra, f.Address+"/"+strconv.Itoa(f.Prefix))
-		}
-		w("EXTRA_VIPS", strings.Join(extra, ","))
+	extra := []string{}
+	for _, f := range c.ExtraVIPs {
+		extra = append(extra, f.Address+"/"+strconv.Itoa(f.Prefix))
 	}
+	w("EXTRA_VIPS", strings.Join(extra, ","))
 	w("ROUTER_ID", strconv.Itoa(c.RouterID))
 	w("PRIORITY", strconv.Itoa(me.Priority))
 	w("PASSWORD", c.Password)

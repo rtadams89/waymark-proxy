@@ -395,10 +395,6 @@ func HandleHAConfig(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
-	if len(cfg.ExtraVIPs) > 0 && haHelperOutdated() {
-		utils.SendErrorResponse(w, "the HA integration on this node is older than this Waymark version and supports one floating IP only. Run the installer again on each node (see the High Availability page), then save")
-		return
-	}
 	if cfg.Enabled && haSelf(cfg) < 0 {
 		utils.SendErrorResponse(w, "none of the nodes has an address of this machine ("+strings.Join(nonLoopback(), ", ")+"); add this node to the list")
 		return

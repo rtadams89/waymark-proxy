@@ -53,20 +53,6 @@ func haHelperState() map[string]any {
 	return map[string]any{"checked": ok, "outdated": outdated}
 }
 
-// haHelperOutdated is true when the installed helper is known to differ.
-func haHelperOutdated() bool {
-	outdated, ok := hacluster.OutdatedInstalledFiles(hacluster.DefaultHelperPath, hacluster.DefaultScriptsDir)
-	if !ok {
-		return false
-	}
-	for _, n := range outdated {
-		if n == "waymark-ha-apply" {
-			return true
-		}
-	}
-	return false
-}
-
 // haNonlocalBind reports net.ipv4.ip_nonlocal_bind and the stream proxies
 // that listen on a floating IP.
 func haNonlocalBind(cfg *hacluster.Config) map[string]any {
