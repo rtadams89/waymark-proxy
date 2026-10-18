@@ -10,6 +10,14 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.8.2
+
+The v2.8.1 tag was pushed without the version number updated, so its build was refused; its changes are in this release.
+
+**Security**
+- Path blocking rules: the rule ID given to the remove API was used as a file name without checking it. A well-formed UUID is now required before Waymark reads or deletes a rule file (GitHub code scanning: "uncontrolled data used in path expression"). The API needs an admin login and only removes rules that exist, so this was defence in depth. Rule files are written `0640` instead of `0775`.
+- Traffic capture: the packet writer no longer adds input lengths to work out buffer sizes; buffers grow as data is appended (GitHub code scanning: "size computation for allocation may overflow", still reported after 2.7.1's size limits).
+
 ## 2.8.0
 
 **Added**
@@ -19,10 +27,6 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
   - **Proxy host name**: the host name the client asked Waymark for (the rule's host or one of its aliases).
 - **Skip Verification** still turns certificate checking off; the chosen name is then only sent as SNI.
 - HTTP health checks on such upstreams use the same name. For **Proxy host name** that is the rule's host name, unless it is a wildcard.
-
-**Security**
-- Path blocking rules: the rule ID given to the remove API was used as a file name without checking it. A well-formed UUID is now required before Waymark reads or deletes a rule file (GitHub code scanning: "uncontrolled data used in path expression"). The API needs an admin login and only removes rules that exist, so this was defence in depth. Rule files are written `0640` instead of `0775`.
-- Traffic capture: the packet writer no longer adds input lengths to work out buffer sizes; buffers grow as data is appended (GitHub code scanning: "size computation for allocation may overflow", still reported after 2.7.1's size limits).
 
 **Faster**
 - Requests that need their own TLS server name (IP-addressed upstreams, Proxy host name) or HTTP/1.1 (WebSocket and other upgrades, Force HTTP/1.1) reuse connections. A copy of the connection pool was made for every such request before; now one is kept per name (up to 64 per upstream).
