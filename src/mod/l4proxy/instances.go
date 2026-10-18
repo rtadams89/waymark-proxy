@@ -1,4 +1,4 @@
-package streamproxy
+package l4proxy
 
 /*
 	Instances.go
@@ -116,7 +116,7 @@ func (c *ProxyRelayInstance) listenerFailed(stopChan chan bool, proto string, er
 	c.poolMu.Unlock()
 	c.parent.SaveConfigToDatabase()
 	c.parent.changed()
-	c.parent.logf("[proto:"+proto+"] Error starting stream proxy "+name+"("+id+")", err)
+	c.parent.logf("[proto:"+proto+"] Error starting Layer 4 proxy "+name+"("+id+")", err)
 }
 
 // Return if a proxy config is running
@@ -146,7 +146,7 @@ func (c *ProxyRelayInstance) Stop() {
 	c.Running = false
 	c.poolMu.Unlock()
 
-	c.parent.logf("Stopping Stream Proxy "+name, nil)
+	c.parent.logf("Stopping Layer 4 Proxy "+name, nil)
 	if udpStop != nil {
 		close(udpStop)
 	}
@@ -162,10 +162,10 @@ func (c *ProxyRelayInstance) Stop() {
 		select {
 		case <-done:
 		case <-time.After(listenerExitTimeout):
-			c.parent.logf("Stream proxy "+name+" listeners did not exit in time", nil)
+			c.parent.logf("Layer 4 proxy "+name+" listeners did not exit in time", nil)
 		}
 	}
-	c.parent.logf("Stopped Stream Proxy "+name, nil)
+	c.parent.logf("Stopped Layer 4 Proxy "+name, nil)
 
 	//Update the running status
 	c.parent.SaveConfigToDatabase()

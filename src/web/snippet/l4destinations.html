@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Custom fork: destination servers of a Layer 4 proxy, laid out like the HTTP
+             proxy rule's upstream editor (upstreams.html). Opened from the Layer 4 proxy
+             editor as snippet/l4destinations.html#{"ept":"l4","ep":"<uuid>"} and saved
+             through it (components/l4proxy.html). -->
+        <meta charset="utf-8">
+        <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
+        <link rel="stylesheet" href="../script/semantic/semantic.min.css">
+        <script src="../script/jquery-3.6.0.min.js"></script>
+        <script src="../script/semantic/semantic.min.js"></script>
+        <script src="../script/utils.js"></script>
+        <style>
+            .upstreamActions{
+                position: absolute;
+                top: 0.6em;
+                right: 0.6em;
+            }
+            .upstreamLink{
+                display: inline;
+                overflow-wrap: anywhere;
+            }
+            .upstreamEntry > h4.ui.header > .content{
+                padding-right: 6em; /* room for the buttons */
+            }
+            #upstreamTable{
+                max-height: 480px;
+                border-radius: 0.3em;
+                padding: 0.3em;
+                overflow-y: auto;
+            }
+            body.darkTheme #upstreamTable{
+                border: 1px solid var(--button_border_color);
+            }
+            .upstreamEntry{
+                border-radius: 0.4em !important;
+                border: 1px solid rgb(233, 233, 233) !important;
+            }
+            @media (max-width: 499px) {
+                .upstreamActions{
+                    position: relative;
+                    margin-top: 1em;
+                    margin-left: 0.4em;
+                    margin-bottom: 0.4em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <link rel="stylesheet" href="../darktheme.css">
+        <script src="../script/darktheme.js"></script>
+        <br>
+        <div class="ui container">
+            <div class="ui small pointing secondary menu">
+                <a class="item active narrowpadding" data-tab="upstreamlist">Destinations</a>
+                <a class="item narrowpadding" data-tab="newupstream">Add Destination</a>
+            </div>
+            <div class="ui tab basic segment active" data-tab="upstreamlist">
+                <div id="upstreamTable">
+                    <div class="ui segment">
+                        <a><i class="ui loading spinner icon"></i> Loading</a>
+                    </div>
+                </div>
+                <div class="ui message">
+                    <i class="ui blue info circle icon"></i> <span id="lbModeHint"></span>
+                </div>
+            </div>
+            <div class="ui tab basic segment" data-tab="newupstream">
+                <h4 class="ui header">
+                    <i class="green add icon"></i>
+                    <div class="content">
+                        Add Destination Server
+                        <div class="sub header">Create a new load balance or failover destination</div>
+                    </div>
+                </h4>
+                <p style="margin-bottom: 0.4em;">Destination IP address or domain name with port</p>
+                <div class="ui fluid small input">
+                    <input type="text" id="newDestination" placeholder="192.168.0.101:25565">
+                </div>
+                <small>E.g. 192.168.0.101:25565, [fd00::5]:53 or db.example.lan:5432</small>
+                <br><br>
+                <button class="ui basic button" onclick="addDestination();"><i class="ui green circle add icon"></i> Create</button>
+            </div>
+            <br><br>
+            <button class="ui basic button" style="float:right;" onclick="closeThisWrapper();"><i class="remove icon"></i> Close</button>
+            <br><br><br>
+        </div>
+        <script>
+            let editingEndpoint = {};
+            $('.menu .item').tab();
+
+            const LB_HINTS = {
+                roundrobin: "Load balancing: round robin. Each new connection or UDP client goes to the next healthy destination.",
+                leastconn: "Load balancing: least connections. New connections go to the healthy destination with the fewest open ones.",
+                sourcehash: "Load balancing: source IP hash. A client IP address keeps going to the same destination while the healthy set stays the same.",
+                failover: "Load balancing: failover. Always the first healthy destination in this list; the others are backups, in order. Use the arrows to change the order."
+            };
+
+            function currentConfig(){
+                let c = parent.l4CurrentConfig ? parent.l4CurrentConfig() : null;
+                if (c == null || c.UUID != editingEndpoint.ep){
+                    return null;
+                }
+                return c;
+            }
+
+            function destinations(){
+                let c = currentConfig();
+                return c ? parent.l4DestinationList(c).slice() : [];
+            }
+
+            function initOriginList(){
+                let c = currentConfig();
+                let table = $("#upstreamTable");
+                table.html("");
+                if (c == null){
+                    table.append(`<div class="ui segment"><i class="ui yellow exclamation triangle icon"></i> This Layer 4 proxy is no longer open in the editor.</div>`);
+                    return;
+                }
+                $("#lbModeHint").text(LB_HINTS[c.LoadBalancing || "roundrobin"] || LB_HINTS.roundrobin);
+                let list = parent.l4DestinationList(c);
+                list.forEach((addr, i) => {
+                    let st = parent.l4DestinationStatus(c, addr);
+                    let detail = [st.title];
+                    if (c.Running){
+                        detail.push(st.active + " open");
+                        detail.push(st.total + " total");
+                        if (st.failed) detail.push(st.failed + " failed");
+                    }
+                    let isOnly = list.length == 1;
+                    table.append(`<div class="ui upstreamEntry basic segment" data-index="${i}">
+                        <h4 class="ui header">
+                            ${st.icon}
+                            <div class="content">
+                                <span class="upstreamLink">${htmlEscape(addr)}</span>
+                                <div class="sub header">${htmlEscape(detail.join(" | "))}</div>
+                            </div>
+                        </h4>
+                        <div class="advanceOptions" style="display:none;">
+                            <p>New destination IP address or domain name with port</p>
+                            <div class="ui small fluid input" style="margin-top: -0.6em;">
+                                <input type="text" class="newOrigin" value="${htmlEscape(addr)}">
+                            </div>
+                            <small>e.g. 192.168.0.101:25565 or db.example.lan:5432</small>
+                        </div>
+                        <div class="upstreamActions">
+                            <button class="ui basic circular icon button movebtn ${i == 0 ? "disabled" : ""}" onclick="moveDestination(${i}, -1);" title="Move up (tried earlier in failover)"><i class="ui grey arrow up icon"></i></button>
+                            <button class="ui basic circular icon button movebtn ${i == list.length - 1 ? "disabled" : ""}" onclick="moveDestination(${i}, 1);" title="Move down"><i class="ui grey arrow down icon"></i></button>
+                            <button class="ui basic circular icon editbtn button" onclick="editDestination(${i});" title="Edit Destination"><i class="ui grey edit icon"></i></button>
+                            <button style="display:none;" class="ui basic circular icon trashbtn button ${isOnly ? "disabled" : ""}" onclick="removeDestination(${i});" title="${isOnly ? "A Layer 4 proxy needs at least one destination" : "Remove Destination"}"><i class="ui red trash icon"></i></button>
+                            <button style="display:none;" class="ui basic circular icon savebtn button" onclick="saveDestination(${i});" title="Save Changes"><i class="ui green save icon"></i></button>
+                            <button style="display:none;" class="ui basic circular icon cancelbtn button" onclick="initOriginList();" title="Cancel"><i class="ui grey times icon"></i></button>
+                        </div>
+                    </div>`);
+                });
+            }
+
+            function save(list, done){
+                parent.saveL4Pool({upstreams: list}, function(err){
+                    initOriginList();
+                    if (!err && done) done();
+                });
+            }
+
+            function editDestination(i){
+                let entry = $(`.upstreamEntry[data-index=${i}]`);
+                $(".editbtn, .movebtn").hide();
+                entry.find(".trashbtn, .savebtn, .cancelbtn, .advanceOptions").show();
+                entry.find(".newOrigin").focus();
+            }
+
+            function saveDestination(i){
+                let entry = $(`.upstreamEntry[data-index=${i}]`);
+                let addr = entry.find(".newOrigin").val().trim();
+                if (addr == ""){
+                    parent.msgbox("Destination cannot be empty", false);
+                    return;
+                }
+                let list = destinations();
+                list[i] = addr;
+                save(list);
+            }
+
+            function removeDestination(i){
+                let list = destinations();
+                if (list.length <= 1){
+                    return;
+                }
+                if (!confirm("Confirm removing " + list[i] + " from the destinations?")){
+                    return;
+                }
+                list.splice(i, 1);
+                save(list);
+            }
+
+            function moveDestination(i, by){
+                let list = destinations();
+                let j = i + by;
+                if (j < 0 || j >= list.length) return;
+                [list[i], list[j]] = [list[j], list[i]];
+                save(list);
+            }
+
+            function addDestination(){
+                let addr = $("#newDestination").val().trim();
+                if (addr == ""){
+                    parent.msgbox("Destination cannot be empty", false);
+                    return;
+                }
+                let list = destinations();
+                list.push(addr);
+                save(list, function(){
+                    $("#newDestination").val("");
+                    $('.menu .item').tab("change tab", "upstreamlist");
+                });
+            }
+            $("#newDestination").on("keydown", function(e){
+                if (e.key == "Enter") addDestination();
+            });
+
+            if (window.location.hash.length > 1){
+                try{
+                    editingEndpoint = JSON.parse(decodeURIComponent(window.location.hash.substr(1)));
+                    initOriginList();
+                    //Keep the health and connection counts current
+                    setInterval(function(){
+                        if ($(".savebtn:visible").length == 0){
+                            initOriginList();
+                        }
+                    }, 5000);
+                }catch(ex){
+                    console.log("Unable to load the Layer 4 proxy from the hash");
+                }
+            }
+
+            function closeThisWrapper(){
+                parent.hideSideWrapper(true);
+            }
+        </script>
+    </body>
+</html>

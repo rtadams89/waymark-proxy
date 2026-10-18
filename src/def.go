@@ -27,13 +27,13 @@ import (
 	"imuslab.com/zoraxy/mod/geodb"
 	"imuslab.com/zoraxy/mod/info/logger"
 	"imuslab.com/zoraxy/mod/info/logviewer"
+	"imuslab.com/zoraxy/mod/l4proxy"
 	"imuslab.com/zoraxy/mod/mdns"
 	"imuslab.com/zoraxy/mod/netstat"
 	"imuslab.com/zoraxy/mod/pathrule"
 	"imuslab.com/zoraxy/mod/plugins"
 	"imuslab.com/zoraxy/mod/statistic"
 	"imuslab.com/zoraxy/mod/statistic/analytic"
-	"imuslab.com/zoraxy/mod/streamproxy"
 	"imuslab.com/zoraxy/mod/tlscert"
 	"imuslab.com/zoraxy/mod/uptime"
 	"imuslab.com/zoraxy/mod/webserv"
@@ -128,7 +128,7 @@ var (
 	ACME_AUTORENEW_CONFIG_PATH string //ACME auto renew configuration path
 	CONF_FOLDER                string //Configuration folder path
 	CONF_HTTP_PROXY            string //HTTP proxy configuration path
-	CONF_STREAM_PROXY          string //Stream proxy configuration path
+	CONF_L4_PROXY              string //Layer 4 proxy configuration path
 	CONF_CERT_STORE            string //Certificate store path
 	CONF_REDIRECTION           string //Redirection configuration path
 	CONF_ACCESS_RULE           string //Access rule configuration path
@@ -165,7 +165,7 @@ var (
 	statisticCollector *statistic.Collector      //Collecting statistic from visitors
 	uptimeMonitor      *uptime.Monitor           //Uptime monitor service worker
 	mdnsScanner        *mdns.MDNSHost            //mDNS discovery services
-	streamProxyManager *streamproxy.Manager      //Stream Proxy Manager for TCP / UDP forwarding
+	l4ProxyManager     *l4proxy.Manager          //Layer 4 Proxy Manager for TCP / UDP forwarding
 	acmeHandler        *acme.ACMEHandler         //Handler for ACME Certificate renew
 	acmeAutoRenewer    *acme.AutoRenewer         //Handler for ACME auto renew ticking
 	staticWebServer    *webserv.WebServer        //Static web server for hosting simple stuffs

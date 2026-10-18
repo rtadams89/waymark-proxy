@@ -158,7 +158,7 @@ func probeTCP(ctx context.Context, up Upstream, timeout time.Duration) ProbeResu
 }
 
 // probeTCPExchange connects, sends cfg.Send (if any) and waits until the
-// reply contains cfg.Expect (if any). Custom fork: stream proxy checks.
+// reply contains cfg.Expect (if any). Custom fork: Layer 4 proxy checks.
 func probeTCPExchange(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
 	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat) // validated on save
 	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)
@@ -184,7 +184,7 @@ func probeTCPExchange(ctx context.Context, up Upstream, cfg *Config, timeout tim
 }
 
 // probeUDP sends cfg.Send and waits for a reply containing cfg.Expect (any
-// reply when Expect is empty). Custom fork: stream proxy checks.
+// reply when Expect is empty). Custom fork: Layer 4 proxy checks.
 func probeUDP(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
 	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat)
 	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)

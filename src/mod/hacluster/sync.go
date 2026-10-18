@@ -51,7 +51,7 @@ import (
 // exactly (files missing on the active node are removed).
 var SyncConfEntries = []string{
 	"proxy",                // HTTP proxy rules
-	"streamproxy",          // TCP/UDP stream proxy rules
+	"l4proxy",              // TCP/UDP Layer 4 proxy rules
 	"certs",                // TLS certificates and keys
 	"redirect",             // redirection rules
 	"access",               // access rules

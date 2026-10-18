@@ -1,0 +1,980 @@
+<div class="standardContainer">
+    <div class="ui basic segment">
+        <h2>Layer 4 Proxies</h2>
+        <p>Forward TCP and UDP traffic to one or more destination servers, with load balancing and health checks. For websites and web apps, use HTTP Proxies instead.</p>
+    </div>
+    <style>
+        /* Custom fork: same look as the HTTP Proxies list (httprp.html) */
+        #l4ProxyList .ui.toggle.checkbox input:checked ~ label::before{
+            background-color: #00ca52 !important;
+        }
+        .l4Entry td:not(.ignoremw){
+            min-width: 100px;
+        }
+        .l4ProxyListTools{
+            width: 100%;
+        }
+        #l4ProxyTable th.no-sort{
+            cursor: default !important;
+        }
+
+        /* Editor, the same as the HTTP proxy rule editor */
+        #l4EditModal{
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 68vw;
+            height: 75vh;
+            background-color: var(--theme_bg_primary);
+            padding: 1.4em;
+            border-radius: .6em;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2), 0px 8px 16px rgba(0, 0, 0, 0.2);
+            z-index: 8;
+            max-width: 840px;
+        }
+        #l4EditModal .l4config_content{
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5em;
+        }
+        #l4EditModal .editor_side_wrapper{
+            position: absolute;
+            top: 0;
+            right: 0;
+            height:100%;
+            width: 100%;
+            background-color: var(--theme_bg_primary);
+        }
+        #l4EditModal .wrapper_frame{
+            width: 100%;
+            border: 1px solid var(--divider_color);
+            border-radius: 0.5em;
+            height: calc(99%);
+        }
+        #l4EditModal .editor_side_wrapper .wrapper_frame{
+            height: calc(100% - 30px);
+        }
+        #l4EditModal .editor_back_button {
+            border: none;
+            background-color: transparent;
+            box-shadow: none;
+            color: var(--text_color);
+            font-size: 2.2em;
+            cursor: pointer;
+            padding-top: 20px;
+        }
+        #l4EditModal .editor_back_button:hover{
+            opacity: 0.5;
+        }
+        #l4EditModal .l4_name{
+            word-break: break-word;
+        }
+        #l4EditModal .l4Hint{
+            opacity: 0.7;
+        }
+        #l4EditModal .l4_destination_list > div{
+            margin-bottom: 0.2em;
+        }
+        #l4EditDarkenLayer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 7;
+            backdrop-filter: blur(3px);
+        }
+        #l4EditModalWrapper {
+            display: none;
+        }
+        .l4EditCloseMobile{
+            display: none !important;
+        }
+        @media screen and (max-width: 1024px) {
+            #l4EditModal {
+                width: 85vw;
+            }
+        }
+        @media screen and (max-width: 768px) {
+            #l4EditModal {
+                height: 80vh;
+                border-radius: 0;
+                overflow-y: scroll;
+                overflow-x: hidden;
+                width: 100%;
+                padding-left: 0;
+                padding-right: 0;
+            }
+            #l4EditModalSideMenu{
+                width: 16% !important;
+            }
+            #l4EditModalContentWindow{
+                height: 100% !important;
+                width: 84% !important;
+            }
+            #l4EditModal .editorSideMenuText{
+                display: none;
+            }
+            #l4EditModal .l4edit_menu_item{
+                height: 2.4em;
+            }
+            .l4EditClosePC{
+                display: none !important;
+            }
+            .l4EditCloseMobile{
+                display: block !important;
+                position: absolute;
+                left: 1.25em !important;
+                bottom: 1em;
+            }
+        }
+    </style>
+    <div class="l4ProxyListTools" style="margin-bottom: 1em;">
+        <button class="ui basic green button" onclick="openTabById('l4rules');"><i class="plus icon"></i> Add Layer 4 Proxy</button>
+        <div id="l4FilterDropdown" class="ui floating basic dropdown labeled icon button" style="min-width: 150px;">
+            <i class="filter icon"></i>
+            <span class="text">Filter</span>
+            <div class="menu">
+                <div class="item" data-value=""><div class="ui grey empty circular label"></div> Show all</div>
+                <div class="divider"></div>
+                <div class="item" data-value="running"><div class="ui green empty circular label"></div> Running</div>
+                <div class="item" data-value="stopped"><div class="ui black empty circular label"></div> Stopped</div>
+                <div class="divider"></div>
+                <div class="item" data-value="tcp"><div class="ui blue empty circular label"></div> TCP</div>
+                <div class="item" data-value="udp"><div class="ui violet empty circular label"></div> UDP</div>
+                <div class="divider"></div>
+                <div class="item" data-value="down"><div class="ui red empty circular label"></div> Destination down</div>
+            </div>
+        </div>
+        <div class="ui small input" style="width: 300px; height: 38px;">
+            <!-- Prevent the browser from filling the saved Waymark login account into the input below -->
+            <input type="password" autocomplete="off" hidden/>
+            <input type="text" id="l4SearchInput" placeholder="Quick Search" onkeydown="handleL4SearchInput(event);" onchange="handleL4SearchInput(event);" onblur="handleL4SearchInput(event);" oninput="filterL4ProxyList();">
+        </div>
+    </div>
+
+    <div id="l4ProxyTableWrapper" style="width: 100%; overflow-x: auto; margin-bottom: 1em; min-height: 300px;">
+        <table id="l4ProxyTable" class="ui unstackable sortable compact celled definition table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Listening Address</th>
+                    <th>Destination</th>
+                    <th class="no-sort">Health / Balancing</th>
+                    <th>Protocol</th>
+                    <th>Timeout</th>
+                    <th class="no-sort" style="width:100px; cursor: default !important;"></th>
+                </tr>
+            </thead>
+            <tbody id="l4ProxyList">
+
+            </tbody>
+        </table>
+    </div>
+
+    <button class="ui icon right floated basic button" onclick="initL4ProxyList();" title="Refresh List"><i class="green refresh icon"></i> Refresh</button>
+    <br><br>
+</div>
+
+<!-- Custom fork: editor for a Layer 4 proxy, the same as the HTTP proxy rule editor. Each setting is saved when it is changed. -->
+<div id="l4EditModalWrapper">
+    <div id="l4EditModal" editing-uuid="">
+        <div class="ui grid" style="height:100%;">
+            <div id="l4EditModalSideMenu" class="four wide column">
+                <div class="ui secondary fluid vertical menu">
+                    <a class="active item l4edit_menu_item" cfgpage="listener">
+                        <i class="home icon"></i> <span class="editorSideMenuText">Listener</span>
+                    </a>
+                    <a class="item l4edit_menu_item" cfgpage="destinations">
+                        <i class="server icon"></i> <span class="editorSideMenuText">Destinations</span>
+                    </a>
+                    <a class="item l4edit_menu_item" cfgpage="accessrule">
+                        <i class="star icon"></i> <span class="editorSideMenuText">Access Rules</span>
+                    </a>
+                </div>
+                <button class="ui basic fluid button l4EditClosePC" onclick="closeL4ProxyEditor();">Close</button>
+                <button class="ui basic icon circular button l4EditCloseMobile" onclick="closeL4ProxyEditor();"><i class="ui times icon"></i></button>
+            </div>
+            <div id="l4EditModalContentWindow" class="twelve wide column" style="height: 100%">
+                <div style="height:100%;">
+                    <!-- Listener -->
+                    <div class="l4config_content" l4cfg="listener">
+                        <div class="ui segment">
+                            <h3>
+                                <button class="ui right floated small icon circular basic button l4_name_edit_btn" title="Rename">
+                                    <i class="ui edit icon"></i>
+                                </button>
+                                <span class="l4_name"></span>
+                            </h3>
+                            <div class="ui action small fluid input l4_name_edit_input" style="margin-bottom: 0.4em; display: none;">
+                                <input type="text" placeholder="Name">
+                                <button class="ui green basic icon button l4SaveNameBtn" title="Save">
+                                    <i class="ui save icon"></i>
+                                </button>
+                                <button class="ui basic icon button l4CancelNameBtn" title="Cancel">
+                                    <i class="times icon"></i>
+                                </button>
+                            </div>
+                            <div class="ui divider"></div>
+                            <b>Listening Address</b>
+                            <p style="margin-top: 0.4em;"><small>Address and port of this host to listen on, e.g. :25565 or 192.168.1.1:25565. If Waymark runs in Docker, also publish this port.</small></p>
+                            <div class="ui action small fluid input">
+                                <input type="text" class="l4ListenAddr" placeholder=":25565">
+                                <button class="ui green basic icon button l4SaveListenBtn" title="Save">
+                                    <i class="ui save icon"></i>
+                                </button>
+                            </div>
+                            <div class="ui divider"></div>
+                            <div class="ui checkbox" style="margin-top: 0.4em;">
+                                <input type="checkbox" class="l4UseTCP">
+                                <label>Forward TCP<br>
+                                    <small>Accept TCP connections on the listening address</small></label>
+                            </div>
+                            <br>
+                            <div class="ui checkbox" style="margin-top: 0.4em;">
+                                <input type="checkbox" class="l4UseUDP">
+                                <label>Forward UDP<br>
+                                    <small>Accept UDP packets on the listening address</small></label>
+                            </div>
+                            <br><br>
+                            <b>Connection Timeout</b>
+                            <div class="ui small right labeled fluid input" style="margin-top: 0.8em;">
+                                <input type="number" class="l4Timeout" value="10" min="0">
+                                <label class="ui basic label">seconds</label>
+                            </div>
+                            <small class="l4Hint">For UDP: how long an idle client session is kept. 0 uses 60 seconds.</small>
+                            <div class="ui divider"></div>
+                            <div class="ui checkbox" style="margin-top: 0.4em;">
+                                <input type="checkbox" class="l4EnableLogging">
+                                <label>Log Connections<br>
+                                    <small>Write each connection and its errors to the system log</small></label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Destinations -->
+                    <div class="l4config_content" l4cfg="destinations" style="display: none;">
+                        <div class="ui segment">
+                            <b>Enabled Destinations</b>
+                            <div class="l4_destination_list" style="margin-top: 0.4em;">
+
+                            </div>
+                            <button class="ui basic compact button l4EditDestinationsBtn" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey server icon"></i> Edit Destinations</button>
+                            <button class="ui basic compact button l4EditHealthCheckBtn" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey heartbeat icon"></i> Health Checks</button>
+                            <div class="l4HealthCheckSummary" style="margin-left: 0.4em; margin-top: 0.6em; opacity: 0.75; font-size: 0.9em;"></div>
+                            <div class="ui divider"></div>
+                            <div class="ui form">
+                                <div class="field">
+                                    <label>Load Balancing</label>
+                                    <select class="l4LoadBalancing">
+                                        <option value="roundrobin">Round robin</option>
+                                        <option value="leastconn">Least connections</option>
+                                        <option value="sourcehash">Source IP hash (sticky)</option>
+                                        <option value="failover">Failover (first healthy in the list)</option>
+                                    </select>
+                                    <small class="l4Hint l4LBHint"></small>
+                                </div>
+                            </div>
+                            <div class="ui checkbox" style="margin-top: 0.4em;">
+                                <input type="checkbox" class="l4CloseOnDown">
+                                <label>Close connections when a destination goes down<br>
+                                    <small>Off: open connections stay until they end; only new ones avoid the destination</small></label>
+                            </div>
+
+                            <!-- Compatibility Settings -->
+                            <div class="ui divider"></div>
+                            <h4 style="margin-top: 0px;">Compatibility</h4>
+                            <div class="ui form">
+                                <div class="field">
+                                    <label>Proxy Protocol</label>
+                                    <select class="l4ProxyProtocol">
+                                        <option value="0">Disabled</option>
+                                        <option value="1">Proxy Protocol V1</option>
+                                        <option value="2">Proxy Protocol V2</option>
+                                    </select>
+                                    <small class="l4Hint">Send the client's address to the destination in a PROXY protocol header. Only turn this on if the destination expects it.</small>
+                                    <div class="l4ProxyProtocolUdpWarning" style="display:none; color:#bd7100; margin-top:0.5em;">
+                                        <i class="exclamation triangle icon"></i> Proxy Protocol V1 is not supported for UDP. UDP packets are forwarded without the header.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Access Rule -->
+                    <div class="l4config_content" l4cfg="accessrule" style="display: none;">
+                        <iframe src="" class="wrapper_frame">
+
+                        </iframe>
+                    </div>
+                </div>
+                <!-- Editor Side Wrapper -->
+                <div class="editor_side_wrapper" style="display:none;">
+                    <a class="editor_back_button">
+                        <i class="chevron circle left icon" style="margin-top: 22px;"></i>
+                    </a>
+                    <iframe src="snippet/placeholder.html" class="wrapper_frame">
+
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="l4EditDarkenLayer"></div>
+</div>
+<script>
+    /*
+        Custom fork: Layer 4 (TCP / UDP) proxies (mod/l4proxy)
+    */
+    let l4ProxyConfigs = [];        // the rules, as /api/l4proxy/config/list returns them
+    let l4Editing = null;           // the rule open in the editor
+    let l4UpstreamState = {};       // uuid -> [{address, online, active, total, failed}]
+    let l4HealthReasons = {};       // "l4:uuid|addr" -> why it is down
+    let l4AccessRules = {};         // access rule ID -> rule, for the names under each rule
+
+    const L4_LB_NAMES = {roundrobin: "Round robin", leastconn: "Least connections", sourcehash: "Source IP hash", failover: "Failover"};
+    const L4_LB_HINTS = {
+        roundrobin: "Each new connection or UDP client goes to the next healthy destination.",
+        leastconn: "To the healthy destination with the fewest open connections (UDP: client sessions).",
+        sourcehash: "A client IP address keeps going to the same destination while the healthy set stays the same.",
+        failover: "Always the first healthy destination in the list; the others are backups, in order."
+    };
+
+    /* Renderers */
+
+    function l4DestinationList(config){
+        return (config.Upstreams && config.Upstreams.length) ? config.Upstreams : (config.ProxyTargetAddr ? [config.ProxyTargetAddr] : []);
+    }
+
+    function l4HealthCheckOn(config){
+        let hc = config.HealthCheck;
+        return !!(hc && (hc.activeEnabled || hc.passiveEnabled));
+    }
+
+    // l4DestinationStatus is a destination's health icon, tooltip and open connections
+    function l4DestinationStatus(config, addr){
+        let st = (l4UpstreamState[config.UUID] || []).find(s => s.address == addr) || {};
+        let icon, title;
+        if (!config.Running){
+            icon = `<i class="grey circle outline icon"></i>`; title = "Proxy stopped";
+        }else if (st.online === false){
+            let why = l4HealthReasons["l4:" + config.UUID.toLowerCase() + "|" + addr] || "taken out by health checks";
+            icon = `<i class="red heartbeat icon"></i>`; title = "Down: " + why;
+        }else if (l4HealthCheckOn(config)){
+            icon = `<i class="green heart icon"></i>`; title = "Healthy";
+        }else{
+            icon = `<i class="grey circle icon"></i>`; title = "Not health checked";
+        }
+        return {icon: icon, title: title, active: st.active || 0, total: st.total || 0, failed: st.failed || 0};
+    }
+
+    // l4DestinationsCell lists a rule's destinations with their health
+    function l4DestinationsCell(config){
+        let dests = l4DestinationList(config);
+        if (dests.length == 0){
+            return `<i class="ui yellow exclamation triangle icon"></i> No Destination`;
+        }
+        return dests.map(addr => {
+            let st = l4DestinationStatus(config, addr);
+            let conns = st.active ? ` <span style="opacity: 0.7;">· ${st.active} open</span>` : "";
+            return `<div title="${htmlEscape(st.title)}" style="white-space: nowrap;">${st.icon}${htmlEscape(addr)}${conns}</div>`;
+        }).join("");
+    }
+
+    // describeL4HealthCheck is the summary under the Health Checks button
+    function describeL4HealthCheck(hc){
+        if (!hc || (!hc.activeEnabled && !hc.passiveEnabled)){
+            return "Health checks: off. No automatic failover, and this proxy is not shown on Health & Uptime.";
+        }
+        let parts = [];
+        if (hc.activeEnabled){
+            let kind = hc.type == "icmp" ? "ICMP ping" : (hc.type == "udp" ? "UDP send / expect" : ((hc.send || hc.expect) ? "TCP send / expect" : "TCP connect"));
+            parts.push(kind + " every " + hc.intervalSeconds + "s");
+        }
+        if (hc.passiveEnabled){
+            parts.push("passive: " + hc.threshold + " errors in " + hc.windowSeconds + "s");
+        }
+        let summary = "Health checks: " + parts.join(", ");
+        summary += hc.activeEnabled ? ". Also feeds Health & Uptime." : ". Not shown on Health & Uptime (needs active checks).";
+        return summary;
+    }
+
+    // l4HealthCell shows the health checks and load balancing, like the
+    // Health / Cache column of the HTTP Proxies list
+    function l4HealthCell(config){
+        let parts = [];
+        let hc = config.HealthCheck;
+        if (l4HealthCheckOn(config)){
+            let kind = hc.activeEnabled && hc.passiveEnabled ? "Active + passive" : (hc.activeEnabled ? "Active" : "Passive");
+            parts.push(`<span title="${htmlEscape(describeL4HealthCheck(hc))}"><i class="grey heartbeat icon"></i>${kind}</span>`);
+        }
+        if (l4DestinationList(config).length > 1){
+            parts.push(`<span title="Load balancing"><i class="grey random icon"></i>${htmlEscape(L4_LB_NAMES[config.LoadBalancing] || "Round robin")}</span>`);
+        }
+        if (config.CloseOnUpstreamDown){
+            parts.push(`<span title="Open connections to a destination are closed when it goes down"><i class="grey unlink icon"></i>Close on down</span>`);
+        }
+        if (parts.length == 0){
+            return `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
+        }
+        return parts.join("<br>");
+    }
+
+    function l4ProtocolCell(config){
+        let protocols = [];
+        if (config.UseTCP) protocols.push("TCP");
+        if (config.UseUDP) protocols.push("UDP");
+        let extra = [];
+        if (config.ProxyProtocolVersion === 1) extra.push("Proxy Protocol v1");
+        else if (config.ProxyProtocolVersion === 2) extra.push("Proxy Protocol v2");
+        if (config.EnableLogging) extra.push("logging");
+        let cell = protocols.length ? htmlEscape(protocols.join(" + ")) : `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
+        if (extra.length) cell += `<br><small style="opacity: 0.7;">${htmlEscape(extra.join(" · "))}</small>`;
+        return cell;
+    }
+
+    function renderL4ProxyList(configs){
+        let tableBody = $("#l4ProxyList");
+        tableBody.empty();
+        if (!Array.isArray(configs) || configs.length === 0) {
+            tableBody.append(`<tr><td data-label="" colspan="8"><i class="green check circle icon"></i> No Layer 4 Proxy</td></tr>`);
+            return;
+        }
+        configs = configs.slice().sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
+        configs.forEach(function(config) {
+            let uuid = htmlEscape(config.UUID);
+            let row = $(`<tr class="l4Entry" uuid="${uuid}">
+                <td class="collapsing ignoremw" datatype="enable">
+                    <div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Start / Stop">
+                        <input type="checkbox" class="enableToggle" name="active" ${config.Running ? "checked" : ""} uuid="${uuid}" onchange="handleL4ProxyToggle(this);">
+                        <label></label>
+                    </div>
+                </td>
+                <td data-label="" datatype="name">
+                    ${htmlEscape(config.Name || config.ListeningAddress)}<br>
+                    <small class="l4AccessRuleName" ruleid="${htmlEscape(config.AccessRuleUUID || "")}"></small>
+                </td>
+                <td data-label="" datatype="listen" style="word-break: break-all;">${htmlEscape(config.ListeningAddress)}</td>
+                <td data-label="" datatype="destinations" class="l4DestinationsCell" data-sort-value="${htmlEscape(l4DestinationList(config).join(","))}">${l4DestinationsCell(config)}</td>
+                <td data-label="" datatype="health" style="white-space: nowrap;">${l4HealthCell(config)}</td>
+                <td data-label="" datatype="protocol">${l4ProtocolCell(config)}</td>
+                <td data-label="" datatype="timeout" data-sort-value="${parseInt(config.Timeout) || 0}">${parseInt(config.Timeout) || 0}s</td>
+                <td class="center aligned ignoremw" datatype="action" data-label="">
+                    <button title="Edit Layer 4 Proxy" class="ui circular small basic icon button editBtn inlineEditActionBtn" onclick="editL4Proxy('${uuid}');"><i class="ellipsis vertical icon"></i></button>
+                    <button title="Remove Layer 4 Proxy" class="ui circular mini red basic icon button inlineEditActionBtn" onclick="deleteL4Proxy('${uuid}');"><i class="trash icon"></i></button>
+                </td>
+            </tr>`);
+            tableBody.append(row);
+        });
+        renderL4AccessRuleNames();
+        filterL4ProxyList();
+    }
+
+    // Access rule name under each rule's name (nothing for the default rule)
+    function renderL4AccessRuleNames(){
+        $("#l4ProxyList .l4AccessRuleName").each(function(){
+            let id = $(this).attr("ruleid") || "default";
+            if (id == "default"){ $(this).html(""); return; }
+            let rule = l4AccessRules[id];
+            if (rule == undefined){
+                $(this).html(`<i class="ui red exclamation triangle icon"></i> <b style="color: #db2828;">Access Rule Error</b>`);
+                return;
+            }
+            let icon = `<i class="ui grey filter icon"></i>`;
+            if (rule.BlacklistEnabled && !rule.WhitelistEnabled) icon = `<i class="ui red filter icon"></i>`;
+            else if (rule.WhitelistEnabled && !rule.BlacklistEnabled) icon = `<i class="ui green filter icon"></i>`;
+            else if (rule.WhitelistEnabled && rule.BlacklistEnabled) icon = `<i class="ui yellow filter icon"></i>`;
+            $(this).html(`${icon} ${htmlEscape(rule.Name)}`);
+        });
+    }
+
+    function loadL4AccessRules(){
+        $.get("/api/access/list", function(data){
+            if (data.error != undefined || !Array.isArray(data)) return;
+            l4AccessRules = {};
+            data.forEach(function(rule){ l4AccessRules[rule.ID] = rule; });
+            renderL4AccessRuleNames();
+        });
+    }
+
+    function getL4Config(uuid){
+        return l4ProxyConfigs.find(c => c.UUID == uuid) || null;
+    }
+
+    /* Quick search and filter, like the HTTP Proxies list */
+
+    function handleL4SearchInput(event){
+        if (event.key == "Escape"){
+            $("#l4SearchInput").val("");
+        }
+        filterL4ProxyList();
+    }
+
+    function filterL4ProxyList(){
+        let search = ($("#l4SearchInput").val() || "").toLowerCase().trim();
+        let filter = $("#l4FilterDropdown").dropdown("get value") || "";
+        $("#l4ProxyList tr.l4Entry").each(function(){
+            let cfg = getL4Config($(this).attr("uuid"));
+            if (cfg == null) return;
+            let text = [cfg.Name, cfg.ListeningAddress].concat(l4DestinationList(cfg)).join(" ").toLowerCase();
+            let match = search === "" || text.includes(search);
+            if (match && filter !== ""){
+                let state = l4UpstreamState[cfg.UUID] || [];
+                switch (filter){
+                    case "running": match = !!cfg.Running; break;
+                    case "stopped": match = !cfg.Running; break;
+                    case "tcp": match = !!cfg.UseTCP; break;
+                    case "udp": match = !!cfg.UseUDP; break;
+                    case "down": match = !!cfg.Running && state.some(s => s.online === false); break;
+                }
+            }
+            $(this).toggle(match);
+        });
+    }
+
+    $("#l4FilterDropdown").dropdown();
+    //The page loader initialises every dropdown again (dropping options such
+    //as onChange), so react to the menu clicks instead
+    $(document).on("click", "#l4FilterDropdown .menu .item", function(){
+        setTimeout(filterL4ProxyList, 0);
+    });
+
+    /* List actions */
+
+    function deleteL4Proxy(uuid){
+        let config = getL4Config(uuid);
+        if (config == null){
+            return;
+        }
+        if (!confirm("Confirm removing Layer 4 proxy " + (config.Name || config.ListeningAddress) + "?")){
+            return;
+        }
+        let remove = function(){
+            $.cjax({
+                url: "/api/l4proxy/config/delete",
+                method: "POST",
+                data: {uuid: uuid},
+                success: function(data){
+                    if (data.error != undefined){
+                        msgbox(data.error, false, 6000);
+                    }else{
+                        msgbox("Layer 4 Proxy Deleted");
+                    }
+                    initL4ProxyList();
+                }
+            });
+        };
+        if (config.Running){
+            //A running proxy is stopped first
+            $.cjax({
+                url: "/api/l4proxy/config/stop",
+                method: "POST",
+                data: {uuid: uuid},
+                success: function(data){
+                    if (data.error != undefined){
+                        msgbox(data.error, false, 6000);
+                        initL4ProxyList();
+                        return;
+                    }
+                    remove();
+                }
+            });
+        }else{
+            remove();
+        }
+    }
+
+    //Start or stop a Layer 4 proxy from its slider
+    function handleL4ProxyToggle(object){
+        let uuid = $(object).attr("uuid");
+        let start = object.checked;
+        $.cjax({
+            url: start ? "/api/l4proxy/config/start" : "/api/l4proxy/config/stop",
+            method: "POST",
+            data: {uuid: uuid},
+            success: function(data){
+                if (data.error != undefined){
+                    msgbox(data.error, false, 6000);
+                }else{
+                    msgbox(start ? "Layer 4 Proxy Started" : "Layer 4 Proxy Stopped");
+                }
+                //A listener that cannot open (address in use) stops the proxy
+                //again a moment after it starts, so look again shortly
+                initL4ProxyList(true);
+                if (start){
+                    setTimeout(function(){ initL4ProxyList(true); }, 800);
+                }
+            },
+            error: function(){
+                msgbox("Request failed", false);
+                initL4ProxyList(true);
+            }
+        });
+    }
+
+    /* Editor */
+
+    function l4CurrentConfig(){
+        return l4Editing;
+    }
+
+    function l4EditorOpen(){
+        return $("#l4EditModalWrapper").is(":visible");
+    }
+
+    function editL4Proxy(uuid){
+        let config = getL4Config(uuid);
+        if (config == null){
+            msgbox("Unable to load this Layer 4 proxy", false);
+            return;
+        }
+        l4Editing = JSON.parse(JSON.stringify(config));
+        $("#l4EditModal").attr("editing-uuid", config.UUID);
+        populateL4Editor();
+        hideL4EditorSideWrapper();
+        showL4EditorPage("listener");
+        //Access rule picker, the same as the HTTP proxy rule editor's
+        let payload = encodeURIComponent(JSON.stringify({ept: "l4", ep: config.UUID}));
+        $("#l4EditModal .l4config_content[l4cfg='accessrule'] .wrapper_frame").attr("src", "snippet/hostAccessEditor.html?t=" + Date.now() + "#" + payload);
+        $("body").css("overflow", "hidden");
+        // Fixing a bug in semantic ui that when an element fade in/out on top of checkbox
+        // the checkbox suddently flash on top of the fading element
+        $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
+        $("#l4EditModalWrapper").fadeIn("fast", function(){
+            $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
+        });
+    }
+
+    function closeL4ProxyEditor(){
+        $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
+        $("#l4EditModalWrapper").fadeOut("fast", function(){
+            $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
+            $("body").css("overflow", "auto");
+            hideL4EditorSideWrapper();
+            $("#l4EditModal .l4config_content[l4cfg='accessrule'] .wrapper_frame").attr("src", "snippet/placeholder.html");
+            l4Editing = null;
+        });
+    }
+
+    function showL4EditorPage(page){
+        $("#l4EditModal .l4edit_menu_item.active").removeClass("active");
+        $(`#l4EditModal .l4edit_menu_item[cfgpage='${page}']`).addClass("active");
+        $("#l4EditModal .l4config_content").hide();
+        $(`#l4EditModal .l4config_content[l4cfg='${page}']`).show().scrollTop(0);
+    }
+
+    $("#l4EditModal .l4edit_menu_item").on("click", function(){
+        showL4EditorPage($(this).attr("cfgpage"));
+        hideL4EditorSideWrapper(); //Always close the side wrapper on tab change
+    });
+
+    $("#l4EditDarkenLayer").on("click", closeL4ProxyEditor);
+    $(document).on("keydown", function(e){
+        if (e.key != "Escape" || !l4EditorOpen()) return;
+        if ($("#l4EditModal .editor_side_wrapper").is(":visible")){
+            hideL4EditorSideWrapper(true);
+        }else{
+            closeL4ProxyEditor();
+        }
+    });
+
+    // populateL4Editor puts the rule being edited into the editor
+    function populateL4Editor(){
+        let c = l4Editing;
+        if (c == null) return;
+        let editor = $("#l4EditModal");
+        let name = c.Name || c.ListeningAddress;
+        if (!editor.find(".l4_name_edit_input").is(":visible")){
+            editor.find(".l4_name").text(name);
+        }
+        let listen = editor.find(".l4ListenAddr");
+        if (!listen.is(":focus")){
+            listen.val(c.ListeningAddress);
+        }
+        editor.find(".l4UseTCP").prop("checked", !!c.UseTCP);
+        editor.find(".l4UseUDP").prop("checked", !!c.UseUDP);
+        let timeout = editor.find(".l4Timeout");
+        if (!timeout.is(":focus")){
+            timeout.val(parseInt(c.Timeout) || 0);
+        }
+        editor.find(".l4EnableLogging").prop("checked", !!c.EnableLogging);
+
+        editor.find(".l4_destination_list").html(l4DestinationsCell(c));
+        editor.find(".l4HealthCheckSummary").text(describeL4HealthCheck(c.HealthCheck));
+        editor.find(".l4LoadBalancing").val(c.LoadBalancing || "roundrobin");
+        editor.find(".l4LBHint").text(L4_LB_HINTS[c.LoadBalancing || "roundrobin"] || "");
+        editor.find(".l4CloseOnDown").prop("checked", !!c.CloseOnUpstreamDown);
+        editor.find(".l4ProxyProtocol").val(String(c.ProxyProtocolVersion || 0));
+        editor.find(".l4ProxyProtocolUdpWarning").toggle(c.ProxyProtocolVersion === 1 && !!c.UseUDP);
+    }
+
+    // resyncL4Editor reloads the rules and refreshes the editor and the list
+    function resyncL4Editor(callback=undefined){
+        initL4ProxyList(true, callback);
+    }
+
+    // saveL4Config saves changed rule settings (/api/l4proxy/config/edit
+    // takes every setting, so the rest are sent as they are)
+    function saveL4Config(changes, callback=undefined){
+        let c = l4Editing;
+        if (c == null) return;
+        let data = {
+            uuid: c.UUID,
+            name: c.Name,
+            listenAddr: c.ListeningAddress,
+            proxyAddr: c.ProxyTargetAddr || l4DestinationList(c)[0] || "",
+            useTCP: !!c.UseTCP,
+            useUDP: !!c.UseUDP,
+            proxyProtocolVersion: c.ProxyProtocolVersion || 0,
+            enableLogging: !!c.EnableLogging,
+            timeout: parseInt(c.Timeout) || 0,
+            accessRuleUUID: c.AccessRuleUUID || "default",
+        };
+        Object.assign(data, changes);
+        $.cjax({
+            url: "/api/l4proxy/config/edit",
+            method: "POST",
+            data: data,
+            success: function(resp){
+                if (resp.error != undefined){
+                    msgbox(resp.error, false, 6000);
+                }else{
+                    msgbox("Layer 4 proxy updated");
+                }
+                resyncL4Editor(function(){
+                    if (callback != undefined) callback(resp.error);
+                });
+            },
+            error: function(){
+                msgbox("Request failed", false);
+                resyncL4Editor();
+            }
+        });
+    }
+
+    // saveL4Pool saves changed destinations, load balancing or health checks
+    function saveL4Pool(changes, callback=undefined){
+        let c = l4Editing;
+        if (c == null) return;
+        let pool = {
+            upstreams: l4DestinationList(c),
+            loadBalancing: c.LoadBalancing || "roundrobin",
+            healthCheck: c.HealthCheck || null,
+            closeOnUpstreamDown: !!c.CloseOnUpstreamDown
+        };
+        Object.assign(pool, changes);
+        $.cjax({
+            url: "/api/l4proxy/config/pool",
+            method: "POST",
+            data: {uuid: c.UUID, pool: JSON.stringify(pool)},
+            success: function(resp){
+                if (resp.error != undefined){
+                    msgbox(resp.error, false, 6000);
+                }else{
+                    msgbox("Layer 4 proxy updated");
+                }
+                resyncL4Editor(function(){
+                    if (callback != undefined) callback(resp.error);
+                });
+            },
+            error: function(){
+                msgbox("Request failed", false);
+                resyncL4Editor();
+            }
+        });
+    }
+
+    /* Editor events */
+
+    (function(){
+        let editor = $("#l4EditModal");
+        editor.find(".l4_name_edit_btn").on("click", function(){
+            editor.find(".l4_name_edit_btn").parent().hide();
+            editor.find(".l4_name_edit_input input").val(l4Editing ? (l4Editing.Name || "") : "");
+            editor.find(".l4_name_edit_input").show();
+            editor.find(".l4_name_edit_input input").focus();
+        });
+        let endRename = function(){
+            editor.find(".l4_name_edit_input").hide();
+            editor.find(".l4_name_edit_btn").parent().show();
+        };
+        let saveName = function(){
+            let name = editor.find(".l4_name_edit_input input").val().trim();
+            if (name == ""){
+                msgbox("Name cannot be empty", false);
+                return;
+            }
+            endRename();
+            saveL4Config({name: name});
+        };
+        editor.find(".l4CancelNameBtn").on("click", endRename);
+        editor.find(".l4SaveNameBtn").on("click", saveName);
+        editor.find(".l4_name_edit_input input").on("keydown", function(e){
+            if (e.key == "Enter") saveName();
+            if (e.key == "Escape"){ e.stopPropagation(); endRename(); }
+        });
+
+        let saveListen = function(){
+            let addr = editor.find(".l4ListenAddr").val().trim();
+            if (l4Editing == null || addr == l4Editing.ListeningAddress) return;
+            if (addr == ""){
+                msgbox("Listening address cannot be empty", false);
+                return;
+            }
+            saveL4Config({listenAddr: addr});
+        };
+        editor.find(".l4SaveListenBtn").on("click", saveListen);
+        editor.find(".l4ListenAddr").on("keydown", function(e){
+            if (e.key == "Enter") saveListen();
+        });
+
+        editor.find(".l4UseTCP, .l4UseUDP").on("change", function(){
+            let tcp = editor.find(".l4UseTCP")[0].checked, udp = editor.find(".l4UseUDP")[0].checked;
+            if (!tcp && !udp){
+                msgbox("Keep TCP, UDP or both on (stop the proxy with its slider instead)", false, 6000);
+                $(this).prop("checked", true);
+                return;
+            }
+            saveL4Config({useTCP: tcp, useUDP: udp});
+        });
+        editor.find(".l4Timeout").on("change", function(){
+            let t = parseInt($(this).val(), 10);
+            if (isNaN(t) || t < 0){
+                msgbox("Connection timeout must be a whole number of seconds", false);
+                return;
+            }
+            saveL4Config({timeout: t});
+        });
+        editor.find(".l4EnableLogging").on("change", function(){
+            saveL4Config({enableLogging: this.checked});
+        });
+        editor.find(".l4LoadBalancing").on("change", function(){
+            saveL4Pool({loadBalancing: $(this).val()});
+        });
+        editor.find(".l4CloseOnDown").on("change", function(){
+            saveL4Pool({closeOnUpstreamDown: this.checked});
+        });
+        editor.find(".l4ProxyProtocol").on("change", function(){
+            saveL4Config({proxyProtocolVersion: parseInt($(this).val(), 10)});
+        });
+        editor.find(".l4EditDestinationsBtn").on("click", function(){
+            if (l4Editing == null) return;
+            let payload = encodeURIComponent(JSON.stringify({ept: "l4", ep: l4Editing.UUID}));
+            showL4EditorSideWrapper("snippet/l4destinations.html?t=" + Date.now() + "#" + payload);
+        });
+        editor.find(".l4EditHealthCheckBtn").on("click", function(){
+            if (l4Editing == null) return;
+            let payload = encodeURIComponent(JSON.stringify({ept: "l4", ep: l4Editing.UUID, name: l4Editing.Name || l4Editing.ListeningAddress}));
+            showL4EditorSideWrapper("snippet/healthChecks.html?t=" + Date.now() + "#" + payload);
+        });
+        editor.find(".editor_back_button").on("click", function(event){
+            event.stopPropagation();
+            hideL4EditorSideWrapper(true);
+        });
+    })();
+
+    function showL4EditorSideWrapper(url){
+        $("#l4EditModal .editor_side_wrapper .wrapper_frame").attr("src", url);
+        $("#l4EditModal .editor_side_wrapper").fadeIn("fast");
+    }
+
+    // hideL4EditorSideWrapper closes the side panel; with resync, the editor
+    // reloads what the panel changed
+    function hideL4EditorSideWrapper(resync=false){
+        $("#l4EditModal .editor_side_wrapper").fadeOut("fast", function(){
+            // Reset the side wrapper frame URL to prevent stale content
+            $("#l4EditModal .editor_side_wrapper .wrapper_frame").attr("src", "snippet/placeholder.html");
+        });
+        if (resync){
+            resyncL4Editor();
+        }
+    }
+
+    /* Loading */
+
+    // Refresh the destination health shown in the list and the editor
+    function refreshL4DestinationHealth(callback=undefined){
+        $.get("/api/l4proxy/config/upstreams", function(state){
+            if (!state || state.error != undefined){
+                if (callback != undefined) callback();
+                return;
+            }
+            l4UpstreamState = state;
+            $.get("/api/proxy/healthcheck/status", function(statuses){
+                l4HealthReasons = {};
+                (Array.isArray(statuses) ? statuses : []).forEach(s => {
+                    if (!s.enabled) l4HealthReasons[s.rule + "|" + s.upstream] = s.reason;
+                });
+                $("#l4ProxyList tr.l4Entry").each(function(){
+                    let cfg = getL4Config($(this).attr("uuid"));
+                    if (cfg != null){
+                        $(this).find(".l4DestinationsCell").html(l4DestinationsCell(cfg));
+                    }
+                });
+                if (l4Editing != null){
+                    $("#l4EditModal .l4_destination_list").html(l4DestinationsCell(l4Editing));
+                }
+                if ($("#l4FilterDropdown").dropdown("get value") == "down"){
+                    filterL4ProxyList();
+                }
+                if (callback != undefined) callback();
+            });
+        });
+    }
+
+    function initL4ProxyList(quiet=false, callback=undefined){
+        $.ajax({
+            type: "GET",
+            url: "/api/l4proxy/config/list",
+            success: function(configs){
+                if (!Array.isArray(configs)){
+                    if (!quiet) msgbox("Unable to load Layer 4 proxies", false);
+                    return;
+                }
+                l4ProxyConfigs = configs;
+                if (l4Editing != null){
+                    let fresh = getL4Config(l4Editing.UUID);
+                    if (fresh != null){
+                        l4Editing = JSON.parse(JSON.stringify(fresh));
+                        populateL4Editor();
+                    }
+                }
+                renderL4ProxyList(configs);
+                if (!$("#l4ProxyTable").data("tablesort")){
+                    $("#l4ProxyTable").tablesort();
+                }
+                refreshL4DestinationHealth(callback);
+            },
+            error: function(){
+                if (!quiet){
+                    msgbox("Unable to load Layer 4 proxies", false);
+                }
+            }
+        });
+    }
+
+    //Refresh the list every 10 s while it is on screen; with the editor or a
+    //menu open, or the table sorted, only the health is refreshed
+    setInterval(function(){
+        if (!$("#l4proxy").is(":visible") || document.hidden) return;
+        if (l4EditorOpen() || $(".sideWrapper").is(":visible")
+            || $("#l4FilterDropdown .menu:visible").length > 0
+            || $("#l4ProxyTable th.sorted").length > 0){
+            refreshL4DestinationHealth();
+        }else{
+            initL4ProxyList(true);
+        }
+    }, 10000);
+
+    loadL4AccessRules();
+    initL4ProxyList();
+
+    //Bind on tab switch events
+    tabSwitchEventBind["l4proxy"] = function(){
+        //Running states and access rule names may have changed
+        initL4ProxyList();
+        loadL4AccessRules();
+    };
+</script>

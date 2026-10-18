@@ -1,9 +1,9 @@
-package streamproxy
+package l4proxy
 
 /*
 	pool_custom.go (custom fork)
 
-	Upstream pools for stream proxies: several upstream servers per rule,
+	Upstream pools for Layer 4 proxies: several upstream servers per rule,
 	load balancing between the healthy ones, and health checks (run by
 	mod/healthcheck from the main package, which reports each upstream's
 	state with Manager.SetUpstreamOnline).
@@ -59,7 +59,7 @@ const (
 	LBFailover   = "failover"
 )
 
-// MaxUpstreams is the most upstream servers one stream proxy can have.
+// MaxUpstreams is the most upstream servers one Layer 4 proxy can have.
 const MaxUpstreams = 32
 
 const upstreamDialTimeout = 5 * time.Second
@@ -94,9 +94,9 @@ func (p *upstreamPool) get(addr string) *upstreamStats {
 	return s
 }
 
-// HealthRuleID is this rule's ID for health checks ("stream:<uuid>").
+// HealthRuleID is this rule's ID for health checks ("l4:<uuid>").
 func (c *ProxyRelayInstance) HealthRuleID() string {
-	return "stream:" + strings.ToLower(c.UUID)
+	return "l4:" + strings.ToLower(c.UUID)
 }
 
 // UpstreamList is the rule's upstream servers. Rules saved before pools
@@ -279,7 +279,7 @@ func (m *Manager) SetUpstreamOnline(addr string, online bool) {
 		for _, u := range c.UpstreamList() {
 			if u == addr {
 				if n := c.closeUpstreamConns(addr); n > 0 {
-					m.logf(fmt.Sprintf("Closed %d connection(s) of stream proxy %s to %s (upstream is down)", n, name, addr), nil)
+					m.logf(fmt.Sprintf("Closed %d connection(s) of Layer 4 proxy %s to %s (upstream is down)", n, name, addr), nil)
 				}
 			}
 		}
@@ -322,10 +322,10 @@ func ValidateUpstreams(list []string) ([]string, error) {
 		out = append(out, a)
 	}
 	if len(out) == 0 {
-		return nil, errors.New("add at least one upstream server")
+		return nil, errors.New("add at least one destination server")
 	}
 	if len(out) > MaxUpstreams {
-		return nil, fmt.Errorf("at most %d upstream servers", MaxUpstreams)
+		return nil, fmt.Errorf("at most %d destination servers", MaxUpstreams)
 	}
 	return out, nil
 }
@@ -385,9 +385,9 @@ func (p *PoolSettings) Validate(useTCP, useUDP bool) error {
 			}
 		case healthcheck.CheckICMP:
 		default:
-			return errors.New("stream proxies support TCP, UDP and ping health checks")
+			return errors.New("Layer 4 proxies support TCP, UDP and ping health checks")
 		}
-		// Stream connections have no HTTP status codes
+		// Layer 4 connections have no HTTP status codes
 		cfg.CountServerErrors = false
 		if cfg.PassiveEnabled && !cfg.CountTimeouts && !cfg.CountConnectionErrors {
 			return errors.New("passive monitoring needs connection failures or timeouts to count")
@@ -447,7 +447,7 @@ func (c *ProxyRelayInstance) UpstreamInfos() []UpstreamInfo {
 /* API */
 
 // HandleSetPool saves a rule's upstreams, load balancing and health checks.
-// POST /api/streamprox/config/pool  uuid=<rule>  pool=<json PoolSettings>
+// POST /api/l4proxy/config/pool  uuid=<rule>  pool=<json PoolSettings>
 func (m *Manager) HandleSetPool(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -478,7 +478,7 @@ func (m *Manager) HandleSetPool(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleUpstreamStatus returns every rule's upstream states.
-// GET /api/streamprox/config/upstreams
+// GET /api/l4proxy/config/upstreams
 func (m *Manager) HandleUpstreamStatus(w http.ResponseWriter, r *http.Request) {
 	out := map[string][]UpstreamInfo{}
 	for _, c := range m.List() {

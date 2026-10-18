@@ -32,7 +32,7 @@ func TestDecodePayload(t *testing.T) {
 	}
 }
 
-func streamCfg(typ CheckType, send, expect string) *Config {
+func l4Cfg(typ CheckType, send, expect string) *Config {
 	c := DefaultConfig()
 	c.ActiveEnabled, c.Type, c.Send, c.Expect = true, typ, send, expect
 	c.TimeoutSeconds = 1
@@ -66,13 +66,13 @@ func TestTCPAndUDPProbes(t *testing.T) {
 	}()
 	tcp := Upstream{Addr: ln.Addr().String()}
 	ctx := context.Background()
-	if r := DefaultProber(ctx, tcp, streamCfg(CheckTCP, "", "220")); !r.OK {
+	if r := DefaultProber(ctx, tcp, l4Cfg(CheckTCP, "", "220")); !r.OK {
 		t.Fatalf("banner: %+v", r)
 	}
-	if r := DefaultProber(ctx, tcp, streamCfg(CheckTCP, `PING\r\n`, "PONG")); !r.OK {
+	if r := DefaultProber(ctx, tcp, l4Cfg(CheckTCP, `PING\r\n`, "PONG")); !r.OK {
 		t.Fatalf("send/expect: %+v", r)
 	}
-	if r := DefaultProber(ctx, tcp, streamCfg(CheckTCP, `PING\r\n`, "NOPE")); r.OK {
+	if r := DefaultProber(ctx, tcp, l4Cfg(CheckTCP, `PING\r\n`, "NOPE")); r.OK {
 		t.Fatalf("wrong reply accepted: %+v", r)
 	}
 
@@ -90,20 +90,20 @@ func TestTCPAndUDPProbes(t *testing.T) {
 		}
 	}()
 	udp := Upstream{Addr: pc.LocalAddr().String()}
-	if r := DefaultProber(ctx, udp, streamCfg(CheckUDP, "hello", "HELLO")); !r.OK {
+	if r := DefaultProber(ctx, udp, l4Cfg(CheckUDP, "hello", "HELLO")); !r.OK {
 		t.Fatalf("udp: %+v", r)
 	}
-	if r := DefaultProber(ctx, udp, streamCfg(CheckUDP, "hello", "")); !r.OK {
+	if r := DefaultProber(ctx, udp, l4Cfg(CheckUDP, "hello", "")); !r.OK {
 		t.Fatalf("udp any reply: %+v", r)
 	}
-	if r := DefaultProber(ctx, udp, streamCfg(CheckUDP, "hello", "BYE")); r.OK {
+	if r := DefaultProber(ctx, udp, l4Cfg(CheckUDP, "hello", "BYE")); r.OK {
 		t.Fatalf("udp wrong reply accepted: %+v", r)
 	}
 	// Nothing listening: port unreachable or no reply
 	dead, _ := net.ListenPacket("udp", "127.0.0.1:0")
 	addr := dead.LocalAddr().String()
 	dead.Close()
-	if r := DefaultProber(ctx, Upstream{Addr: addr}, streamCfg(CheckUDP, "hello", "")); r.OK {
+	if r := DefaultProber(ctx, Upstream{Addr: addr}, l4Cfg(CheckUDP, "hello", "")); r.OK {
 		t.Fatalf("closed UDP port accepted: %+v", r)
 	}
 	// A UDP check needs something to send

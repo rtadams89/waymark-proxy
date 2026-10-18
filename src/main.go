@@ -67,7 +67,7 @@ func main() {
 	TMP_FOLDER = *path_tmp
 	CONF_FOLDER = *path_conf
 	CONF_HTTP_PROXY = CONF_FOLDER + "/proxy"
-	CONF_STREAM_PROXY = CONF_FOLDER + "/streamproxy"
+	CONF_L4_PROXY = CONF_FOLDER + "/l4proxy"
 	CONF_CERT_STORE = CONF_FOLDER + "/certs"
 	CONF_REDIRECTION = CONF_FOLDER + "/redirect"
 	CONF_ACCESS_RULE = CONF_FOLDER + "/access"

@@ -48,11 +48,11 @@ This directory contains all the modular components that make up the Zoraxy rever
 
 ## Networking & Communication
 
-### streamproxy
-**Purpose**: TCP/UDP stream proxy
+### l4proxy
+**Purpose**: Layer 4 (TCP/UDP) proxy, called streamproxy in Zoraxy
 - Proxies TCP and UDP connections
-- Spreads connections over a pool of upstream servers (round robin, least connections, source IP hash, failover)
-- Takes unhealthy upstreams out using the healthcheck module
+- Spreads connections over a pool of destination servers (round robin, least connections, source IP hash, failover)
+- Takes unhealthy destinations out using the healthcheck module
 
 ### websocketproxy
 **Purpose**: WebSocket proxy functionality
@@ -63,7 +63,7 @@ This directory contains all the modular components that make up the Zoraxy rever
 ## Waymark additions
 
 ### healthcheck
-**Purpose**: Active and passive health checks for HTTP and stream proxy upstreams
+**Purpose**: Active and passive health checks for HTTP proxy upstreams and Layer 4 proxy destinations
 
 ### hacluster
 **Purpose**: High availability: keepalived integration and configuration sync between nodes
@@ -194,4 +194,4 @@ Modules may depend on:
 - Other Zoraxy modules (through interfaces)
 - External libraries (documented in go.mod)
 
-For more detailed information about specific modules, refer to their individual README files or source code documentation.
+For more detailed information about specific modules, refer to their individual README files or source code documentation.

@@ -30,6 +30,7 @@ import (
 	"imuslab.com/zoraxy/mod/info/logviewer"
 	"imuslab.com/zoraxy/mod/info/shellexec"
 	"imuslab.com/zoraxy/mod/info/usageinfo"
+	"imuslab.com/zoraxy/mod/l4proxy"
 	"imuslab.com/zoraxy/mod/mdns"
 	"imuslab.com/zoraxy/mod/netstat"
 	"imuslab.com/zoraxy/mod/pathrule"
@@ -37,7 +38,6 @@ import (
 	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
 	"imuslab.com/zoraxy/mod/statistic"
 	"imuslab.com/zoraxy/mod/statistic/analytic"
-	"imuslab.com/zoraxy/mod/streamproxy"
 	"imuslab.com/zoraxy/mod/tlscert"
 	"imuslab.com/zoraxy/mod/webserv"
 )
@@ -68,6 +68,14 @@ func startupSequence() {
 			panic(err)
 		}
 		SystemWideLogger = l
+	}
+
+	//Custom fork: log file and syslog outputs (logoutputs_custom.go). Applied
+	//before anything is logged, so no log file is created when file logging
+	//is off for both streams
+	initLogOutputs()
+
+	if !*enableLog {
 		SystemWideLogger.Println("System wide logging is disabled, all logs will be printed to STDOUT only")
 	} else {
 		// Load log configuration from file
@@ -94,8 +102,6 @@ func startupSequence() {
 		}
 		SystemWideLogger.Println("System wide logging is enabled")
 	}
-
-	initLogOutputs() //Custom fork: log file and syslog outputs (logoutputs_custom.go)
 
 	LogViewer = logviewer.NewLogViewer(&logviewer.ViewerOption{
 		RootFolder: *path_logFile,
@@ -307,14 +313,15 @@ func startupSequence() {
 		}
 	}
 
-	//Create TCP Proxy Manager
-	streamProxyManager, err = streamproxy.NewStreamProxy(&streamproxy.Options{
+	//Create the Layer 4 (TCP / UDP) Proxy Manager
+	migrateL4ProxyConfigFolder() //Custom fork: l4pool_custom.go
+	l4ProxyManager, err = l4proxy.NewL4Proxy(&l4proxy.Options{
 		AccessControlHandler: accessController.DefaultAccessRule.AllowConnectionAccess,
 		AccessController:     accessController,
-		ConfigStore:          CONF_STREAM_PROXY,
+		ConfigStore:          CONF_L4_PROXY,
 		Logger:               SystemWideLogger,
-		ObserveConnect:       observeStreamConnect,       //Custom fork: passive health monitoring (streampool_custom.go)
-		OnChange:             UpdateUptimeMonitorTargets, //Custom fork: health checks follow stream rule changes
+		ObserveConnect:       observeL4Connect,           //Custom fork: passive health monitoring (l4pool_custom.go)
+		OnChange:             UpdateUptimeMonitorTargets, //Custom fork: health checks follow Layer 4 rule changes
 	})
 	if err != nil {
 		panic(err)

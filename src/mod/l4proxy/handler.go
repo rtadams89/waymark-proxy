@@ -1,4 +1,4 @@
-package streamproxy
+package l4proxy
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"imuslab.com/zoraxy/mod/healthcheck"
 	"imuslab.com/zoraxy/mod/utils"
 )
 
@@ -118,6 +119,18 @@ func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request)
 		if err := m.validateListener(effective, useTCP, useUDP, configUUID); err != nil {
 			utils.SendErrorResponse(w, err.Error())
 			return
+		}
+		//Custom fork: the editor saves each setting on its own, so keep the
+		//protocols and the active health check in step
+		if hc := existing.View().HealthCheck; hc != nil && hc.ActiveEnabled {
+			if hc.Type == healthcheck.CheckTCP && !useTCP {
+				utils.SendErrorResponse(w, "this proxy's health check uses TCP: change the health check before turning TCP off")
+				return
+			}
+			if hc.Type == healthcheck.CheckUDP && !useUDP {
+				utils.SendErrorResponse(w, "this proxy's health check uses UDP: change the health check before turning UDP off")
+				return
+			}
 		}
 	}
 
@@ -279,7 +292,7 @@ func (m *Manager) validateListener(listen string, useTCP, useUDP bool, exceptUUI
 			if name == "" {
 				name = v.UUID
 			}
-			return fmt.Errorf("stream proxy %q already uses %s", name, v.ListeningAddress)
+			return fmt.Errorf("Layer 4 proxy %q already uses %s", name, v.ListeningAddress)
 		}
 	}
 	return nil

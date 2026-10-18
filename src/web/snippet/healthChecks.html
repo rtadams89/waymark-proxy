@@ -2,8 +2,9 @@
 <html>
     <head>
         <!-- Custom fork: per-rule active and passive health checks (mod/healthcheck).
-             Opened from the rule editor's Upstream tab as
-             snippet/healthChecks.html#{"ept":"host","ep":"<rule>"} -->
+             Opened from the rule editor's Destinations tab as
+             snippet/healthChecks.html#{"ept":"host","ep":"<rule>"}, or for a Layer 4
+             proxy as snippet/healthChecks.html#{"ept":"l4","ep":"<uuid>","name":"<name>"} -->
         <meta charset="utf-8">
         <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
         <link rel="stylesheet" href="../script/semantic/semantic.min.css">
@@ -24,6 +25,7 @@
             /* Only four options: show them all. In a narrow side panel Semantic UI
                caps the menu at about three items and scrolls the first one away. */
             #hcType .menu{ max-height: none !important; overflow-y: visible !important; }
+            .hcL4Text, #hcType .hcL4Type{ display: none; }
         </style>
     </head>
     <body>
@@ -40,7 +42,8 @@
 
             <div class="ui blue message" id="hcSingleUpstreamNote" style="display:none;">
                 <i class="info circle icon"></i>
-                This rule has only one upstream. While it fails its health checks, visitors get Waymark's "Web server is down" (521) error page straight away. Add a second upstream to fail over to it instead.
+                <span class="hcHttpText">This rule has only one upstream. While it fails its health checks, visitors get Waymark's "Web server is down" (521) error page straight away. Add a second upstream to fail over to it instead.</span>
+                <span class="hcL4Text">This proxy has only one destination. While it fails its health checks, new connections are closed straight away. Add a second destination to fail over to it instead.</span>
             </div>
 
             <div class="ui form" id="hcForm">
@@ -58,9 +61,11 @@
                                 <i class="dropdown icon"></i>
                                 <div class="default text">Check type</div>
                                 <div class="menu">
-                                    <div class="item" data-value="http-get">HTTP GET</div>
-                                    <div class="item" data-value="http-head">HTTP HEAD</div>
-                                    <div class="item" data-value="tcp">TCP connect</div>
+                                    <div class="item hcHttpType" data-value="http-get">HTTP GET</div>
+                                    <div class="item hcHttpType" data-value="http-head">HTTP HEAD</div>
+                                    <div class="item hcTCPType" data-value="tcp">TCP connect</div>
+                                    <div class="item hcL4Type hcTCPType" data-value="tcpx">TCP: send data and expect a reply</div>
+                                    <div class="item hcL4Type hcUDPType" data-value="udp">UDP: send data and expect a reply</div>
                                     <div class="item" data-value="icmp">ICMP ping</div>
                                 </div>
                             </div>
@@ -89,6 +94,30 @@
                                 <div class="hcHint">Healthy only if the first 64 KB of the response include this text. Catches apps that answer 200 with an error page.</div>
                             </div>
                         </div>
+                        <!-- Custom fork: Layer 4 send / expect checks -->
+                        <div class="hcPayloadOnly">
+                            <div class="field">
+                                <label>Send <span class="hcHint">(optional for TCP)</span></label>
+                                <input type="text" name="send" class="hcMono" placeholder="PING\r\n" autocomplete="off">
+                            </div>
+                            <div class="field">
+                                <label>Reply must contain <span class="hcHint">(optional)</span></label>
+                                <input type="text" name="expect" class="hcMono" placeholder="PONG" autocomplete="off">
+                            </div>
+                            <div class="field">
+                                <label>Format</label>
+                                <div class="ui selection dropdown" id="hcPayloadFormat">
+                                    <input type="hidden" name="payloadFormat" value="text">
+                                    <i class="dropdown icon"></i>
+                                    <div class="default text">Text</div>
+                                    <div class="menu">
+                                        <div class="item" data-value="text">Text</div>
+                                        <div class="item" data-value="hex">Hex</div>
+                                    </div>
+                                </div>
+                                <div class="hcHint" id="hcPayloadHint" style="margin-top:0.3em;"></div>
+                            </div>
+                        </div>
                         <div class="four fields hcInline">
                             <div class="field">
                                 <label>Interval</label>
@@ -107,7 +136,7 @@
                                 <div class="ui right labeled input"><input type="number" name="rise" min="1" max="20"><div class="ui basic label">passes</div></div>
                             </div>
                         </div>
-                        <div class="hcHint">Consecutive results. An upstream is disabled after "Disable after" failed checks in a row, and re-enabled after "Enable after" successful checks in a row.</div>
+                        <div class="hcHint">Consecutive results. <span class="hcHttpText">An upstream</span><span class="hcL4Text">A destination</span> is disabled after "Disable after" failed checks in a row, and re-enabled after "Enable after" successful checks in a row.</div>
                     </div>
                 </div>
 
@@ -120,10 +149,10 @@
                     <div class="hcBody" style="margin-top: 1em;">
                         <div class="field">
                             <label>Count as errors</label>
-                            <div class="ui checkbox" style="margin-right:1.2em;"><input type="checkbox" name="countServerErrors"><label>5xx responses</label></div>
+                            <div class="ui checkbox hcHttpText" style="margin-right:1.2em;"><input type="checkbox" name="countServerErrors"><label>5xx responses</label></div>
                             <div class="ui checkbox" style="margin-right:1.2em;"><input type="checkbox" name="countTimeouts"><label>Timeouts</label></div>
                             <div class="ui checkbox"><input type="checkbox" name="countConnectionErrors"><label>Connection failures</label></div>
-                            <div class="hcHint" style="margin-top:0.3em;">Connection failures: refused, reset, unreachable or DNS errors. Client disconnects are never counted.</div>
+                            <div class="hcHint" style="margin-top:0.3em;">Connection failures: refused, reset, unreachable or DNS errors<span class="hcL4Text"> (for UDP: the destination reports its port as unreachable)</span>. Client disconnects are never counted.</div>
                         </div>
                         <div class="three fields hcInline">
                             <div class="field">
@@ -155,11 +184,11 @@
 
             <div class="ui divider"></div>
             <h4 class="ui header">
-                Upstream status
+                <span class="hcHttpText">Upstream status</span><span class="hcL4Text">Destination status</span>
                 <div class="sub header">Updates every 5 seconds</div>
             </h4>
             <table class="ui very basic compact unstackable table">
-                <thead><tr><th>Upstream</th><th>State</th><th>Last check</th></tr></thead>
+                <thead><tr><th><span class="hcHttpText">Upstream</span><span class="hcL4Text">Destination</span></th><th>State</th><th>Last check</th></tr></thead>
                 <tbody id="hcStatusBody"><tr><td colspan="3" class="hcHint">Loading…</td></tr></tbody>
             </table>
 
@@ -167,12 +196,19 @@
             <div class="ui list" id="hcEvents"><div class="item hcHint">None yet</div></div>
 
             <div class="ui divider"></div>
-            <div class="ui bulleted list hcHint">
+            <div class="ui bulleted list hcHint hcHttpText">
                 <div class="item">A disabled upstream gets no traffic. If every upstream of the rule is disabled, visitors get the "Web server is down" (521) error page until one passes its checks again.</div>
                 <div class="item">Every enable and disable is written to Waymark's log with its reason, under <code>[healthcheck]</code>.</div>
                 <div class="item">Active checks also feed the Health &amp; Uptime page (Monitoring): one entry per 5 minutes, marked down if the upstream was out of load balancing at any point in it. Rules without active checks are not shown there.</div>
                 <div class="item">ICMP ping uses an unprivileged ping socket (allowed by default on Debian through <code>net.ipv4.ping_group_range</code>) and falls back to a raw socket.</div>
                 <div class="item">If the same backend address is used by several rules, it is taken out of load balancing when any rule's checks find it unhealthy.</div>
+            </div>
+            <div class="ui bulleted list hcHint hcL4Text">
+                <div class="item">A disabled destination gets no new connections. If every destination of the proxy is disabled, new connections are closed until one passes its checks again. Open connections stay, unless "Close connections when a destination goes down" is on.</div>
+                <div class="item">Every enable and disable is written to Waymark's log with its reason, under <code>[healthcheck]</code>.</div>
+                <div class="item">Active checks also feed the Health &amp; Uptime page (Monitoring): one entry per 5 minutes, marked down if the destination was out of load balancing at any point in it. Proxies without active checks are not shown there.</div>
+                <div class="item">ICMP ping uses an unprivileged ping socket (allowed by default on Debian through <code>net.ipv4.ping_group_range</code>) and falls back to a raw socket.</div>
+                <div class="item">If the same address is used by several proxies or HTTP proxy rules, it is taken out of load balancing when any of their checks find it unhealthy.</div>
             </div>
             <button class="ui basic button" style="float:right;" onclick="parent.hideSideWrapper(true);"><i class="remove icon"></i> Close</button>
             <br><br><br>
@@ -196,7 +232,12 @@
                 return new Date(ts*1000).toLocaleString();
             }
 
+            //Custom fork: Layer 4 proxy mode ({"ept":"l4"})
+            let l4Mode = false;
+            let l4Protocols = {tcp: true, udp: false};
+
             $("#hcType").dropdown({ onChange: function(){ applyVisibility(); formDirty = true; } });
+            $("#hcPayloadFormat").dropdown({ onChange: function(){ applyVisibility(); formDirty = true; } });
             $(".ui.checkbox").checkbox({ onChange: function(){ applyVisibility(); formDirty = true; } });
             $("#hcForm input[type=text], #hcForm input[type=number]").on("input", function(){ formDirty = true; });
 
@@ -206,6 +247,12 @@
                 "tcp": "Healthy if a TCP connection to the upstream's port opens. Does not check the application.",
                 "icmp": "Healthy if the upstream's IP answers ping. Only proves the machine is up, not the service."
             };
+            const l4TypeHints = {
+                "tcp": "Healthy if a TCP connection to the destination's port opens. Does not check the application.",
+                "tcpx": "Connects, sends the data (if any), and is healthy when the reply contains the expected text. Leave Send empty to wait for a banner (e.g. SMTP's 220).",
+                "udp": "Sends the data and is healthy when a reply arrives that contains the expected text (any reply if left empty).",
+                "icmp": "Healthy if the destination's IP answers ping. Only proves the machine is up, not the service."
+            };
 
             function applyVisibility(){
                 let active = $("#hcActiveToggle input")[0].checked;
@@ -213,15 +260,19 @@
                 let type = $("#hcType").dropdown("get value");
                 $("#hcActiveSection").toggleClass("off", !active);
                 $("#hcPassiveSection").toggleClass("off", !passive);
-                $(".hcHttpOnly").toggle(type == "http-get" || type == "http-head");
-                $(".hcGetOnly").toggle(type == "http-get");
-                $("#hcTypeHint").text(typeHints[type] || "");
+                $(".hcHttpOnly").toggle(!l4Mode && (type == "http-get" || type == "http-head"));
+                $(".hcGetOnly").toggle(!l4Mode && type == "http-get");
+                $(".hcPayloadOnly").toggle(l4Mode && (type == "tcpx" || type == "udp"));
+                $("#hcPayloadHint").text($("#hcPayloadFormat").dropdown("get value") == "hex"
+                    ? "Hex bytes, e.g. 00 01 ff (spaces optional)."
+                    : "Text; use \\r \\n \\t \\0 \\\\ and \\xHH for special bytes.");
+                $("#hcTypeHint").text((l4Mode ? l4TypeHints[type] : typeHints[type]) || "");
                 if (active){
                     $("#hcRecoveryField").addClass("disabled");
-                    $("#hcRecoveryHint").text("Upstreams disabled by passive monitoring come back through the active checks (after the \"Enable after\" count of successful checks).");
+                    $("#hcRecoveryHint").text((l4Mode ? "Destinations" : "Upstreams") + " disabled by passive monitoring come back through the active checks (after the \"Enable after\" count of successful checks).");
                 }else{
                     $("#hcRecoveryField").removeClass("disabled");
-                    $("#hcRecoveryHint").text("With no active checks, a disabled upstream is given traffic again after this many seconds. If the errors continue it is disabled again.");
+                    $("#hcRecoveryHint").text("With no active checks, a disabled " + (l4Mode ? "destination" : "upstream") + " is given traffic again after this many seconds. If the errors continue it is disabled again.");
                 }
             }
 
@@ -229,9 +280,14 @@
                 let f = $("#hcForm");
                 $("#hcActiveToggle").checkbox(cfg.activeEnabled ? "set checked" : "set unchecked");
                 $("#hcPassiveToggle").checkbox(cfg.passiveEnabled ? "set checked" : "set unchecked");
-                $("#hcType").dropdown("set selected", cfg.type || "http-get");
+                let type = cfg.type || "http-get";
+                if (l4Mode && type == "tcp" && (cfg.send || cfg.expect)){
+                    type = "tcpx";
+                }
+                $("#hcType").dropdown("set selected", type);
+                $("#hcPayloadFormat").dropdown("set selected", cfg.payloadFormat || "text");
                 $("#hcVdirToggle").checkbox(cfg.includeVirtualDirs ? "set checked" : "set unchecked");
-                ["path","expectedStatus","hostHeader","bodyContains","intervalSeconds","timeoutSeconds","rise","fall","threshold","windowSeconds","passiveRecoverySeconds"].forEach(k => {
+                ["path","expectedStatus","hostHeader","bodyContains","send","expect","intervalSeconds","timeoutSeconds","rise","fall","threshold","windowSeconds","passiveRecoverySeconds"].forEach(k => {
                     f.find(`[name=${k}]`).val(cfg[k] == undefined ? "" : cfg[k]);
                 });
                 ["countServerErrors","countTimeouts","countConnectionErrors"].forEach(k => {
@@ -244,6 +300,29 @@
             function readForm(){
                 let f = $("#hcForm");
                 let num = k => parseInt(f.find(`[name=${k}]`).val(), 10);
+                if (l4Mode){
+                    let type = $("#hcType").dropdown("get value");
+                    let payload = type == "tcpx" || type == "udp";
+                    return {
+                        activeEnabled: $("#hcActiveToggle input")[0].checked,
+                        type: type == "tcpx" ? "tcp" : type,
+                        path: "/", hostHeader: "", expectedStatus: "200-399", bodyContains: "", includeVirtualDirs: false,
+                        send: payload ? f.find("[name=send]").val() : "",
+                        expect: payload ? f.find("[name=expect]").val() : "",
+                        payloadFormat: $("#hcPayloadFormat").dropdown("get value") || "text",
+                        intervalSeconds: num("intervalSeconds"),
+                        timeoutSeconds: num("timeoutSeconds"),
+                        rise: num("rise"),
+                        fall: num("fall"),
+                        passiveEnabled: $("#hcPassiveToggle input")[0].checked,
+                        countServerErrors: false,
+                        countTimeouts: f.find("[name=countTimeouts]")[0].checked,
+                        countConnectionErrors: f.find("[name=countConnectionErrors]")[0].checked,
+                        threshold: num("threshold"),
+                        windowSeconds: num("windowSeconds"),
+                        passiveRecoverySeconds: num("passiveRecoverySeconds")
+                    };
+                }
                 return {
                     activeEnabled: $("#hcActiveToggle input")[0].checked,
                     type: $("#hcType").dropdown("get value"),
@@ -267,10 +346,15 @@
             }
 
             function load(initial){
-                $.get("/api/proxy/healthcheck/get", { ep: editingEndpoint.ep }, function(data){
+                let url = l4Mode ? "/api/l4proxy/healthcheck/get" : "/api/proxy/healthcheck/get";
+                let query = l4Mode ? { uuid: editingEndpoint.ep } : { ep: editingEndpoint.ep };
+                $.get(url, query, function(data){
                     if (data.error != undefined){
                         notify(data.error, false);
                         return;
+                    }
+                    if (l4Mode){
+                        setL4Protocols(data.useTCP, data.useUDP);
                     }
                     if (initial || !formDirty){
                         setForm(data.config);
@@ -289,7 +373,7 @@
                 $("#hcVdirSection").toggle(vdirs.length > 0);
                 $("#hcVdirList").text(vdirs.map(v => v.path).join(", "));
                 if (data.upstreams.length == 0 && vdirs.length == 0){
-                    body.append(`<tr><td colspan="3" class="hcHint">This rule has no active upstreams.</td></tr>`);
+                    body.append(`<tr><td colspan="3" class="hcHint">${l4Mode ? "This proxy has no destinations." : "This rule has no active upstreams."}</td></tr>`);
                     return;
                 }
                 let byAddr = {}, byLabel = {};
@@ -305,12 +389,12 @@
                     let addr = row.addr, s = row.s;
                     let addrCell = `<td class="hcMono">${esc(addr)}${row.note ? `<div class="hcReason" style="font-family: inherit;">${esc(row.note)}</div>` : ""}</td>`;
                     if (!s){
-                        body.append(`<tr>${addrCell}<td colspan="2" class="hcHint">Not health checked${data.disabled ? " (rule is disabled)" : (row.note ? " yet" : "")}</td></tr>`);
+                        body.append(`<tr>${addrCell}<td colspan="2" class="hcHint">Not health checked${data.disabled ? (l4Mode ? " (proxy is stopped)" : " (rule is disabled)") : (row.note ? " yet" : "")}</td></tr>`);
                         return;
                     }
                     let dot = "hcUp", label = "Healthy";
                     if (!s.enabled){ dot = "hcDown"; label = "Disabled"; }
-                    else if (!s.receivesTraffic){ dot = "hcHeld"; label = "Healthy here, held out by another rule"; }
+                    else if (!s.receivesTraffic){ dot = "hcHeld"; label = l4Mode ? "Healthy here, held out by another proxy or rule" : "Healthy here, held out by another rule"; }
                     let latency = (s.lastLatencyMs || 0) < 1 ? "<1 ms" : s.lastLatencyMs + " ms";
                     let last = s.lastCheck ? `${esc(s.lastDetail)}<br><span class="hcReason">${latency} · ${ago(s.lastCheck)}</span>` : (s.check ? `<span class="hcHint">pending</span>` : `<span class="hcHint">passive only</span>`);
                     let counters = [];
@@ -345,11 +429,15 @@
 
             function saveHealthCheck(){
                 let cfg = readForm();
+                if (l4Mode && $("#hcType").dropdown("get value") == "tcpx" && cfg.activeEnabled && cfg.send == "" && cfg.expect == ""){
+                    notify("Enter data to send, a reply to expect, or both (or choose TCP connect)", false, 6000);
+                    return;
+                }
                 $("#hcSaveBtn").addClass("loading disabled");
                 $.cjax({
-                    url: "/api/proxy/healthcheck/set",
+                    url: l4Mode ? "/api/l4proxy/healthcheck/set" : "/api/proxy/healthcheck/set",
                     method: "POST",
-                    data: { ep: editingEndpoint.ep, config: JSON.stringify(cfg) },
+                    data: l4Mode ? { uuid: editingEndpoint.ep, config: JSON.stringify(cfg) } : { ep: editingEndpoint.ep, config: JSON.stringify(cfg) },
                     success: function(data){
                         $("#hcSaveBtn").removeClass("loading disabled");
                         if (data.error != undefined){
@@ -359,6 +447,9 @@
                         notify("Health check settings saved");
                         formDirty = false;
                         load(true);
+                        if (l4Mode && parent.resyncL4Editor){
+                            parent.resyncL4Editor();
+                        }
                     },
                     error: function(){
                         $("#hcSaveBtn").removeClass("loading disabled");
@@ -367,10 +458,31 @@
                 });
             }
 
+            // setL4Protocols offers only the checks this proxy's protocols can use
+            function setL4Protocols(tcp, udp){
+                l4Protocols = {tcp: !!tcp, udp: !!udp};
+                $("#hcType .hcTCPType").toggleClass("disabled", !l4Protocols.tcp);
+                $("#hcType .hcUDPType").toggleClass("disabled", !l4Protocols.udp);
+            }
+
+            function initMode(){
+                l4Mode = editingEndpoint.ept == "l4";
+                $(".hcL4Text").toggle(l4Mode);
+                $(".hcHttpText").toggle(!l4Mode);
+                $("#hcType .hcHttpType").toggle(!l4Mode);
+                $("#hcType .hcL4Type").toggle(l4Mode);
+                if (l4Mode){
+                    $("#hcRuleName").parent().contents().first()[0].textContent = "Layer 4 proxy: ";
+                    $("#hcActiveToggle .hcHint").text("Probe every destination on a schedule");
+                    $("#hcPassiveToggle .hcHint").text("Watch real proxied connections for errors");
+                }
+            }
+
             if (window.location.hash.length > 1){
                 try{
                     editingEndpoint = JSON.parse(decodeURIComponent(window.location.hash.substr(1)));
-                    $("#hcRuleName").text(editingEndpoint.ep);
+                    initMode();
+                    $("#hcRuleName").text(editingEndpoint.name || editingEndpoint.ep);
                     load(true);
                     statusTimer = setInterval(function(){ load(false); }, 5000);
                 }catch(ex){

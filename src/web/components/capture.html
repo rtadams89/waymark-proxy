@@ -27,9 +27,9 @@
                 <div class="field">
                     <label>Traffic</label>
                     <select name="scope">
-                        <option value="all">HTTP and stream proxies</option>
+                        <option value="all">HTTP and Layer 4 proxies</option>
                         <option value="http">HTTP proxies only</option>
-                        <option value="stream">Stream proxies only</option>
+                        <option value="l4">Layer 4 proxies only</option>
                     </select>
                 </div>
                 <div class="field">
@@ -49,9 +49,9 @@
                 <label>Other host names <span class="capHint">(optional, comma separated; wildcards like *.example.com)</span></label>
                 <input type="text" name="hosts" placeholder="app.example.com, *.internal.example.com">
             </div>
-            <div class="field capStream">
-                <label>Stream proxy rules <span class="capHint">(none selected: all)</span></label>
-                <select name="streamRules" multiple class="ui fluid search dropdown" id="capStreamRules"></select>
+            <div class="field capL4">
+                <label>Layer 4 proxies <span class="capHint">(none selected: all)</span></label>
+                <select name="l4Rules" multiple class="ui fluid search dropdown" id="capL4Rules"></select>
             </div>
             <div class="field">
                 <label>Client addresses <span class="capHint">(optional, comma separated IP addresses or CIDR ranges)</span></label>
@@ -87,7 +87,7 @@
             <div class="item">Open the file in Wireshark. Each HTTP request and its response is its own TCP conversation, in HTTP/1.1 form even if HTTP/2 or HTTP/3 was used; filter with <span class="capMono">http</span>, or use Statistics &gt; Conversations.</div>
             <div class="item">Decrypted HTTPS is shown on port 80 so Wireshark decodes it as HTTP. The first packet of each conversation has a comment with the real addresses and ports (filter <span class="capMono">frame.comment</span>, or add it as a column).</div>
             <div class="item">Bodies longer than the limit are cut; the message then has an <span class="capMono">X-Waymark-Capture</span> header saying how much was kept.</div>
-            <div class="item">Stream proxies are recorded as they pass, byte for byte, on their real ports. Only connections that start while the capture runs are recorded.</div>
+            <div class="item">Layer 4 proxies are recorded as they pass, byte for byte, on their real ports. Only connections that start while the capture runs are recorded.</div>
             <div class="item">The packets are built from what Waymark sent and received: TCP handshakes, sequence numbers and timing below the application are made up, so this is not the tool for network-level problems (retransmissions, MTU).</div>
             <div class="item">WebSocket and other upgraded connections: the request and the switch are recorded, the tunnel after it is not.</div>
         </div>
@@ -96,7 +96,7 @@
 <script>
     (function(){
         let capTimer = null;
-        let capRules = {http: [], stream: []};
+        let capRules = {http: [], l4: []};
 
         function size(n){
             if (n >= 1 << 20) return (n / (1 << 20)).toFixed(1) + " MB";
@@ -118,15 +118,15 @@
         }
         function syncScope(){
             let s = $("#capForm select[name=scope]").val();
-            $("#capture .capHTTP").toggle(s != "stream");
-            $("#capture .capStream").toggle(s != "http");
+            $("#capture .capHTTP").toggle(s != "l4");
+            $("#capture .capL4").toggle(s != "http");
         }
         $("#capForm select[name=scope]").on("change", syncScope);
 
         function fillRules(d){
-            let httpSel = $("#capHTTPRules"), streamSel = $("#capStreamRules");
-            let keepHTTP = httpSel.val() || [], keepStream = streamSel.val() || [];
-            let httpKey = JSON.stringify(d.httpRules), streamKey = JSON.stringify(d.streamRules);
+            let httpSel = $("#capHTTPRules"), l4Sel = $("#capL4Rules");
+            let keepHTTP = httpSel.val() || [], keepL4 = l4Sel.val() || [];
+            let httpKey = JSON.stringify(d.httpRules), l4Key = JSON.stringify(d.l4Rules);
             if (httpKey != capRules.httpKey){
                 capRules.httpKey = httpKey;
                 capRules.http = (d.httpRules || []).sort((a, b) => a.name.localeCompare(b.name));
@@ -134,12 +134,12 @@
                 capRules.http.forEach((r, i) => httpSel.append($("<option>").val(String(i)).text(r.name + (r.disabled ? " (disabled)" : ""))));
                 httpSel.dropdown({placeholder: "All HTTP proxy rules"}).dropdown("set selected", keepHTTP);
             }
-            if (streamKey != capRules.streamKey){
-                capRules.streamKey = streamKey;
-                capRules.stream = (d.streamRules || []).sort((a, b) => a.name.localeCompare(b.name));
-                streamSel.empty();
-                capRules.stream.forEach(r => streamSel.append($("<option>").val(r.uuid).text(r.name + (r.running ? "" : " (stopped)"))));
-                streamSel.dropdown({placeholder: "All stream proxy rules"}).dropdown("set selected", keepStream);
+            if (l4Key != capRules.l4Key){
+                capRules.l4Key = l4Key;
+                capRules.l4 = (d.l4Rules || []).sort((a, b) => a.name.localeCompare(b.name));
+                l4Sel.empty();
+                capRules.l4.forEach(r => l4Sel.append($("<option>").val(r.uuid).text(r.name + (r.running ? "" : " (stopped)"))));
+                l4Sel.dropdown({placeholder: "All Layer 4 proxies"}).dropdown("set selected", keepL4);
             }
         }
 
@@ -179,12 +179,12 @@
             $("#capRunning").show();
             $("#capStartBtn").addClass("disabled");
             let c = r.config;
-            let what = {all: "HTTP and stream proxies", http: "HTTP proxies", stream: "Stream proxies"}[c.scope];
+            let what = {all: "HTTP and Layer 4 proxies", http: "HTTP proxies", l4: "Layer 4 proxies", stream: "Layer 4 proxies"}[c.scope]; //"stream": captures from before the rename
             let side = {both: "both sides", client: "client to Waymark", upstream: "Waymark to upstream"}[c.sides];
             let filters = [];
             if (c.hosts && c.hosts.length) filters.push("hosts " + c.hosts.join(", "));
-            if (c.streamRules && c.streamRules.length){
-                filters.push("stream rules " + c.streamRules.map(id => { let s = capRules.stream.find(x => x.uuid.toLowerCase() == id); return s ? s.name : id; }).join(", "));
+            if (c.l4Rules && c.l4Rules.length){
+                filters.push("Layer 4 proxies " + c.l4Rules.map(id => { let s = capRules.l4.find(x => x.uuid.toLowerCase() == id); return s ? s.name : id; }).join(", "));
             }
             if (c.clients && c.clients.length) filters.push("clients " + c.clients.join(", "));
             let detail = $("<div>");
@@ -221,7 +221,7 @@
             let f = $("#capForm");
             let scope = f.find("select[name=scope]").val();
             let hosts = [];
-            if (scope != "stream"){
+            if (scope != "l4"){
                 (f.find("#capHTTPRules").val() || []).forEach(i => { let r = capRules.http[parseInt(i, 10)]; if (r) hosts = hosts.concat(r.hosts); });
                 hosts = hosts.concat(list(f.find("input[name=hosts]").val()));
             }
@@ -229,7 +229,7 @@
                 scope: scope,
                 sides: f.find("select[name=sides]").val(),
                 hosts: hosts,
-                streamRules: scope != "http" ? (f.find("#capStreamRules").val() || []) : [],
+                l4Rules: scope != "http" ? (f.find("#capL4Rules").val() || []) : [],
                 clients: list(f.find("input[name=clients]").val()),
                 durationSeconds: (parseInt(f.find("input[name=minutes]").val(), 10) || 0) * 60,
                 maxMb: parseInt(f.find("input[name=maxMb]").val(), 10) || 0,

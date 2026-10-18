@@ -648,46 +648,54 @@ body.darkTheme #basicAuthCredPassword, body.darkTheme #basicAuthCredUsername {
     border: 1px solid var(--button_border_color) !important;
 }
 
-body.darkTheme #rules .field label {
+body.darkTheme #rules .field label,
+body.darkTheme #l4rules .field label {
     color: var(--text_color) !important;
 }
 
-body.darkTheme #rules .field .ui.selection.dropdown {
+body.darkTheme #rules .field .ui.selection.dropdown,
+body.darkTheme #l4rules .field .ui.selection.dropdown {
     background-color: var(--theme_bg_primary) !important;
     color: var(--text_color) !important;
     border-color: transparent !important;
 }
 
-body.darkTheme #rules .field .ui.selection.dropdown .menu {
+body.darkTheme #rules .field .ui.selection.dropdown .menu,
+body.darkTheme #l4rules .field .ui.selection.dropdown .menu {
     background-color: var(--theme_bg) !important;
     color: var(--text_color) !important;
 }
 
-body.darkTheme #rules .field .ui.selection.dropdown .menu .item {
+body.darkTheme #rules .field .ui.selection.dropdown .menu .item,
+body.darkTheme #l4rules .field .ui.selection.dropdown .menu .item {
     color: var(--text_color) !important;
 }
 
-body.darkTheme #rules .field .ui.selection.dropdown .menu .item:hover {
+body.darkTheme #rules .field .ui.selection.dropdown .menu .item:hover,
+body.darkTheme #l4rules .field .ui.selection.dropdown .menu .item:hover {
     background-color: var(--theme_bg_hover) !important;
     color: var(--text_color) !important;
 }
 
-body.darkTheme #rules .field .ui.selection.dropdown .menu .item.active.selected {
+body.darkTheme #rules .field .ui.selection.dropdown .menu .item.active.selected,
+body.darkTheme #l4rules .field .ui.selection.dropdown .menu .item.active.selected {
     background-color: var(--theme_highlight) !important;
     color: var(--text_color) !important;
 }
 
-body.darkTheme #rules .field .ui.selection.dropdown .text {
+body.darkTheme #rules .field .ui.selection.dropdown .text,
+body.darkTheme #l4rules .field .ui.selection.dropdown .text {
     color: var(--text_color) !important;
 }
 
-body.darkTheme #rules .field small {
+body.darkTheme #rules .field small,
+body.darkTheme #l4rules .field small {
     color: var(--text_color_secondary) !important;
 }
 
 /*
 
-    Stream Proxy 
+    Layer 4 Proxy
 
 */
 

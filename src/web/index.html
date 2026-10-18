@@ -68,8 +68,11 @@
                             <a class="item" tag="vdir" tab_group="proxy" highlight="httprp" style="display: none;">
                                 <i class="simplistic folder icon"></i> Virtual Directories
                             </a>
-                            <a class="item" tag="streamproxy" tab_group="proxy">
-                                <i class="simplistic exchange icon"></i> Stream Proxies
+                            <a class="item" tag="l4proxy" tab_group="proxy">
+                                <i class="simplistic exchange icon"></i> Layer 4 Proxies
+                            </a>
+                            <a class="item" tag="l4rules" tab_group="proxy" highlight="l4proxy" style="display: none;">
+                                <i class="simplistic plus square icon"></i> Add Layer 4 Proxy
                             </a>
                             <a class="item" tag="redirectset" tab_group="proxy">
                                 <i class="simplistic level up alternate icon"></i> Redirects
@@ -233,8 +236,9 @@
                 <!-- SSO / Oauth services -->
                 <div id="sso" class="functiontab" target="sso.html"></div>
 
-                <!-- TCP Proxy -->
-                <div id="streamproxy" class="functiontab" target="streamprox.html"></div>
+                <!-- Layer 4 (TCP / UDP) Proxy -->
+                <div id="l4proxy" class="functiontab" target="l4proxy.html"></div>
+                <div id="l4rules" class="functiontab" target="l4rules.html"></div>
 
                 <!-- Web Server -->
                 <div id="webserv" class="functiontab" target="webserv.html"></div>
@@ -386,6 +390,9 @@
                         } catch (e) {
                             console.error("Invalid JSON data:", e);
                         }
+                    }else if (tabID == "streamproxy"){
+                        //Bookmark from before stream proxies were renamed Layer 4 proxies
+                        openTabById("l4proxy");
                     }else if (getTabButtonById(tabID) != undefined){
                         openTabById(tabID);
                     }else{
@@ -657,7 +664,11 @@
                 if ($("#httprpEditModal").length && $("#httprpEditModal").is(":visible")) {
                     //HTTP Proxy Rule editor side wrapper implementation
                     $("#httprpEditModal .editor_side_wrapper").hide();
-                } 
+                }
+                if ($("#l4EditModal").length && $("#l4EditModal").is(":visible") && typeof hideL4EditorSideWrapper == "function") {
+                    //Custom fork: Layer 4 proxy editor side wrapper
+                    hideL4EditorSideWrapper(true);
+                }
 
                 //Original side wrapper implementation
                 if (discardFrameContent){

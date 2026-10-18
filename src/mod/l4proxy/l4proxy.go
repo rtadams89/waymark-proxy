@@ -1,4 +1,4 @@
-package streamproxy
+package l4proxy
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 )
 
 /*
-	Stream Proxy
+	Layer 4 Proxy
 
 	Forward port from one port to another
 	Also accept active connection and passive
@@ -160,7 +160,7 @@ type Options struct {
 	AccessControlHandler func(net.Conn) bool
 	AccessController     *access.Controller //Access controller for per-instance access rules
 	ConfigStore          string             //Folder to store the config files, will be created if not exists
-	Logger               *logger.Logger     //Logger for the stream proxy
+	Logger               *logger.Logger     //Logger for the Layer 4 proxy
 
 	//Custom fork (pool_custom.go): passive health monitoring of upstream
 	//connection failures, and a callback after rules change
@@ -182,8 +182,8 @@ type Manager struct {
 	offline  map[string]bool
 }
 
-// NewStreamProxy creates a new stream proxy manager with the given options
-func NewStreamProxy(options *Options) (*Manager, error) {
+// NewL4Proxy creates a new Layer 4 proxy manager with the given options
+func NewL4Proxy(options *Options) (*Manager, error) {
 	if !utils.FileExists(options.ConfigStore) {
 		err := os.MkdirAll(options.ConfigStore, 0775)
 		if err != nil {
@@ -193,22 +193,22 @@ func NewStreamProxy(options *Options) (*Manager, error) {
 
 	//Load relay configs from db
 	previousRules := []*ProxyRelayInstance{}
-	streamProxyConfigFiles, err := filepath.Glob(options.ConfigStore + "/*.config")
+	l4ProxyConfigFiles, err := filepath.Glob(options.ConfigStore + "/*.config")
 	if err != nil {
 		return nil, err
 	}
 
-	for _, configFile := range streamProxyConfigFiles {
+	for _, configFile := range l4ProxyConfigFiles {
 		//Read file into bytes
 		configBytes, err := os.ReadFile(configFile)
 		if err != nil {
-			options.Logger.PrintAndLog("stream-prox", "Read stream proxy config failed", err)
+			options.Logger.PrintAndLog("l4-proxy", "Read Layer 4 proxy config failed", err)
 			continue
 		}
 		thisRelayConfig := &ProxyRelayInstance{}
 		err = json.Unmarshal(configBytes, thisRelayConfig)
 		if err != nil {
-			options.Logger.PrintAndLog("stream-prox", "Unmarshal stream proxy config failed", err)
+			options.Logger.PrintAndLog("l4-proxy", "Unmarshal Layer 4 proxy config failed", err)
 			continue
 		}
 
@@ -219,12 +219,12 @@ func NewStreamProxy(options *Options) (*Manager, error) {
 			thisRelayConfig.UUID = uuid.New().String()
 			newConfigBytes, err := json.Marshal(thisRelayConfig)
 			if err != nil {
-				options.Logger.PrintAndLog("stream-prox", "Marshal stream proxy config failed", err)
+				options.Logger.PrintAndLog("l4-proxy", "Marshal Layer 4 proxy config failed", err)
 				continue
 			}
 			err = os.WriteFile(configFile, newConfigBytes, 0775)
 			if err != nil {
-				options.Logger.PrintAndLog("stream-prox", "Save stream proxy config failed", err)
+				options.Logger.PrintAndLog("l4-proxy", "Save Layer 4 proxy config failed", err)
 				continue
 			}
 
@@ -232,10 +232,10 @@ func NewStreamProxy(options *Options) (*Manager, error) {
 			newConfigFile := filepath.Join(options.ConfigStore, thisRelayConfig.UUID+".config")
 			err = os.Rename(configFile, newConfigFile)
 			if err != nil {
-				options.Logger.PrintAndLog("stream-prox", "Rename stream proxy config file failed", err)
+				options.Logger.PrintAndLog("l4-proxy", "Rename Layer 4 proxy config file failed", err)
 				continue
 			}
-			options.Logger.PrintAndLog("stream-prox", "Updated stream proxy config with new UUID: "+thisRelayConfig.UUID, nil)
+			options.Logger.PrintAndLog("l4-proxy", "Updated Layer 4 proxy config with new UUID: "+thisRelayConfig.UUID, nil)
 		}
 
 		//Append the config to the list
@@ -264,7 +264,7 @@ func NewStreamProxy(options *Options) (*Manager, error) {
 		if rule.Running {
 			//This was previously running. Start it again
 			rule.Running = false
-			thisManager.logf("Resuming stream proxy rule "+rule.Name, nil)
+			thisManager.logf("Resuming Layer 4 proxy rule "+rule.Name, nil)
 			rule.Start()
 		}
 	}
@@ -282,7 +282,7 @@ func (m *Manager) logf(message string, originalError error) {
 		println(message)
 		return
 	}
-	m.Options.Logger.PrintAndLog("stream-prox", message, originalError)
+	m.Options.Logger.PrintAndLog("l4-proxy", message, originalError)
 }
 
 // NewConfig creates a new proxy relay config with the given options
@@ -463,7 +463,7 @@ func (m *Manager) SaveConfigToDatabase() {
 	for _, config := range m.List() {
 		configBytes, err := json.Marshal(config)
 		if err != nil {
-			m.logf("Failed to marshal stream proxy config", err)
+			m.logf("Failed to marshal Layer 4 proxy config", err)
 			continue
 		}
 		path := filepath.Join(m.Options.ConfigStore, config.UUID+".config")
@@ -471,7 +471,7 @@ func (m *Manager) SaveConfigToDatabase() {
 			continue
 		}
 		if err := writeFileAtomic(path, configBytes); err != nil {
-			m.logf("Failed to save stream proxy config", err)
+			m.logf("Failed to save Layer 4 proxy config", err)
 		}
 	}
 }
@@ -513,7 +513,7 @@ func (c *ProxyRelayInstance) getEffectiveAccessRule() *access.AccessRule {
 	rule, err := c.parent.Options.AccessController.GetAccessRuleByID(ruleID)
 	if err != nil {
 		// Rule not found (deleted or empty UUID); fall back to default
-		c.parent.logf("Access rule \""+ruleID+"\" not found for stream proxy "+name+", falling back to default", nil)
+		c.parent.logf("Access rule \""+ruleID+"\" not found for Layer 4 proxy "+name+", falling back to default", nil)
 		rule, err = c.parent.Options.AccessController.GetAccessRuleByID("default")
 		if err != nil {
 			return nil

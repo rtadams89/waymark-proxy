@@ -96,10 +96,13 @@ func RegisterStatisticalRestAPI(authRouter *auth.PluginAuthMiddleware) {
 	authRouter.HandleFunc("/api/utm/list", HandleUptimeMonitorListing)
 }
 
-// Register the APIs for Stream (TCP / UDP) Proxy management functions
-func RegisterStreamProxyRestAPI(authRouter *auth.PluginAuthMiddleware) {
-	authRouter.HandleFunc("/api/streamprox/config/list", streamProxyManager.HandleListConfigs)
-	authRouter.HandleFunc("/api/streamprox/config/status", streamProxyManager.HandleGetProxyStatus)
+// Register the APIs for Layer 4 (TCP / UDP) Proxy management functions
+func RegisterL4ProxyRestAPI(authRouter *auth.PluginAuthMiddleware) {
+	authRouter.HandleFunc("/api/l4proxy/config/list", l4ProxyManager.HandleListConfigs)
+	authRouter.HandleFunc("/api/l4proxy/config/status", l4ProxyManager.HandleGetProxyStatus)
+	//Custom fork: the paths from before the rename to "Layer 4", for existing plugins
+	authRouter.HandleFunc("/api/streamprox/config/list", l4ProxyManager.HandleListConfigs)
+	authRouter.HandleFunc("/api/streamprox/config/status", l4ProxyManager.HandleGetProxyStatus)
 }
 
 // Register the APIs for mDNS service management functions
@@ -146,7 +149,7 @@ func initRestAPI(targetMux *http.ServeMux) {
 	RegisterAccessRuleRestAPI(authMiddleware)
 	RegisterPathRuleRestAPI(authMiddleware)
 	RegisterStatisticalRestAPI(authMiddleware)
-	RegisterStreamProxyRestAPI(authMiddleware)
+	RegisterL4ProxyRestAPI(authMiddleware)
 	RegisterMDNSRestAPI(authMiddleware)
 	RegisterStaticWebServerRestAPI(authMiddleware)
 	RegisterPluginRestAPI(authMiddleware)

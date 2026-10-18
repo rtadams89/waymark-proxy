@@ -1,7 +1,7 @@
 // Package capture (custom fork) records proxied traffic as it passes
 // through Waymark and writes it as a pcapng file.
 //
-// It is not a packet capture: the HTTP proxy and stream proxies hand it
+// It is not a packet capture: the HTTP proxy and Layer 4 proxies hand it
 // the bytes they read and write, and pcapng.go turns those into packets.
 // So it needs no privileges, it can be limited to one proxy rule, and
 // HTTPS shows decrypted: Waymark terminates TLS, so what it records is the
@@ -37,9 +37,9 @@ const (
 
 // Scopes.
 const (
-	ScopeAll    = "all"
-	ScopeHTTP   = "http"
-	ScopeStream = "stream"
+	ScopeAll  = "all"
+	ScopeHTTP = "http"
+	ScopeL4   = "l4"
 )
 
 // Limits.
@@ -52,11 +52,11 @@ const (
 
 // Config describes what to capture.
 type Config struct {
-	Scope           string   `json:"scope"`       // all, http, stream
-	Sides           string   `json:"sides"`       // client, upstream, both
-	Hosts           []string `json:"hosts"`       // HTTP: host names (wildcards like *.example.com); empty for all
-	StreamRules     []string `json:"streamRules"` // stream proxy rule UUIDs; empty for all
-	Clients         []string `json:"clients"`     // client IP addresses or CIDR ranges; empty for all
+	Scope           string   `json:"scope"`   // all, http, l4
+	Sides           string   `json:"sides"`   // client, upstream, both
+	Hosts           []string `json:"hosts"`   // HTTP: host names (wildcards like *.example.com); empty for all
+	L4Rules         []string `json:"l4Rules"` // Layer 4 proxy rule UUIDs; empty for all
+	Clients         []string `json:"clients"` // client IP addresses or CIDR ranges; empty for all
 	DurationSeconds int      `json:"durationSeconds"`
 	MaxMB           int      `json:"maxMb"`
 	MaxBodyKB       int      `json:"maxBodyKb"` // HTTP: body bytes kept per request or response
@@ -75,7 +75,7 @@ func (c *Config) Validate() error {
 	switch c.Scope {
 	case "":
 		c.Scope = ScopeAll
-	case ScopeAll, ScopeHTTP, ScopeStream:
+	case ScopeAll, ScopeHTTP, ScopeL4:
 	default:
 		return errors.New("unknown scope")
 	}
@@ -102,17 +102,17 @@ func (c *Config) Validate() error {
 	}
 	c.Hosts = hosts
 	rules := []string{}
-	for _, r := range c.StreamRules {
+	for _, r := range c.L4Rules {
 		r = strings.TrimSpace(r)
 		if r == "" {
 			continue
 		}
 		if !uuidRe.MatchString(r) {
-			return errors.New("invalid stream proxy rule ID")
+			return errors.New("invalid Layer 4 proxy rule ID")
 		}
 		rules = append(rules, strings.ToLower(r))
 	}
-	c.StreamRules = rules
+	c.L4Rules = rules
 	clients := []string{}
 	for _, cl := range c.Clients {
 		cl = strings.TrimSpace(cl)
@@ -224,7 +224,7 @@ func (c *Capture) SideUpstream() bool { return c.cfg.Sides != SideClient }
 
 // WantsHTTP reports whether an HTTP request for host from client is recorded.
 func (c *Capture) WantsHTTP(host string, client net.IP) bool {
-	if c.stopped.Load() || c.cfg.Scope == ScopeStream || !c.wantsClient(client) {
+	if c.stopped.Load() || c.cfg.Scope == ScopeL4 || !c.wantsClient(client) {
 		return false
 	}
 	if len(c.cfg.Hosts) == 0 {
@@ -243,17 +243,17 @@ func (c *Capture) WantsHTTP(host string, client net.IP) bool {
 	return false
 }
 
-// WantsStream reports whether a stream proxy connection on rule from
+// WantsL4 reports whether a Layer 4 proxy connection on rule from
 // client is recorded.
-func (c *Capture) WantsStream(ruleUUID string, client net.IP) bool {
+func (c *Capture) WantsL4(ruleUUID string, client net.IP) bool {
 	if c.stopped.Load() || c.cfg.Scope == ScopeHTTP || !c.wantsClient(client) {
 		return false
 	}
-	if len(c.cfg.StreamRules) == 0 {
+	if len(c.cfg.L4Rules) == 0 {
 		return true
 	}
 	ruleUUID = strings.ToLower(ruleUUID)
-	for _, r := range c.cfg.StreamRules {
+	for _, r := range c.cfg.L4Rules {
 		if r == ruleUUID {
 			return true
 		}

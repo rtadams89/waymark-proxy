@@ -1,0 +1,314 @@
+<!-- Custom fork: Layer 4 proxy create form, laid out like Add Proxy Rule (rules.html) -->
+<style>
+    #l4rules .l4RulesInstructions{
+        background: var(--theme_background) !important;
+        color: var(--theme_lgrey);
+        border-radius: 1em !important;
+    }
+</style>
+<div class="standardContainer">
+    <div class="ui stackable grid">
+        <div class="ten wide column">
+            <div class="ui basic segment" style="border-radius: 1em; padding: 1em !important;">
+                <a class="ui basic tiny button" style="margin-bottom: 0.6em;" onclick="openTabById('l4proxy');"><i class="arrow left icon"></i> Back to Layer 4 Proxies</a>
+                <h2>Add Layer 4 Proxy</h2>
+                <p>Forward TCP or UDP traffic arriving on a port of this host to a destination server</p>
+                <div class="ui form" id="newL4ProxyForm">
+                    <div class="field">
+                        <label>Name</label>
+                        <input type="text" id="newL4Name" placeholder="e.g. Minecraft server">
+                        <small>Shown in the Layer 4 proxy list. Leave empty to name it after the listening address.</small>
+                    </div>
+                    <div class="field">
+                        <label>Listening Address with Port</label>
+                        <input type="text" id="newL4ListenAddr" placeholder=":25565">
+                        <small>e.g. :25565 for every address of this host, or 192.168.0.10:25565 for one address. If Waymark runs in Docker, also publish this port.</small>
+                    </div>
+                    <div class="field">
+                        <label>Destination IP Address or Domain Name with port</label>
+                        <input type="text" id="newL4Destination" placeholder="192.168.0.101:25565">
+                        <small>e.g. 192.168.0.101:25565 or game.example.lan:25565. Add more destinations for load balancing in the rule editor.</small>
+                    </div>
+                    <div class="field">
+                        <div class="ui checkbox">
+                            <input type="checkbox" id="newL4UseTCP" checked>
+                            <label>Forward TCP<br><small>Accept TCP connections on the listening address</small></label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="ui checkbox">
+                            <input type="checkbox" id="newL4UseUDP">
+                            <label>Forward UDP<br><small>Accept UDP packets on the listening address</small></label>
+                        </div>
+                    </div>
+                    <!-- Advanced settings -->
+                    <div class="ui basic segment advanceoptions">
+                        <div id="advanceL4Rules" class="ui fluid accordion">
+                            <div class="title">
+                                <i class="dropdown icon"></i>
+                                Advance Settings
+                            </div>
+                            <div class="content">
+                                <div class="field">
+                                    <div class="ui checkbox">
+                                        <input type="checkbox" id="newL4HealthCheck" checked>
+                                        <label>Enable health checks<br><small>Check destinations with a TCP connect every 10s, take them out of load balancing when they fail, and show them on Monitoring &gt; Health &amp; Uptime. UDP-only proxies need a UDP check, set under Destinations &rarr; Health Checks in the rule editor.</small></label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label>Connection Timeout</label>
+                                    <div class="ui fluid right labeled input">
+                                        <input type="number" id="newL4Timeout" min="0" value="10">
+                                        <div class="ui basic label">seconds</div>
+                                    </div>
+                                    <small>For UDP: how long an idle client session is kept. 0 uses 60 seconds.</small>
+                                </div>
+                                <div class="field">
+                                    <label>Proxy Protocol</label>
+                                    <div class="ui fluid selection dropdown">
+                                        <input type="hidden" id="newL4ProxyProtocol" value="0">
+                                        <i class="dropdown icon"></i>
+                                        <div class="default text">Disabled</div>
+                                        <div class="menu">
+                                            <div class="item" data-value="0">Disabled</div>
+                                            <div class="item" data-value="1">Proxy Protocol V1</div>
+                                            <div class="item" data-value="2">Proxy Protocol V2</div>
+                                        </div>
+                                    </div>
+                                    <small>Send the client's address to the destination in a PROXY protocol header. Only turn this on if the destination expects it. V1 is TCP only.</small>
+                                </div>
+                                <div class="ui horizontal divider">
+                                    <i class="ui red ban icon"></i>
+                                    Access Control
+                                </div>
+                                <div class="field">
+                                    <label>Access Rule</label>
+                                    <div class="ui selection dropdown">
+                                        <input type="hidden" id="newL4AccessFilter" value="default">
+                                        <i class="dropdown icon"></i>
+                                        <div class="default text">Default</div>
+                                        <div class="menu" id="newL4AccessList">
+                                            <div class="item" data-value="default"><i class="ui yellow star icon"></i> Default</div>
+                                        </div>
+                                    </div>
+                                    <small>Allow regional access control using blacklist or whitelist. Use "default" for "allow all".</small>
+                                </div>
+                                <div class="ui horizontal divider">
+                                    <i class="ui text file icon"></i>
+                                    Logging
+                                </div>
+                                <div class="field">
+                                    <div class="ui checkbox">
+                                        <input type="checkbox" id="newL4EnableLogging">
+                                        <label>Log Connections<br><small>Write each connection and its errors to the system log</small></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <br>
+                    <div style="display: inline-block;">
+                        <button class="ui basic button" onclick="newL4Proxy(); return false;"><i class="green add icon"></i> Create Layer 4 Proxy</button>
+                    </div>
+                    <br><br>
+                </div>
+            </div>
+        </div>
+        <div class="six wide column">
+            <div class="ui basic segment l4RulesInstructions">
+                <div class="ui fluid styled accordion" id="l4ExamplesAccordion" style="background-color: transparent !important;">
+                    <div class="title active" style="color: white;">
+                        <i class="dropdown icon"></i>
+                        Listening Address Examples
+                    </div>
+                    <div class="content active">
+                        <span style="font-size: 1.2em; font-weight: 300;"><i class="ui yellow star icon"></i> Every address</span><br>
+                        <code>:5432</code><br>Accepts connections on port 5432 of every address of this host.<br>
+                        <div class="ui divider"></div>
+                        <span style="font-size: 1.2em; font-weight: 300;"><i class="ui yellow star icon"></i> One address</span><br>
+                        <code>192.168.0.10:5432</code> or <code>[fd00::10]:5432</code><br>Accepts connections only on that address, e.g. a floating IP of a high availability cluster.<br>
+                        <br>
+                    </div>
+
+                    <div class="title" style="color: white;">
+                        <i class="dropdown icon"></i>
+                        What is a Layer 4 proxy?
+                    </div>
+                    <div class="content">
+                        <span style="font-size: 1.2em; font-weight: 300;"><i class="ui green exchange icon"></i> TCP and UDP forwarding</span><br>
+                        <p>
+                            A Layer 4 proxy forwards the raw TCP or UDP traffic, byte for byte, without reading it. Use it for services that do not speak HTTP, such as databases, game servers, SSH, mail or DNS.<br>
+                            <b>For websites and web apps, use an HTTP proxy rule instead</b>: it can serve certificates, route by host name and add headers.
+                        </p>
+                    </div>
+
+                    <div class="title" style="color: white;">
+                        <i class="dropdown icon"></i>
+                        How to add more destinations
+                    </div>
+                    <div class="content">
+                        <span style="font-size: 1.2em; font-weight: 300;"><i class="ui green sitemap icon"></i> Load balancing and failover</span><br>
+                        <ul>
+                            <li>Go to <b>Layer 4 Proxies</b> in the sidebar.</li>
+                            <li>Click <b>Edit</b> on your proxy.</li>
+                            <li>Use <b>Destinations</b> &rarr; <b>Edit Destinations</b> to add more destination servers, and choose how new connections are spread across them.</li>
+                        </ul>
+                        <small>
+                            With health checks on, a destination that fails its checks gets no new connections until it passes again.
+                        </small>
+                    </div>
+                </div>
+                <script>
+                    $('#l4ExamplesAccordion').accordion();
+                </script>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $("#advanceL4Rules").accordion();
+
+    function newL4Proxy(){
+        let listenAddr = $("#newL4ListenAddr").val().trim();
+        let destination = $("#newL4Destination").val().trim();
+        let useTCP = $("#newL4UseTCP")[0].checked;
+        let useUDP = $("#newL4UseUDP")[0].checked;
+        let timeout = parseInt($("#newL4Timeout").val(), 10);
+        if (listenAddr == ""){
+            msgbox("Listening address cannot be empty", false, 5000);
+            return;
+        }
+        if (destination == ""){
+            msgbox("Destination cannot be empty", false, 5000);
+            return;
+        }
+        if (!useTCP && !useUDP){
+            msgbox("Turn on TCP, UDP or both", false, 5000);
+            return;
+        }
+        if (isNaN(timeout) || timeout < 0){
+            msgbox("Connection timeout must be a whole number of seconds", false, 5000);
+            return;
+        }
+        //Without a name, the proxy is named after its listening address
+        let name = $("#newL4Name").val().trim();
+        if (name == ""){
+            name = listenAddr;
+        }
+        let wantHealthCheck = $("#newL4HealthCheck")[0].checked && useTCP;
+
+        $.cjax({
+            url: "/api/l4proxy/config/add",
+            method: "POST",
+            data: {
+                name: name,
+                listenAddr: listenAddr,
+                proxyAddr: destination,
+                useTCP: useTCP,
+                useUDP: useUDP,
+                timeout: timeout,
+                proxyProtocolVersion: parseInt($("#newL4ProxyProtocol").val(), 10) || 0,
+                enableLogging: $("#newL4EnableLogging")[0].checked,
+                accessRuleUUID: $("#newL4AccessFilter").val() || "default",
+            },
+            success: function(newUUID){
+                if (newUUID.error != undefined){
+                    msgbox(newUUID.error, false, 5000);
+                    return;
+                }
+                let finish = function(warning){
+                    //Like HTTP proxy rules, a new Layer 4 proxy is live straight away
+                    $.cjax({
+                        url: "/api/l4proxy/config/start",
+                        method: "POST",
+                        data: {uuid: newUUID},
+                        success: function(data){
+                            if (data.error != undefined){
+                                msgbox("Layer 4 proxy added, but it could not start: " + data.error, false, 8000);
+                            }else if (warning){
+                                msgbox(warning, false, 8000);
+                            }else{
+                                msgbox("Layer 4 Proxy Added");
+                            }
+                            clearNewL4ProxyForm();
+                            if (typeof initL4ProxyList == "function"){
+                                initL4ProxyList(true);
+                            }
+                        }
+                    });
+                };
+                if (!wantHealthCheck){
+                    finish();
+                    return;
+                }
+                $.cjax({
+                    url: "/api/l4proxy/healthcheck/set",
+                    method: "POST",
+                    data: {
+                        uuid: newUUID,
+                        config: JSON.stringify({
+                            activeEnabled: true, type: "tcp", path: "/", hostHeader: "", expectedStatus: "200-399",
+                            bodyContains: "", includeVirtualDirs: false,
+                            intervalSeconds: 10, timeoutSeconds: 3, rise: 2, fall: 3,
+                            passiveEnabled: false, countServerErrors: false, countTimeouts: true, countConnectionErrors: true,
+                            threshold: 5, windowSeconds: 30, passiveRecoverySeconds: 30
+                        })
+                    },
+                    success: function(data){
+                        finish(data.error != undefined ? "Layer 4 proxy added, but its health check was not saved: " + data.error : undefined);
+                    }
+                });
+            }
+        });
+    }
+
+    function clearNewL4ProxyForm(){
+        $("#newL4Name").val("");
+        $("#newL4ListenAddr").val("");
+        $("#newL4Destination").val("");
+        $("#newL4Timeout").val("10");
+        $("#newL4UseTCP").prop("checked", true);
+        $("#newL4UseUDP").prop("checked", false);
+        $("#newL4HealthCheck").prop("checked", true);
+        $("#newL4EnableLogging").prop("checked", false);
+        $("#newL4ProxyProtocol").parent().dropdown("set selected", "0");
+        $("#newL4AccessFilter").parent().dropdown("set selected", "default");
+    }
+
+    /*
+        Access Rule dropdown
+    */
+    function initNewL4AccessDropdownList(callback=undefined){
+        $.get("/api/access/list", function(data){
+            if (data.error == undefined){
+                $("#newL4AccessList").html("");
+                data.forEach(function(rule){
+                    let icon = `<i class="ui grey filter icon"></i>`;
+                    if (rule.ID == "default"){
+                        icon = `<i class="ui yellow star icon"></i>`;
+                    }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
+                        icon = `<i class="ui red filter icon"></i>`;
+                    }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
+                        icon = `<i class="ui green filter icon"></i>`;
+                    }
+                    $("#newL4AccessList").append(`<div class="item" data-value="${htmlEscape(rule.ID)}">${icon} ${htmlEscape(rule.Name)}</div>`);
+                });
+                $("#newL4AccessFilter").parent().dropdown();
+                if (callback != undefined){
+                    callback();
+                }
+            }
+        });
+    }
+    initNewL4AccessDropdownList(function(){
+        $("#newL4AccessFilter").parent().dropdown("set selected", "default");
+    });
+
+    tabSwitchEventBind["l4rules"] = function(){
+        //Access rules may have changed on the Access Control page
+        let current = $("#newL4AccessFilter").val() || "default";
+        initNewL4AccessDropdownList(function(){
+            $("#newL4AccessFilter").parent().dropdown("set selected", current);
+        });
+    };
+</script>

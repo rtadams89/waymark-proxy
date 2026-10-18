@@ -37,6 +37,10 @@ type Logger struct {
 	// writes, the month change and rotation do not interleave (a pointer for
 	// the same reason as outputs)
 	mu *sync.Mutex
+	// Custom fork: the log file is opened on the first line written to it,
+	// so no file is created while file logging is off (openLogFileLocked)
+	openErrLogged bool
+	closed        bool // Close was called: no file is opened again
 }
 
 // fallbackMu serves Loggers built without a constructor (tests).
@@ -63,14 +67,10 @@ func NewLogger(logFilePrefix string, logFolder string) (*Logger, error) {
 		mu:        &sync.Mutex{},
 	}
 
-	//Create the log file if not exists
-	logFilePath := thisLogger.getLogFilepath()
-	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
-	if err != nil {
-		return nil, err
-	}
-	thisLogger.CurrentLogFile = logFilePath
-	thisLogger.file = f
+	//Custom fork: the log file is created when the first line is written to
+	//it (openLogFileLocked), so turning file logging off for both streams
+	//leaves no empty file behind
+	thisLogger.CurrentLogFile = thisLogger.getLogFilepath()
 
 	//Initiate the log rotation ticker
 	thisLogger.logRotateTicker = time.NewTicker(1 * time.Hour)
@@ -83,8 +83,6 @@ func NewLogger(logFilePrefix string, logFolder string) (*Logger, error) {
 		}
 	}()
 
-	//Start the logger (lines carry their own timestamp)
-	thisLogger.logger = log.New(f, "", 0)
 	return &thisLogger, nil
 }
 
@@ -139,15 +137,21 @@ func (l *Logger) Log(title string, errorMessage string, originalError error, cop
 		ev.Text = "[" + title + "] [system:error] " + errorMessage + ": " + originalError.Error()
 	}
 	line := "[" + now.Format("2006-01-02 15:04:05.000000") + "] " + ev.Text
-	mu := l.lock()
-	mu.Lock()
-	l.validateLogFilepathLocked()
-	hasFile := l.logger != nil
-	if hasFile && l.toFile(StreamSystem) {
-		l.logger.Println(line)
+	fileLogger := l.LogFolder != "" //a NewFmtLogger only prints
+	written := false
+	if fileLogger && l.toFile(StreamSystem) {
+		mu := l.lock()
+		mu.Lock()
+		l.validateLogFilepathLocked()
+		if l.openLogFileLocked() {
+			l.logger.Println(line)
+			written = true
+		}
+		mu.Unlock()
+	} else if fileLogger {
+		written = true //file logging is off for this stream: nothing is lost
 	}
-	mu.Unlock()
-	if !hasFile || copyToSTDOUT {
+	if !written || copyToSTDOUT {
 		//Use STDOUT instead of logger
 		fmt.Println(line)
 	}
@@ -163,35 +167,51 @@ func (l *Logger) ValidateAndUpdateLogFilepath() {
 }
 
 func (l *Logger) validateLogFilepathLocked() {
-	if l.file == nil {
+	if l.LogFolder == "" || l.closed {
 		return
 	}
 	expectedCurrentLogFilepath := l.getLogFilepath()
 	if l.CurrentLogFile != expectedCurrentLogFilepath {
-		//Change of month. Update to a new log file
-		l.file.Close()
-		l.file = nil
-
-		//Archive the old log file
-		err := l.ArchiveLog(l.CurrentLogFile)
-		if err != nil {
-			log.Println("Unable to archive old log file: ", err.Error())
+		//Change of month. The new month's file is opened when the first line
+		//is written to it (custom fork)
+		if l.file != nil {
+			l.file.Close()
+			l.file = nil
+			l.logger = nil
 		}
 
-		//Create a new log file
-		f, err := os.OpenFile(expectedCurrentLogFilepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
-		if err != nil {
-			log.Println("Unable to create new log. Logging is disabled: ", err.Error())
-			l.logger = nil
-			return
+		//Archive the old log file, if one was written
+		if _, err := os.Stat(l.CurrentLogFile); err == nil {
+			if err := l.ArchiveLog(l.CurrentLogFile); err != nil {
+				log.Println("Unable to archive old log file: ", err.Error())
+			}
 		}
 		l.CurrentLogFile = expectedCurrentLogFilepath
-		l.file = f
-
-		//Start a new logger (custom fork: without the standard log's own
-		//date and time, which used to double the timestamp after a month change)
-		l.logger = log.New(f, "", 0)
 	}
+}
+
+// openLogFileLocked opens the current log file if it is not open yet
+// (custom fork), and reports whether lines can be written to it.
+func (l *Logger) openLogFileLocked() bool {
+	if l.file != nil && l.logger != nil {
+		return true
+	}
+	if l.closed || l.LogFolder == "" || l.CurrentLogFile == "" {
+		return false
+	}
+	f, err := os.OpenFile(l.CurrentLogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
+	if err != nil {
+		if !l.openErrLogged {
+			l.openErrLogged = true
+			log.Println("Unable to open the log file, logging to STDOUT instead: ", err.Error())
+		}
+		return false
+	}
+	l.openErrLogged = false
+	l.file = f
+	//Lines carry their own timestamp
+	l.logger = log.New(f, "", 0)
+	return true
 }
 
 func (l *Logger) Close() {
@@ -202,6 +222,9 @@ func (l *Logger) Close() {
 		if err := l.file.Close(); err != nil {
 			log.Println("Error closing log file:", err)
 		}
+		l.file = nil
+		l.logger = nil
 	}
+	l.closed = true
 	l.StopLogRotateTicker()
 }

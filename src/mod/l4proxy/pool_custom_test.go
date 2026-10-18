@@ -1,4 +1,4 @@
-package streamproxy
+package l4proxy
 
 import (
 	"bufio"
@@ -17,7 +17,7 @@ import (
 func newTestManager(t *testing.T) *Manager {
 	t.Helper()
 	l, _ := logger.NewFmtLogger()
-	m, err := NewStreamProxy(&Options{ConfigStore: t.TempDir(), Logger: l, DefaultTimeout: 5})
+	m, err := NewL4Proxy(&Options{ConfigStore: t.TempDir(), Logger: l, DefaultTimeout: 5})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func startRule(t *testing.T, m *Manager, ups []string, mode string) (*ProxyRelay
 	return c, listen
 }
 
-func TestStreamRoundRobinAndFailover(t *testing.T) {
+func TestL4RoundRobinAndFailover(t *testing.T) {
 	m := newTestManager(t)
 	a, stopA := nameServer(t, "A")
 	defer stopA()
@@ -120,7 +120,7 @@ func TestStreamRoundRobinAndFailover(t *testing.T) {
 	m.SetUpstreamOnline(b, true)
 }
 
-func TestStreamRetryNextUpstream(t *testing.T) {
+func TestL4RetryNextUpstream(t *testing.T) {
 	m := newTestManager(t)
 	dead := freePort(t) // nothing listens here
 	b, stopB := nameServer(t, "B")
@@ -150,7 +150,7 @@ func TestStreamRetryNextUpstream(t *testing.T) {
 	}
 }
 
-func TestStreamSourceHashAndLeastConn(t *testing.T) {
+func TestL4SourceHashAndLeastConn(t *testing.T) {
 	c := &ProxyRelayInstance{Upstreams: []string{"10.0.0.1:1", "10.0.0.2:1", "10.0.0.3:1"}, LoadBalancing: LBSourceHash}
 	first := c.candidates("192.0.2.7")[0]
 	for i := 0; i < 10; i++ {
@@ -185,7 +185,7 @@ type nopCloser struct{}
 
 func (nopCloser) Close() error { return nil }
 
-func TestStreamCloseOnUpstreamDown(t *testing.T) {
+func TestL4CloseOnUpstreamDown(t *testing.T) {
 	m := newTestManager(t)
 	a, stopA := nameServer(t, "A")
 	defer stopA()
@@ -242,7 +242,7 @@ func TestPoolSettingsValidate(t *testing.T) {
 	}
 }
 
-func TestStreamUDPPool(t *testing.T) {
+func TestL4UDPPool(t *testing.T) {
 	m := newTestManager(t)
 	echo := func(name string) (string, func()) {
 		pc, _ := net.ListenPacket("udp", "127.0.0.1:0")

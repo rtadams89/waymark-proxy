@@ -237,17 +237,28 @@ func RegisterStatisticalAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/utm/list", HandleUptimeMonitorListing)
 }
 
-// Register the APIs for Stream (TCP / UDP) Proxy management functions
-func RegisterStreamProxyAPIs(authRouter *auth.RouterDef) {
-	authRouter.HandleFunc("/api/streamprox/config/add", streamProxyManager.HandleAddProxyConfig)
-	authRouter.HandleFunc("/api/streamprox/config/edit", streamProxyManager.HandleEditProxyConfigs)
-	authRouter.HandleFunc("/api/streamprox/config/list", streamProxyManager.HandleListConfigs)
-	authRouter.HandleFunc("/api/streamprox/config/start", streamProxyManager.HandleStartProxy)
-	authRouter.HandleFunc("/api/streamprox/config/stop", streamProxyManager.HandleStopProxy)
-	authRouter.HandleFunc("/api/streamprox/config/delete", streamProxyManager.HandleRemoveProxy)
-	authRouter.HandleFunc("/api/streamprox/config/status", streamProxyManager.HandleGetProxyStatus)
-	authRouter.HandleFunc("/api/streamprox/config/pool", streamProxyManager.HandleSetPool)             //Custom fork: pool_custom.go
-	authRouter.HandleFunc("/api/streamprox/config/upstreams", streamProxyManager.HandleUpstreamStatus) //Custom fork: pool_custom.go
+// Register the APIs for Layer 4 (TCP / UDP) Proxy management functions
+func RegisterL4ProxyAPIs(authRouter *auth.RouterDef) {
+	handlers := map[string]http.HandlerFunc{
+		"add":       l4ProxyManager.HandleAddProxyConfig,
+		"edit":      l4ProxyManager.HandleEditProxyConfigs,
+		"list":      l4ProxyManager.HandleListConfigs,
+		"start":     l4ProxyManager.HandleStartProxy,
+		"stop":      l4ProxyManager.HandleStopProxy,
+		"delete":    l4ProxyManager.HandleRemoveProxy,
+		"status":    l4ProxyManager.HandleGetProxyStatus,
+		"pool":      l4ProxyManager.HandleSetPool,        //Custom fork: pool_custom.go
+		"upstreams": l4ProxyManager.HandleUpstreamStatus, //Custom fork: pool_custom.go
+	}
+	for action, handler := range handlers {
+		authRouter.HandleFunc("/api/l4proxy/config/"+action, handler)
+		//Custom fork: the paths from before the rename to "Layer 4", kept for
+		//scripts and plugins that use them
+		authRouter.HandleFunc("/api/streamprox/config/"+action, handler)
+	}
+	//Custom fork: health check side panel (l4pool_custom.go)
+	authRouter.HandleFunc("/api/l4proxy/healthcheck/get", HandleL4HealthCheckGet)
+	authRouter.HandleFunc("/api/l4proxy/healthcheck/set", HandleL4HealthCheckSet)
 }
 
 // Register the APIs for mDNS service management functions
@@ -447,7 +458,7 @@ func initAPIs(targetMux *http.ServeMux) {
 	RegisterAccessRuleAPIs(authRouter)
 	RegisterPathRuleAPIs(authRouter)
 	RegisterStatisticalAPIs(authRouter)
-	RegisterStreamProxyAPIs(authRouter)
+	RegisterL4ProxyAPIs(authRouter)
 	RegisterMDNSAPIs(authRouter)
 	RegisterACMEAndAutoRenewerAPIs(authRouter)
 	RegisterStaticWebServerAPIs(authRouter)

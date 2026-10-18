@@ -124,12 +124,16 @@ func (l *Logger) RotateLog() error {
 		return err
 	}
 
+	//Custom fork: a log file that is not open (file logging is off) is
+	//rotated but not created again; it is opened when a line is written
+	wasOpen := l.file != nil
 	if l.file != nil {
 		if err := l.file.Close(); err != nil {
 			mu.Unlock()
 			return err
 		}
 		l.file = nil
+		l.logger = nil
 	}
 
 	timestamp := time.Now().Format("20060102-150405")
@@ -138,18 +142,19 @@ func (l *Logger) RotateLog() error {
 	rotatedPath := uniqueBackupPath(backupDir, baseName, timestamp)
 	renameErr := os.Rename(current, rotatedPath)
 
-	flags := os.O_CREATE | os.O_WRONLY | os.O_APPEND
-	if renameErr == nil {
-		flags |= os.O_TRUNC
+	if wasOpen {
+		flags := os.O_CREATE | os.O_WRONLY | os.O_APPEND
+		if renameErr == nil {
+			flags |= os.O_TRUNC
+		}
+		file, err := os.OpenFile(current, flags, 0640)
+		if err != nil {
+			mu.Unlock()
+			return err
+		}
+		l.file = file
+		l.logger = log.New(file, "", 0)
 	}
-	file, err := os.OpenFile(current, flags, 0640)
-	if err != nil {
-		l.logger = nil
-		mu.Unlock()
-		return err
-	}
-	l.file = file
-	l.logger = log.New(file, "", 0)
 	mu.Unlock()
 
 	if renameErr != nil {

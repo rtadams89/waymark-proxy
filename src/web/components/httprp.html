@@ -1315,7 +1315,7 @@
         }
         if (hc && (hc.activeEnabled || hc.passiveEnabled)){
             let kind = hc.activeEnabled && hc.passiveEnabled ? "Active + passive" : (hc.activeEnabled ? "Active" : "Passive");
-            let title = describeHealthCheck(hc).replace(/"/g, "&quot;");
+            let title = htmlEscape(describeHealthCheck(hc));
             parts.push(`<span class="hcIndicator" title="${title}"><i class="grey heartbeat icon"></i><span class="hcIndicatorText">${kind}</span></span>`);
         }
         let ac = subd.AssetCache;
@@ -1438,7 +1438,7 @@
     //Custom fork: one-line summary of a rule's health check settings
     function describeHealthCheck(hc){
         if (!hc || (!hc.activeEnabled && !hc.passiveEnabled)){
-            return "Health checks: off. No automatic failover, and this rule is not shown on Health &amp; Uptime.";
+            return "Health checks: off. No automatic failover, and this rule is not shown on Health & Uptime.";
         }
         let parts = [];
         if (hc.activeEnabled){
@@ -1450,9 +1450,9 @@
         }
         let summary = "Health checks: " + parts.join(", ");
         if (hc.activeEnabled){
-            summary += ". Also feeds Health &amp; Uptime.";
+            summary += ". Also feeds Health & Uptime.";
         }else{
-            summary += ". Not shown on Health &amp; Uptime (needs active checks).";
+            summary += ". Not shown on Health & Uptime (needs active checks).";
         }
         return summary;
     }
@@ -2391,4 +2391,4 @@
         }
     }
         
-</script>
+</script>

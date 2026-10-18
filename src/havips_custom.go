@@ -6,7 +6,7 @@ package main
 	- which floating IPs this node holds
 	- whether the installed root helper and keepalived scripts match this
 	  Waymark build (they only change when the installer is run again)
-	- stream proxies that listen on a floating IP: on the node that doesn't
+	- Layer 4 proxies that listen on a floating IP: on the node that doesn't
 	  hold it, they can only start with net.ipv4.ip_nonlocal_bind=1
 */
 
@@ -53,7 +53,7 @@ func haHelperState() map[string]any {
 	return map[string]any{"checked": ok, "outdated": outdated}
 }
 
-// haNonlocalBind reports net.ipv4.ip_nonlocal_bind and the stream proxies
+// haNonlocalBind reports net.ipv4.ip_nonlocal_bind and the Layer 4 proxies
 // that listen on a floating IP.
 func haNonlocalBind(cfg *hacluster.Config) map[string]any {
 	enabled, known := false, false
@@ -66,8 +66,8 @@ func haNonlocalBind(cfg *hacluster.Config) map[string]any {
 		floating[f.Address] = true
 	}
 	proxies := []map[string]string{}
-	if streamProxyManager != nil {
-		for _, rule := range streamProxyManager.List() {
+	if l4ProxyManager != nil {
+		for _, rule := range l4ProxyManager.List() {
 			c := rule.View()
 			host, _, err := net.SplitHostPort(strings.TrimSpace(c.ListeningAddress))
 			if err != nil {
@@ -78,5 +78,5 @@ func haNonlocalBind(cfg *hacluster.Config) map[string]any {
 			}
 		}
 	}
-	return map[string]any{"enabled": enabled, "known": known, "streamProxies": proxies}
+	return map[string]any{"enabled": enabled, "known": known, "l4Proxies": proxies}
 }

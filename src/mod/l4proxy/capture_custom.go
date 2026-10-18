@@ -1,9 +1,9 @@
-package streamproxy
+package l4proxy
 
 /*
 	capture_custom.go (custom fork)
 
-	Traffic capture for stream proxies (mod/capture): while a capture that
+	Traffic capture for Layer 4 proxies (mod/capture): while a capture that
 	covers this rule is running, new TCP connections and UDP client sessions
 	are recorded on the client side (client to Waymark's listener), the
 	upstream side (Waymark to the upstream server), or both. Connections
@@ -54,7 +54,7 @@ func (c *ProxyRelayInstance) captureComment(side string, upstreamAddr string) st
 		name = c.ListeningAddress
 	}
 	c.poolMu.RUnlock()
-	return "Stream proxy " + name + " · " + side + " · upstream " + upstreamAddr
+	return "Layer 4 proxy " + name + " · " + side + " · upstream " + upstreamAddr
 }
 
 // captureTCP wraps a new TCP connection pair for the running capture.
@@ -64,7 +64,7 @@ func (c *ProxyRelayInstance) captureTCP(client, upstream net.Conn, upstreamAddr 
 		return client, upstream
 	}
 	clientEP := capture.EndpointOf(client.RemoteAddr())
-	if !cp.WantsStream(c.UUID, clientEP.IP) {
+	if !cp.WantsL4(c.UUID, clientEP.IP) {
 		return client, upstream
 	}
 	if cp.SideClient() {
@@ -92,7 +92,7 @@ type udpCapture struct {
 // setupUDPCapture starts recording a new UDP session if a capture wants it.
 func (c *ProxyRelayInstance) setupUDPCapture(conn *udpClientServerConn) {
 	cp := capture.Active()
-	if cp == nil || conn == nil || !cp.WantsStream(c.UUID, conn.ClientAddr.IP) {
+	if cp == nil || conn == nil || !cp.WantsL4(c.UUID, conn.ClientAddr.IP) {
 		return
 	}
 	u := &udpCapture{cp: cp, client: capture.EndpointOf(conn.ClientAddr), local: capture.EndpointOf(conn.ServerConn.LocalAddr()),

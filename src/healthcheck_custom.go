@@ -34,7 +34,7 @@ func initHealthChecks() {
 		healthCheckManager.Stop()
 	}
 	healthCheckManager = healthcheck.NewManager(
-		notifyUpstreamOnline, // HTTP load balancer and stream proxies (streampool_custom.go)
+		notifyUpstreamOnline, // HTTP load balancer and Layer 4 proxies (l4pool_custom.go)
 		func(msg string) { SystemWideLogger.PrintAndLog("healthcheck", msg, nil) },
 	)
 	healthCheckManager.OnCheck = healthUptimeFeed.onCheck
@@ -92,7 +92,7 @@ func refreshHealthCheckTargets() {
 			}
 		}
 	}
-	targets = append(targets, streamHealthTargets()...) // streampool_custom.go
+	targets = append(targets, l4HealthTargets()...) // l4pool_custom.go
 	healthCheckManager.SetTargets(targets)
 }
 

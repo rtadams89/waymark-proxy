@@ -78,7 +78,7 @@
             </table>
             <button class="ui basic small button" id="haAddVipBtn" onclick="haAddVip(); return false;"><i class="add icon"></i> Add floating IP</button>
             <div class="haHint" style="margin-top: 0.5em;">All floating IPs move together: the active node holds every one of them, on the nodes' interface. The first one is the primary: the node addresses below must be in its subnet. Up to 16.</div>
-            <div class="haHint" style="margin-top: 0.4em;">HTTP proxying listens on all addresses, so a new floating IP works straight away. A stream proxy (TCP/UDP) that listens on one specific floating IP can only start on the node holding it; to let it start on the standby too, set <span class="haMono">net.ipv4.ip_nonlocal_bind=1</span> on every node:
+            <div class="haHint" style="margin-top: 0.4em;">HTTP proxying listens on all addresses, so a new floating IP works straight away. A Layer 4 proxy (TCP/UDP) that listens on one specific floating IP can only start on the node holding it; to let it start on the standby too, set <span class="haMono">net.ipv4.ip_nonlocal_bind=1</span> on every node:
                 <pre class="haPre">echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf
 sudo sysctl --system</pre></div>
             <div class="ui yellow message" id="haNonlocalWarn" style="display:none;"></div>
@@ -161,7 +161,7 @@ sudo sysctl --system</pre></div>
             <div class="item">keepalived uses unicast VRRP between the listed node addresses. If a firewall sits between the nodes, allow IP protocol 112 (VRRP) between them.</div>
             <div class="item">keepalived runs only while high availability is on: turning it off here stops and disables keepalived on this node, and turning it on enables and starts it.</div>
             <div class="item">A node gives up the floating IP when Waymark's proxy listener stops answering (checked every 2 seconds; the floating IP moves within about 10 seconds), when Waymark stops, or when the machine goes down.</div>
-            <div class="item">Configuration sync copies, from the active node: proxy and stream rules, redirects, access and path rules, SSO settings, certificates and keys, ACME settings and account, admin accounts and the login session key, log rotation and log output (syslog) settings, system settings and these HA settings. Statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions stay per node.</div>
+            <div class="item">Configuration sync copies, from the active node: HTTP and Layer 4 proxy rules, redirects, access and path rules, SSO settings, certificates and keys, ACME settings and account, admin accounts and the login session key, log rotation and log output (syslog) settings, system settings and these HA settings. Statistics, logs, the Geo-IP database, plugins, static web server files and live SSO sessions stay per node.</div>
             <div class="item">A standby checks the active node every 10 seconds. When its configuration changes (and then stays the same for one check), the standby copies it and restarts Waymark to load it, which takes a few seconds. All nodes must run the same Waymark version.</div>
             <div class="item">Only the active node renews certificates automatically. "Renew now" still works on any node.</div>
             <div class="item">Installer files: <span id="haInstallerLinks2"></span>. Log of each apply: <span class="haMono">journalctl -u waymark-ha-apply</span>; keepalived: <span class="haMono">journalctl -u keepalived</span>.</div>
@@ -330,9 +330,9 @@ sudo sysctl --system</pre></div>
                 `<span class="haMono">${esc(f.address)}/${f.prefix}</span>` + (f.label ? ` <span class="haHint">${esc(f.label)}</span>` : "") +
                 ` · ${f.held ? `<b style="color:#1a9c3a;">held by this node</b>` : `<span class="haHint">held by another node (or nobody)</span>`}`).join("<br>"));
             let nb = d.nonlocalBind || {};
-            let boundProxies = nb.streamProxies || [];
+            let boundProxies = nb.l4Proxies || [];
             if (c.enabled && nb.known && !nb.enabled && boundProxies.length > 0){
-                $("#haNonlocalWarn").html(`<i class="exclamation triangle icon"></i>These stream proxies listen on a floating IP, but <span class="haMono">net.ipv4.ip_nonlocal_bind</span> is off on this node, so they can't start while this node doesn't hold that address: ` +
+                $("#haNonlocalWarn").html(`<i class="exclamation triangle icon"></i>These Layer 4 proxies listen on a floating IP, but <span class="haMono">net.ipv4.ip_nonlocal_bind</span> is off on this node, so they can't start while this node doesn't hold that address: ` +
                     boundProxies.map(p => `<b>${esc(p.name || "unnamed")}</b> <span class="haMono">${esc(p.address)}</span>`).join(", ") + `. Set it on every node (commands above), or make them listen on all addresses.`).show();
             }else{
                 $("#haNonlocalWarn").hide();

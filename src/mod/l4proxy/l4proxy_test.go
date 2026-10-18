@@ -1,4 +1,4 @@
-package streamproxy
+package l4proxy
 
 import (
 	"encoding/json"

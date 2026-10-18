@@ -115,15 +115,15 @@
                                 icon = `<i class="ui yellow filter icon"></i>`;
                             }
 
-                            $("#accessRuleList").append(`<div class="ui basic segment accessRule" ruleid="${rule.ID}" onclick="selectThisRule(this);">
+                            $("#accessRuleList").append(`<div class="ui basic segment accessRule" ruleid="${htmlEscape(rule.ID)}" onclick="selectThisRule(this);">
                                 <h5 class="ui header">
                                     ${icon}
                                     <div class="content">
-                                        ${rule.Name}
-                                        <div class="sub header">${rule.ID}</div>
+                                        ${htmlEscape(rule.Name)}
+                                        <div class="sub header">${htmlEscape(rule.ID)}</div>
                                     </div>
                                 </h5>
-                                <p>${rule.Desc}</p>
+                                <p>${htmlEscape(rule.Desc)}</p>
                                 ${rule.BlacklistEnabled?`<small><i class="ui red filter icon"></i> Blacklist Enabled</small>`:""}
                                 ${rule.WhitelistEnabled?`<small><i class="ui green filter icon"></i> Whitelist Enabled</small>`:""}
                                 <div class="selected"><i class="ui large green check icon"></i></div>
@@ -138,7 +138,18 @@
                 });
             }
 
+            //Custom fork: Layer 4 proxies ({"ept":"l4"}) use the open Layer 4 proxy editor (components/l4proxy.html)
+            function markActiveRule(id){
+                $(".accessRule").removeClass("active");
+                $(".accessRule").filter(function(){ return $(this).attr("ruleid") == (id || "default"); }).addClass("active");
+            }
+
             initAccessRuleList(function(){
+                if (editingEndpoint.ept == "l4"){
+                    let c = parent.l4CurrentConfig ? parent.l4CurrentConfig() : null;
+                    markActiveRule(c ? c.AccessRuleUUID : "default");
+                    return;
+                }
                 $.cjax({
                     url: "/api/proxy/detail",
                     method: "POST",
@@ -154,7 +165,7 @@
                                 currentAccessFilter = "default";
                             }
 
-                            $(`.accessRule[ruleid=${currentAccessFilter}]`).addClass("active");
+                            markActiveRule(currentAccessFilter);
                         }
                     }
                 })
@@ -174,6 +185,13 @@
             function applyChange(){
                 let newAccessRuleID = $(".accessRule.active").attr("ruleid");
                 let targetEndpoint = editingEndpoint.ep;
+                if (editingEndpoint.ept == "l4"){
+                    parent.saveL4Config({accessRuleUUID: newAccessRuleID}, function(err){
+                        let c = parent.l4CurrentConfig();
+                        markActiveRule(c ? c.AccessRuleUUID : "default");
+                    });
+                    return;
+                }
                 $.cjax({
                     url: "/api/access/attach",
                     method: "POST",
@@ -198,4 +216,4 @@
 
         </script>
     </body>
-</html>
+</html>

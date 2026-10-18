@@ -122,7 +122,7 @@ func (p *pcapWriter) packet(ts time.Time, data []byte, comment string) error {
 	if len(comment) > maxComment {
 		comment = comment[:maxComment]
 	}
-	body := make([]byte, 0, 64) // grows with append (no size arithmetic on input lengths)
+	body := make([]byte, 0, 64)                      // grows with append (no size arithmetic on input lengths)
 	body = binary.LittleEndian.AppendUint32(body, 0) // interface 0
 	body = binary.LittleEndian.AppendUint32(body, uint32(us>>32))
 	body = binary.LittleEndian.AppendUint32(body, uint32(us))

@@ -29,7 +29,7 @@ const (
 	CheckHTTPHead CheckType = "http-head"
 	CheckTCP      CheckType = "tcp"
 	CheckICMP     CheckType = "icmp"
-	CheckUDP      CheckType = "udp" // custom fork: stream proxies; send Send, expect a reply containing Expect
+	CheckUDP      CheckType = "udp" // custom fork: Layer 4 proxies; send Send, expect a reply containing Expect
 )
 
 // Payload formats for Send and Expect.
@@ -84,7 +84,7 @@ type Config struct {
 	// Also check the rule's virtual directory backends with the same settings
 	IncludeVirtualDirs bool `json:"includeVirtualDirs"`
 
-	// TCP and UDP checks (stream proxies): bytes to send after connecting,
+	// TCP and UDP checks (Layer 4 proxies): bytes to send after connecting,
 	// and text the reply must contain. TCP: both optional (Expect alone
 	// waits for a banner). UDP: Send is required; an empty Expect accepts
 	// any reply.

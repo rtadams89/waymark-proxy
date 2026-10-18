@@ -235,16 +235,16 @@ func TestCaptureLimitsAndFilters(t *testing.T) {
 			t.Fatalf("case %d accepted", i)
 		}
 	}
-	_, err := m.Start(Config{Scope: ScopeStream, DurationSeconds: 60, MaxMB: 1, Clients: []string{"192.0.2.0/24"}, StreamRules: []string{"ABC-123"}})
+	_, err := m.Start(Config{Scope: ScopeL4, DurationSeconds: 60, MaxMB: 1, Clients: []string{"192.0.2.0/24"}, L4Rules: []string{"ABC-123"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := Active()
 	if c.WantsHTTP("x.test", net.ParseIP("192.0.2.1")) {
-		t.Fatal("stream-only capture took HTTP")
+		t.Fatal("Layer 4-only capture took HTTP")
 	}
-	if !c.WantsStream("abc-123", net.ParseIP("192.0.2.9")) || c.WantsStream("abc-123", net.ParseIP("198.51.100.1")) || c.WantsStream("other", net.ParseIP("192.0.2.9")) {
-		t.Fatal("stream filters")
+	if !c.WantsL4("abc-123", net.ParseIP("192.0.2.9")) || c.WantsL4("abc-123", net.ParseIP("198.51.100.1")) || c.WantsL4("other", net.ParseIP("192.0.2.9")) {
+		t.Fatal("Layer 4 filters")
 	}
 	// Size limit: writing past 1 MB stops the capture
 	f := c.NewTCPFlow(Endpoint{IP: net.ParseIP("192.0.2.9"), Port: 4000}, Endpoint{IP: net.ParseIP("10.0.0.2"), Port: 5432}, "")

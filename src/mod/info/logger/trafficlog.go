@@ -35,8 +35,8 @@ func (l *Logger) LogHTTPRequest(r *http.Request, reqclass string, statusCode int
 		mu.Lock()
 		defer mu.Unlock()
 		l.validateLogFilepathLocked()
-		if l.logger == nil || l.file == nil {
-			//logger is not initiated. Do not log http request
+		if !l.openLogFileLocked() {
+			//No log file (a NewFmtLogger, or it cannot be opened). Do not log http request
 			return
 		}
 		l.logger.Println(line)

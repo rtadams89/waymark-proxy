@@ -10,6 +10,33 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.9.0
+
+Stream proxies are now called **Layer 4 proxies**, and their pages work the same way as the HTTP proxy pages. Existing rules are kept and moved automatically; no action is needed.
+
+**Changed: Layer 4 proxies (formerly stream proxies)**
+- Renamed everywhere: the menu entry (**Proxy > Layer 4 Proxies**), the pages, Traffic Capture, High Availability, Health & Uptime, the logs (module `l4-proxy`) and the documentation. The servers a proxy forwards to are called **destinations**, as on the HTTP Proxies page.
+- **Add Layer 4 Proxy** is its own page, like **Add Proxy Rule**: name, listening address, destination, TCP / UDP, and advanced settings (health checks, timeout, PROXY protocol, access rule, logging). A new proxy starts straight away, like a new HTTP proxy rule, with a TCP connect health check unless that is turned off.
+- The editor is laid out like the HTTP proxy rule editor, and each setting is saved as soon as it is changed (there is no Save button any more):
+  - **Listener:** name, listening address, TCP / UDP, timeout and connection logging.
+  - **Destinations:** the destination list with **Edit Destinations** and **Health Checks** side panels, load balancing, closing connections when a destination goes down, and PROXY protocol.
+  - **Access Rules:** the same access rule picker as HTTP proxy rules.
+- **Edit Destinations** adds, changes, removes and reorders destinations (the order matters for failover), and shows each one's health and connection counts.
+- **Health Checks** is the same panel as for HTTP proxy rules, with the Layer 4 check types (TCP connect, TCP send and expect, UDP send and expect, ping), live destination status and recent changes.
+- Turning TCP or UDP off is refused while the proxy's health check uses that protocol.
+- Old `#streamproxy` bookmarks open the Layer 4 Proxies page.
+
+**Changed: configuration and API**
+- Rule files move from `conf/streamproxy` to `conf/l4proxy` on the first start. A folder restored from an older backup is moved the same way.
+- The API is under `/api/l4proxy/config/...`; the old `/api/streamprox/config/...` paths still work for scripts and plugins. New: `/api/l4proxy/healthcheck/get` and `/set`.
+- Traffic capture settings use the scope `l4` and the field `l4Rules` (were `stream` and `streamRules`). Captures made before the update are still listed.
+- The HA status reports `l4Proxies` (was `streamProxies`).
+- The Go package is `mod/l4proxy` (was `mod/streamproxy`).
+
+**Fixed**
+- With file logging turned off for both the system and traffic logs, Waymark no longer creates an empty log file (`logs/waymark_<year>-<month>.log`) at start. The file is created when the first line is written to it, and log rotation no longer creates it either.
+- HTTP proxy rule editor: the health check summary showed `&amp;` instead of `&`.
+
 ## 2.8.2
 
 The v2.8.1 tag was pushed without the version number updated, so its build was refused; its changes are in this release.

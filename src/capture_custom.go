@@ -65,12 +65,12 @@ func describeCapture(c capture.Config) string {
 	if len(c.Hosts) > 0 {
 		parts = append(parts, "hosts "+strings.Join(c.Hosts, ","))
 	}
-	if len(c.StreamRules) > 0 {
+	if len(c.L4Rules) > 0 {
 		names := []string{}
-		for _, id := range c.StreamRules {
-			names = append(names, streamRuleDisplay("stream:"+id))
+		for _, id := range c.L4Rules {
+			names = append(names, l4RuleDisplay("l4:"+id))
 		}
-		parts = append(parts, "stream rules "+strings.Join(names, ","))
+		parts = append(parts, "Layer 4 rules "+strings.Join(names, ","))
 	}
 	if len(c.Clients) > 0 {
 		parts = append(parts, "clients "+strings.Join(c.Clients, ","))
@@ -114,14 +114,14 @@ func HandleCaptureStatus(w http.ResponseWriter, r *http.Request) {
 			httpRules = append(httpRules, map[string]any{"name": ep.RootOrMatchingDomain, "hosts": hosts, "disabled": ep.Disabled})
 		}
 	}
-	streamRules := []map[string]any{}
-	if streamProxyManager != nil {
-		for _, rule := range streamProxyManager.List() {
+	l4Rules := []map[string]any{}
+	if l4ProxyManager != nil {
+		for _, rule := range l4ProxyManager.List() {
 			c := rule.View()
-			streamRules = append(streamRules, map[string]any{"uuid": c.UUID, "name": streamRuleName(c), "running": c.Running, "tcp": c.UseTCP, "udp": c.UseUDP})
+			l4Rules = append(l4Rules, map[string]any{"uuid": c.UUID, "name": l4RuleName(c), "running": c.Running, "tcp": c.UseTCP, "udp": c.UseUDP})
 		}
 	}
-	resp["httpRules"], resp["streamRules"] = httpRules, streamRules
+	resp["httpRules"], resp["l4Rules"] = httpRules, l4Rules
 	js, _ := json.Marshal(resp)
 	utils.SendJSONResponse(w, string(js))
 }
