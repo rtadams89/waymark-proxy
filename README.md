@@ -202,6 +202,10 @@ This example publishes an app running at `http://10.0.0.20:8080` as `https://app
 
 Tips:
 - For an app that uses HTTPS itself, turn on **Proxy Target require TLS Connection** (and **Ignore TLS/SSL Verification Error** if it has a self-signed certificate).
+- For HTTPS upstreams you can choose, per upstream server (**Destinations**, edit the upstream), which name the certificate is checked against and sent as SNI:
+  - **Automatic**: the "Host" header override if set, otherwise the upstream's address. For an IP address, the host name the client asked for.
+  - **Upstream server name**: the host name or IP address in the upstream address, for an upstream with its own certificate.
+  - **Proxy host name**: the host name the client asked for, for an upstream that serves the public site's certificate.
 - Hostnames that match no rule get the **Default Site** (**Proxy > Default Site**): an error page, a redirect, or the built-in static web server.
 - To export your configuration, use **System Backup & Restore** under **System > Settings**.
 

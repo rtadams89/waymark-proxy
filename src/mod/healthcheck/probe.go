@@ -37,6 +37,7 @@ type Upstream struct {
 	Addr          string // OriginIpOrDomain, e.g. "10.0.0.5:8080"
 	RequireTLS    bool
 	SkipTLSVerify bool
+	TLSServerName string // custom fork: name the certificate is checked against (and SNI); empty = from the address or HostHeader
 }
 
 // Prober runs one active check. Replaceable in tests.
@@ -97,6 +98,9 @@ func probeHTTP(ctx context.Context, up Upstream, cfg *Config, timeout time.Durat
 		} else {
 			tlsConfig.ServerName = cfg.HostHeader
 		}
+	}
+	if up.TLSServerName != "" {
+		tlsConfig.ServerName = up.TLSServerName
 	}
 
 	client := &http.Client{

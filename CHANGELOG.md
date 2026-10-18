@@ -10,6 +10,19 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.8.0
+
+**Added**
+- HTTPS upstreams: each upstream server has a **Check certificate name against** setting (shown when Require TLS is on). It chooses which name the upstream's certificate is checked against, and sends that name as SNI:
+  - **Automatic** (the default, the behaviour so far): the "Host" header override if set, otherwise the name in the upstream address. For an upstream addressed by IP, the host name the client asked for.
+  - **Upstream server name**: the host name or IP address in the upstream address, whatever the client asked for and whatever the Host override says.
+  - **Proxy host name**: the host name the client asked Waymark for (the rule's host or one of its aliases).
+- **Skip Verification** still turns certificate checking off; the chosen name is then only sent as SNI.
+- HTTP health checks on such upstreams use the same name. For **Proxy host name** that is the rule's host name, unless it is a wildcard.
+
+**Faster**
+- Requests that need their own TLS server name (IP-addressed upstreams, Proxy host name) or HTTP/1.1 (WebSocket and other upgrades, Force HTTP/1.1) reuse connections. A copy of the connection pool was made for every such request before; now one is kept per name (up to 64 per upstream).
+
 ## 2.7.1
 
 **Changed: web interface**

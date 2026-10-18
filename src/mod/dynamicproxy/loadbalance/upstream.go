@@ -47,6 +47,7 @@ func (u *Upstream) StartProxy(tlsServerName string) error {
 		ResponseHeaderTimeout:   u.RespTimeout,
 		MaxConcurrentConnection: u.MaxConn,
 		UpstreamTLSServerName:   tlsServerName,
+		TLSNameMode:             u.TLSVerifyName,
 	})
 
 	u.proxy = proxy
@@ -80,4 +81,14 @@ func (u *Upstream) ServeHTTP(w http.ResponseWriter, r *http.Request, rrr *dpcore
 // String return the string representations of endpoints in this upstream
 func (u *Upstream) String() string {
 	return u.OriginIpOrDomain
+}
+
+// ValidTLSVerifyName reports whether v is a known TLS certificate name mode
+// (custom fork).
+func ValidTLSVerifyName(v string) bool {
+	switch v {
+	case dpcore.TLSNameAuto, dpcore.TLSNameUpstream, dpcore.TLSNameProxyHost:
+		return true
+	}
+	return false
 }

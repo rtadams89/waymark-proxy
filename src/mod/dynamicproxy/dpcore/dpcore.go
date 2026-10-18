@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"imuslab.com/zoraxy/mod/capture"
@@ -72,6 +73,14 @@ type ReverseProxy struct {
 	// the TLS ClientHello (crypto/tls, per RFC 6066). See NewDynamicProxyCore.
 	useRequestHostAsSNI bool
 
+	// Custom fork: useClientHostAsSNI verifies the upstream certificate against
+	// (and sends as SNI) the host name the client asked for (TLS name mode
+	// "proxyhost"). sniTransports caches one transport per server name and
+	// HTTP version, so per-request names keep connection pooling.
+	useClientHostAsSNI bool
+	sniTransports      sync.Map // transportKey -> *http.Transport
+	sniTransportCount  atomic.Int32
+
 	//Appended by Zoraxy project
 
 }
@@ -110,6 +119,24 @@ type DpcoreOptions struct {
 	ResponseHeaderTimeout   int64         //Timeout for response header, set to 0 for default
 	DevelopmentMode         bool          //Enable development mode for this proxy core
 	UpstreamTLSServerName   string        //Override the TLS SNI / cert verification hostname for HTTPS upstreams. Empty = derive from the upstream address
+	TLSNameMode             string        //Custom fork: TLSNameAuto, TLSNameUpstream or TLSNameProxyHost
+}
+
+// TLS certificate name modes (custom fork): which name an HTTPS upstream's
+// certificate is checked against, and sent as SNI.
+const (
+	TLSNameAuto      = ""          // the "Host" header override if set, else the upstream's host name; IP upstreams use the request host
+	TLSNameUpstream  = "upstream"  // the host name (or IP address) in the upstream address
+	TLSNameProxyHost = "proxyhost" // the host name the client requested from Waymark
+)
+
+// maxSNITransports bounds the per-name transport cache; past it (e.g. a
+// wildcard rule seeing many names) a transport is made per request.
+const maxSNITransports = 64
+
+type transportKey struct {
+	serverName string
+	http11     bool
 }
 
 // sniServerName normalizes a host value into a usable TLS SNI ServerName.
@@ -145,7 +172,16 @@ func NewDynamicProxyCore(target *url.URL, prepender string, dpcOptions *DpcoreOp
 	// Each ReverseProxy instance targets one backend, so this is safe and avoids
 	// per-request transport cloning that defeats connection pooling.
 	useRequestHostAsSNI := false
-	if strings.EqualFold(target.Scheme, "https") {
+	useClientHostAsSNI := false
+	if strings.EqualFold(target.Scheme, "https") && dpcOptions.TLSNameMode == TLSNameUpstream {
+		//Custom fork: always the name in the upstream address. An IP address is
+		//checked against the certificate's IP addresses (no SNI is sent then).
+		thisTransporter.TLSClientConfig = &tls.Config{ServerName: target.Hostname(), InsecureSkipVerify: dpcOptions.IgnoreTLSVerification}
+	} else if strings.EqualFold(target.Scheme, "https") && dpcOptions.TLSNameMode == TLSNameProxyHost {
+		//Custom fork: the name the client asked for, set per request
+		thisTransporter.TLSClientConfig = &tls.Config{InsecureSkipVerify: dpcOptions.IgnoreTLSVerification}
+		useClientHostAsSNI = true
+	} else if strings.EqualFold(target.Scheme, "https") {
 		// An admin configured SNI (see #1088 follow up, from the endpoint's
 		// "Overwrite Host Header" value) takes precedence over the upstream address.
 		// This allows an upstream to be addressed by a name that its certificate does
@@ -181,7 +217,45 @@ func NewDynamicProxyCore(target *url.URL, prepender string, dpcOptions *DpcoreOp
 		Verbal:              dpcOptions.DevelopmentMode,
 		Transport:           thisTransporter,
 		useRequestHostAsSNI: useRequestHostAsSNI,
+		useClientHostAsSNI:  useClientHostAsSNI,
 	}
+}
+
+// transportFor returns base, or a copy of it for the given TLS server name
+// and/or HTTP/1.1-only use (custom fork). Copies are cached so they keep
+// their connection pools; the cache is bounded by maxSNITransports.
+func (p *ReverseProxy) transportFor(base *http.Transport, serverName string, http11 bool) *http.Transport {
+	if serverName == "" && !http11 {
+		return base
+	}
+	key := transportKey{serverName: serverName, http11: http11}
+	if v, ok := p.sniTransports.Load(key); ok {
+		return v.(*http.Transport)
+	}
+	trc := base.Clone()
+	if http11 {
+		// Disable HTTP/2 by setting TLSNextProto to a non-nil empty map
+		trc.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+		trc.ForceAttemptHTTP2 = false
+	}
+	if serverName != "" {
+		cfg := &tls.Config{}
+		if trc.TLSClientConfig != nil {
+			cfg = trc.TLSClientConfig.Clone()
+		}
+		cfg.ServerName = serverName
+		trc.TLSClientConfig = cfg
+	}
+	if p.sniTransportCount.Load() >= maxSNITransports {
+		//Not cached; idle connections close with the transport
+		trc.DisableKeepAlives = true
+		return trc
+	}
+	if v, loaded := p.sniTransports.LoadOrStore(key, trc); loaded {
+		return v.(*http.Transport)
+	}
+	p.sniTransportCount.Add(1)
+	return trc
 }
 func joinURLPath(a, b *url.URL) (path, rawpath string) {
 	apath, bpath := a.EscapedPath(), b.EscapedPath()
@@ -416,41 +490,23 @@ func (p *ReverseProxy) ProxyHTTP(rw http.ResponseWriter, req *http.Request, rrr 
 	// Fix for #1088
 	// No per-request SNI cloning is needed because ServerName is set on the shared
 	// transport during NewDynamicProxyCore initialization.
-	needClone := false
-	var trc *http.Transport
-
 	if tr, ok := transport.(*http.Transport); ok {
 		// HTTP/2 has no upgrade mechanism, so an upgrade request must use HTTP/1.1 upstream
-		if rrr.ForceHTTP11 || reqUpType != "" {
-			trc = tr.Clone()
-			needClone = true
-			// Disable HTTP/2 by setting TLSNextProto to a non-nil empty map
-			trc.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
-			trc.ForceAttemptHTTP2 = false
+		http11 := rrr.ForceHTTP11 || reqUpType != ""
+		serverName := ""
+		if p.useClientHostAsSNI {
+			// Custom fork: TLS name mode "proxyhost", the host the client asked for
+			serverName = sniServerName(rrr.OriginalHost)
+		} else if p.useRequestHostAsSNI {
+			// For IP-addressed HTTPS upstreams the shared transport carries no SNI
+			// (see NewDynamicProxyCore). Derive it from the request host so the
+			// backend still receives a valid SNI and can present the right cert.
+			// Skipped if empty or itself an IP (Go would omit an IP from the ClientHello).
+			serverName = sniServerName(outreq.Host)
 		}
-
-		// For IP-addressed HTTPS upstreams the shared transport carries no SNI
-		// (see NewDynamicProxyCore). Derive it from the request host so the
-		// backend still receives a valid SNI and can present the right cert.
-		if p.useRequestHostAsSNI {
-			// Skip if empty or itself an IP (Go would omit an IP from the ClientHello).
-			if serverName := sniServerName(outreq.Host); serverName != "" {
-				if !needClone {
-					trc = tr.Clone()
-					needClone = true
-				}
-				cfg := &tls.Config{}
-				if trc.TLSClientConfig != nil {
-					cfg = trc.TLSClientConfig.Clone()
-				}
-				cfg.ServerName = serverName
-				trc.TLSClientConfig = cfg
-			}
-		}
-
-		if needClone {
-			transport = trc
-		}
+		// Custom fork: copies for a server name or HTTP/1.1 are cached (they
+		// used to be made for every request, without connection reuse)
+		transport = p.transportFor(tr, serverName, http11)
 	}
 
 	// Perform the request to the backend server

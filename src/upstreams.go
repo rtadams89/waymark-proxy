@@ -96,6 +96,11 @@ func ReverseProxyUpstreamAdd(w http.ResponseWriter, r *http.Request) {
 	skipTlsValidation, _ := utils.PostBool(r, "tlsval")
 	bpwsorg, _ := utils.PostBool(r, "bpwsorg")
 	preactivate, _ := utils.PostBool(r, "active")
+	tlsVerifyName, _ := utils.PostPara(r, "tlsname") //Custom fork: certificate name check
+	if !loadbalance.ValidTLSVerifyName(tlsVerifyName) {
+		utils.SendErrorResponse(w, "unknown certificate name check")
+		return
+	}
 
 	//Create a new upstream object
 	newUpstream := loadbalance.Upstream{
@@ -103,6 +108,7 @@ func ReverseProxyUpstreamAdd(w http.ResponseWriter, r *http.Request) {
 		RequireTLS:               requireTLS,
 		SkipCertValidations:      skipTlsValidation,
 		SkipWebSocketOriginCheck: bpwsorg,
+		TLSVerifyName:            tlsVerifyName,
 		Weight:                   1,
 		MaxConn:                  maxConn,
 		RespTimeout:              int64(respTimeout),
@@ -180,6 +186,10 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 	//Custom fork: the weight is now set in the upstream's edit form
 	if newUpstream.Weight < 0 || newUpstream.Weight > 100 {
 		utils.SendErrorResponse(w, "weight must be between 0 and 100")
+		return
+	}
+	if !loadbalance.ValidTLSVerifyName(newUpstream.TLSVerifyName) {
+		utils.SendErrorResponse(w, "unknown certificate name check")
 		return
 	}
 

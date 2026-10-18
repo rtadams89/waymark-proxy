@@ -41,6 +41,9 @@ type Upstream struct {
 	RequireTLS               bool   //Require TLS connection
 	SkipCertValidations      bool   //Set to true to accept self signed certs
 	SkipWebSocketOriginCheck bool   //Skip origin check on websocket upgrade connections
+	//Custom fork: name the upstream's TLS certificate is checked against (and
+	//sent as SNI): "" automatic, "upstream" or "proxyhost" (dpcore.TLSName*)
+	TLSVerifyName string
 
 	//Load balancing configs
 	Weight int //Random weight for round robin, 0 for fallback only

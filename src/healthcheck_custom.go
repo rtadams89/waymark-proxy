@@ -14,10 +14,13 @@ package main
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
 
 	"imuslab.com/zoraxy/mod/dynamicproxy"
+	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
+	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/healthcheck"
 	"imuslab.com/zoraxy/mod/utils"
 )
@@ -64,6 +67,7 @@ func refreshHealthCheckTargets() {
 					Addr:          origin.OriginIpOrDomain,
 					RequireTLS:    origin.RequireTLS,
 					SkipTLSVerify: origin.SkipCertValidations,
+					TLSServerName: healthCheckTLSName(ep.RootOrMatchingDomain, origin),
 				},
 				Config: *cfg,
 			})
@@ -221,4 +225,27 @@ func HandleHealthCheckOverview(w http.ResponseWriter, r *http.Request) {
 	}
 	js, _ := json.Marshal(statuses)
 	utils.SendJSONResponse(w, string(js))
+}
+
+// healthCheckTLSName is the certificate name health checks use for an
+// upstream (custom fork), following its "check certificate name against"
+// setting: the rule's host name for "proxyhost" (unless it is a wildcard),
+// the address's host for "upstream", otherwise the default.
+func healthCheckTLSName(ruleHost string, origin *loadbalance.Upstream) string {
+	switch origin.TLSVerifyName {
+	case dpcore.TLSNameProxyHost:
+		if !strings.ContainsAny(ruleHost, "*?[") {
+			return ruleHost
+		}
+	case dpcore.TLSNameUpstream:
+		host := strings.TrimPrefix(strings.TrimPrefix(origin.OriginIpOrDomain, "https://"), "http://")
+		if i := strings.IndexByte(host, '/'); i >= 0 {
+			host = host[:i]
+		}
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		return host
+	}
+	return ""
 }

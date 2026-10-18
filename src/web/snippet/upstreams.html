@@ -123,6 +123,16 @@
                      <label>Skip Verification<br>
                         <small>Check this if proxy target is using self signed certificates</small></label>
                 </div><br>
+                <!-- Custom fork: which name the upstream certificate is checked against -->
+                <div class="tlsNameField" id="newTLSNameField" style="margin-top: 0.8em; display: none;">
+                    <p style="margin-bottom: 0.4em;">Check certificate name against</p>
+                    <select class="ui small dropdown" id="newTLSVerifyName">
+                        <option value="">Automatic</option>
+                        <option value="upstream">Upstream server name</option>
+                        <option value="proxyhost">Proxy host name</option>
+                    </select><br>
+                    <small class="tlsNameHint"></small>
+                </div>
                  <div class="ui checkbox" style="margin-top: 0.4em;">
                     <input type="checkbox" id="SkipWebSocketOriginCheck" checked>
                     <label>Skip WebSocket Origin Check<br>
@@ -200,6 +210,8 @@
                             });
 
                             $(".advanceUpstreamOptions.accordion").accordion();
+                            $(".upstreamEntry").each(function(){ syncTLSNameField(this); }); //Custom fork
+                            syncTLSNameField($('[data-tab="newupstream"]'));
 
                             let totalUpstreams = data.ActiveOrigins.length + data.InactiveOrigins.length;
                             if (totalUpstreams == 1){
@@ -290,6 +302,16 @@
                                 <label>Skip Verification<br>
                                 <small>Check this if proxy target is using self signed certificates</small></label>
                         </div><br>
+                        <!-- Custom fork: which name the upstream certificate is checked against -->
+                        <div class="tlsNameField" style="margin-top: 0.8em; ${upstream.RequireTLS?"":"display: none;"}">
+                            <p style="margin-bottom: 0.4em;">Check certificate name against</p>
+                            <select class="ui small dropdown tlsVerifyName">
+                                <option value="" ${!upstream.TLSVerifyName?"selected":""}>Automatic</option>
+                                <option value="upstream" ${upstream.TLSVerifyName=="upstream"?"selected":""}>Upstream server name</option>
+                                <option value="proxyhost" ${upstream.TLSVerifyName=="proxyhost"?"selected":""}>Proxy host name</option>
+                            </select><br>
+                            <small class="tlsNameHint"></small>
+                        </div>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                             <input type="checkbox" class="SkipWebSocketOriginCheck" ${upstream.SkipWebSocketOriginCheck?"checked":""}>
                             <label>Skip WebSocket Origin Check<br>
@@ -398,6 +420,7 @@
                         "tls": requireTLS,
                         "tlsval": skipVerification,
                         "bpwsorg":skipWebSocketOriginCheck,
+                        "tlsname": requireTLS ? $("#newTLSVerifyName").val() : "",
                         "active": activateLoadbalancer,
                         "maxconn": maxConn,
                         "respt": respTimeout,
@@ -446,6 +469,7 @@
                 originalSettings.RequireTLS = requireTLS;
                 originalSettings.SkipCertValidations = skipTLSVerification;
                 originalSettings.SkipWebSocketOriginCheck = skipWebSocketOriginCheck;
+                originalSettings.TLSVerifyName = $(upstream).find(".tlsVerifyName").val() || ""; //Custom fork
                 originalSettings.MaxConn = parseInt(maxConn);
                 originalSettings.RespTimeout = respTimeout;
                 originalSettings.Weight = parseInt($(upstream).find(".newWeight").val(), 10); //Custom fork: checked in saveUpstreamUpdate
@@ -587,6 +611,27 @@
             function closeThisWrapper(){
                 parent.hideSideWrapper(true);
             }
-        </script>
+        
+            /* Custom fork: certificate name check option */
+            const TLS_NAME_HINTS = {
+                "": 'The "Host" header override if one is set, otherwise the name in the upstream address (for an IP address, the host name the client asked for).',
+                "upstream": "The host name or IP address in the upstream address. Use this when the upstream has its own certificate.",
+                "proxyhost": "The host name the client asked Waymark for (this rule's host or alias). Use this when the upstream serves the same certificate as the public site."
+            };
+            function syncTLSNameField(container){
+                let tlsOn = $(container).find("#requireTLS, .reqTLSCheckbox").first().is(":checked");
+                let field = $(container).find(".tlsNameField");
+                field.toggle(tlsOn);
+                let val = field.find("select").val() || "";
+                let skip = $(container).find("#skipTlsVerification, .skipVerificationCheckbox").first().is(":checked");
+                field.find(".tlsNameHint").text(TLS_NAME_HINTS[val] + " The same name is sent as the TLS server name (SNI)" + (skip ? "; with Skip Verification on, the certificate itself is not checked." : "."));
+            }
+            $(document).on("change", "#requireTLS, #skipTlsVerification, #newTLSVerifyName", function(){
+                syncTLSNameField($('[data-tab="newupstream"]'));
+            });
+            $(document).on("change", ".reqTLSCheckbox, .skipVerificationCheckbox, .tlsVerifyName", function(){
+                syncTLSNameField($(this).closest(".upstreamEntry"));
+            });
+</script>
     </body>
-</html>
+</html>
