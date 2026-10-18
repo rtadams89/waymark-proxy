@@ -116,7 +116,8 @@ func HandleCaptureStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	streamRules := []map[string]any{}
 	if streamProxyManager != nil {
-		for _, c := range streamProxyManager.Configs {
+		for _, rule := range streamProxyManager.List() {
+			c := rule.View()
 			streamRules = append(streamRules, map[string]any{"uuid": c.UUID, "name": streamRuleName(c), "running": c.Running, "tcp": c.UseTCP, "udp": c.UseUDP})
 		}
 	}

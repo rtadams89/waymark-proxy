@@ -30,12 +30,16 @@ func (l *Logger) LogHTTPRequest(r *http.Request, reqclass string, statusCode int
 		if !l.toFile(StreamTraffic) {
 			return
 		}
-		l.ValidateAndUpdateLogFilepath()
+		line := "[" + now.Format("2006-01-02 15:04:05.000000") + "] " + ev.Text
+		mu := l.lock()
+		mu.Lock()
+		defer mu.Unlock()
+		l.validateLogFilepathLocked()
 		if l.logger == nil || l.file == nil {
 			//logger is not initiated. Do not log http request
 			return
 		}
-		l.logger.Println("[" + now.Format("2006-01-02 15:04:05.000000") + "] " + ev.Text)
+		l.logger.Println(line)
 	}()
 }
 

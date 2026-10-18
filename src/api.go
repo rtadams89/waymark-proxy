@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"net/http/pprof"
 
 	"imuslab.com/zoraxy/mod/acme/acmedns"
 	"imuslab.com/zoraxy/mod/acme/acmewizard"
 	"imuslab.com/zoraxy/mod/auth"
 	"imuslab.com/zoraxy/mod/dynamicproxy/domainsniff"
-	"imuslab.com/zoraxy/mod/info/hardwareinfo"
-	"imuslab.com/zoraxy/mod/netstat"
 	"imuslab.com/zoraxy/mod/utils"
 )
 
@@ -57,7 +54,6 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	/* Reverse proxy upstream (load balance) */
 	authRouter.HandleFunc("/api/proxy/upstream/list", ReverseProxyUpstreamList)
 	authRouter.HandleFunc("/api/proxy/upstream/add", ReverseProxyUpstreamAdd)
-	authRouter.HandleFunc("/api/proxy/upstream/setPriority", ReverseProxyUpstreamSetPriority)
 	authRouter.HandleFunc("/api/proxy/upstream/update", ReverseProxyUpstreamUpdate)
 	authRouter.HandleFunc("/api/proxy/upstream/remove", ReverseProxyUpstreamDelete)
 	// Custom fork: health checks (healthcheck_custom.go)
@@ -228,14 +224,8 @@ func RegisterStatisticalAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/custom/statusPanels", HandleStatusPanels) // Custom fork: status page panel visibility
 	authRouter.HandleFunc("/api/stats/netstat", netstatBuffers.HandleGetNetworkInterfaceStats)
 	authRouter.HandleFunc("/api/stats/netstatgraph", netstatBuffers.HandleGetBufferedNetworkInterfaceStats)
-	authRouter.HandleFunc("/api/stats/listnic", netstat.HandleListNetworkInterfaces)
 	/* Host System Information */
 	authRouter.HandleFunc("/api/stats/system", HandleSystemResourceUsage)
-	authRouter.HandleFunc("/api/sysinfo/cpu", hardwareinfo.CachedGetCPUInfo)
-	authRouter.HandleFunc("/api/sysinfo/ram", hardwareinfo.CachedGetRamInfo)
-	authRouter.HandleFunc("/api/sysinfo/drives", hardwareinfo.CachedGetDriveStat)
-	authRouter.HandleFunc("/api/sysinfo/nic", hardwareinfo.CachedIfconfig)
-	authRouter.HandleFunc("/api/sysinfo/usb", hardwareinfo.CachedGetUSB)
 	/* Zoraxy Analytic */
 	authRouter.HandleFunc("/api/analytic/list", AnalyticLoader.HandleSummaryList)
 	authRouter.HandleFunc("/api/analytic/load", AnalyticLoader.HandleLoadTargetDaySummary)
@@ -489,7 +479,4 @@ func initAPIs(targetMux *http.ServeMux) {
 	authRouter.HandleFunc("/api/capture/stop", HandleCaptureStop)           // capture_custom.go
 	authRouter.HandleFunc("/api/capture/download", HandleCaptureDownload)   // capture_custom.go
 	authRouter.HandleFunc("/api/capture/delete", HandleCaptureDelete)       // capture_custom.go
-
-	//Debug
-	authRouter.HandleFunc("/api/info/pprof", pprof.Index)
 }

@@ -20,18 +20,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// Check if the domain is reachable and return err if not reachable
-func DomainReachableWithError(domain string) error {
-	timeout := 1 * time.Second
-	conn, err := net.DialTimeout("tcp", domain, timeout)
-	if err != nil {
-		return err
-	}
-
-	conn.Close()
-	return nil
-}
-
 // Check if a domain have TLS but it is self-signed or expired
 // Return false if sniff error
 func DomainIsSelfSigned(domain string) bool {
@@ -72,11 +60,6 @@ func DomainIsSelfSigned(domain string) bool {
 	return err == nil
 }
 
-// Check if domain reachable
-func DomainReachable(domain string) bool {
-	return DomainReachableWithError(domain) == nil
-}
-
 // Check if domain is served by a web server using HTTPS
 func DomainUsesTLS(targetURL string) bool {
 	//Check if the site support https
@@ -105,16 +88,6 @@ func DomainUsesTLS(targetURL string) bool {
 
 // Check if the requst is a special case where
 // user defined header shall not be passed over
-
-func RequireWebsocketHeaderCopy(r *http.Request) bool {
-	//Return false for proxmox
-	if IsProxmox(r) {
-		return false
-	}
-
-	//Add more edge cases here
-	return true
-}
 
 /*
 	Request Handlers

@@ -569,13 +569,14 @@ func (m *Manager) stop(c *Capture, reason string) {
 	if st, err := os.Stat(filepath.Join(m.dir, c.file)); err == nil {
 		size = st.Size()
 	}
+	packets, flowCount, exchgs := c.packets, c.flows, c.exchgs
 	c.mu.Unlock()
 	m.mu.Lock()
 	m.reasons[c.file] = reason
 	m.saveIndexLocked()
 	m.mu.Unlock()
 	m.logf(fmt.Sprintf("Traffic capture %s stopped (%s): %d packets, %d connections, %d HTTP requests, %s",
-		c.file, reason, c.packets, c.flows, c.exchgs, humanBytes(size)))
+		c.file, reason, packets, flowCount, exchgs, humanBytes(size)))
 }
 
 func humanBytes(n int64) string {

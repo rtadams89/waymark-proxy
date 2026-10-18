@@ -61,20 +61,6 @@ func parseACMEFileMode(raw string, fallback os.FileMode, flagName string) os.Fil
 	return os.FileMode(parsed)
 }
 
-// Restart ACME handler and auto renewer
-func restartACMEHandler() {
-	SystemWideLogger.Println("Restarting ACME handler")
-	// Close the current handler and auto renewer
-	acmeHandler.Close()
-	acmeAutoRenewer.Close()
-	acmeDeregisterSpecialRoutingRule()
-
-	// Reinit the handler with a new random port
-	acmeHandler = initACME()
-
-	acmeRegisterSpecialRoutingRule()
-}
-
 // create the special routing rule for ACME
 func acmeRegisterSpecialRoutingRule() {
 	SystemWideLogger.Println("Assigned temporary port:" + acmeHandler.Getport())
@@ -143,12 +129,6 @@ func acmeRegisterSpecialRoutingRule() {
 	if err != nil {
 		SystemWideLogger.PrintAndLog("ACME", "Unable register temp port for DNS resolver", err)
 	}
-}
-
-// remove the special routing rule for ACME
-func acmeDeregisterSpecialRoutingRule() {
-	SystemWideLogger.Println("Removing ACME routing rule")
-	dynamicProxyRouter.RemoveRoutingRule("acme-autorenew")
 }
 
 // This function check if the renew setup is satisfied. If not, toggle them automatically

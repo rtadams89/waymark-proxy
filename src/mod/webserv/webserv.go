@@ -256,12 +256,6 @@ func (ws *WebServer) IsRunning() bool {
 	return ws.isRunning
 }
 
-// UpdateDirectoryListing enables or disables directory listing.
-func (ws *WebServer) UpdateDirectoryListing(enable bool) {
-	ws.option.EnableDirectoryListing = enable
-	ws.option.Sysdb.Write("webserv", "dirlist", enable)
-}
-
 // StartWebDAV starts the WebDAV server
 func (ws *WebServer) StartWebDAV() error {
 	if ws.WebDAV == nil {
@@ -311,14 +305,6 @@ func (ws *WebServer) ChangeWebDAVPort(port string) error {
 	ws.option.Logger.PrintAndLog("webdav", "WebDAV port updated to "+port, nil)
 
 	return nil
-}
-
-// Close stops the web server without returning an error.
-func (ws *WebServer) Close() {
-	ws.Stop()
-	if ws.WebDAV != nil {
-		ws.WebDAV.Close()
-	}
 }
 
 // SetCustomCredentials sets custom username and password for WebDAV

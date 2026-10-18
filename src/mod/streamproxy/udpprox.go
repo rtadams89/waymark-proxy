@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -122,6 +123,9 @@ func (c *ProxyRelayInstance) RunUDPConnectionRelay(conn *udpClientServerConn, li
 		}
 		conn.captureFromUpstream(buffer[0:n]) //Custom fork: traffic capture
 		// Relay it to client
+		if c.bToaAccumulatedByteTransfer != nil {
+			atomic.AddInt64(c.bToaAccumulatedByteTransfer, int64(n)) //Custom fork: count replies too
+		}
 		_, err = lisenter.WriteToUDP(buffer[0:n], conn.ClientAddr)
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
@@ -179,22 +183,14 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 	}
 
 	go func() {
-		//Stop channel receiver
-		for {
-			select {
-			case <-stopChan:
-				//Stop signal received
-				//Stop server -> client forwarder
-				c.CloseAllUDPConnections()
-				//Stop client -> server forwarder
-				//Force close, will terminate ReadFromUDP for inbound listener
-				lisener.Close()
-				return
-			default:
-				time.Sleep(100 * time.Millisecond)
-			}
-		}
-
+		//Custom fork: wait for the stop signal (or the channel closing)
+		//instead of polling every 100 ms
+		<-stopChan
+		//Stop server -> client forwarder
+		c.CloseAllUDPConnections()
+		//Stop client -> server forwarder
+		//Force close, will terminate ReadFromUDP for inbound listener
+		lisener.Close()
 	}()
 
 	var buffer [1500]byte
@@ -207,7 +203,7 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 			}
 			continue
 		}
-		*c.aTobAccumulatedByteTransfer += int64(n)
+		atomic.AddInt64(c.aTobAccumulatedByteTransfer, int64(n))
 		saddr := cliaddr.String()
 		rawConn, found := c.udpClientMap.Load(saddr)
 		var conn *udpClientServerConn
@@ -238,7 +234,7 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 				}
 			}
 		} else {
-			c.LogMsg("[UDP] Found connection for client "+saddr, nil)
+			//Custom fork: no log line per packet
 			conn = rawConn.(*udpClientServerConn)
 		}
 

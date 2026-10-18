@@ -17,13 +17,13 @@ import (
 func (c *Collector) HandleTodayStatLoad(w http.ResponseWriter, r *http.Request) {
 
 	fast, _ := utils.GetBool(r, "fast")
-	d := c.DailySummary
 	if fast {
 		//Only return the counter
+		total, errs, valid := c.Summary().Counts()
 		exported := DailySummaryExport{
-			TotalRequest: d.TotalRequest,
-			ErrorRequest: d.ErrorRequest,
-			ValidRequest: d.ValidRequest,
+			TotalRequest: total,
+			ErrorRequest: errs,
+			ValidRequest: valid,
 		}
 		js, _ := json.Marshal(exported)
 		utils.SendJSONResponse(w, string(js))

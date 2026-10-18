@@ -416,7 +416,7 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 		NoRemoveHopByHop:               headerRewriteOptions.DisableHopByHopHeaderRemoval,
 		AllowUpgrade:                   target.parent.EnableUpgradeForwarding,
 		Version:                        target.parent.parent.Option.HostVersion,
-		DevelopmentMode:                 target.parent.parent.Option.DevelopmentMode,
+		DevelopmentMode:                target.parent.parent.Option.DevelopmentMode,
 		AltSvc:                         h.Parent.getAltSvcValue(),
 	})
 

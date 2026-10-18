@@ -65,11 +65,7 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Host Routing
 	*/
 	//Extract request host to see if any proxy rule is matched
-	domainOnly := r.Host
-	if strings.Contains(r.Host, ":") {
-		hostPath := strings.Split(r.Host, ":")
-		domainOnly = hostPath[0]
-	}
+	domainOnly := requestHostname(r.Host) //Custom fork: also handles IPv6 hosts
 	sep := h.Parent.GetProxyEndpointFromHostname(domainOnly)
 	if sep != nil && !sep.Disabled {
 		//Matching proxy rule found
@@ -191,11 +187,7 @@ Once entered this routing segment, the root routing options will take over
 for the routing logic.
 */
 func (h *ProxyHandler) handleRootRouting(w http.ResponseWriter, r *http.Request) {
-	domainOnly := r.Host
-	if strings.Contains(r.Host, ":") {
-		hostPath := strings.Split(r.Host, ":")
-		domainOnly = hostPath[0]
-	}
+	domainOnly := requestHostname(r.Host) //Custom fork: also handles IPv6 hosts
 
 	//Get the proxy root config
 	proot := h.Parent.Root

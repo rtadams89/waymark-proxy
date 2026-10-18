@@ -115,29 +115,6 @@ func MatchIpCIDR(ip string, cidr string) bool {
 	return cidrnet.Contains(ipAddr)
 }
 
-// Check if a ip is private IP range
-func IsPrivateIP(ipStr string) bool {
-	if ipStr == "127.0.0.1" || ipStr == "::1" {
-		// local loopback
-		return true
-	}
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return false
-	}
-	if ip.IsPrivate() {
-		return true
-	}
-	// Check for IPv6 link-local addresses (fe80::/10)
-	if ip.To16() != nil && ip.To4() == nil {
-		// IPv6 only
-		if ip[0] == 0xfe && (ip[1]&0xc0) == 0x80 {
-			return true
-		}
-	}
-	return false
-}
-
 // Check if an Ip string is ipv6
 func IsIPv6(ipStr string) bool {
 	ip := net.ParseIP(ipStr)
@@ -146,14 +123,4 @@ func IsIPv6(ipStr string) bool {
 	}
 
 	return ip.To4() == nil && ip.To16() != nil
-}
-
-// Check if an Ip string is ipv6
-func IsIPv4(ipStr string) bool {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return false
-	}
-
-	return ip.To4() != nil
 }

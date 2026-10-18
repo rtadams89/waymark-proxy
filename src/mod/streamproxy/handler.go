@@ -2,6 +2,9 @@ package streamproxy
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,6 +55,16 @@ func (m *Manager) HandleAddProxyConfig(w http.ResponseWriter, r *http.Request) {
 	accessRuleUUID, _ := utils.PostPara(r, "accessRuleUUID")
 
 	//Create the target config
+	//Custom fork: reject rules that could never listen
+	if err := m.validateListener(strings.TrimSpace(listenAddr), useTCP, useUDP, ""); err != nil {
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+	if _, err := ValidateUpstreams([]string{proxyAddr}); err != nil {
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
 	newConfigUUID := m.NewConfig(&ProxyRelayOptions{
 		Name:                 name,
 		ListeningAddr:        strings.TrimSpace(listenAddr),
@@ -96,6 +109,18 @@ func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Create a new ProxyRuleUpdateConfig with the extracted parameters
+	//Custom fork: reject rules that could never listen
+	if existing, err := m.GetConfigByUUID(configUUID); err == nil {
+		effective := strings.TrimSpace(listenAddr)
+		if effective == "" {
+			effective = existing.View().ListeningAddress
+		}
+		if err := m.validateListener(effective, useTCP, useUDP, configUUID); err != nil {
+			utils.SendErrorResponse(w, err.Error())
+			return
+		}
+	}
+
 	newConfig := &ProxyRuleUpdateConfig{
 		InstanceUUID:         configUUID,
 		NewName:              newName,
@@ -120,7 +145,7 @@ func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request)
 }
 
 func (m *Manager) HandleListConfigs(w http.ResponseWriter, r *http.Request) {
-	js, _ := json.Marshal(m.Configs)
+	js, _ := json.Marshal(m.List())
 	utils.SendJSONResponse(w, string(js))
 }
 
@@ -160,7 +185,6 @@ func (m *Manager) HandleStopProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !targetProxyConfig.IsRunning() {
-		targetProxyConfig.Running = false
 		utils.SendErrorResponse(w, "target proxy service is not running")
 		return
 	}
@@ -183,7 +207,6 @@ func (m *Manager) HandleRemoveProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if targetProxyConfig.IsRunning() {
-		targetProxyConfig.Running = false
 		utils.SendErrorResponse(w, "Service is running")
 		return
 	}
@@ -212,4 +235,52 @@ func (m *Manager) HandleGetProxyStatus(w http.ResponseWriter, r *http.Request) {
 
 	js, _ := json.Marshal(targetConfig)
 	utils.SendJSONResponse(w, string(js))
+}
+
+// validateListener checks a rule's listening address and protocols (custom
+// fork): at least one protocol, a usable host:port or port, and no other
+// rule listening on the same address with the same protocol.
+func (m *Manager) validateListener(listen string, useTCP, useUDP bool, exceptUUID string) error {
+	if !useTCP && !useUDP {
+		return errors.New("enable TCP, UDP or both")
+	}
+	port := listen
+	host := ""
+	if h, p, err := net.SplitHostPort(listen); err == nil {
+		host, port = h, p
+	}
+	if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
+		return errors.New("listening address must be a port or host:port, e.g. :25565 or 127.0.0.1:25565")
+	}
+	if host != "" && net.ParseIP(host) == nil && !validHostname(host) {
+		return errors.New("listening address host must be an IP address or host name")
+	}
+	norm := func(a string) string {
+		h, p, err := net.SplitHostPort(a)
+		if err != nil {
+			h, p = "", a
+		}
+		if h == "0.0.0.0" || h == "::" {
+			h = ""
+		}
+		return h + "|" + p
+	}
+	want := norm(listen)
+	for _, c := range m.List() {
+		v := c.View()
+		if v.UUID == exceptUUID {
+			continue
+		}
+		other := norm(strings.TrimSpace(v.ListeningAddress))
+		samePort := strings.SplitN(other, "|", 2)[1] == strings.SplitN(want, "|", 2)[1]
+		wildcard := strings.HasPrefix(other, "|") || strings.HasPrefix(want, "|")
+		if (other == want || (samePort && wildcard)) && ((useTCP && v.UseTCP) || (useUDP && v.UseUDP)) {
+			name := v.Name
+			if name == "" {
+				name = v.UUID
+			}
+			return fmt.Errorf("stream proxy %q already uses %s", name, v.ListeningAddress)
+		}
+	}
+	return nil
 }

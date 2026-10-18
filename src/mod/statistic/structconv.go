@@ -31,11 +31,12 @@ func SyncMapToMapStringInt(syncMap *sync.Map) map[string]int {
 	return result
 }
 
-func DailySummaryToExport(summary DailySummary) DailySummaryExport {
+func DailySummaryToExport(summary *DailySummary) DailySummaryExport {
+	total, errs, valid := summary.Counts()
 	export := DailySummaryExport{
-		TotalRequest:    summary.TotalRequest,
-		ErrorRequest:    summary.ErrorRequest,
-		ValidRequest:    summary.ValidRequest,
+		TotalRequest:    total,
+		ErrorRequest:    errs,
+		ValidRequest:    valid,
 		ForwardTypes:    make(map[string]int),
 		RequestOrigin:   make(map[string]int),
 		RequestClientIp: make(map[string]int),
@@ -100,6 +101,6 @@ func DailySummaryExportToSummary(export DailySummaryExport) DailySummary {
 
 // External object function call
 func (c *Collector) GetExportSummary() *DailySummaryExport {
-	exportFormatDailySummary := DailySummaryToExport(*c.DailySummary)
+	exportFormatDailySummary := DailySummaryToExport(c.Summary())
 	return &exportFormatDailySummary
 }

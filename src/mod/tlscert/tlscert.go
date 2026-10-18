@@ -5,9 +5,7 @@ import (
 	"crypto/x509"
 	"embed"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,7 +31,7 @@ type Manager struct {
 	CertStore    string         //Path where all the certs are stored
 	LoadedCerts  []*CertCache   //A list of loaded certs
 	Logger       *logger.Logger //System wide logger for debug mesage
-	FallbackCert string        //Name of the fallback/default certificate (no file renaming)
+	FallbackCert string         //Name of the fallback/default certificate (no file renaming)
 
 	/* External handlers */
 	hostSpecificTlsBehavior func(serverName string) (*HostSpecificTlsBehavior, error) // Function to get host specific TLS behavior, if nil, use global TLS options
@@ -362,40 +360,4 @@ func (m *Manager) RemoveCert(domain string) error {
 	//Update the cert list
 	m.UpdateLoadedCertList()
 	return nil
-}
-
-// Check if the given file is a valid TLS file
-func IsValidTLSFile(file io.Reader) bool {
-	// Read the contents of the uploaded file
-	contents, err := io.ReadAll(file)
-	if err != nil {
-		// Handle the error
-		return false
-	}
-
-	// Parse the contents of the file as a PEM-encoded certificate or key
-	block, _ := pem.Decode(contents)
-	if block == nil {
-		// The file is not a valid PEM-encoded certificate or key
-		return false
-	}
-
-	// Parse the certificate or key
-	if strings.Contains(block.Type, "CERTIFICATE") {
-		// The file contains a certificate
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			// Handle the error
-			return false
-		}
-		// Check if the certificate is a valid TLS/SSL certificate
-		return !cert.IsCA && cert.KeyUsage&x509.KeyUsageDigitalSignature != 0 && cert.KeyUsage&x509.KeyUsageKeyEncipherment != 0
-	} else if strings.Contains(block.Type, "PRIVATE KEY") {
-		// The file contains a private key
-		_, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-		return err == nil
-	} else {
-		return false
-	}
-
 }

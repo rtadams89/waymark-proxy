@@ -55,10 +55,6 @@ func NewPathRuleHandler(options *Options) *Handler {
 	}
 }
 
-func (h *Handler) ListBlockingPath() []*BlockingPath {
-	return h.BlockingPaths
-}
-
 // Get the blocker from matching path (path match, ignore tailing slash)
 func (h *Handler) GetPathBlockerFromMatchingPath(matchingPath string) *BlockingPath {
 	for _, blocker := range h.BlockingPaths {
@@ -128,47 +124,4 @@ func (h *Handler) RemoveBlockerFromFile(uuid string) error {
 	}
 
 	return os.Remove(expectedConfigFile)
-}
-
-// Get all the matching blockers for the given URL path
-// return all the path blockers and the max length matching rule
-func (h *Handler) GetMatchingBlockers(urlPath string) ([]*BlockingPath, *BlockingPath) {
-	urlPath = strings.TrimSuffix(urlPath, "/")
-	matchingBlockers := []*BlockingPath{}
-	var longestMatchingPrefix *BlockingPath = nil
-	for _, thisBlocker := range h.BlockingPaths {
-		if thisBlocker.Enabled == false {
-			//This blocker is not enabled. Ignore this
-			continue
-		}
-
-		incomingURLPath := urlPath
-		matchingPath := strings.TrimSuffix(thisBlocker.MatchingPath, "/")
-
-		if !thisBlocker.CaseSenitive {
-			//This is not case sensitive
-			incomingURLPath = strings.ToLower(incomingURLPath)
-			matchingPath = strings.ToLower(matchingPath)
-		}
-
-		if matchingPath == incomingURLPath {
-			//This blocker have exact url path match
-			matchingBlockers = append(matchingBlockers, thisBlocker)
-			if longestMatchingPrefix == nil || len(thisBlocker.MatchingPath) > len(longestMatchingPrefix.MatchingPath) {
-				longestMatchingPrefix = thisBlocker
-			}
-			continue
-		}
-
-		if !thisBlocker.ExactMatch && strings.HasPrefix(incomingURLPath, matchingPath) {
-			//This blocker have prefix url match
-			matchingBlockers = append(matchingBlockers, thisBlocker)
-			if longestMatchingPrefix == nil || len(thisBlocker.MatchingPath) > len(longestMatchingPrefix.MatchingPath) {
-				longestMatchingPrefix = thisBlocker
-			}
-			continue
-		}
-	}
-
-	return matchingBlockers, longestMatchingPrefix
 }

@@ -71,7 +71,7 @@
                 [typeof networkInChart !== "undefined" ? networkInChart : null,
                  typeof networkOutChart !== "undefined" ? networkOutChart : null,
                  typeof methodChart !== "undefined" ? methodChart : null].forEach(c => { if (c) c.resize(); });
-                if (typeof worldMap !== "undefined" && worldMap){ worldMap.updateSize(); }
+                if (typeof resizeWorldMap === "function"){ resizeWorldMap(); }
                 let flow = document.getElementById("trafficFlowDiagram");
                 if (flow && flow.contentWindow){ flow.contentWindow.dispatchEvent(new Event("resize")); }
             } catch (e) {}

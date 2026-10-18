@@ -269,9 +269,9 @@ func (m *Manager) SetUpstreamOnline(addr string, online bool) {
 	if online {
 		return
 	}
-	for _, c := range m.Configs {
+	for _, c := range m.List() {
 		c.poolMu.RLock()
-		closeOnDown := c.CloseOnUpstreamDown
+		closeOnDown, name := c.CloseOnUpstreamDown, c.Name
 		c.poolMu.RUnlock()
 		if !closeOnDown {
 			continue
@@ -279,7 +279,7 @@ func (m *Manager) SetUpstreamOnline(addr string, online bool) {
 		for _, u := range c.UpstreamList() {
 			if u == addr {
 				if n := c.closeUpstreamConns(addr); n > 0 {
-					m.logf(fmt.Sprintf("Closed %d connection(s) of stream proxy %s to %s (upstream is down)", n, c.Name, addr), nil)
+					m.logf(fmt.Sprintf("Closed %d connection(s) of stream proxy %s to %s (upstream is down)", n, name, addr), nil)
 				}
 			}
 		}
@@ -407,7 +407,8 @@ func (m *Manager) ApplyPoolSettings(uuid string, p *PoolSettings) error {
 	if err != nil {
 		return err
 	}
-	if err := p.Validate(c.UseTCP, c.UseUDP); err != nil {
+	v := c.View()
+	if err := p.Validate(v.UseTCP, v.UseUDP); err != nil {
 		return err
 	}
 	c.poolMu.Lock()
@@ -480,7 +481,7 @@ func (m *Manager) HandleSetPool(w http.ResponseWriter, r *http.Request) {
 // GET /api/streamprox/config/upstreams
 func (m *Manager) HandleUpstreamStatus(w http.ResponseWriter, r *http.Request) {
 	out := map[string][]UpstreamInfo{}
-	for _, c := range m.Configs {
+	for _, c := range m.List() {
 		out[c.UUID] = c.UpstreamInfos()
 	}
 	js, _ := json.Marshal(out)

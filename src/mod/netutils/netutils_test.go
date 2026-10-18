@@ -42,20 +42,3 @@ func TestMatchIpCIDR_IPv6(t *testing.T) {
 		}
 	}
 }
-
-func TestIsPrivateIP_IPv6(t *testing.T) {
-	tests := []struct {
-		ip   string
-		want bool
-	}{
-		{"fd7a:115c:a1e0::e101:6f0f", true}, // Unique local address (fc00::/7)
-		{"fe80::1", true},                   // Link-local
-		{"2001:db8::1", false},              // Documentation address
-	}
-	for _, tt := range tests {
-		got := netutils.IsPrivateIP(tt.ip)
-		if got != tt.want {
-			t.Errorf("IsPrivateIP(%q) = %v, want %v", tt.ip, got, tt.want)
-		}
-	}
-}

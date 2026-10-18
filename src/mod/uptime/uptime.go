@@ -256,42 +256,6 @@ func (m *Monitor) SetTargets(newTargets []*Target) {
 	m.UpdateReocrdsAfterConfigChange()
 }
 
-func (m *Monitor) AddTargetToMonitor(target *Target) {
-	// Add target to Config
-	m.Config.Targets = append(m.Config.Targets, target)
-
-	// New targets are assumed online
-	m.targetMutex.Lock()
-	m.onlineTargets = append(m.onlineTargets, target)
-	m.targetMutex.Unlock()
-
-	// Add target to OnlineStatusLog
-	m.logMutex.Lock()
-	m.OnlineStatusLog[target.ID] = []*Record{}
-	m.logMutex.Unlock()
-}
-
-func (m *Monitor) RemoveTargetFromMonitor(targetId string) {
-	// Remove target from Config
-	for i, target := range m.Config.Targets {
-		if target.ID == targetId {
-			m.Config.Targets = append(m.Config.Targets[:i], m.Config.Targets[i+1:]...)
-			break
-		}
-	}
-
-	// Remove from both online and offline lists
-	m.targetMutex.Lock()
-	m.onlineTargets = removeTargetFromList(m.onlineTargets, targetId)
-	m.offlineTargets = removeTargetFromList(m.offlineTargets, targetId)
-	m.targetMutex.Unlock()
-
-	// Remove target from OnlineStatusLog
-	m.logMutex.Lock()
-	delete(m.OnlineStatusLog, targetId)
-	m.logMutex.Unlock()
-}
-
 // Scan the config target. If a target exists in m.OnlineStatusLog no longer
 // exists in m.Monitor.Config.Targets, it remove it from the log as well.
 func (m *Monitor) CleanRecords() {

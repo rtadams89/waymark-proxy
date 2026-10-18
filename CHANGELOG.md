@@ -10,6 +10,45 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.7.0
+
+A code review release: bug fixes found with the race detector, under load with live configuration changes, and by reading the code; unused code removed; some background work made cheaper; and web interface improvements. No configuration changes are needed.
+
+**Changed: web interface**
+- Stream Proxies: rules are added and edited in a pop-up editor like the HTTP proxy rule editor (Listener, Upstreams, Health Checks, Access & Protocol), opened with **Add Stream Proxy** or a rule's edit button, instead of a form at the bottom of the page. Escape or clicking outside closes it. New rules start with TCP on.
+- HTTP Proxies: the Basics / Details view switch is gone; the list always shows every column (including alternative listening addresses and authentication) and scrolls sideways when it doesn't fit.
+- Certificates: the list of installed certificates comes first; uploading or pasting a certificate is under **Add a certificate** below it.
+- The HTTP Proxies and Stream Proxies lists refresh themselves (every 15 and 10 seconds) while they are on screen. They don't refresh while an editor, side panel or menu is open or the HTTP list is sorted by a column; health indicators still update then. The Listeners page's secondary ports list now only refreshes while it is on screen.
+- Phones: pages no longer scroll sideways. The content area left room for its margins, tab menus scroll within themselves, and the certificate overview on the status page and the capture file list fit the screen.
+- Listeners: secondary listening addresses and host names are escaped.
+
+**Fixed**
+- Stream proxies: starting, stopping, editing and listing rules at the same time (for example the web UI refreshing while a rule restarts) touched the same settings from several threads without locking. Rule settings and running state are now locked, and the config files and the list API read a consistent copy.
+- Stream proxies: stopping a rule whose UDP listener had failed to start (or whose TCP listener had failed while UDP kept running) could hang the stop request forever.
+- Stream proxies: editing a running rule paused for 3 seconds before restarting it. The rule now restarts as soon as its listeners have closed.
+- Stream proxies: rules with neither TCP nor UDP enabled, with an unusable listening address, or listening on the same address and protocol as another rule are refused when added or edited, with a message saying why.
+- Stream proxy config files are written one at a time and replaced atomically, so two saves at once (or a crash during a save) can't leave a truncated file. They are no longer marked executable (now `0640`).
+- Stream proxies: UDP replies are counted in the transferred bytes, the UDP byte counter is updated atomically, and a log line is no longer written for every UDP packet when logging is on.
+- Request statistics: the daily counters were updated from many requests at once without synchronisation, so counts could be lost. They are now updated atomically.
+- The Uptime Monitor was created in the background at startup while health checks and the API could already use it. It is now created before them.
+- Traffic capture: the summary logged when a capture stops read its counters without the lock.
+- Logs: writing, the monthly file change and size-based rotation could run at the same time, so lines could go to a closed file, and a failed rotation stopped file logging until restart. They now take turns, and a failed rotation keeps logging to the current file. Two rotations within one second no longer overwrite each other's backup. After the monthly file change, lines no longer carry a second timestamp. New log files are `0640` instead of `0755`.
+- HTTP proxy rules were not found for requests to an IPv6 address (`[fd00::1]:443` was read as host `[`).
+- Status page: the world map logged script errors while another tab was open (it was resized while hidden).
+- The plugin page's frame had an invalid `allow` attribute.
+
+**Faster**
+- Proxied HTTP responses reuse their 64 KB copy buffers instead of allocating one per response (this was about 70% of all memory allocated under load).
+- Memory usage for the status page is read from the kernel every second instead of starting a shell running `free` and `grep`.
+- Waymark no longer runs `df`, `lsusb` and `ip` every minute to collect host hardware information nothing displayed.
+- An idle UDP stream proxy no longer wakes up every 100 ms to check whether it should stop.
+
+**Removed**
+- APIs the web UI no longer used: `/api/sysinfo/*` (host hardware information), `/api/info/pprof` (a profiling index whose links led nowhere) and, from the main API, `/api/proxy/upstream/setPriority` and `/api/stats/listnic` (both stay available to plugins).
+- Unused code: the deprecated Authelia and Authentik packages, and the unused `email`, `expose`, `reverseproxy`, `modh2c` and `hardwareinfo` packages, plus about 50 unused functions and types elsewhere.
+- Unused web files: the old plugin store page (replaced by the App Store tab), an unused date picker theme, unused UI functions, and Zoraxy's original artwork sources (`.ai`, `.psd`), which were built into the binary.
+- The stream proxy test that listened on port 8080 for 20 seconds and connected to a host on the internet, replaced by tests on the loopback interface.
+
 ## 2.6.3
 
 **Security**

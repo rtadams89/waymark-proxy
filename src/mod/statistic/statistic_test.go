@@ -3,6 +3,8 @@ package statistic_test
 import (
 	"net"
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -71,8 +73,8 @@ func TestResetSummaryOfDay(t *testing.T) {
 	option := statistic.CollectorOption{Database: db}
 	collector, _ := statistic.NewStatisticCollector(option)
 	collector.ResetSummaryOfDay()
-	if collector.DailySummary.TotalRequest != 0 {
-		t.Fatalf("Expected TotalRequest to be 0, got %v", collector.DailySummary.TotalRequest)
+	if collector.Summary().TotalRequest != 0 {
+		t.Fatalf("Expected TotalRequest to be 0, got %v", collector.Summary().TotalRequest)
 	}
 }
 
@@ -103,10 +105,9 @@ func TestRecordRequest(t *testing.T) {
 		RequestURL:                    "/test",
 		Target:                        "target1",
 	}
-	collector.RecordRequest(requestInfo)
-	time.Sleep(1 * time.Second) // Wait for the goroutine to finish
-	if collector.DailySummary.TotalRequest != 1 {
-		t.Fatalf("Expected TotalRequest to be 1, got %v", collector.DailySummary.TotalRequest)
+	collector.RecordRequest(requestInfo) // synchronous
+	if collector.Summary().TotalRequest != 1 {
+		t.Fatalf("Expected TotalRequest to be 1, got %v", collector.Summary().TotalRequest)
 	}
 }
 
@@ -212,4 +213,37 @@ func BenchmarkRecordRequest(b *testing.B) {
 	//Print the generated summary
 	//testSummary := collector.GetCurrentDailySummary()
 	//statistic.PrintDailySummary(testSummary)
+}
+
+// Concurrent requests must all be counted (custom fork: increments used to
+// race and lose counts).
+func TestRecordRequestConcurrentCounts(t *testing.T) {
+	tmpFile := filepath.Join(t.TempDir(), "stats.db")
+	db, err := database.NewDatabase(tmpFile, dbinc.BackendBoltDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	collector, err := statistic.NewStatisticCollector(statistic.CollectorOption{Database: db})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for w := 0; w < 16; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 500; i++ {
+				collector.RecordRequest(statistic.RequestInfo{IpAddr: "10.0.0.1", Succ: i%2 == 0, ForwardType: "host-http", RequestURL: "/", Target: "a.test"})
+			}
+		}()
+	}
+	wg.Wait()
+	total, errs, valid := collector.Summary().Counts()
+	if total != 8000 || errs != 4000 || valid != 4000 {
+		t.Fatalf("counts: total %d, errors %d, valid %d; want 8000/4000/4000", total, errs, valid)
+	}
+	if v, _ := collector.Summary().RequestClientIp.Load("10.0.0.1"); v.(int) != 8000 {
+		t.Fatalf("client count %v, want 8000", v)
+	}
 }

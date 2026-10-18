@@ -290,26 +290,25 @@ func ReverseProxyInit() {
 
 	//Custom fork: active/passive health checks (healthcheck_custom.go)
 	migrateUptimeMonitorToHealthChecks()
+	//Create a uptime monitor service
+	//Custom fork: created here, empty, before the health checks that feed it
+	//start (it used to be set from a goroutine, racing with them and the API
+	//handlers); UpdateUptimeMonitorTargets below adds the targets and runs
+	//the first check in the background, once the health checks exist.
+	uptimeMonitor, _ = uptime.NewUptimeMonitor(&uptime.Config{
+		Targets:           []*uptime.Target{},
+		Interval:          300,                                //5 minutes
+		MaxRecordsStore:   288,                                //1 day
+		OnlineStateNotify: uptimeNotifyRespectingHealthChecks, //Notify the load balancer for online state (custom fork: skips health-checked upstreams)
+		Logger:            SystemWideLogger,                   //Logger
+		Verbal:            *development_build,                 //Enable verbose logging in dev mode
+	})
+	SystemWideLogger.Println("Uptime Monitor background service started")
 	initHealthChecks()
 	initAssetCache() //Custom fork: static file cache memory limit
 	initHA()         //Custom fork: keepalived heartbeat and role
-	refreshHealthCheckTargets()
+	UpdateUptimeMonitorTargets()
 
-	//Add all proxy services to uptime monitor
-	//Create a uptime monitor service
-	go func() {
-		//This must be done in go routine to prevent blocking on system startup
-		uptimeMonitor, _ = uptime.NewUptimeMonitor(&uptime.Config{
-			Targets:           GetUptimeTargetsFromReverseProxyRules(dynamicProxyRouter),
-			Interval:          300,                                //5 minutes
-			MaxRecordsStore:   288,                                //1 day
-			OnlineStateNotify: uptimeNotifyRespectingHealthChecks, //Notify the load balancer for online state (custom fork: skips health-checked upstreams)
-			Logger:            SystemWideLogger,                   //Logger
-			Verbal:            *development_build,                 //Enable verbose logging in dev mode
-		})
-
-		SystemWideLogger.Println("Uptime Monitor background service started")
-	}()
 }
 
 // Toggle the reverse proxy service on and off
@@ -364,9 +363,6 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	//Bypass global TLS value / allow direct access from port 80?
 	useBypassGlobalTLS, _ := utils.PostBool(r, "bypassGlobalTLS")
-	if err != nil {
-		useBypassGlobalTLS = false
-	}
 
 	// Allow HTTP CONNECT tunneling to the configured upstream (disabled by default)
 	enableConnectSupport, _ := utils.PostBool(r, "enableConnectSupport")

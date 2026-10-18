@@ -31,7 +31,7 @@ func TestCleanupOldBackupsMatchesOlderMonthlyLogs(t *testing.T) {
 	writeTestFile(t, newestBackup, time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC))
 	writeTestFile(t, otherPrefix, time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC))
 
-	if err := logger.cleanupOldBackups(tempDir, currentLog); err != nil {
+	if err := logger.cleanupOldBackups(tempDir, currentLog, 2); err != nil {
 		t.Fatalf("cleanupOldBackups returned error: %v", err)
 	}
 

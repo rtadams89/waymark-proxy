@@ -48,10 +48,12 @@ func (c *capConn) Close() error {
 }
 
 func (c *ProxyRelayInstance) captureComment(side string, upstreamAddr string) string {
+	c.poolMu.RLock()
 	name := c.Name
 	if name == "" {
 		name = c.ListeningAddress
 	}
+	c.poolMu.RUnlock()
 	return "Stream proxy " + name + " · " + side + " · upstream " + upstreamAddr
 }
 

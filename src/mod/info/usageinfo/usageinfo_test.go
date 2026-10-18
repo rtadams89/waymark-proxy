@@ -66,40 +66,6 @@ func TestGetCPUUsageUsingProcStatNotAvailable(t *testing.T) {
 	}
 }
 
-// TestGetNumericRAMUsage checks that GetNumericRAMUsage returns plausible values.
-func TestGetNumericRAMUsage(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("skipping RAM usage test on non-Linux OS")
-	}
-
-	used, total := GetNumericRAMUsage()
-	// The values may be -1 if the command fails or is not supported.
-	// On a functioning Linux system we expect positive values.
-	if used < 0 || total < 0 {
-		t.Logf("GetNumericRAMUsage() returned used=%d total=%d (may indicate missing tools)", used, total)
-		return
-	}
-	if used > total {
-		t.Errorf("used RAM (%d) > total RAM (%d)", used, total)
-	}
-}
-
-// TestGetNumericRAMUsagePositive verifies that on Linux both used and total
-// RAM are positive and total > 0.
-func TestGetNumericRAMUsagePositive(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("skipping on non-Linux")
-	}
-	used, total := GetNumericRAMUsage()
-	if total <= 0 {
-		t.Logf("GetNumericRAMUsage() total=%d; 'free' command may not be available in this environment", total)
-		return
-	}
-	if used < 0 {
-		t.Errorf("used RAM should be >= 0, got %d", used)
-	}
-}
-
 // TestGetRAMUsage checks that GetRAMUsage returns non-empty strings on Linux.
 func TestGetRAMUsage(t *testing.T) {
 	if runtime.GOOS != "linux" {
@@ -116,23 +82,6 @@ func TestGetRAMUsage(t *testing.T) {
 	}
 	if pct < 0 || pct > 100 {
 		t.Logf("GetRAMUsage() percentage = %v (may be out of range if tools are missing)", pct)
-	}
-}
-
-// TestGetRAMUsageConsistency verifies that GetRAMUsage and GetNumericRAMUsage
-// return consistent results on Linux.
-func TestGetRAMUsageConsistency(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("skipping on non-Linux")
-	}
-	_, _, pct := GetRAMUsage()
-	used, total := GetNumericRAMUsage()
-	// If both calls succeed, the percentage should be consistent.
-	if total > 0 && used >= 0 && pct > 0 {
-		// Rough consistency check: if numeric RAM is available the percentage should be positive.
-		if pct == 0 && used > 0 {
-			t.Logf("inconsistency: pct=0 but used=%d", used)
-		}
 	}
 }
 

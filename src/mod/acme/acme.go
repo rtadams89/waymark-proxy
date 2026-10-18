@@ -51,11 +51,6 @@ type CertificateInfoJSON struct {
 	DisableAuthoritativeNssCheck bool     `json:"disable_authoritative_nss_check"` // Disable Authoritative NSs Propagation Check
 }
 
-type EABConfig struct {
-	Kid     string `json:"kid"`
-	HmacKey string `json:"HmacKey"`
-}
-
 // ACMEHandler handles ACME-related operations.
 type ACMEHandler struct {
 	Port           string
@@ -83,13 +78,6 @@ func NewACME(
 
 func (a *ACMEHandler) Logf(message string, err error) {
 	a.Logger.PrintAndLog("ACME", message, err)
-}
-
-// Close closes the ACMEHandler.
-// ACME Handler does not need to close anything
-// Function defined for future compatibility
-func (a *ACMEHandler) Close() error {
-	return nil
 }
 
 func (a *ACMEHandler) writeFileWithMode(filename string, data []byte, mode os.FileMode) error {

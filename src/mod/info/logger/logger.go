@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -32,6 +33,20 @@ type Logger struct {
 	// A pointer, so Logger values can still be copied (access.Options holds
 	// one by value) and copies follow later changes.
 	outputs *atomic.Pointer[outputState]
+	// Custom fork: guards file, logger, CurrentLogFile and RotateOption, so
+	// writes, the month change and rotation do not interleave (a pointer for
+	// the same reason as outputs)
+	mu *sync.Mutex
+}
+
+// fallbackMu serves Loggers built without a constructor (tests).
+var fallbackMu sync.Mutex
+
+func (l *Logger) lock() *sync.Mutex {
+	if l.mu != nil {
+		return l.mu
+	}
+	return &fallbackMu
 }
 
 // Create a new logger that log to files
@@ -45,11 +60,12 @@ func NewLogger(logFilePrefix string, logFolder string) (*Logger, error) {
 		Prefix:    logFilePrefix,
 		LogFolder: logFolder,
 		outputs:   &atomic.Pointer[outputState]{},
+		mu:        &sync.Mutex{},
 	}
 
 	//Create the log file if not exists
 	logFilePath := thisLogger.getLogFilepath()
-	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
+	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +83,8 @@ func NewLogger(logFilePrefix string, logFolder string) (*Logger, error) {
 		}
 	}()
 
-	//Start the logger
-	logger := log.New(f, "", log.Flags()&^(log.Ldate|log.Ltime))
-	logger.SetFlags(0)
-	logger.SetOutput(f)
-	thisLogger.logger = logger
+	//Start the logger (lines carry their own timestamp)
+	thisLogger.logger = log.New(f, "", 0)
 	return &thisLogger, nil
 }
 
@@ -84,12 +97,16 @@ func NewFmtLogger() (*Logger, error) {
 		logger:         nil,
 		file:           nil,
 		outputs:        &atomic.Pointer[outputState]{},
+		mu:             &sync.Mutex{},
 	}, nil
 }
 
 // SetRotateOption will set the log rotation option
 func (l *Logger) SetRotateOption(option *RotateOption) {
+	mu := l.lock()
+	mu.Lock()
 	l.RotateOption = option
+	mu.Unlock()
 }
 
 func (l *Logger) getLogFilepath() string {
@@ -114,7 +131,6 @@ func (l *Logger) Println(v ...interface{}) {
 }
 
 func (l *Logger) Log(title string, errorMessage string, originalError error, copyToSTDOUT bool) {
-	l.ValidateAndUpdateLogFilepath()
 	now := time.Now()
 	ev := &LogEvent{Stream: StreamSystem, Time: now, Severity: SeverityInfo, Module: title, Message: errorMessage}
 	ev.Text = "[" + title + "] [system:info] " + errorMessage
@@ -123,18 +139,30 @@ func (l *Logger) Log(title string, errorMessage string, originalError error, cop
 		ev.Text = "[" + title + "] [system:error] " + errorMessage + ": " + originalError.Error()
 	}
 	line := "[" + now.Format("2006-01-02 15:04:05.000000") + "] " + ev.Text
-	if l.logger == nil || copyToSTDOUT {
+	mu := l.lock()
+	mu.Lock()
+	l.validateLogFilepathLocked()
+	hasFile := l.logger != nil
+	if hasFile && l.toFile(StreamSystem) {
+		l.logger.Println(line)
+	}
+	mu.Unlock()
+	if !hasFile || copyToSTDOUT {
 		//Use STDOUT instead of logger
 		fmt.Println(line)
-	}
-	if l.logger != nil && l.toFile(StreamSystem) {
-		l.logger.Println(line)
 	}
 	l.toSyslog(ev) //Custom fork: remote syslog (syslog_custom.go)
 }
 
 // Validate if the logging target is still valid (detect any months change)
 func (l *Logger) ValidateAndUpdateLogFilepath() {
+	mu := l.lock()
+	mu.Lock()
+	defer mu.Unlock()
+	l.validateLogFilepathLocked()
+}
+
+func (l *Logger) validateLogFilepathLocked() {
 	if l.file == nil {
 		return
 	}
@@ -151,7 +179,7 @@ func (l *Logger) ValidateAndUpdateLogFilepath() {
 		}
 
 		//Create a new log file
-		f, err := os.OpenFile(expectedCurrentLogFilepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
+		f, err := os.OpenFile(expectedCurrentLogFilepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
 		if err != nil {
 			log.Println("Unable to create new log. Logging is disabled: ", err.Error())
 			l.logger = nil
@@ -160,13 +188,16 @@ func (l *Logger) ValidateAndUpdateLogFilepath() {
 		l.CurrentLogFile = expectedCurrentLogFilepath
 		l.file = f
 
-		//Start a new logger
-		logger := log.New(f, "", log.Default().Flags())
-		l.logger = logger
+		//Start a new logger (custom fork: without the standard log's own
+		//date and time, which used to double the timestamp after a month change)
+		l.logger = log.New(f, "", 0)
 	}
 }
 
 func (l *Logger) Close() {
+	mu := l.lock()
+	mu.Lock()
+	defer mu.Unlock()
 	if l.file != nil {
 		if err := l.file.Close(); err != nil {
 			log.Println("Error closing log file:", err)

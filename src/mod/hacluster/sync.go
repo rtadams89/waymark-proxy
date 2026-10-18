@@ -89,13 +89,6 @@ const (
 
 var clusterKeyPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// NewClusterKey returns a random cluster key (32 bytes, hex).
-func NewClusterKey() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}
-
 // SyncFile is one config file.
 type SyncFile struct {
 	Mode uint32 `json:"m"`

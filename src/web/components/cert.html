@@ -23,69 +23,8 @@
         <a class="item" style="cursor: pointer;" onclick="openTabById('acme');"><i class="sync alternate icon"></i> ACME and auto-renew</a>
         <a class="item" style="cursor: pointer;" onclick="showSideWrapper('snippet/dnsProfiles.html');"><i class="key icon"></i> DNS credentials</a>
     </div>
-    <h3>Hosts Certificates</h3>
-    <p>Provide certificates for multiple domains reverse proxy</p>
-    <div class="ui fluid form">
-        <div class="three fields">
-            <div class="field">
-            <label>Server Name (Domain)</label>
-            <input type="text" id="certdomain" placeholder="">
-            <small><i class="exclamation circle yellow icon"></i> Match the server name with your CN/DNS entry in certificate for faster resolve time</small>
-            </div>
-            <div class="field">
-                <label>Public Key (.pem)</label>
-                <input type="file" id="pubkeySelector" onchange="handleFileSelect(event, 'pub')">
-                <small>or .crt files in order systems</small>
-            </div>
-            <div class="field">
-                <label>Private Key (.key)</label>
-                <input type="file" id="prikeySelector" onchange="handleFileSelect(event, 'pri')">
-            </div>
-        </div>
-        <button id="certUploadBtn" class="ui basic button showOnlyInCertUploadMode" onclick="handleDomainUploadByKeypress();"><i class="ui teal upload icon"></i> Upload</button>
-        <button id="certPasteBtn" class="ui basic button showOnlyInCertUploadMode" onclick="togglePasteCertInterface();"><i class="ui yellow paste icon"></i> Paste Cert Directly</button>
-        <br class="showOnlyInCertUploadMode">
-        <small class="showOnlyInCertUploadMode">You have intermediate certificate? <a style="cursor:pointer;" onclick="showSideWrapper('snippet/intermediateCertConv.html');">Open Conversion Tool</a></small>
-    </div>
-    <div id="certPasteArea" style="display:none;">
-        <!-- Paste cert function implementation -->
-        <div class="ui fluid form" style="margin-top: 1em;">
-            <div class="two fields">
-                <div class="field">
-                    <label>Public Key Content (.pem / .crt)</label>
-                    <textarea id="pubkeyPasteContent" rows="8" placeholder="Paste your public key / certificate content here..." oninput="extractCommonNameFromPastedCert();"></textarea>
-                </div>
-                <div class="field">
-                    <label>Private Key Content (.key)</label>
-                    <textarea id="prikeyPasteContent" rows="8" placeholder="Paste your private key content here..."></textarea>
-                </div>
-            </div>
-            <button class="ui basic button" onclick="handlePasteInBrowserAndUpload();"><i class="ui teal upload icon"></i> Upload from Pasted Content</button>
-            <button class="ui basic button" onclick="togglePasteCertInterface();"><i class="ui grey cancel icon"></i> Cancel</button>
-        </div>
-    </div>
-    <div id="certUploadSuccMsg" class="ui green message" style="display:none;">
-        <i class="ui checkmark icon"></i> Certificate for domain <span id="certUploadingDomain"></span> uploaded.
-    </div>
-    <div class="ui message">
-        <h4>Tips about Server Names & SNI</h4>
-        <div class="ui bulleted list">
-            <div class="item">
-                If you have two subdomains like <code>a.example.com</code> and <code>b.example.com</code> ,
-                for faster response speed, you might want to setup them one by one (i.e. having two seperate certificate for 
-                <code>a.example.com</code> and <code>b.example.com</code>).
-            </div>
-            <div class="item">
-                If you have a wildcard certificate that covers <code>*.example.com</code>, 
-                you can just enter <code>example.com</code> as server name to add a certificate.
-            </div>
-            <div class="item">
-                If you have a certificate contain multiple host, you can enter the first domain in your certificate 
-                and Waymark will try to match the remaining CN/DNS for you.
-            </div>
-        </div>
-    </div>
-    <p>Current list of loaded certificates</p>
+    <h3>Installed certificates</h3>
+    <p>Certificates Waymark serves, matched to the requested host name (SNI)</p>
     <div style="width: 100%; overflow-x: auto; padding-bottom: 1em;">
         <div style="min-width: 960px; max-width: 100%;  ">
             <table class="ui unstackable basic celled table">
@@ -113,8 +52,80 @@
             <p>A fallback certificate is used when the reverse proxy cannot find a matching certificate for the requested server name. If you are using CloudFlare full strict mode, you can also upload the CloudFlare certificate as fallback certificate.</p>
         </div>
     </div>
+    <!-- Custom fork: adding a certificate is folded away below the list -->
+    <div class="ui basic segment advanceoptions" style="padding-left: 0; padding-right: 0;">
+        <div id="certAddAccordion" class="ui accordion advanceSettings">
+            <div class="title">
+                <i class="dropdown icon"></i>
+                Add a certificate
+            </div>
+            <div class="content">
+            <div class="ui fluid form">
+                <div class="three fields">
+                    <div class="field">
+                    <label>Server Name (Domain)</label>
+                    <input type="text" id="certdomain" placeholder="">
+                    <small><i class="exclamation circle yellow icon"></i> Match the server name with your CN/DNS entry in certificate for faster resolve time</small>
+                    </div>
+                    <div class="field">
+                        <label>Public Key (.pem)</label>
+                        <input type="file" id="pubkeySelector" onchange="handleFileSelect(event, 'pub')">
+                        <small>or .crt files in order systems</small>
+                    </div>
+                    <div class="field">
+                        <label>Private Key (.key)</label>
+                        <input type="file" id="prikeySelector" onchange="handleFileSelect(event, 'pri')">
+                    </div>
+                </div>
+                <button id="certUploadBtn" class="ui basic button showOnlyInCertUploadMode" onclick="handleDomainUploadByKeypress();"><i class="ui teal upload icon"></i> Upload</button>
+                <button id="certPasteBtn" class="ui basic button showOnlyInCertUploadMode" onclick="togglePasteCertInterface();"><i class="ui yellow paste icon"></i> Paste Cert Directly</button>
+                <br class="showOnlyInCertUploadMode">
+                <small class="showOnlyInCertUploadMode">You have intermediate certificate? <a style="cursor:pointer;" onclick="showSideWrapper('snippet/intermediateCertConv.html');">Open Conversion Tool</a></small>
+            </div>
+            <div id="certPasteArea" style="display:none;">
+                <!-- Paste cert function implementation -->
+                <div class="ui fluid form" style="margin-top: 1em;">
+                    <div class="two fields">
+                        <div class="field">
+                            <label>Public Key Content (.pem / .crt)</label>
+                            <textarea id="pubkeyPasteContent" rows="8" placeholder="Paste your public key / certificate content here..." oninput="extractCommonNameFromPastedCert();"></textarea>
+                        </div>
+                        <div class="field">
+                            <label>Private Key Content (.key)</label>
+                            <textarea id="prikeyPasteContent" rows="8" placeholder="Paste your private key content here..."></textarea>
+                        </div>
+                    </div>
+                    <button class="ui basic button" onclick="handlePasteInBrowserAndUpload();"><i class="ui teal upload icon"></i> Upload from Pasted Content</button>
+                    <button class="ui basic button" onclick="togglePasteCertInterface();"><i class="ui grey cancel icon"></i> Cancel</button>
+                </div>
+            </div>
+            <div id="certUploadSuccMsg" class="ui green message" style="display:none;">
+                <i class="ui checkmark icon"></i> Certificate for domain <span id="certUploadingDomain"></span> uploaded.
+            </div>
+            <div class="ui message">
+                <h4>Tips about Server Names & SNI</h4>
+                <div class="ui bulleted list">
+                    <div class="item">
+                        If you have two subdomains like <code>a.example.com</code> and <code>b.example.com</code> ,
+                        for faster response speed, you might want to setup them one by one (i.e. having two seperate certificate for 
+                        <code>a.example.com</code> and <code>b.example.com</code>).
+                    </div>
+                    <div class="item">
+                        If you have a wildcard certificate that covers <code>*.example.com</code>, 
+                        you can just enter <code>example.com</code> as server name to add a certificate.
+                    </div>
+                    <div class="item">
+                        If you have a certificate contain multiple host, you can enter the first domain in your certificate 
+                        and Waymark will try to match the remaining CN/DNS for you.
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
 </div>
 <script>
+    $("#certAddAccordion").accordion();
     var uploadPendingPublicKey = undefined;
     var uploadPendingPrivateKey = undefined;
 
@@ -527,94 +538,6 @@
         });
     }
     initDefaultKeypairCheck();
-
-    function uploadPrivateKey(){
-        // create file input element
-        const input = document.createElement('input');
-        input.type = 'file';
-        
-        // add change listener to file input
-        input.addEventListener('change', () => {
-            // create form data object
-            const formData = new FormData();
-            const csrfToken = document.querySelector('meta[name="zoraxy.csrf.Token"]').getAttribute("content");
-
-            // add selected file to form data
-            formData.append('file', input.files[0]);
-
-            // send form data to server
-            fetch('/api/cert/upload?ktype=pri', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            })
-            .then(response => {
-                initDefaultKeypairCheck();
-                if (response.ok) {
-                    msgbox('File upload successful!');
-                } else {
-                    response.text().then(text => {
-                        msgbox(text, false, 5000);
-                    });
-                    //console.log(response.text());
-                    //alert('File upload failed!');
-                }
-                })
-            .catch(error => {
-                msgbox('An error occurred while uploading the file.', false, 5000);
-                console.error(error);
-            });
-        });
-        
-        // click file input to open file selector
-        input.click();
-    }
-
-    function uploadPublicKey() {
-        // create file input element
-        const input = document.createElement('input');
-        const csrfToken = document.querySelector('meta[name="zoraxy.csrf.Token"]').getAttribute("content");
-        input.type = 'file';
-        
-        // add change listener to file input
-        input.addEventListener('change', () => {
-            // create form data object
-            const formData = new FormData();
-            
-            // add selected file to form data
-            formData.append('file', input.files[0]);
-
-            // send form data to server
-            fetch('/api/cert/upload?ktype=pub', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    msgbox('File upload successful!');
-                    initDefaultKeypairCheck();
-                } else {
-                    response.text().then(text => {
-                        msgbox(text, false, 5000);
-                    });
-                    //console.log(response.text());
-                    //alert('File upload failed!');
-                }
-                })
-            .catch(error => {
-                msgbox('An error occurred while uploading the file.', false, 5000);
-                console.error(error);
-            });
-        });
-        
-        // click file input to open file selector
-        input.click();
-    }
 
     // Toggle the paste certificate interface visibility
     function togglePasteCertInterface() {

@@ -28,18 +28,6 @@ import (
 	the reverse proxy configs
 */
 
-type Record struct {
-	ProxyType               string
-	Rootname                string
-	ProxyTarget             string
-	UseTLS                  bool
-	BypassGlobalTLS         bool
-	SkipTlsValidation       bool
-	RequireBasicAuth        bool
-	BasicAuthCredentials    []*dynamicproxy.BasicAuthCredentials
-	BasicAuthExceptionRules []*dynamicproxy.BasicAuthExceptionRule
-}
-
 /*
 Load Reverse Proxy Config from file and append it to current runtime proxy router
 */

@@ -263,9 +263,25 @@ body.darkTheme .menubar{
 
     .contentWindow{
         display: inline-block;
-        width: 100%;
+        width: calc(100% - 0.8em); /* Custom fork: leave room for the side margins (the page scrolled sideways) */
         margin-right: 0.4em;
         margin-left: 0.4em;
+    }
+
+    /* Custom fork: sub-page menus scroll sideways instead of widening the page */
+    .standardContainer > .ui.secondary.pointing.menu{
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    .standardContainer > .ui.secondary.pointing.menu > .item{
+        white-space: nowrap;
+    }
+    .standardContainer .ui.tabular.menu{
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    .standardContainer .ui.tabular.menu > .item{
+        white-space: nowrap;
     }
 
     .functiontab{

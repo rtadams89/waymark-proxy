@@ -1,9 +1,5 @@
 package utils
 
-import (
-	"net/http"
-)
-
 /*
 	Web Template Generator
 
@@ -12,8 +8,3 @@ import (
 
 
 */
-
-func SendHTMLResponse(w http.ResponseWriter, msg string) {
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(msg))
-}

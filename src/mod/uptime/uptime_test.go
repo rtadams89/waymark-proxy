@@ -15,7 +15,7 @@ import (
 // http.Transport every time and never closed/reused it. It verifies that
 // every connection opened by a check is closed again shortly after.
 func TestGetWebsiteStatusClosesConnections(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	}))
@@ -38,6 +38,8 @@ func TestGetWebsiteStatusClosesConnections(t *testing.T) {
 			atomic.AddInt64(&closed, 1)
 		}
 	}
+	// Set before the server starts: its goroutines read ConnState
+	server.Start()
 
 	m := &Monitor{Config: &Config{}}
 

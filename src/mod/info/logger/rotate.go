@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -72,8 +73,7 @@ func (l *Logger) ArchiveLog(filename string) error {
 	timestamp := time.Now().Format("20060102-150405")
 	baseName := filepath.Base(filename)
 	baseName = baseName[:len(baseName)-len(filepath.Ext(baseName))]
-	archivedName := fmt.Sprintf("%s.%s.log", baseName, timestamp)
-	archivedPath := filepath.Join(backupDir, archivedName)
+	archivedPath := uniqueBackupPath(backupDir, baseName, timestamp)
 
 	// Rename current log file to archived file
 	if err := os.Rename(filename, archivedPath); err != nil {
@@ -89,7 +89,7 @@ func (l *Logger) ArchiveLog(filename string) error {
 		archivedPath += ".gz"
 	}
 
-	if err := l.cleanupOldBackups(backupDir, filename); err != nil {
+	if err := l.cleanupOldBackups(backupDir, filename, l.RotateOption.MaxBackups); err != nil {
 		return err
 	}
 
@@ -98,82 +98,76 @@ func (l *Logger) ArchiveLog(filename string) error {
 
 // Execute log rotation
 func (l *Logger) RotateLog() error {
-	if l.RotateOption == nil || !l.RotateOption.Enabled {
+	//Custom fork: hold the logger lock while the file is swapped, so no
+	//write goes to a closed file, and keep logging (reopen the current file)
+	//if the rename fails. Compression and cleanup run after the lock is
+	//released.
+	mu := l.lock()
+	mu.Lock()
+	if l.RotateOption == nil || !l.RotateOption.Enabled || l.CurrentLogFile == "" {
+		mu.Unlock()
+		return nil
+	}
+	opt := *l.RotateOption
+	current := l.CurrentLogFile
+	if !l.LogNeedRotate(current) {
+		mu.Unlock()
 		return nil
 	}
 
-	needRotate := l.LogNeedRotate(l.CurrentLogFile)
-	l.PrintAndLog("logger", fmt.Sprintf("Log rotation check: need rotate = %v", needRotate), nil)
-	if !needRotate {
-		return nil
-	}
-
-	// Close current file with retry on failure
-	if l.file != nil {
-		var closeErr error
-		for i := 0; i < 5; i++ {
-			closeErr = l.file.Close()
-			if closeErr == nil {
-				break
-			}
-			time.Sleep(1 * time.Second)
-		}
-		if closeErr != nil {
-			return closeErr
-		}
-	}
-
-	// Determine backup directory
-	backupDir := l.RotateOption.BackupDir
+	backupDir := opt.BackupDir
 	if backupDir == "" {
-		backupDir = filepath.Dir(l.CurrentLogFile)
+		backupDir = filepath.Dir(current)
 	}
-
-	// Ensure backup directory exists
 	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		mu.Unlock()
 		return err
 	}
 
-	// Generate rotated filename with timestamp
-	timestamp := time.Now().Format("20060102-150405")
-	baseName := filepath.Base(l.CurrentLogFile)
-	baseName = baseName[:len(baseName)-len(filepath.Ext(baseName))]
-	rotatedName := fmt.Sprintf("%s.%s.log", baseName, timestamp)
-	rotatedPath := filepath.Join(backupDir, rotatedName)
-
-	// Rename current log file to rotated file
-	if err := os.Rename(l.CurrentLogFile, rotatedPath); err != nil {
-		return err
-	}
-
-	// Optionally compress the rotated file
-	if l.RotateOption.Compress {
-		if err := compressFile(rotatedPath); err != nil {
+	if l.file != nil {
+		if err := l.file.Close(); err != nil {
+			mu.Unlock()
 			return err
 		}
-		// Remove the uncompressed rotated file after compression
-		os.Remove(rotatedPath)
-		rotatedPath += ".gz"
+		l.file = nil
 	}
 
-	if err := l.cleanupOldBackups(backupDir, l.CurrentLogFile); err != nil {
-		return err
-	}
+	timestamp := time.Now().Format("20060102-150405")
+	baseName := filepath.Base(current)
+	baseName = baseName[:len(baseName)-len(filepath.Ext(baseName))]
+	rotatedPath := uniqueBackupPath(backupDir, baseName, timestamp)
+	renameErr := os.Rename(current, rotatedPath)
 
-	// Reopen a new log file
-	file, err := os.OpenFile(l.CurrentLogFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	flags := os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	if renameErr == nil {
+		flags |= os.O_TRUNC
+	}
+	file, err := os.OpenFile(current, flags, 0640)
 	if err != nil {
+		l.logger = nil
+		mu.Unlock()
 		return err
 	}
 	l.file = file
-	if l.logger != nil {
-		l.logger.SetOutput(file)
+	l.logger = log.New(file, "", 0)
+	mu.Unlock()
+
+	if renameErr != nil {
+		return renameErr
 	}
-	return nil
+	l.PrintAndLog("logger", "Rotated log file to "+filepath.Base(rotatedPath), nil)
+
+	if opt.Compress {
+		if err := compressFile(rotatedPath); err != nil {
+			return err
+		}
+		os.Remove(rotatedPath)
+	}
+	return l.cleanupOldBackups(backupDir, current, opt.MaxBackups)
 }
 
-func (l *Logger) cleanupOldBackups(backupDir string, excludeFile string) error {
-	if l.RotateOption.MaxBackups <= 0 {
+func (l *Logger) cleanupOldBackups(backupDir string, excludeFile string, maxBackups int) error {
+	if maxBackups <= 0 {
 		return nil
 	}
 
@@ -190,7 +184,7 @@ func (l *Logger) cleanupOldBackups(backupDir string, excludeFile string) error {
 		filtered = append(filtered, file)
 	}
 
-	if len(filtered) <= l.RotateOption.MaxBackups {
+	if len(filtered) <= maxBackups {
 		return nil
 	}
 
@@ -208,7 +202,7 @@ func (l *Logger) cleanupOldBackups(backupDir string, excludeFile string) error {
 		backups = append(backups, backupFile{path: file, modTime: info.ModTime()})
 	}
 
-	if len(backups) <= l.RotateOption.MaxBackups {
+	if len(backups) <= maxBackups {
 		return nil
 	}
 
@@ -219,7 +213,7 @@ func (l *Logger) cleanupOldBackups(backupDir string, excludeFile string) error {
 		return backups[i].modTime.Before(backups[j].modTime)
 	})
 
-	for _, old := range backups[:len(backups)-l.RotateOption.MaxBackups] {
+	for _, old := range backups[:len(backups)-maxBackups] {
 		if err := os.Remove(old.path); err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -248,4 +242,22 @@ func compressFile(filename string) error {
 
 	_, err = io.Copy(gzipWriter, fileToCompress)
 	return err
+}
+
+// uniqueBackupPath names a backup <base>.<timestamp>.log, adding -2, -3 ...
+// when that name (or its .gz) exists, so two rotations within one second
+// do not overwrite each other (custom fork).
+func uniqueBackupPath(dir, base, timestamp string) string {
+	for i := 1; ; i++ {
+		name := fmt.Sprintf("%s.%s.log", base, timestamp)
+		if i > 1 {
+			name = fmt.Sprintf("%s.%s-%d.log", base, timestamp, i)
+		}
+		p := filepath.Join(dir, name)
+		if _, err := os.Stat(p); os.IsNotExist(err) {
+			if _, err := os.Stat(p + ".gz"); os.IsNotExist(err) {
+				return p
+			}
+		}
+	}
 }

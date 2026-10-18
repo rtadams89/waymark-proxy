@@ -1,201 +1,314 @@
 <div class="standardContainer">
+    <style>
+        /* Custom fork: stream proxy editor, styled like the HTTP proxy rule editor */
+        #streamEditModal{
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 68vw;
+            height: 75vh;
+            background-color: var(--theme_bg_primary);
+            padding: 1.4em;
+            border-radius: .6em;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2), 0px 8px 16px rgba(0, 0, 0, 0.2);
+            z-index: 8;
+            max-width: 840px;
+        }
+        #streamEditModal .spconfig_content{
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5em;
+        }
+        #streamEditDarkenLayer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 7;
+            backdrop-filter: blur(3px);
+        }
+        #streamEditModalWrapper {
+            display: none;
+        }
+        #streamEditModal .streamEditTitle {
+            word-break: break-word;
+        }
+        .streamEditCloseMobile, .streamEditSaveMobile {
+            display: none !important;
+        }
+        @media screen and (max-width: 1024px) {
+            #streamEditModal {
+                width: 85vw;
+            }
+        }
+        @media screen and (max-width: 768px) {
+            #streamEditModal {
+                height: 80vh;
+                border-radius: 0;
+                overflow-y: scroll;
+                overflow-x: hidden;
+                width: 100%;
+                padding-left: 0;
+                padding-right: 0;
+            }
+            #streamEditModalSideMenu{
+                width: 16% !important;
+            }
+            #streamEditModalContentWindow{
+                height: 100% !important;
+                width: 84% !important;
+            }
+            #streamEditModal .editorSideMenuText{
+                display: none;
+            }
+            .streamEditClosePC, .streamEditSavePC {
+                display: none !important;
+            }
+            .streamEditCloseMobile, .streamEditSaveMobile {
+                display: block !important;
+                margin-top: 0.4em !important;
+            }
+        }
+    </style>
     <div class="ui basic segment">
         <h2>Stream Proxies</h2>
         <p>Forward TCP and UDP traffic to one or more upstream servers, with load balancing and health checks</p>
     </div>
-    <div class="ui divider"></div>
-    <div class="ui basic segment" style="margin-top: 0;">
-        <h3>TCP / UDP Proxy Rules</h3>
-        <p>A list of TCP / UDP proxy rules created on this host.</p>
-        <div style="overflow-x: auto; ">
-            <table id="proxyTable" class="ui celled basic unstackable table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Listening Address</th>
-                        <th>Upstreams</th>
-                        <th>Mode</th>
-                        <th>Timeout (s)</th>
-                        <th>Enable Logging</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-
-                </tbody>
-            </table>
-        </div>
-        <br>
-        <button class="ui basic right floated button" onclick="initProxyConfigList();" title="Refresh List"><i class="ui green refresh icon"></i>Refresh</button>
-        <br><br>
+    <div class="streamProxyListTools" style="margin-bottom: 1em;">
+        <button class="ui basic green button" onclick="openNewStreamProxyEditor();"><i class="plus icon"></i> Add Stream Proxy</button>
     </div>
-    <div class="ui divider"></div>
-    <div class="ui basic segment" id="addproxyConfig">
-        <h3>Add or Edit Stream Proxy</h3>
-        <p>Create or edit a new stream proxy instance</p>
-        <form id="streamProxyForm" class="ui form">
+    <div style="overflow-x: auto; margin-bottom: 1em;">
+        <table id="proxyTable" class="ui celled basic unstackable table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Listening Address</th>
+                    <th>Upstreams</th>
+                    <th>Mode</th>
+                    <th>Timeout (s)</th>
+                    <th>Enable Logging</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+    </div>
+    <button class="ui icon right floated basic button" onclick="initProxyConfigList();" title="Refresh List"><i class="green refresh icon"></i> Refresh</button>
+    <br><br>
+</div>
+
+<!-- Custom fork: modal for adding or editing a stream proxy -->
+<div id="streamEditModalWrapper">
+    <div id="streamEditModal">
+        <form id="streamProxyForm" class="ui form" style="height: 100%;">
             <div class="field" style="display:none;">
                 <label>UUID</label>
                 <input type="text" name="uuid">
                 <input type="text" name="proxyAddr">
             </div>
-            <div class="field">
-                <label>Name</label>
-                <input type="text" name="name" placeholder="Config Name">
-            </div>
-            <div class="field">
-                <label>Listening Address with Port</label>
-                <input type="text" name="listenAddr" placeholder="">
-                <small>Address to listen on this host. e.g. :25565 or 127.0.0.1:25565. <br>
-                    If you are using Docker, you will also need to expose this port to host network.</small>
-            </div>
-            <!-- Custom fork: upstream pool and health checks (mod/streamproxy/pool_custom.go) -->
-            <div class="field">
-                <label>Upstream servers</label>
-                <textarea name="upstreams" rows="3" placeholder="192.168.1.100:25565&#10;192.168.1.101:25565" style="font-family: monospace;"></textarea>
-                <small>One per line, as host:port. With more than one, new connections are spread across the healthy ones.</small>
-            </div>
-            <div class="two fields">
-                <div class="field">
-                    <label>Load balancing</label>
-                    <select name="loadBalancing">
-                        <option value="roundrobin">Round robin</option>
-                        <option value="leastconn">Least connections</option>
-                        <option value="sourcehash">Source IP hash (sticky)</option>
-                        <option value="failover">Failover (first healthy in the list)</option>
-                    </select>
-                    <small id="streamLBHint"></small>
-                </div>
-                <div class="field" style="padding-top: 1.8em;">
-                    <div class="ui toggle checkbox">
-                        <input type="checkbox" tabindex="0" name="closeOnDown" class="hidden">
-                        <label>Close connections to an upstream when it goes down<br>
-                            <small>Off: open connections stay until they end; only new ones avoid the upstream</small>
-                        </label>
+            <div class="ui grid" style="height: 100%;">
+                <div id="streamEditModalSideMenu" class="four wide column">
+                    <div class="ui secondary fluid vertical menu">
+                        <a class="active item spedit_menu_item" cfgpage="general">
+                            <i class="home icon"></i> <span class="editorSideMenuText">Listener</span>
+                        </a>
+                        <a class="item spedit_menu_item" cfgpage="upstreams">
+                            <i class="server icon"></i> <span class="editorSideMenuText">Upstreams</span>
+                        </a>
+                        <a class="item spedit_menu_item" cfgpage="health">
+                            <i class="heartbeat icon"></i> <span class="editorSideMenuText">Health Checks</span>
+                        </a>
+                        <a class="item spedit_menu_item" cfgpage="access">
+                            <i class="star icon"></i> <span class="editorSideMenuText">Access &amp; Protocol</span>
+                        </a>
                     </div>
+                    <button id="streamEditSaveButton" class="ui basic green fluid button streamEditSavePC" type="submit" style="margin-bottom: 0.4em;"><i class="green check icon"></i> <span class="saveLabel">Create</span></button>
+                    <button class="ui basic fluid button streamEditClosePC" type="button" onclick="closeStreamProxyEditor();">Close</button>
+                    <button class="ui basic green icon circular button streamEditSaveMobile" type="submit" title="Save"><i class="check icon"></i></button>
+                    <button class="ui basic icon circular button streamEditCloseMobile" type="button" onclick="closeStreamProxyEditor();" title="Close"><i class="times icon"></i></button>
                 </div>
-            </div>
-            <div class="ui segment" style="margin-bottom: 1em;">
-                <h4 style="margin-top: 0;"><i class="heartbeat icon"></i>Health checks</h4>
-                <div class="field">
-                    <label>Active check</label>
-                    <select name="hcType">
-                        <option value="none">None</option>
-                        <option value="tcp">TCP connect</option>
-                        <option value="tcpx">TCP: send data and expect a reply</option>
-                        <option value="udp">UDP: send data and expect a reply</option>
-                        <option value="icmp">Ping (ICMP)</option>
-                    </select>
-                    <small id="streamHCTypeHint"></small>
-                </div>
-                <div id="streamHCPayload" style="display: none;">
-                    <div class="three fields">
-                        <div class="seven wide field">
-                            <label>Send</label>
-                            <input type="text" name="hcSend" style="font-family: monospace;" placeholder="PING\r\n">
+                <div id="streamEditModalContentWindow" class="twelve wide column" style="height: 100%;">
+                    <!-- Listener -->
+                    <div class="spconfig_content" spcfg="general">
+                        <div class="ui segment">
+                            <h3 class="streamEditTitle">New stream proxy</h3>
+                            <div class="field">
+                                <label>Name</label>
+                                <input type="text" name="name" placeholder="Config Name">
+                            </div>
+                            <div class="field">
+                                <label>Listening Address with Port</label>
+                                <input type="text" name="listenAddr" placeholder=":25565">
+                                <small>Address to listen on this host. e.g. :25565 or 127.0.0.1:25565. <br>
+                                    If you are using Docker, you will also need to expose this port to host network.</small>
+                            </div>
+                            <div class="field">
+                                <div class="ui toggle checkbox">
+                                    <input type="checkbox" tabindex="0" name="useTCP" class="hidden">
+                                    <label>Enable TCP<br>
+                                        <small>Forward TCP request on this listening socket</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="ui toggle checkbox">
+                                    <input type="checkbox" tabindex="0" name="useUDP" class="hidden">
+                                    <label>Enable UDP<br>
+                                    <small>Forward UDP request on this listening socket</small></label>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>Timeout (s)</label>
+                                <input type="text" name="timeout" placeholder="" value="10">
+                                <small>Connection timeout in seconds</small>
+                            </div>
+                            <div class="field">
+                                <div class="ui toggle checkbox">
+                                    <input type="checkbox" tabindex="0" name="enableLogging" class="hidden">
+                                    <label>Enable Logging<br>
+                                        <small>Enable logging of connection status and errors for this rule</small>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="six wide field">
-                            <label>Reply must contain</label>
-                            <input type="text" name="hcExpect" style="font-family: monospace;" placeholder="PONG">
+                    </div>
+                    <!-- Upstreams -->
+                    <div class="spconfig_content" spcfg="upstreams" style="display: none;">
+                        <div class="ui segment">
+                            <!-- Custom fork: upstream pool and health checks (mod/streamproxy/pool_custom.go) -->
+                            <div class="field">
+                                <label>Upstream servers</label>
+                                <textarea name="upstreams" rows="3" placeholder="192.168.1.100:25565&#10;192.168.1.101:25565" style="font-family: monospace;"></textarea>
+                                <small>One per line, as host:port. With more than one, new connections are spread across the healthy ones.</small>
+                            </div>
+                            <div class="fields">
+                                <div class="field">
+                                    <label>Load balancing</label>
+                                    <select name="loadBalancing">
+                                        <option value="roundrobin">Round robin</option>
+                                        <option value="leastconn">Least connections</option>
+                                        <option value="sourcehash">Source IP hash (sticky)</option>
+                                        <option value="failover">Failover (first healthy in the list)</option>
+                                    </select>
+                                    <small id="streamLBHint"></small>
+                                </div>
+                                <div class="field">
+                                    <div class="ui toggle checkbox">
+                                        <input type="checkbox" tabindex="0" name="closeOnDown" class="hidden">
+                                        <label>Close connections to an upstream when it goes down<br>
+                                            <small>Off: open connections stay until they end; only new ones avoid the upstream</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
-                        <div class="three wide field">
-                            <label>Format</label>
-                            <select name="hcFormat">
-                                <option value="text">Text</option>
-                                <option value="hex">Hex</option>
-                            </select>
+                    </div>
+                    <!-- Health checks -->
+                    <div class="spconfig_content" spcfg="health" style="display: none;">
+                        <div class="ui segment">
+                            <div class="field">
+                                <label>Active check</label>
+                                <select name="hcType">
+                                    <option value="none">None</option>
+                                    <option value="tcp">TCP connect</option>
+                                    <option value="tcpx">TCP: send data and expect a reply</option>
+                                    <option value="udp">UDP: send data and expect a reply</option>
+                                    <option value="icmp">Ping (ICMP)</option>
+                                </select>
+                                <small id="streamHCTypeHint"></small>
+                            </div>
+                            <div id="streamHCPayload" style="display: none;">
+                                <div class="three fields">
+                                    <div class="seven wide field">
+                                        <label>Send</label>
+                                        <input type="text" name="hcSend" style="font-family: monospace;" placeholder="PING\r\n">
+                                    </div>
+                                    <div class="six wide field">
+                                        <label>Reply must contain</label>
+                                        <input type="text" name="hcExpect" style="font-family: monospace;" placeholder="PONG">
+                                    </div>
+                                    <div class="three wide field">
+                                        <label>Format</label>
+                                        <select name="hcFormat">
+                                            <option value="text">Text</option>
+                                            <option value="hex">Hex</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <small id="streamHCPayloadHint" style="display: block; margin: -0.6em 0 1em 0; opacity: 0.8;"></small>
+                            </div>
+                            <div id="streamHCTiming" style="display: none;">
+                                <div class="four fields">
+                                    <div class="field"><label>Every (s)</label><input type="number" name="hcInterval" min="2" max="3600" value="10"></div>
+                                    <div class="field"><label>Timeout (s)</label><input type="number" name="hcTimeout" min="1" max="60" value="3"></div>
+                                    <div class="field"><label>Disable after</label><input type="number" name="hcFall" min="1" max="20" value="3"><small>failed checks</small></div>
+                                    <div class="field"><label>Re-enable after</label><input type="number" name="hcRise" min="1" max="20" value="2"><small>passed checks</small></div>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="ui toggle checkbox">
+                                    <input type="checkbox" tabindex="0" name="hcPassive" class="hidden">
+                                    <label>Passive monitoring<br>
+                                        <small>Take an upstream out after repeated failed connections from real traffic (for UDP: when the upstream reports its port as unreachable)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="streamHCPassive" style="display: none;">
+                                <div class="inline fields">
+                                    <div class="field"><div class="ui checkbox"><input type="checkbox" name="hcCountConn" checked><label>Connection failures</label></div></div>
+                                    <div class="field"><div class="ui checkbox"><input type="checkbox" name="hcCountTimeout" checked><label>Timeouts</label></div></div>
+                                </div>
+                                <div class="three fields">
+                                    <div class="field"><label>Disable after</label><input type="number" name="hcThreshold" min="1" max="1000" value="5"><small>failures ...</small></div>
+                                    <div class="field"><label>Within (s)</label><input type="number" name="hcWindow" min="1" max="3600" value="30"></div>
+                                    <div class="field"><label>Retry after (s)</label><input type="number" name="hcRecovery" min="5" max="3600" value="30"><small>when there is no active check</small></div>
+                                </div>
+                            </div>
+            
                         </div>
                     </div>
-                    <small id="streamHCPayloadHint" style="display: block; margin: -0.6em 0 1em 0; opacity: 0.8;"></small>
-                </div>
-                <div id="streamHCTiming" style="display: none;">
-                    <div class="four fields">
-                        <div class="field"><label>Every (s)</label><input type="number" name="hcInterval" min="2" max="3600" value="10"></div>
-                        <div class="field"><label>Timeout (s)</label><input type="number" name="hcTimeout" min="1" max="60" value="3"></div>
-                        <div class="field"><label>Disable after</label><input type="number" name="hcFall" min="1" max="20" value="3"><small>failed checks</small></div>
-                        <div class="field"><label>Re-enable after</label><input type="number" name="hcRise" min="1" max="20" value="2"><small>passed checks</small></div>
+                    <!-- Access and proxy protocol -->
+                    <div class="spconfig_content" spcfg="access" style="display: none;">
+                        <div class="ui segment">
+                            <div class="field">
+                                <label>Access Rule</label>
+                                <div class="ui fluid selection dropdown" id="streamProxyAccessRuleDropdown">
+                                    <input type="hidden" name="accessRuleUUID" value="default">
+                                    <i class="dropdown icon"></i>
+                                    <div class="default text">Default</div>
+                                    <div class="menu" id="streamProxyAccessRuleList">
+                                        <div class="item" data-value="default"><i class="ui yellow star icon"></i> Default</div>
+                                    </div>
+                                </div>
+                                <small>Select which access rule (blacklist / whitelist) applies to connections on this proxy rule. Uses "Default" if the selected rule is removed.</small>
+                            </div>
+                            <div class="field">
+                                <label>Proxy Protocol</label>
+                                <select name="proxyProtocolVersion" class="ui dropdown">
+                                    <option value="0">Disabled</option>
+                                    <option value="1">Proxy Protocol V1</option>
+                                    <option value="2">Proxy Protocol V2</option>
+                                </select>
+                                <small>Select Proxy Protocol v1 / v2 to use (if any)</small>
+                                    <div id="proxyProtocolUdpWarning" style="display:none; color:#bd7100; margin-top:0.5em;">
+                                        <i class="exclamation triangle icon"></i> Proxy Protocol V1 is not supported for UDP. The proxy protocol header will not be included in UDP packets if selected.
+                                    </div>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
-                <div class="field">
-                    <div class="ui toggle checkbox">
-                        <input type="checkbox" tabindex="0" name="hcPassive" class="hidden">
-                        <label>Passive monitoring<br>
-                            <small>Take an upstream out after repeated failed connections from real traffic (for UDP: when the upstream reports its port as unreachable)</small>
-                        </label>
-                    </div>
-                </div>
-                <div id="streamHCPassive" style="display: none;">
-                    <div class="inline fields">
-                        <div class="field"><div class="ui checkbox"><input type="checkbox" name="hcCountConn" checked><label>Connection failures</label></div></div>
-                        <div class="field"><div class="ui checkbox"><input type="checkbox" name="hcCountTimeout" checked><label>Timeouts</label></div></div>
-                    </div>
-                    <div class="three fields">
-                        <div class="field"><label>Disable after</label><input type="number" name="hcThreshold" min="1" max="1000" value="5"><small>failures ...</small></div>
-                        <div class="field"><label>Within (s)</label><input type="number" name="hcWindow" min="1" max="3600" value="30"></div>
-                        <div class="field"><label>Retry after (s)</label><input type="number" name="hcRecovery" min="5" max="3600" value="30"><small>when there is no active check</small></div>
-                    </div>
-                </div>
             </div>
-            <div class="field">
-                <label>Timeout (s)</label>
-                <input type="text" name="timeout" placeholder="" value="10">
-                <small>Connection timeout in seconds</small>
-            </div>
-            <Br>
-            <div class="field">
-                <div class="ui toggle checkbox">
-                    <input type="checkbox" tabindex="0" name="useTCP" class="hidden">
-                    <label>Enable TCP<br>
-                        <small>Forward TCP request on this listening socket</small>
-                    </label>
-                </div>
-            </div>
-            <div class="field">
-                <div class="ui toggle checkbox">
-                    <input type="checkbox" tabindex="0" name="useUDP" class="hidden">
-                    <label>Enable UDP<br>
-                    <small>Forward UDP request on this listening socket</small></label>
-                </div>
-            </div>
-            <div class="field">
-                <div class="ui toggle checkbox">
-                    <input type="checkbox" tabindex="0" name="enableLogging" class="hidden">
-                    <label>Enable Logging<br>
-                        <small>Enable logging of connection status and errors for this rule</small>
-                    </label>
-                </div>
-            </div>
-            <div class="field">
-                <label>Proxy Protocol</label>
-                <select name="proxyProtocolVersion" class="ui dropdown">
-                    <option value="0">Disabled</option>
-                    <option value="1">Proxy Protocol V1</option>
-                    <option value="2">Proxy Protocol V2</option>
-                </select>
-                <small>Select Proxy Protocol v1 / v2 to use (if any)</small>
-                    <div id="proxyProtocolUdpWarning" style="display:none; color:#bd7100; margin-top:0.5em;">
-                        <i class="exclamation triangle icon"></i> Proxy Protocol V1 is not supported for UDP. The proxy protocol header will not be included in UDP packets if selected.
-                    </div>
-            </div>
-            <div class="field">
-                <label>Access Rule</label>
-                <div class="ui fluid selection dropdown" id="streamProxyAccessRuleDropdown">
-                    <input type="hidden" name="accessRuleUUID" value="default">
-                    <i class="dropdown icon"></i>
-                    <div class="default text">Default</div>
-                    <div class="menu" id="streamProxyAccessRuleList">
-                        <div class="item" data-value="default"><i class="ui yellow star icon"></i> Default</div>
-                    </div>
-                </div>
-                <small>Select which access rule (blacklist / whitelist) applies to connections on this proxy rule. Uses "Default" if the selected rule is removed.</small>
-            </div>
-            <div style="display:inline-block;">
-                <button id="addStreamProxyButton" class="ui basic button" type="submit"><i class="ui green add icon"></i> Create</button>  
-            </div>
-            <button id="editStreamProxyButton" class="ui basic button" onclick="confirmEditTCPProxyConfig(event, this);" style="display:none;"><i class="ui green check icon"></i> Update</button>  
-            <button class="ui basic red button" onclick="event.preventDefault(); cancelStreamProxyEdit(event);"><i class="ui red remove icon"></i> Cancel</button>  
         </form>
     </div>
+    <div id="streamEditDarkenLayer"></div>
 </div>
     <script>
         let editingStreamProxyConfigUUID = ""; //The current editing TCP Proxy config UUID
@@ -243,8 +356,8 @@
             event.preventDefault();
 
             //Check if update mode
-            if ($("#editStreamProxyButton").is(":visible")){
-                confirmEditTCPProxyConfig(event,$("#editStreamProxyButton")[0]);
+            if ($("#streamProxyForm input[name=uuid]").val().trim() != ""){
+                confirmEditTCPProxyConfig(event, $("#streamEditSaveButton")[0]);
                 return;
             }
 
@@ -286,7 +399,7 @@
                             msgbox("Rule created, but its upstreams and health checks were not saved: " + err, false, 8000);
                         }else{
                             msgbox("Config Added");
-                            clearStreamProxyAddEditForm();
+                            closeStreamProxyEditor();
                         }
                         initProxyConfigList();
                     });
@@ -304,13 +417,61 @@
             $("#streamProxyForm input[name=timeout]").val(10);
             $("#streamProxyForm .toggle.checkbox").checkbox("set unchecked");
             $("#streamProxyAccessRuleDropdown").dropdown("set selected", "default");
+            editingStreamProxyConfigUUID = "";
+        }
+
+        /* Custom fork: the add / edit form is a modal, like the HTTP proxy rule editor */
+        function showStreamEditorPage(page){
+            $("#streamEditModal .spedit_menu_item.active").removeClass("active");
+            $(`#streamEditModal .spedit_menu_item[cfgpage='${page}']`).addClass("active");
+            $("#streamEditModal .spconfig_content").hide();
+            $(`#streamEditModal .spconfig_content[spcfg='${page}']`).show().scrollTop(0);
+        }
+        $("#streamEditModal .spedit_menu_item").on("click", function(){
+            showStreamEditorPage($(this).attr("cfgpage"));
+        });
+
+        function showStreamProxyEditor(title, saveLabel){
+            $("#streamEditModal .streamEditTitle").text(title);
+            $("#streamEditSaveButton .saveLabel").text(saveLabel);
+            streamHCSync();
+            updateProxyProtocolUdpWarning();
+            showStreamEditorPage("general");
+            $("body").css("overflow", "hidden");
+            $("#streamEditModalWrapper").fadeIn("fast");
+        }
+
+        function openNewStreamProxyEditor(){
+            clearStreamProxyAddEditForm();
+            //New rules start with TCP on
+            $("#streamProxyForm input[name=useTCP]").parent().checkbox("set checked");
+            initStreamProxyAccessRuleDropdown(function(){
+                $("#streamProxyAccessRuleDropdown").dropdown("set selected", "default");
+            });
+            showStreamProxyEditor("New stream proxy", "Create");
+        }
+
+        function streamProxyEditorOpen(){
+            return $("#streamEditModalWrapper").is(":visible");
+        }
+
+        function closeStreamProxyEditor(){
+            $("#streamEditModalWrapper").fadeOut("fast", function(){
+                $("body").css("overflow", "auto");
+                clearStreamProxyAddEditForm();
+            });
         }
 
         function cancelStreamProxyEdit(event=undefined) {
-            clearStreamProxyAddEditForm();
-            $("#addStreamProxyButton").show();
-            $("#editStreamProxyButton").hide();
+            closeStreamProxyEditor();
         }
+
+        $("#streamEditDarkenLayer").on("click", closeStreamProxyEditor);
+        $(document).on("keydown", function(e){
+            if (e.key == "Escape" && streamProxyEditorOpen()){
+                closeStreamProxyEditor();
+            }
+        });
 
         function validateTCPProxyConfig(form){
             //Check if name is filled. If not, generate a random name for it
@@ -422,8 +583,7 @@
         function editTCPProxyConfig(configUUID){
             let targetConfig = getConfigDetailsFromDOM(configUUID);
             if (targetConfig != null){
-                $("#addStreamProxyButton").hide();
-                $("#editStreamProxyButton").show();
+                clearStreamProxyAddEditForm();
                $.each(targetConfig, function(key, value) {
                     var field;
                     if (key == "UseTCP"){
@@ -476,6 +636,7 @@
                 });
                 fillStreamPool(targetConfig);
                 editingStreamProxyConfigUUID = configUUID;
+                showStreamProxyEditor("Edit stream proxy: " + (targetConfig.Name || targetConfig.ListeningAddress), "Save");
             }else{
                 msgbox("Unable to load target config", false);
             }
@@ -536,8 +697,7 @@
                         }
                         msgbox("Config Updated");
                         initProxyConfigList();
-                        cancelStreamProxyEdit();
-                        clearStreamProxyAddEditForm();
+                        closeStreamProxyEditor();
                     });
                 },
                 error: function() {
@@ -767,10 +927,19 @@
                 });
             });
         }
-        setInterval(function(){ if ($("#streamproxy").is(":visible")) refreshStreamUpstreamHealth(); }, 10000);
+        //Custom fork: refresh the list every 10 s while it is on screen and the
+        //editor is closed; with the editor open only the health is refreshed
+        setInterval(function(){
+            if (!$("#streamproxy").is(":visible") || document.hidden) return;
+            if (streamProxyEditorOpen() || $(".sideWrapper").is(":visible")){
+                refreshStreamUpstreamHealth();
+            }else{
+                initProxyConfigList(true);
+            }
+        }, 10000);
         fillStreamPool({});
 
-        function initProxyConfigList(){
+        function initProxyConfigList(quiet=false){
             $.ajax({
                 type: 'GET',
                 url: '/api/streamprox/config/list',
@@ -779,7 +948,9 @@
                     refreshStreamUpstreamHealth();
                 },
                 error: function() {
-                    msgbox('Unable to load proxy configs', false);
+                    if (!quiet){
+                        msgbox('Unable to load proxy configs', false);
+                    }
                 }
             });
         }
@@ -793,4 +964,4 @@
             initStreamProxyAccessRuleDropdown();
         }
     </script>
-</div>
+</div>

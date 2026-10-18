@@ -9,7 +9,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"net/http"
-	"net/mail"
 	"strings"
 
 	"github.com/gorilla/sessions"
@@ -25,14 +24,6 @@ type AuthAgent struct {
 	Database                *db.Database
 	LoginRedirectionHandler func(http.ResponseWriter, *http.Request)
 	Logger                  *logger.Logger
-}
-
-type AuthEndpoints struct {
-	Login         string
-	Logout        string
-	Register      string
-	CheckLoggedIn string
-	Autologin     string
 }
 
 // Constructor
@@ -236,25 +227,6 @@ func (a *AuthAgent) GetUserName(w http.ResponseWriter, r *http.Request) (string,
 	}
 }
 
-// Get the current session user email from request
-func (a *AuthAgent) GetUserEmail(w http.ResponseWriter, r *http.Request) (string, error) {
-	if a.CheckAuth(r) {
-		//This user has logged in.
-		session, _ := a.SessionStore.Get(r, a.SessionName)
-		username := session.Values["username"].(string)
-		userEmail := ""
-		err := a.Database.Read("auth", "email/"+username, &userEmail)
-		if err != nil {
-			return "", err
-		}
-
-		return userEmail, nil
-	} else {
-		//This user has not logged in.
-		return "", errors.New("user not logged in")
-	}
-}
-
 // Check if the user has logged in, return true / false in JSON
 func (a *AuthAgent) CheckLogin(w http.ResponseWriter, r *http.Request) {
 	if a.CheckAuth(r) {
@@ -262,52 +234,6 @@ func (a *AuthAgent) CheckLogin(w http.ResponseWriter, r *http.Request) {
 	} else {
 		utils.SendJSONResponse(w, "false")
 	}
-}
-
-// Handle new user register. Require POST username, password, group.
-func (a *AuthAgent) HandleRegister(w http.ResponseWriter, r *http.Request, callback func(string, string)) {
-	//Get username from request
-	newusername, err := utils.PostPara(r, "username")
-	if err != nil {
-		utils.SendErrorResponse(w, "Missing 'username' paramter")
-		return
-	}
-
-	//Get password from request
-	password, err := utils.PostPara(r, "password")
-	if err != nil {
-		utils.SendErrorResponse(w, "Missing 'password' paramter")
-		return
-	}
-
-	//Get email from request
-	email, err := utils.PostPara(r, "email")
-	if err != nil {
-		utils.SendErrorResponse(w, "Missing 'email' paramter")
-		return
-	}
-
-	_, err = mail.ParseAddress(email)
-	if err != nil {
-		utils.SendErrorResponse(w, "Invalid or malformed email")
-		return
-	}
-
-	//Ok to proceed create this user
-	err = a.CreateUserAccount(newusername, password, email)
-	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	//Do callback if exists
-	if callback != nil {
-		callback(newusername, email)
-	}
-
-	//Return to the client with OK
-	utils.SendOK(w)
-	a.Logger.PrintAndLog("auth", "New user "+newusername+" added to system.", nil)
 }
 
 // Handle new user register without confirmation email. Require POST username, password, group.
@@ -357,47 +283,6 @@ func (a *AuthAgent) CheckAuth(r *http.Request) bool {
 	return true
 }
 
-// Handle de-register of users. Require POST username.
-// THIS FUNCTION WILL NOT CHECK FOR PERMISSION. PLEASE USE WITH PERMISSION HANDLER
-func (a *AuthAgent) HandleUnregister(w http.ResponseWriter, r *http.Request) {
-	//Check if the user is logged in
-	if !a.CheckAuth(r) {
-		//This user has not logged in
-		utils.SendErrorResponse(w, "Login required to remove user from the system.")
-		return
-	}
-
-	//Get username from request
-	username, err := utils.PostPara(r, "username")
-	if err != nil {
-		utils.SendErrorResponse(w, "Missing 'username' paramter")
-		return
-	}
-
-	err = a.UnregisterUser(username)
-	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	//Return to the client with OK
-	utils.SendOK(w)
-	a.Logger.PrintAndLog("auth", "User "+username+" has been removed from the system", nil)
-}
-
-func (a *AuthAgent) UnregisterUser(username string) error {
-	//Check if the user exists in the system database.
-	if !a.Database.KeyExists("auth", "passhash/"+username) {
-		//This user do not exists.
-		return errors.New("this user does not exists")
-	}
-
-	//OK! Remove the user from the database
-	a.Database.Delete("auth", "passhash/"+username)
-	a.Database.Delete("auth", "email/"+username)
-	return nil
-}
-
 // Get the number of users in the system
 func (a *AuthAgent) GetUserCounts() int {
 	entries, _ := a.Database.ListTable("auth")
@@ -415,19 +300,6 @@ func (a *AuthAgent) GetUserCounts() int {
 	return usercount
 }
 
-// List all username within the system
-func (a *AuthAgent) ListUsers() []string {
-	entries, _ := a.Database.ListTable("auth")
-	results := []string{}
-	for _, keypairs := range entries {
-		if strings.Contains(string(keypairs[0]), "passhash/") {
-			username := strings.Split(string(keypairs[0]), "/")[1]
-			results = append(results, username)
-		}
-	}
-	return results
-}
-
 // Check if the given username exists
 func (a *AuthAgent) UserExists(username string) bool {
 	userpasswordhash := ""
@@ -436,25 +308,6 @@ func (a *AuthAgent) UserExists(username string) bool {
 		return false
 	}
 	return true
-}
-
-// Update the session expire time given the request header.
-func (a *AuthAgent) UpdateSessionExpireTime(w http.ResponseWriter, r *http.Request) bool {
-	session, _ := a.SessionStore.Get(r, a.SessionName)
-	if session.Values["authenticated"].(bool) {
-		//User authenticated. Extend its expire time
-		rememberme := session.Values["rememberMe"].(bool)
-		//Extend the session expire time
-		if rememberme {
-			session.Options = newSessionOptions(r, 3600*24*7) //One week
-		} else {
-			session.Options = newSessionOptions(r, 3600*1) //One hour
-		}
-		session.Save(r, w)
-		return true
-	} else {
-		return false
-	}
 }
 
 // SetPassword replaces an existing user's password.

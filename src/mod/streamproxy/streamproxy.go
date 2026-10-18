@@ -1,6 +1,7 @@
 package streamproxy
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net"
@@ -87,11 +88,71 @@ type ProxyRelayInstance struct {
 	udpClientMap                sync.Map  //map storing the UDP client-server connections
 	parent                      *Manager  `json:"-"`
 
-	//Custom fork (pool_custom.go): per-upstream counters, and a lock for
-	//the pool settings while the rule runs
-	pool     *upstreamPool
-	poolOnce sync.Once
-	poolMu   sync.RWMutex
+	//Custom fork (pool_custom.go, instances.go): per-upstream counters; poolMu
+	//guards the exported fields and the stop channels, lifeMu serialises
+	//Start and Stop, and listeners tracks the running listener goroutines
+	pool      *upstreamPool
+	poolOnce  sync.Once
+	poolMu    sync.RWMutex
+	lifeMu    sync.Mutex
+	listeners *sync.WaitGroup
+}
+
+// InstanceView is a copy of a rule's settings and state (custom fork). It
+// has the same fields as ProxyRelayInstance, so the saved config files and
+// the API keep their format.
+type InstanceView struct {
+	UUID                 string
+	Name                 string
+	Running              bool
+	AutoStart            bool
+	ListeningAddress     string
+	ProxyTargetAddr      string
+	UseTCP               bool
+	UseUDP               bool
+	ProxyProtocolVersion ProxyProtocolVersion
+	AccessRuleUUID       string
+	EnableLogging        bool
+	Timeout              int
+	Upstreams            []string
+	LoadBalancing        string
+	HealthCheck          *healthcheck.Config
+	CloseOnUpstreamDown  bool
+}
+
+// View returns a copy of the rule's settings and state, taken under its lock.
+func (c *ProxyRelayInstance) View() InstanceView {
+	c.poolMu.RLock()
+	defer c.poolMu.RUnlock()
+	v := InstanceView{
+		UUID:                 c.UUID,
+		Name:                 c.Name,
+		Running:              c.Running,
+		AutoStart:            c.AutoStart,
+		ListeningAddress:     c.ListeningAddress,
+		ProxyTargetAddr:      c.ProxyTargetAddr,
+		UseTCP:               c.UseTCP,
+		UseUDP:               c.UseUDP,
+		ProxyProtocolVersion: c.ProxyProtocolVersion,
+		AccessRuleUUID:       c.AccessRuleUUID,
+		EnableLogging:        c.EnableLogging,
+		Timeout:              c.Timeout,
+		LoadBalancing:        c.LoadBalancing,
+		CloseOnUpstreamDown:  c.CloseOnUpstreamDown,
+	}
+	if c.Upstreams != nil {
+		v.Upstreams = append([]string{}, c.Upstreams...)
+	}
+	if c.HealthCheck != nil {
+		hc := *c.HealthCheck
+		v.HealthCheck = &hc
+	}
+	return v
+}
+
+// MarshalJSON writes the rule's view, so encoding never races with changes.
+func (c *ProxyRelayInstance) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.View())
 }
 
 type Options struct {
@@ -112,8 +173,9 @@ type Manager struct {
 	Options *Options
 	Configs []*ProxyRelayInstance
 
-	//Realtime Statistics
-	Connections int //currently connected connect counts
+	//Custom fork: cfgMu guards Configs, saveMu serialises config file writes
+	cfgMu  sync.RWMutex
+	saveMu sync.Mutex
 
 	//Custom fork: upstreams health checks took out of load balancing
 	healthMu sync.Mutex
@@ -189,24 +251,25 @@ func NewStreamProxy(options *Options) (*Manager, error) {
 	}
 
 	//Create a new proxy manager for TCP
-	thisManager := Manager{
-		Options:     options,
-		Connections: 0,
+	thisManager := &Manager{
+		Options: options,
+		Configs: previousRules,
 	}
 
 	//Inject manager into the rules
 	for _, rule := range previousRules {
-		rule.parent = &thisManager
+		rule.parent = thisManager
+	}
+	for _, rule := range previousRules {
 		if rule.Running {
 			//This was previously running. Start it again
+			rule.Running = false
 			thisManager.logf("Resuming stream proxy rule "+rule.Name, nil)
 			rule.Start()
 		}
 	}
 
-	thisManager.Configs = previousRules
-
-	return &thisManager, nil
+	return thisManager, nil
 }
 
 // Wrapper function to log error
@@ -248,15 +311,25 @@ func (m *Manager) NewConfig(config *ProxyRelayOptions) string {
 		udpClientMap:                sync.Map{},
 		parent:                      m,
 	}
+	m.cfgMu.Lock()
 	m.Configs = append(m.Configs, &thisConfig)
+	m.cfgMu.Unlock()
 	m.SaveConfigToDatabase()
 	m.changed() //Custom fork
 	return configUUID
 }
 
+// List returns the rules (custom fork). The slice is a copy; read a rule's
+// settings with View.
+func (m *Manager) List() []*ProxyRelayInstance {
+	m.cfgMu.RLock()
+	defer m.cfgMu.RUnlock()
+	return append([]*ProxyRelayInstance{}, m.Configs...)
+}
+
 func (m *Manager) GetConfigByUUID(configUUID string) (*ProxyRelayInstance, error) {
 	// Find and return the config with the specified UUID
-	for _, config := range m.Configs {
+	for _, config := range m.List() {
 		if config.UUID == configUUID {
 			return config, nil
 		}
@@ -296,7 +369,25 @@ func (m *Manager) EditConfig(newConfig *ProxyRuleUpdateConfig) error {
 		return err
 	}
 
+	if newConfig.NewAccessRuleUUID != "" {
+		// Validate that the access rule exists; if not, fall back to default
+		if m.Options.AccessController != nil && !m.Options.AccessController.AccessRuleExists(newConfig.NewAccessRuleUUID) {
+			return errors.New("access rule not found: " + newConfig.NewAccessRuleUUID)
+		}
+	}
+	if newConfig.NewTimeout != -1 && newConfig.NewTimeout < 0 {
+		return errors.New("invalid timeout value given")
+	}
+
+	//Custom fork: stop a running rule before changing it (connections that
+	//are open keep going), so its listeners never see half-changed settings
+	wasRunning := foundConfig.IsRunning()
+	if wasRunning {
+		foundConfig.Stop()
+	}
+
 	// Validate and update the fields
+	foundConfig.poolMu.Lock()
 	if newConfig.NewName != "" {
 		foundConfig.Name = newConfig.NewName
 	}
@@ -316,61 +407,97 @@ func (m *Manager) EditConfig(newConfig *ProxyRuleUpdateConfig) error {
 	foundConfig.EnableLogging = newConfig.EnableLogging
 
 	if newConfig.NewAccessRuleUUID != "" {
-		// Validate that the access rule exists; if not, fall back to default
-		if m.Options.AccessController != nil && !m.Options.AccessController.AccessRuleExists(newConfig.NewAccessRuleUUID) {
-			return errors.New("access rule not found: " + newConfig.NewAccessRuleUUID)
-		}
 		foundConfig.AccessRuleUUID = newConfig.NewAccessRuleUUID
 	}
-
 	if newConfig.NewTimeout != -1 {
-		if newConfig.NewTimeout < 0 {
-			return errors.New("invalid timeout value given")
-		}
 		foundConfig.Timeout = newConfig.NewTimeout
 	}
+	foundConfig.poolMu.Unlock()
 
 	m.SaveConfigToDatabase()
 	m.changed() //Custom fork
 
-	//Check if config is running. If yes, restart it
-	if foundConfig.IsRunning() {
-		foundConfig.Restart()
+	//Start it again if it was running
+	if wasRunning {
+		return foundConfig.Start()
 	}
 	return nil
 }
 
 // Remove the config from file by UUID
 func (m *Manager) RemoveConfig(configUUID string) error {
-	err := os.Remove(filepath.Join(m.Options.ConfigStore, configUUID+".config"))
-	if err != nil {
-		return err
-	}
-	// Find and remove the config with the specified UUID
+	m.cfgMu.Lock()
+	idx := -1
 	for i, config := range m.Configs {
 		if config.UUID == configUUID {
-			m.Configs = append(m.Configs[:i], m.Configs[i+1:]...)
-			m.SaveConfigToDatabase()
-			m.changed() //Custom fork
-			return nil
+			idx = i
+			break
 		}
 	}
-	return errors.New("config not found")
+	if idx < 0 {
+		m.cfgMu.Unlock()
+		return errors.New("config not found")
+	}
+	m.Configs = append(m.Configs[:idx:idx], m.Configs[idx+1:]...)
+	m.cfgMu.Unlock()
+
+	//Custom fork: remove the file under saveMu, so a save running at the
+	//same time cannot write it back
+	m.saveMu.Lock()
+	err := os.Remove(filepath.Join(m.Options.ConfigStore, configUUID+".config"))
+	m.saveMu.Unlock()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	m.changed() //Custom fork
+	return nil
 }
 
 // Save all configs to ConfigStore folder
 func (m *Manager) SaveConfigToDatabase() {
-	for _, config := range m.Configs {
+	//Custom fork: one save at a time, each file replaced atomically (a crash
+	//or a concurrent save used to be able to leave a truncated file), and
+	//only files that changed are written
+	m.saveMu.Lock()
+	defer m.saveMu.Unlock()
+	for _, config := range m.List() {
 		configBytes, err := json.Marshal(config)
 		if err != nil {
 			m.logf("Failed to marshal stream proxy config", err)
 			continue
 		}
-		err = os.WriteFile(m.Options.ConfigStore+"/"+config.UUID+".config", configBytes, 0775)
-		if err != nil {
+		path := filepath.Join(m.Options.ConfigStore, config.UUID+".config")
+		if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, configBytes) {
+			continue
+		}
+		if err := writeFileAtomic(path, configBytes); err != nil {
 			m.logf("Failed to save stream proxy config", err)
 		}
 	}
+}
+
+// writeFileAtomic writes data to a temporary file next to path and renames
+// it over path.
+func writeFileAtomic(path string, data []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".tmp-*")
+	if err != nil {
+		return err
+	}
+	_, werr := tmp.Write(data)
+	cerr := tmp.Close()
+	if werr == nil {
+		werr = cerr
+	}
+	if werr == nil {
+		werr = os.Chmod(tmp.Name(), 0640)
+	}
+	if werr == nil {
+		werr = os.Rename(tmp.Name(), path)
+	}
+	if werr != nil {
+		os.Remove(tmp.Name())
+	}
+	return werr
 }
 
 // getEffectiveAccessRule returns the access rule for this proxy instance.
@@ -380,10 +507,13 @@ func (c *ProxyRelayInstance) getEffectiveAccessRule() *access.AccessRule {
 	if c.parent.Options.AccessController == nil {
 		return nil
 	}
-	rule, err := c.parent.Options.AccessController.GetAccessRuleByID(c.AccessRuleUUID)
+	c.poolMu.RLock()
+	ruleID, name := c.AccessRuleUUID, c.Name
+	c.poolMu.RUnlock()
+	rule, err := c.parent.Options.AccessController.GetAccessRuleByID(ruleID)
 	if err != nil {
 		// Rule not found (deleted or empty UUID); fall back to default
-		c.parent.logf("Access rule \""+c.AccessRuleUUID+"\" not found for stream proxy "+c.Name+", falling back to default", nil)
+		c.parent.logf("Access rule \""+ruleID+"\" not found for stream proxy "+name+", falling back to default", nil)
 		rule, err = c.parent.Options.AccessController.GetAccessRuleByID("default")
 		if err != nil {
 			return nil

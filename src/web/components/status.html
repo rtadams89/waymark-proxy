@@ -350,7 +350,18 @@
 
     #status .certOverviewItem{
         flex: 1;
+        min-width: 0;
         padding: 0 1em;
+    }
+
+    /* Custom fork: on phones the labels wrap instead of widening the page */
+    @media screen and (max-width: 768px) {
+        #status .certOverviewItem{
+            padding: 0 0.5em;
+        }
+        #status .certOverviewLabel{
+            white-space: normal;
+        }
     }
 
     #status .certOverviewItem:not(:last-child){
@@ -1378,18 +1389,21 @@
                     chart.resize();
                 }
             });
-            if (worldMap != undefined){
-                worldMap.updateSize();
-            }
+            resizeWorldMap();
         }, 300);
     }
 
     //jsVectorMap does not auto-resize its SVG on window/container resize
-    window.addEventListener('resize', function(){
-        if (worldMap != undefined){
+    window.addEventListener('resize', resizeWorldMap);
+
+    //Custom fork: only resize the map while it can be measured; a hidden map
+    //(another tab open) has no size, and resizing it set NaN transforms
+    function resizeWorldMap(){
+        let el = document.getElementById("worldMap");
+        if (worldMap != undefined && el && el.offsetWidth > 0 && el.offsetHeight > 0){
             worldMap.updateSize();
         }
-    });
+    }
 </script>
 <!-- Custom fork: per-panel show/hide settings -->
 <script src="script/statusPanels.js"></script>

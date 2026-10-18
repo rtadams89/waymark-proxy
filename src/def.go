@@ -55,7 +55,6 @@ const (
 	GEODB_CACHE_CLEAR_INTERVAL   = 15 /* Minutes */
 	CSRF_COOKIENAME              = "waymark_csrf"
 	LOG_PREFIX                   = "waymark"
-	LOG_EXTENSION                = ".log"
 	STATISTIC_AUTO_SAVE_INTERVAL = 600 /* Seconds */
 )
 

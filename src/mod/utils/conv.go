@@ -9,19 +9,6 @@ import (
 	"strings"
 )
 
-func StringToInt64(number string) (int64, error) {
-	i, err := strconv.ParseInt(number, 10, 64)
-	if err != nil {
-		return -1, err
-	}
-	return i, nil
-}
-
-func Int64ToString(number int64) string {
-	convedNumber := strconv.FormatInt(number, 10)
-	return convedNumber
-}
-
 func SizeStringToBytes(sizeStr string) (int64, error) {
 	sizeStr = strings.TrimSpace(sizeStr)
 	if len(sizeStr) == 0 {
@@ -64,28 +51,6 @@ func SizeStringToBytes(sizeStr string) (int64, error) {
 		return 0, nil // Unknown unit
 	}
 	return int64(size), nil
-}
-
-func BytesToHumanReadable(bytes int64) string {
-	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
-		TB = GB * 1024
-	)
-
-	switch {
-	case bytes >= TB:
-		return strconv.FormatFloat(float64(bytes)/float64(TB), 'f', 2, 64) + " TB"
-	case bytes >= GB:
-		return strconv.FormatFloat(float64(bytes)/float64(GB), 'f', 2, 64) + " GB"
-	case bytes >= MB:
-		return strconv.FormatFloat(float64(bytes)/float64(MB), 'f', 2, 64) + " MB"
-	case bytes >= KB:
-		return strconv.FormatFloat(float64(bytes)/float64(KB), 'f', 2, 64) + " KB"
-	default:
-		return strconv.FormatInt(bytes, 10) + " Bytes"
-	}
 }
 
 func ReplaceSpecialCharacters(filename string) string {

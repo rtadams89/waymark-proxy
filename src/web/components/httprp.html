@@ -39,25 +39,10 @@
             border: 0px solid transparent !important;
         }
 
-        /* Detail view toggle - hide by default */
-        th.details-view,
-        td.details-view {
-            display: none;
-        }
-
-        /* Table wrapper styling for detail view */
+        /* Custom fork: all columns are always shown; the table scrolls inside its wrapper */
         #httpProxyTableWrapper {
             width: 100%;
             overflow-x: auto;
-        }
-
-        #httpProxyTableWrapper.detail-view-enabled {
-            width: calc(100vw - 280px); /* Account for sidebar width */
-            max-width: none;
-        }
-
-        #httpProxyTableWrapper.detail-view-enabled table {
-            min-width: 1400px; /* Ensure table expands to accommodate all detail columns */
         }
 
         /* Custom, non overlaying modal for proxy rule editing */
@@ -218,9 +203,6 @@
             <input type="password"  autocomplete="off" hidden/>
             <input type="text" id="searchInput"  placeholder="Quick Search" onkeydown="handleSearchInput(event);" onchange="handleSearchInput(event);" onblur="handleSearchInput(event);">
         </div>
-        <button class="ui basic button" id="detailViewToggle" onclick="toggleDetailViewButton();" style="float: right;">
-            Basics View
-        </button>
     </div>
     
     <div id="httpProxyTableWrapper" style="width: 100%; overflow-x: auto; margin-bottom: 1em; min-height: 300px;">
@@ -955,7 +937,6 @@
             }
 
             resolveAccessRuleNameOnHostRPlist();
-            initDetailView();
             filterProxyList();
             updateHealthIndicators();
             markMaintenanceHosts();
@@ -1418,8 +1399,24 @@
             });
         });
     }
+    //Custom fork: refresh the whole list every 15 s while it is on screen, unless
+    //the editor, a side panel, a menu or a column sort is in use (then only the
+    //health indicators are refreshed, so nothing the user is working with moves)
+    function canAutoRefreshHttpProxyList(){
+        return !document.hidden
+            && !$("#httprpEditModalWrapper").is(":visible")
+            && !$(".sideWrapper").is(":visible")
+            && $("#tagFilterDropdown .menu:visible").length == 0
+            && $("#httpProxyTableWrapper th.sorted").length == 0
+            && $("#httpProxyList .editBtn.disabled").length == 0;
+    }
     setInterval(function(){
-        if ($("#httpProxyList").is(":visible")){
+        if (!$("#httpProxyList").is(":visible")){
+            return;
+        }
+        if (canAutoRefreshHttpProxyList()){
+            listProxyEndpoints();
+        }else{
             updateHealthIndicators();
         }
     }, 15000);
@@ -1603,59 +1600,6 @@
     }
 
     /* Tags & Search */
-    function toggleDetailViewButton() {
-        // Check current state
-        let currentState = localStorage.getItem("httprp_detailView");
-        let isDetailsView = currentState === "true";
-        
-        // Toggle the state
-        if (isDetailsView) {
-            // Switch to Basics view
-            $(".standardContainer th.details-view, .standardContainer td.details-view").hide();
-            $("#httpProxyTableWrapper").removeClass("detail-view-enabled");
-            localStorage.setItem("httprp_detailView", "false");
-            $("#detailViewToggle").text("Basics View");
-        } else {
-            // Switch to Details view
-            $(".standardContainer th.details-view, .standardContainer td.details-view").show();
-            $("#httpProxyTableWrapper").addClass("detail-view-enabled");
-            localStorage.setItem("httprp_detailView", "true");
-            $("#detailViewToggle").text("Details View");
-        }
-    }
-
-    function toggleDetailView(isChecked) {
-        if (isChecked) {
-            // Show detail view columns (only in the proxy list table, not in the editor)
-            $(".standardContainer th.details-view, .standardContainer td.details-view").show();
-            $("#httpProxyTableWrapper").addClass("detail-view-enabled");
-            // Save to localStorage
-            localStorage.setItem("httprp_detailView", "true");
-        } else {
-            // Hide detail view columns
-            $(".standardContainer th.details-view, .standardContainer td.details-view").hide();
-            $("#httpProxyTableWrapper").removeClass("detail-view-enabled");
-            // Save to localStorage
-            localStorage.setItem("httprp_detailView", "false");
-        }
-    }
-
-    function initDetailView() {
-        // Load detail view preference from localStorage
-        let detailViewEnabled = localStorage.getItem("httprp_detailView");
-        if (detailViewEnabled === "true") {
-            // Show details view
-            $(".standardContainer th.details-view, .standardContainer td.details-view").show();
-            $("#httpProxyTableWrapper").addClass("detail-view-enabled");
-            $("#detailViewToggle").text("Details View");
-        } else {
-            // Show basics view (default)
-            $(".standardContainer th.details-view, .standardContainer td.details-view").hide();
-            $("#httpProxyTableWrapper").removeClass("detail-view-enabled");
-            $("#detailViewToggle").text("Basics View");
-        }
-    }
-
     function handleSearchInput(event){
         if (event.key == "Escape"){
             $("#searchInput").val("");
@@ -1725,15 +1669,6 @@
                 ${htmlEscape(tag)}
             </div>`);
         });
-    }
-
-    // Edit tags for a specific endpoint
-    function editTags(uuid){
-        let payload = encodeURIComponent(JSON.stringify({
-            ept: "host",
-            ep: uuid
-        }));
-        showEditorSideWrapper("snippet/tagEditor.html?t=" + Date.now() + "#" + payload);
     }
 
     // Render the tags preview from tag editing snippet, callback from tags editor
@@ -2456,4 +2391,4 @@
         }
     }
         
-</script>
+</script>

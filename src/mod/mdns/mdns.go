@@ -38,12 +38,7 @@ func NewMDNS(config NetworkHost, MacOverride string) (*MDNSHost, error) {
 		return nil, err
 	}
 
-	macAddressBoardcast := ""
-	if err == nil {
-		macAddressBoardcast = strings.Join(macAddress, ",")
-	} else {
-		log.Println("[mDNS] Unable to get MAC Address: ", err.Error())
-	}
+	macAddressBoardcast := strings.Join(macAddress, ",")
 
 	//Register the mds services
 	server, err := zeroconf.Register(config.HostName, "_http._tcp", "local.", config.Port, []string{"version_build=" + config.BuildVersion, "vendor=" + config.Vendor, "model=" + config.Model, "uuid=" + config.UUID, "domain=" + config.Domain, "mac_addr=" + macAddressBoardcast}, nil)

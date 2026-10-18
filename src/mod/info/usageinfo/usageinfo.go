@@ -126,127 +126,22 @@ func GetCPUUsage() float64 {
 	return usage
 }
 
-// Get RAM Usage in Numeric values
-func GetNumericRAMUsage() (int64, int64) {
-	usedRam := int64(-1)
-	totalRam := int64(-1)
-	if runtime.GOOS == "windows" {
-		vm, err := mem.VirtualMemory()
-		if err != nil {
-			return -1, -1
-		}
-		return int64(vm.Used), int64(vm.Total)
-	} else if runtime.GOOS == "linux" {
-		cmd := shellexec.Command("free -m | grep Mem:")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return usedRam, totalRam
-		}
-
-		//If the output contain more than one Memory info, only use the first one
-		if strings.Contains(string(out), "\n") {
-			out = []byte(strings.Split(string(out), "\n")[0])
-		}
-
-		//Trim of double space to space
-		for strings.Contains(string(out), "  ") {
-			out = []byte(strings.ReplaceAll(string(out), "  ", " "))
-		}
-
-		data := strings.Split(string(out), " ")
-		if len(data) > 3 {
-			used, err := strconv.ParseInt(data[2], 10, 64)
-			if err != nil {
-				return -1, -1
-			}
-
-			total, err := strconv.ParseInt(data[1], 10, 64)
-			if err != nil {
-				return -1, -1
-			}
-
-			usedRam = used * 1024 * 1024
-			totalRam = total * 1024 * 1024
-
-			return usedRam, totalRam
-		}
-
-	} else if runtime.GOOS == "freebsd" {
-
-		// Get usused memory size (free)
-		cmd := shellexec.Command(query_freemem_command)
-
-		freeMemByteArr, err := cmd.CombinedOutput()
-		if err != nil {
-			return usedRam, totalRam
-		}
-		freeMemStr := string(freeMemByteArr)
-		freeMemStr = strings.ReplaceAll(freeMemStr, "\n", "")
-		freeMemSize, err := strconv.ParseFloat(strings.ReplaceAll(string(freeMemStr), "M", ""), 10)
-
-		// Get phy memory size
-		cmd = shellexec.Command(query_phymem_command)
-		phyMemByteArr, err := cmd.CombinedOutput()
-		if err != nil {
-			return usedRam, totalRam
-		}
-
-		phyMemStr := string(phyMemByteArr)
-		phyMemStr = strings.ReplaceAll(phyMemStr, "\n", "")
-
-		// phyMemSize in MB
-		phyMemSizeFloat, err := strconv.ParseFloat(phyMemStr, 10)
-		phyMemSizeFloat = math.Floor(phyMemSizeFloat)
-		total := phyMemSizeFloat
-
-		// Used memory
-		usedRAMSizeFloat := phyMemSizeFloat - freeMemSize
-		usedRAMSizeFloat = math.Floor(usedRAMSizeFloat)
-		used := usedRAMSizeFloat
-
-		totalRam = int64(total)
-		usedRam = int64(used)
-		return usedRam, totalRam
-	} else if runtime.GOOS == "darwin" {
-		cmd := shellexec.Command(query_freemem_command_darwin)
-		freeMemStr, err := cmd.CombinedOutput()
-		if err != nil {
-			return usedRam, totalRam
-		}
-		cmd = shellexec.Command(query_phymem_command_darwin)
-		phyMemStr, err := cmd.CombinedOutput()
-		if err != nil {
-			return usedRam, totalRam
-		}
-
-		freeMem, err := strconv.ParseFloat(strings.TrimSpace(string(freeMemStr)), 10)
-		if err != nil {
-			return usedRam, totalRam
-		}
-		phyMem, err := strconv.ParseInt(strings.TrimSpace(string(phyMemStr)), 10, 64)
-		if err != nil {
-			return usedRam, totalRam
-		}
-		totalRam = phyMem
-		usedRam = int64(float64(phyMem) - float64(phyMem)*freeMem)
-		return usedRam, totalRam
-	}
-	return -1, -1
-}
-
 // Get RAM usage, return used / total / used percentage
 func GetRAMUsage() (string, string, float64) {
 	usedRam := "Unknown"
 	totalRam := "Unknown"
 	usedPercentage := float64(0)
-	if runtime.GOOS == "windows" {
-		vm, err := mem.VirtualMemory()
-		if err != nil {
-			return usedRam, totalRam, usedPercentage
-		}
+	//Custom fork: read the kernel's figures directly (/proc/meminfo on
+	//Linux) on every platform. The dashboard samples this every second, and
+	//the Linux path used to start a shell running free and grep each time;
+	//the commands below are only a fallback now.
+	if vm, err := mem.VirtualMemory(); err == nil && vm.Total > 0 {
 		usedRam = fmt.Sprintf("%d MB", vm.Used/1024/1024)
 		totalRam = fmt.Sprintf("%d MB", vm.Total/1024/1024)
 		usedPercentage = vm.UsedPercent
+		return usedRam, totalRam, usedPercentage
+	}
+	if runtime.GOOS == "windows" {
 		return usedRam, totalRam, usedPercentage
 	} else if runtime.GOOS == "linux" {
 		cmd := shellexec.Command("free -m | grep Mem:")

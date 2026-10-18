@@ -1,7 +1,9 @@
 package hacluster
 
 import (
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net"
@@ -218,7 +220,7 @@ func startSyncServer(t *testing.T, key string, allowed bool) string {
 }
 
 func TestSyncAuth(t *testing.T) {
-	key := NewClusterKey()
+	key := newClusterKey()
 	addr := startSyncServer(t, key, true)
 	var st map[string]string
 	if err := SyncFetch(addr, KeyBytes(key), "/waymark-ha/v1/state", &st, 3*time.Second); err != nil || st["role"] != "MASTER" {
@@ -229,7 +231,7 @@ func TestSyncAuth(t *testing.T) {
 		t.Fatalf("snapshot: %v", err)
 	}
 	// Wrong key: refused
-	if err := SyncFetch(addr, KeyBytes(NewClusterKey()), "/waymark-ha/v1/state", &st, 3*time.Second); !errors.Is(err, ErrSyncAuth) {
+	if err := SyncFetch(addr, KeyBytes(newClusterKey()), "/waymark-ha/v1/state", &st, 3*time.Second); !errors.Is(err, ErrSyncAuth) {
 		t.Fatalf("wrong key: %v", err)
 	}
 	// Not a cluster node: refused
@@ -262,7 +264,7 @@ func TestConfigSyncValidation(t *testing.T) {
 	if _, err := c.Validate(); err == nil {
 		t.Fatal("sync without a key accepted")
 	}
-	c.ClusterKey = strings.ToUpper(NewClusterKey())
+	c.ClusterKey = strings.ToUpper(newClusterKey())
 	v, err := c.Validate()
 	if err != nil || v.SyncPort != DefaultSyncPort || v.ClusterKey != strings.ToLower(c.ClusterKey) {
 		t.Fatalf("%+v %v", v, err)
@@ -274,7 +276,7 @@ func TestConfigSyncValidation(t *testing.T) {
 }
 
 func TestSyncAction(t *testing.T) {
-	key := NewClusterKey()
+	key := newClusterKey()
 	addr := startSyncServer(t, key, true)
 	var out map[string]string
 	if err := SyncAction(addr, KeyBytes(key), "echo", map[string]string{"v": "hi"}, &out, 3*time.Second); err != nil || out["got"] != "hi" || out["from"] != "127.0.0.1" {
@@ -291,11 +293,18 @@ func TestSyncAction(t *testing.T) {
 	if err := SyncAction(addr, KeyBytes(key), "../state", nil, &out, 3*time.Second); err == nil {
 		t.Fatal("bad action name accepted")
 	}
-	if err := SyncAction(addr, KeyBytes(NewClusterKey()), "echo", nil, &out, 3*time.Second); !errors.Is(err, ErrSyncAuth) {
+	if err := SyncAction(addr, KeyBytes(newClusterKey()), "echo", nil, &out, 3*time.Second); !errors.Is(err, ErrSyncAuth) {
 		t.Fatalf("wrong key: %v", err)
 	}
 	// Actions are POST only; GET of an action path is not found
 	if err := SyncFetch(addr, KeyBytes(key), "/waymark-ha/v1/echo", &out, 3*time.Second); err == nil || !strings.Contains(err.Error(), "404") {
 		t.Fatalf("GET action: %v", err)
 	}
+}
+
+// newClusterKey returns a random cluster key (32 bytes, hex).
+func newClusterKey() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

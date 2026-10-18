@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 
 	"imuslab.com/zoraxy/mod/dynamicproxy"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
@@ -59,7 +60,7 @@ type TrafficMapData struct {
 func HandleTrafficMapData(w http.ResponseWriter, r *http.Request) {
 	result := TrafficMapData{
 		Proxies:       []*TrafficMapProxy{},
-		TotalRequests: statisticCollector.DailySummary.TotalRequest,
+		TotalRequests: atomic.LoadInt64(&statisticCollector.Summary().TotalRequest),
 	}
 
 	// Helper to look up today's request count for a given key
@@ -79,7 +80,7 @@ func HandleTrafficMapData(w http.ResponseWriter, r *http.Request) {
 		proxyNode := &TrafficMapProxy{
 			Domain:       ep.RootOrMatchingDomain,
 			Disabled:     ep.Disabled,
-			RequestCount: lookupCount(statisticCollector.DailySummary.DownstreamHostnames, ep.RootOrMatchingDomain),
+			RequestCount: lookupCount(statisticCollector.Summary().DownstreamHostnames, ep.RootOrMatchingDomain),
 			Upstreams:    []*TrafficMapUpstream{},
 		}
 
@@ -87,7 +88,7 @@ func HandleTrafficMapData(w http.ResponseWriter, r *http.Request) {
 			proxyNode.Upstreams = append(proxyNode.Upstreams, &TrafficMapUpstream{
 				Origin:       upstream.OriginIpOrDomain,
 				RequireTLS:   upstream.RequireTLS,
-				RequestCount: lookupCount(statisticCollector.DailySummary.UpstreamHostnames, upstream.OriginIpOrDomain),
+				RequestCount: lookupCount(statisticCollector.Summary().UpstreamHostnames, upstream.OriginIpOrDomain),
 				Weight:       upstream.Weight,
 				Inactive:     false,
 			})
@@ -96,7 +97,7 @@ func HandleTrafficMapData(w http.ResponseWriter, r *http.Request) {
 			proxyNode.Upstreams = append(proxyNode.Upstreams, &TrafficMapUpstream{
 				Origin:       upstream.OriginIpOrDomain,
 				RequireTLS:   upstream.RequireTLS,
-				RequestCount: lookupCount(statisticCollector.DailySummary.UpstreamHostnames, upstream.OriginIpOrDomain),
+				RequestCount: lookupCount(statisticCollector.Summary().UpstreamHostnames, upstream.OriginIpOrDomain),
 				Weight:       upstream.Weight,
 				Inactive:     true,
 			})
@@ -113,7 +114,7 @@ func HandleTrafficMapData(w http.ResponseWriter, r *http.Request) {
 // Handle conversion of statistic daily summary to country summary
 func HandleCountryDistrSummary(w http.ResponseWriter, r *http.Request) {
 	requestClientCountry := map[string]int{}
-	statisticCollector.DailySummary.RequestClientIp.Range(func(key, value interface{}) bool {
+	statisticCollector.Summary().RequestClientIp.Range(func(key, value interface{}) bool {
 		//Get this client country of original
 		clientIp := key.(string)
 		//requestCount := value.(int)

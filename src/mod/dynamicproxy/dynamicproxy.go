@@ -244,11 +244,7 @@ func (router *Router) StartProxyService() error {
 				Addr: ":80",
 				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					//Check if the domain requesting allow non TLS mode
-					domainOnly := r.Host
-					if strings.Contains(r.Host, ":") {
-						hostPath := strings.Split(r.Host, ":")
-						domainOnly = hostPath[0]
-					}
+					domainOnly := requestHostname(r.Host) //Custom fork: also handles IPv6 hosts
 					sep := router.GetProxyEndpointFromHostname(domainOnly)
 					if sep != nil && sep.BypassGlobalTLS {
 						//Allow routing via non-TLS handler
@@ -350,9 +346,9 @@ func (router *Router) StartProxyService() error {
 				finalListener = ln
 			}
 
-		if err := srv.ServeTLS(finalListener, "", ""); err != nil && err != http.ErrServerClosed {
-			router.Option.Logger.PrintAndLog("dprouter", "Could not start proxy server", err)
-		}
+			if err := srv.ServeTLS(finalListener, "", ""); err != nil && err != http.ErrServerClosed {
+				router.Option.Logger.PrintAndLog("dprouter", "Could not start proxy server", err)
+			}
 
 		}(router.server)
 
@@ -568,11 +564,7 @@ func (router *Router) startSecondaryListeners() {
 			Addr: addr,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Extract domain from request
-				domainOnly := r.Host
-				if strings.Contains(r.Host, ":") {
-					hostPath := strings.Split(r.Host, ":")
-					domainOnly = hostPath[0]
-				}
+				domainOnly := requestHostname(r.Host) //Custom fork: also handles IPv6 hosts
 
 				// Get the proxy endpoint for this domain
 				sep := router.GetProxyEndpointFromHostname(domainOnly)

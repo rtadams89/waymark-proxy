@@ -8,10 +8,10 @@ import (
 )
 
 /*
-	MaxStatKeyLength is the maximum length of a request supplied string (URL,
-	Referer or User-Agent) used as a key in the daily summary maps. Anything
-	longer is truncated so that a single client cannot inflate the size of the
-	summary, and so the serialized summary stays a predictable size on disk.
+MaxStatKeyLength is the maximum length of a request supplied string (URL,
+Referer or User-Agent) used as a key in the daily summary maps. Anything
+longer is truncated so that a single client cannot inflate the size of the
+summary, and so the serialized summary stays a predictable size on disk.
 */
 const MaxStatKeyLength = 256
 

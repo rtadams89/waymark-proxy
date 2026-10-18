@@ -45,18 +45,10 @@ const (
 	SameSiteNoneMode
 )
 
-func CookieName(string) Option      { return func(*options) {} }
-func Secure(bool) Option            { return func(*options) {} }
-func Path(string) Option            { return func(*options) {} }
-func SameSite(SameSiteMode) Option  { return func(*options) {} }
-func HttpOnly(bool) Option          { return func(*options) {} }
-func MaxAge(int) Option             { return func(*options) {} }
-func Domain(string) Option          { return func(*options) {} }
-func RequestHeader(string) Option   { return func(*options) {} }
-func FieldName(string) Option       { return func(*options) {} }
-func ErrorHandler(http.Handler) Option {
-	return func(*options) {}
-}
+func CookieName(string) Option     { return func(*options) {} }
+func Secure(bool) Option           { return func(*options) {} }
+func Path(string) Option           { return func(*options) {} }
+func SameSite(SameSiteMode) Option { return func(*options) {} }
 
 // Protect returns middleware that rejects cross-origin, state-changing
 // browser requests. authKey and opts are ignored.

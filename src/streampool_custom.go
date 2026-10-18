@@ -41,7 +41,7 @@ func observeStreamConnect(ruleID string, addr string, err error) {
 }
 
 // streamRuleName is how a stream rule is shown next to its upstreams.
-func streamRuleName(c *streamproxy.ProxyRelayInstance) string {
+func streamRuleName(c streamproxy.InstanceView) string {
 	if strings.TrimSpace(c.Name) != "" {
 		return c.Name
 	}
@@ -55,7 +55,8 @@ func streamHealthTargets() []healthcheck.Target {
 	if streamProxyManager == nil {
 		return targets
 	}
-	for _, c := range streamProxyManager.Configs {
+	for _, rule := range streamProxyManager.List() {
+		c := rule.View()
 		if !c.Running || !c.HealthCheck.Enabled() {
 			continue
 		}
@@ -64,9 +65,9 @@ func streamHealthTargets() []healthcheck.Target {
 			SystemWideLogger.PrintAndLog("healthcheck", "Ignoring invalid health check settings on stream proxy "+streamRuleName(c), err)
 			continue
 		}
-		for _, addr := range c.UpstreamList() {
+		for _, addr := range rule.UpstreamList() {
 			targets = append(targets, healthcheck.Target{
-				RuleID:   c.HealthRuleID(),
+				RuleID:   rule.HealthRuleID(),
 				Upstream: healthcheck.Upstream{Addr: addr},
 				Config:   *cfg,
 				Label:    "stream proxy " + streamRuleName(c),
@@ -82,9 +83,9 @@ func streamRuleDisplay(ruleID string) string {
 	if !strings.HasPrefix(ruleID, "stream:") || streamProxyManager == nil {
 		return ruleID
 	}
-	for _, c := range streamProxyManager.Configs {
-		if c.HealthRuleID() == ruleID {
-			return "Stream: " + streamRuleName(c)
+	for _, rule := range streamProxyManager.List() {
+		if rule.HealthRuleID() == ruleID {
+			return "Stream: " + streamRuleName(rule.View())
 		}
 	}
 	return ruleID
@@ -94,8 +95,8 @@ func streamRuleDisplay(ruleID string) string {
 func countStreamCheckedRules() int {
 	n := 0
 	if streamProxyManager != nil {
-		for _, c := range streamProxyManager.Configs {
-			if c.Running && c.HealthCheck.Enabled() {
+		for _, rule := range streamProxyManager.List() {
+			if c := rule.View(); c.Running && c.HealthCheck.Enabled() {
 				n++
 			}
 		}
@@ -110,7 +111,8 @@ func streamUptimeTargets(fed map[uptimeFeedKey]uptimeFeedTarget) []*uptime.Targe
 	if streamProxyManager == nil {
 		return targets
 	}
-	for _, c := range streamProxyManager.Configs {
+	for _, rule := range streamProxyManager.List() {
+		c := rule.View()
 		if !c.Running || c.HealthCheck == nil || !c.HealthCheck.ActiveEnabled {
 			continue
 		}
@@ -124,7 +126,7 @@ func streamUptimeTargets(fed map[uptimeFeedKey]uptimeFeedTarget) []*uptime.Targe
 		case c.UseUDP:
 			protocol = "udp"
 		}
-		ups := c.UpstreamList()
+		ups := rule.UpstreamList()
 		for i, addr := range ups {
 			id := "Stream: " + streamRuleName(c)
 			if len(ups) > 1 {
@@ -139,7 +141,7 @@ func streamUptimeTargets(fed map[uptimeFeedKey]uptimeFeedTarget) []*uptime.Targe
 				ExternallyMonitored: true,
 			}
 			targets = append(targets, t)
-			fed[uptimeFeedKey{c.HealthRuleID(), addr}] = uptimeFeedTarget{id: id, name: id, url: t.URL, protocol: protocol}
+			fed[uptimeFeedKey{rule.HealthRuleID(), addr}] = uptimeFeedTarget{id: id, name: id, url: t.URL, protocol: protocol}
 		}
 	}
 	return targets

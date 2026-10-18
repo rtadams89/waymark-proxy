@@ -15,11 +15,6 @@ import (
 	proxyproto "github.com/pires/go-proxyproto"
 )
 
-func isValidIP(ip string) bool {
-	parsedIP := net.ParseIP(ip)
-	return parsedIP != nil
-}
-
 func isValidPort(port string) bool {
 	portInt, err := strconv.Atoi(port)
 	if err != nil {
@@ -138,6 +133,10 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 	}
 
 	targetAddress = strings.TrimSpace(targetAddress)
+	//Custom fork: read the settings once; connections outlive a restart
+	c.poolMu.RLock()
+	proxyProtocol, timeout := c.ProxyProtocolVersion, c.Timeout
+	c.poolMu.RUnlock()
 
 	//Start stop handler
 	go func() {
@@ -171,15 +170,15 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 			defer release()
 			conn, target = c.captureTCP(conn, target, targetAddress) //Custom fork: traffic capture (capture_custom.go)
 
-			if c.ProxyProtocolVersion != ProxyProtocolDisabled {
+			if proxyProtocol != ProxyProtocolDisabled {
 				c.LogMsg("[+] write proxy protocol header to target address ["+targetAddress+"]", nil)
-				err = WriteProxyProtocolHeader(target, conn, c.ProxyProtocolVersion)
+				err = WriteProxyProtocolHeader(target, conn, proxyProtocol)
 				if err != nil {
 					c.LogMsg("[x] Write proxy protocol header failed: "+err.Error(), nil)
 					target.Close()
 					conn.Close()
 					c.LogMsg("[←] close the connect at local:["+conn.LocalAddr().String()+"] and remote:["+conn.RemoteAddr().String()+"]", nil)
-					time.Sleep(time.Duration(c.Timeout) * time.Second)
+					time.Sleep(time.Duration(timeout) * time.Second)
 					return
 				}
 			}

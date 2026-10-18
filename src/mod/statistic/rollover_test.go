@@ -29,17 +29,17 @@ func TestSaveAfterMidnightKeepsPreviousDay(t *testing.T) {
 	//Pretend the current in-memory summary belongs to yesterday
 	yesterday := time.Now().AddDate(0, 0, -1)
 	collector.summaryKey = summaryKeyOf(yesterday)
-	collector.DailySummary.TotalRequest = 183000
-	collector.DailySummary.RequestClientIp.Store("1.2.3.4", 1)
+	collector.Summary().TotalRequest = 183000
+	collector.Summary().RequestClientIp.Store("1.2.3.4", 1)
 
 	//Midnight reset: yesterday is persisted and a new summary is started
 	collector.SaveSummaryOfDay()
-	if collector.DailySummary.TotalRequest != 0 {
-		t.Fatalf("expected a fresh summary after rollover, got %d requests", collector.DailySummary.TotalRequest)
+	if collector.Summary().TotalRequest != 0 {
+		t.Fatalf("expected a fresh summary after rollover, got %d requests", collector.Summary().TotalRequest)
 	}
 
 	//A few requests arrive after midnight, then the autosave ticker fires
-	collector.DailySummary.TotalRequest = 11
+	collector.Summary().TotalRequest = 11
 	collector.SaveSummaryOfDay()
 
 	y, m, d := yesterday.Date()

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"imuslab.com/zoraxy/mod/capture"
@@ -235,11 +236,18 @@ func (p *ReverseProxy) copyResponse(dst http.ResponseWriter, src io.Reader, flus
 		w = mlw
 	}
 
-	var buf []byte
-	_, err := p.copyBuffer(w, src, buf)
+	//Custom fork: reuse copy buffers (each response used to allocate 64 KB)
+	bp := copyBufPool.Get().(*[]byte)
+	_, err := p.copyBuffer(w, src, *bp)
+	copyBufPool.Put(bp)
 	return err
-
 }
+
+// copyBufPool holds the 64 KB buffers copyResponse copies bodies with.
+var copyBufPool = sync.Pool{New: func() any {
+	b := make([]byte, 64*1024)
+	return &b
+}}
 
 // Copy with given buffer size. Default to 64k
 func (p *ReverseProxy) copyBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, error) {

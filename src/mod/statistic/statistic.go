@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -71,7 +72,7 @@ type Collector struct {
 	rtdataStopChan chan bool
 	autoSaveTicker *time.Ticker
 	autSaveStop    chan bool
-	DailySummary   *DailySummary
+	summary        atomic.Pointer[DailySummary] //Today's summary; swapped at midnight (custom fork: was a plain field read and written from many goroutines)
 	Option         *CollectorOption
 	summaryKey     string     //Date key (2006_01_02) that DailySummary belongs to
 	summaryMu      sync.Mutex //Guards DailySummary swaps together with summaryKey
@@ -100,11 +101,21 @@ func newIncrFn(maxEntries int) incrFn {
 // pattern verbatim. The bounded-counter sidecar parameter is ignored.
 // Selected when CollectorOption.MaxEntriesPerStatMap == 0 (the default).
 func unboundedIncr(m *sync.Map, _ *boundedCounter, key string) {
-	v, ok := m.Load(key)
-	if !ok {
-		m.Store(key, 1)
-	} else {
-		m.Store(key, v.(int)+1)
+	incrKey(m, key)
+}
+
+// incrKey adds one to key's count, inserting it with 1 if absent. Returns
+// true if the key was new. Compare-and-swap keeps concurrent increments
+// from overwriting each other.
+func incrKey(m *sync.Map, key string) bool {
+	for {
+		v, loaded := m.LoadOrStore(key, 1)
+		if !loaded {
+			return true
+		}
+		if m.CompareAndSwap(key, v, v.(int)+1) {
+			return false
+		}
 	}
 }
 
@@ -113,19 +124,19 @@ func NewStatisticCollector(option CollectorOption) (*Collector, error) {
 
 	//Create the collector object
 	thisCollector := Collector{
-		DailySummary: NewDailySummary(),
-		Option:       &option,
-		incr:         newIncrFn(option.MaxEntriesPerStatMap),
-		summaryKey:   summaryKeyOf(time.Now()),
+		Option:     &option,
+		incr:       newIncrFn(option.MaxEntriesPerStatMap),
+		summaryKey: summaryKeyOf(time.Now()),
 	}
 
 	//Load the stat if exists for today
 	//This will exists if the program was forcefully restarted
 	year, month, day := time.Now().Date()
 	summary := thisCollector.LoadSummaryOfDay(year, month, day)
-	if summary != nil {
-		thisCollector.DailySummary = summary
+	if summary == nil {
+		summary = NewDailySummary()
 	}
+	thisCollector.summary.Store(summary)
 
 	//Schedule the realtime statistic clearing at midnight everyday
 	rtstatStopChan := thisCollector.ScheduleResetRealtimeStats()
@@ -176,12 +187,12 @@ func (c *Collector) SaveSummaryOfDay() {
 	todayKey := summaryKeyOf(time.Now())
 	if c.summaryKey != todayKey {
 		//Day rolled over, persist the finished day and start a new summary
-		c.writeSummary(c.summaryKey, c.DailySummary)
-		c.DailySummary = NewDailySummary()
+		c.writeSummary(c.summaryKey, c.Summary())
+		c.summary.Store(NewDailySummary())
 		c.summaryKey = todayKey
 	}
 
-	c.writeSummary(c.summaryKey, c.DailySummary)
+	c.writeSummary(c.summaryKey, c.Summary())
 }
 
 // writeSummary writes the given summary to the database under summaryKey
@@ -192,7 +203,7 @@ func (c *Collector) writeSummary(summaryKey string, summary *DailySummary) {
 		}
 	}()
 
-	saveData := DailySummaryToExport(*summary)
+	saveData := DailySummaryToExport(summary)
 	err := c.Option.Database.Write("stats", summaryKey, saveData)
 	if err != nil {
 		log.Println("[Statistic] Failed to save daily summary of "+summaryKey+": ", err)
@@ -201,7 +212,18 @@ func (c *Collector) writeSummary(summaryKey string, summary *DailySummary) {
 
 // Get the daily summary up until now
 func (c *Collector) GetCurrentDailySummary() *DailySummary {
-	return c.DailySummary
+	return c.Summary()
+}
+
+// Summary returns today's summary. Its counters must be read with
+// atomic.LoadInt64 (or Counts), since requests update them concurrently.
+func (c *Collector) Summary() *DailySummary {
+	return c.summary.Load()
+}
+
+// Counts returns the request counters.
+func (d *DailySummary) Counts() (total, errs, valid int64) {
+	return atomic.LoadInt64(&d.TotalRequest), atomic.LoadInt64(&d.ErrorRequest), atomic.LoadInt64(&d.ValidRequest)
 }
 
 // Load the summary of a day given
@@ -224,7 +246,7 @@ func (c *Collector) LoadSummaryOfDay(year int, month time.Month, day int) *Daily
 func (c *Collector) ResetSummaryOfDay() {
 	c.summaryMu.Lock()
 	defer c.summaryMu.Unlock()
-	c.DailySummary = NewDailySummary()
+	c.summary.Store(NewDailySummary())
 	c.summaryKey = summaryKeyOf(time.Now())
 }
 
@@ -245,81 +267,83 @@ func (c *Collector) Close() {
 	c.SaveSummaryOfDay()
 }
 
-// Main function to record all the inbound traffics
-// Note that this function run in go routine and might have concurrent R/W issue
-// Please make sure there is no racing paramters in this function
+// RecordRequest counts one proxied request. The caller already runs it off
+// the request path (in its own goroutine), so it works synchronously: the
+// counters are updated atomically and the maps with compare-and-swap, so
+// concurrent requests are all counted (custom fork: it used to start another
+// goroutine and increment with unsynchronised read-modify-write, losing
+// counts under load).
 func (c *Collector) RecordRequest(ri RequestInfo) {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Println("[Statistic] Recovered from panic while recording request: ", r)
-			}
-		}()
-
-		c.DailySummary.TotalRequest++
-		if ri.Succ {
-			c.DailySummary.ValidRequest++
-		} else {
-			c.DailySummary.ErrorRequest++
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("[Statistic] Recovered from panic while recording request: ", r)
 		}
-
-		//Store the request info into correct types of maps. c.incr is
-		//either the original upstream Load/Store pattern (unbounded) or
-		//a capped variant that drops the lowest-count entries when
-		//full. Selected once at startup based on the -stats_max_entries
-		//flag (default 0 = unbounded).
-		c.incr(c.DailySummary.ForwardTypes, c.DailySummary.bounded.ForwardTypes, ri.ForwardType)
-
-		//Record the HTTP method of the request
-		if ri.RequestMethod != "" {
-			c.incr(c.DailySummary.RequestMethods, c.DailySummary.bounded.RequestMethods, ri.RequestMethod)
-		}
-
-		originISO := strings.ToLower(ri.RequestOriginalCountryISOCode)
-		c.incr(c.DailySummary.RequestOrigin, c.DailySummary.bounded.RequestOrigin, originISO)
-
-		//Filter out CF forwarded requests
-		if strings.Contains(ri.IpAddr, ",") {
-			ips := strings.Split(strings.TrimSpace(ri.IpAddr), ",")
-			if len(ips) >= 1 && IsValidIPAddress(strings.TrimPrefix(ips[0], "[")) {
-				//Example when forwarded from CF: 158.250.160.114,109.21.249.211
-				//Or IPv6 [15c4:cbb4:cc98:4291:ffc1:3a46:06a1:51a7],109.21.249.211
-				ri.IpAddr = ips[0]
-			}
-		}
-
-		c.incr(c.DailySummary.RequestClientIp, c.DailySummary.bounded.RequestClientIp, ri.IpAddr)
-
-		//Record the referer
-		p := bluemonday.StripTagsPolicy()
-		filteredReferer := p.Sanitize(
-			ri.Referer,
-		)
-		c.incr(c.DailySummary.Referer, c.DailySummary.bounded.Referer, truncateStatKey(filteredReferer))
-
-		//Record the UserAgent
-		c.incr(c.DailySummary.UserAgent, c.DailySummary.bounded.UserAgent, truncateStatKey(ri.UserAgent))
-
-		//Record request URL, if it is a page
-		ext := filepath.Ext(ri.RequestURL)
-
-		if ext != "" && !isWebPageExtension(ext) {
-			return
-		}
-
-		c.incr(c.DailySummary.RequestURL, c.DailySummary.bounded.RequestURL, truncateStatKey(ri.RequestURL))
-
-		//Record the downstream hostname
-		//This is the hostname that the user visited, not the target domain
-		c.incr(c.DailySummary.DownstreamHostnames, c.DailySummary.bounded.DownstreamHostnames, ri.Target)
-
-		//Record the upstream hostname
-		//This is the selected load balancer upstream hostname or ip
-		c.incr(c.DailySummary.UpstreamHostnames, c.DailySummary.bounded.UpstreamHostnames, ri.Upstream)
 	}()
+	d := c.Summary()
 
-	//ADD MORE HERE IF NEEDED
+	atomic.AddInt64(&d.TotalRequest, 1)
+	if ri.Succ {
+		atomic.AddInt64(&d.ValidRequest, 1)
+	} else {
+		atomic.AddInt64(&d.ErrorRequest, 1)
+	}
+
+	//Store the request info into correct types of maps. c.incr is
+	//either unbounded or a capped variant that drops the lowest-count
+	//entries when full, chosen at startup from -stats_max_entries.
+	c.incr(d.ForwardTypes, d.bounded.ForwardTypes, ri.ForwardType)
+
+	//Record the HTTP method of the request
+	if ri.RequestMethod != "" {
+		c.incr(d.RequestMethods, d.bounded.RequestMethods, ri.RequestMethod)
+	}
+
+	originISO := strings.ToLower(ri.RequestOriginalCountryISOCode)
+	c.incr(d.RequestOrigin, d.bounded.RequestOrigin, originISO)
+
+	//Filter out CF forwarded requests
+	if strings.Contains(ri.IpAddr, ",") {
+		ips := strings.Split(strings.TrimSpace(ri.IpAddr), ",")
+		if len(ips) >= 1 && IsValidIPAddress(strings.TrimPrefix(ips[0], "[")) {
+			//Example when forwarded from CF: 158.250.160.114,109.21.249.211
+			//Or IPv6 [15c4:cbb4:cc98:4291:ffc1:3a46:06a1:51a7],109.21.249.211
+			ri.IpAddr = ips[0]
+		}
+	}
+
+	c.incr(d.RequestClientIp, d.bounded.RequestClientIp, ri.IpAddr)
+
+	//Record the referer, without any HTML in it
+	if ri.Referer != "" {
+		c.incr(d.Referer, d.bounded.Referer, truncateStatKey(refererPolicy.Sanitize(ri.Referer)))
+	} else {
+		c.incr(d.Referer, d.bounded.Referer, "")
+	}
+
+	//Record the UserAgent
+	c.incr(d.UserAgent, d.bounded.UserAgent, truncateStatKey(ri.UserAgent))
+
+	//Record request URL, if it is a page
+	ext := filepath.Ext(ri.RequestURL)
+
+	if ext != "" && !isWebPageExtension(ext) {
+		return
+	}
+
+	c.incr(d.RequestURL, d.bounded.RequestURL, truncateStatKey(ri.RequestURL))
+
+	//Record the downstream hostname
+	//This is the hostname that the user visited, not the target domain
+	c.incr(d.DownstreamHostnames, d.bounded.DownstreamHostnames, ri.Target)
+
+	//Record the upstream hostname
+	//This is the selected load balancer upstream hostname or ip
+	c.incr(d.UpstreamHostnames, d.bounded.UpstreamHostnames, ri.Upstream)
 }
+
+// refererPolicy strips HTML from referers. Building a policy is costly, so
+// it is built once (a built policy is safe for concurrent use).
+var refererPolicy = bluemonday.StripTagsPolicy()
 
 // nightly task
 func (c *Collector) ScheduleResetRealtimeStats() chan bool {
@@ -367,31 +391,4 @@ func NewDailySummary() *DailySummary {
 		UpstreamHostnames:   &sync.Map{},
 		bounded:             newBoundedCounters(),
 	}
-}
-
-func PrintDailySummary(summary *DailySummary) {
-	summary.ForwardTypes.Range(func(key, value interface{}) bool {
-		println(key.(string), value.(int))
-		return true
-	})
-	summary.RequestOrigin.Range(func(key, value interface{}) bool {
-		println(key.(string), value.(int))
-		return true
-	})
-	summary.RequestClientIp.Range(func(key, value interface{}) bool {
-		println(key.(string), value.(int))
-		return true
-	})
-	summary.Referer.Range(func(key, value interface{}) bool {
-		println(key.(string), value.(int))
-		return true
-	})
-	summary.UserAgent.Range(func(key, value interface{}) bool {
-		println(key.(string), value.(int))
-		return true
-	})
-	summary.RequestURL.Range(func(key, value interface{}) bool {
-		println(key.(string), value.(int))
-		return true
-	})
 }

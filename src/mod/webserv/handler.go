@@ -17,17 +17,17 @@ import (
 */
 
 type StaticWebServerStatus struct {
-	ListeningPort                int
-	EnableDirectoryListing       bool
-	WebRoot                      string
-	Running                      bool
-	EnableWebDirManager          bool
-	DisableListenToAllInterface  bool
-	EnableWebDAV                 bool
-	WebDAVPort                   int
-	WebDAVRunning                bool
-	UseCustomCredentials         bool
-	CustomCredentialsUsername    string
+	ListeningPort               int
+	EnableDirectoryListing      bool
+	WebRoot                     string
+	Running                     bool
+	EnableWebDirManager         bool
+	DisableListenToAllInterface bool
+	EnableWebDAV                bool
+	WebDAVPort                  int
+	WebDAVRunning               bool
+	UseCustomCredentials        bool
+	CustomCredentialsUsername   string
 }
 
 // Handle getting current static web server status
@@ -77,29 +77,6 @@ func (ws *WebServer) HandleStopServer(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
-	utils.SendOK(w)
-}
-
-// Handle change server listening port request
-func (ws *WebServer) HandlePortChange(w http.ResponseWriter, r *http.Request) {
-	newPort, err := utils.PostInt(r, "port")
-	if err != nil {
-		utils.SendErrorResponse(w, "invalid port number given")
-		return
-	}
-
-	// Check if newPort is a valid TCP port number (1-65535)
-	if newPort < 1 || newPort > 65535 {
-		utils.SendErrorResponse(w, "invalid port number given")
-		return
-	}
-
-	err = ws.ChangePort(strconv.Itoa(newPort))
-	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
 	utils.SendOK(w)
 }
 
@@ -251,4 +228,3 @@ func (ws *WebServer) HandleSetCustomCredentials(w http.ResponseWriter, r *http.R
 
 	utils.SendOK(w)
 }
-

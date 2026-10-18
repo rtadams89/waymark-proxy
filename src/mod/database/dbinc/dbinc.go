@@ -1,7 +1,7 @@
 package dbinc
 
 /*
-	dbinc is the interface for all database backend
+dbinc is the interface for all database backend
 */
 type BackendType int
 

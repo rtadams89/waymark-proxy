@@ -68,9 +68,7 @@ func boundedIncr(m *sync.Map, b *boundedCounter, key string, capN int) {
 	// the existing value. The new-key branch is race-free; the increment
 	// branch matches the pre-existing non-atomic Load+Store pattern in
 	// RecordRequest (fixing that read-modify-write race is out of scope).
-	actual, loaded := m.LoadOrStore(key, 1)
-	if loaded {
-		m.Store(key, actual.(int)+1)
+	if !incrKey(m, key) {
 		return
 	}
 

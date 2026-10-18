@@ -15,7 +15,7 @@ type UXOptimizer struct {
 	SystemWideLogger *logger.Logger
 }
 
-//Create a new docker optimizer
+// Create a new docker optimizer
 func NewDockerOptimizer(IsRunningInDocker bool, logger *logger.Logger) *UXOptimizer {
 	return &UXOptimizer{
 		RunninInDocker:   IsRunningInDocker,

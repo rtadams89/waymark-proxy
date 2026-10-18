@@ -4,12 +4,6 @@ This directory contains all the modular components that make up the Zoraxy rever
 
 ## Core Modules
 
-### reverseproxy
-**Purpose**: Core reverse proxy functionality
-- Implements HTTP/HTTPS reverse proxy with support for tunneling
-- Handles request forwarding to backend servers
-- Provides basic proxy timeout and transport configuration
-
 ### dynamicproxy
 **Purpose**: Advanced dynamic reverse proxy with comprehensive features
 - Manages multiple proxy endpoints with different configurations
@@ -57,14 +51,28 @@ This directory contains all the modular components that make up the Zoraxy rever
 ### streamproxy
 **Purpose**: TCP/UDP stream proxy
 - Proxies TCP and UDP connections
-- Supports various streaming protocols
-- Provides connection multiplexing
+- Spreads connections over a pool of upstream servers (round robin, least connections, source IP hash, failover)
+- Takes unhealthy upstreams out using the healthcheck module
 
 ### websocketproxy
 **Purpose**: WebSocket proxy functionality
 - Handles WebSocket connection proxying
 - Maintains WebSocket protocol compliance
 - Supports bidirectional communication
+
+## Waymark additions
+
+### healthcheck
+**Purpose**: Active and passive health checks for HTTP and stream proxy upstreams
+
+### hacluster
+**Purpose**: High availability: keepalived integration and configuration sync between nodes
+
+### assetcache
+**Purpose**: In-memory cache for static files served through HTTP proxy rules
+
+### capture
+**Purpose**: Plaintext traffic capture to pcapng files
 
 ## Monitoring & Analytics
 
@@ -135,7 +143,7 @@ This directory contains all the modular components that make up the Zoraxy rever
 **Purpose**: Information and logging utilities
 - Centralized logging system
 - Log viewer and management
-- System information collection
+- CPU and memory usage for the status page
 
 ## Integration & External Services
 
@@ -144,17 +152,6 @@ This directory contains all the modular components that make up the Zoraxy rever
 - Interacts with Docker daemon
 - Manages containerized applications
 - Provides Docker-specific utilities
-
-### email
-**Purpose**: Email functionality
-- Sends email notifications
-- Manages email templates and configuration
-
-### expose
-**Purpose**: Service exposure functionality
-- Exposes internal services to external networks
-- Manages service discovery and registration
-- Provides security for exposed services
 
 ### pathrule
 **Purpose**: Path-based routing rules
@@ -197,4 +194,4 @@ Modules may depend on:
 - Other Zoraxy modules (through interfaces)
 - External libraries (documented in go.mod)
 
-For more detailed information about specific modules, refer to their individual README files or source code documentation.
+For more detailed information about specific modules, refer to their individual README files or source code documentation.

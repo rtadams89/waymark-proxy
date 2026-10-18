@@ -65,14 +65,6 @@ type Monitor struct {
 	targetMutex    sync.Mutex //Mutex for online/offline target list access
 }
 
-// Default configs
-var exampleTarget = Target{
-	ID:       "example",
-	Name:     "Example",
-	URL:      "example.com",
-	Protocol: "https",
-}
-
 func defaultNotify(upstreamIP string, isOnline bool) {
 	// Do nothing
 }

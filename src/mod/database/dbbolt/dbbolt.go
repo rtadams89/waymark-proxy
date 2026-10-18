@@ -9,21 +9,21 @@ import (
 )
 
 /*
-	MaxValueSize is the largest serialized value this backend will accept for a
-	single key.
+MaxValueSize is the largest serialized value this backend will accept for a
+single key.
 
-	bbolt itself allows values up to 2GiB, but that limit alone is not enough to
-	keep a database readable. A leaf page addresses all of its key/value data
-	through a single 2GiB (MaxAllocSize) unsafe slice window, the offset of an
-	element inside that window accumulates over every element before it, and
-	bbolt refuses to split a node holding 4 or fewer keys. A handful of very
-	large values sharing one page can therefore push the cumulative offset past
-	the window even when every individual value is legal. Once that happens,
-	every read and every write that seeks over the element panics, permanently,
-	and the only way out is restoring the database file from a backup.
+bbolt itself allows values up to 2GiB, but that limit alone is not enough to
+keep a database readable. A leaf page addresses all of its key/value data
+through a single 2GiB (MaxAllocSize) unsafe slice window, the offset of an
+element inside that window accumulates over every element before it, and
+bbolt refuses to split a node holding 4 or fewer keys. A handful of very
+large values sharing one page can therefore push the cumulative offset past
+the window even when every individual value is legal. Once that happens,
+every read and every write that seeks over the element panics, permanently,
+and the only way out is restoring the database file from a backup.
 
-	64MB per value keeps roughly 8x headroom under that ceiling in the
-	4-values-per-page worst case.
+64MB per value keeps roughly 8x headroom under that ceiling in the
+4-values-per-page worst case.
 */
 const MaxValueSize = 64 * 1024 * 1024
 

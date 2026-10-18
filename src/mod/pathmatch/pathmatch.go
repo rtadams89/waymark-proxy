@@ -59,11 +59,6 @@ func requestPathWithinPrefix(requestURI string, prefix string, ignoreCase bool) 
 	return requestPath == cleanedPrefix || strings.HasPrefix(requestPath, cleanedPrefix+"/")
 }
 
-// PrefixIsRoot reports whether prefix resolves to the site root.
-func PrefixIsRoot(prefix string) bool {
-	return cleanPrefix(prefix) == "/"
-}
-
 // RequestTarget returns the raw request target for r.
 func RequestTarget(r *http.Request) string {
 	if r == nil {

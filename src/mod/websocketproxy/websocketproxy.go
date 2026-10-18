@@ -69,12 +69,6 @@ type Options struct {
 	EnableTimeoutRefreshOnActivity bool                         //Refresh websocket connection deadline on activity, requires websocket timeout to be set
 }
 
-// ProxyHandler returns a new http.Handler interface that reverse proxies the
-// request to the given target.
-func ProxyHandler(target *url.URL, options Options) http.Handler {
-	return NewProxy(target, options)
-}
-
 // NewProxy returns a new Websocket reverse proxy that rewrites the
 // URL's to the scheme, host and base path provider in target.
 func NewProxy(target *url.URL, options Options) *WebsocketProxy {

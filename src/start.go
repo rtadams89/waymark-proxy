@@ -26,7 +26,6 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
 	"imuslab.com/zoraxy/mod/geodb"
-	"imuslab.com/zoraxy/mod/info/hardwareinfo"
 	"imuslab.com/zoraxy/mod/info/logger"
 	"imuslab.com/zoraxy/mod/info/logviewer"
 	"imuslab.com/zoraxy/mod/info/shellexec"
@@ -235,8 +234,6 @@ func startupSequence() {
 	//dashboard API can return cached values without blocking
 	shellexec.SetDockerMode(*runningInDocker) //Docker images ship sh but not bash
 	usageinfo.StartBackgroundMonitor()
-	hardwareinfo.SetLogger(SystemWideLogger)
-	hardwareinfo.StartHostInfoCache()
 	initDashboardBandwidthTracker()
 
 	/*

@@ -67,7 +67,8 @@ func haNonlocalBind(cfg *hacluster.Config) map[string]any {
 	}
 	proxies := []map[string]string{}
 	if streamProxyManager != nil {
-		for _, c := range streamProxyManager.Configs {
+		for _, rule := range streamProxyManager.List() {
+			c := rule.View()
 			host, _, err := net.SplitHostPort(strings.TrimSpace(c.ListeningAddress))
 			if err != nil {
 				continue

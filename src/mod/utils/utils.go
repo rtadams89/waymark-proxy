@@ -169,10 +169,6 @@ func IsDir(path string) bool {
 	return false
 }
 
-func TimeToString(targetTime time.Time) string {
-	return targetTime.Format("2006-01-02 15:04:05")
-}
-
 // Check if given string in a given slice
 func StringInArray(arr []string, str string) bool {
 	for _, a := range arr {
@@ -181,15 +177,6 @@ func StringInArray(arr []string, str string) bool {
 		}
 	}
 	return false
-}
-
-func StringInArrayIgnoreCase(arr []string, str string) bool {
-	smallArray := []string{}
-	for _, item := range arr {
-		smallArray = append(smallArray, strings.ToLower(item))
-	}
-
-	return StringInArray(smallArray, strings.ToLower(str))
 }
 
 // Validate if the listening address is correct

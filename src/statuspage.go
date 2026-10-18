@@ -334,13 +334,14 @@ func HandleDashboardOverview(w http.ResponseWriter, r *http.Request) {
 
 	rxToday, txToday := getBandwidthToday()
 
-	d := statisticCollector.DailySummary
+	d := statisticCollector.Summary()
+	totalToday, errorToday, validToday := d.Counts()
 	result := Overview{
 		SystemUptime:        time.Now().Unix() - bootTime,
 		ProxyRunning:        dynamicProxyRouter != nil && dynamicProxyRouter.Running,
-		TotalRequestToday:   d.TotalRequest,
-		ErrorRequestToday:   d.ErrorRequest,
-		ValidRequestToday:   d.ValidRequest,
+		TotalRequestToday:   totalToday,
+		ErrorRequestToday:   errorToday,
+		ValidRequestToday:   validToday,
 		UniqueVisitorsToday: countSyncMapEntries(d.RequestClientIp),
 		BandwidthRxToday:    rxToday,
 		BandwidthTxToday:    txToday,

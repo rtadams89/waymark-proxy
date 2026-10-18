@@ -39,7 +39,6 @@ import (
 
 type ProxyType int
 
-const PassiveLoadBalanceNotifyTimeout = 60 //Time to assume a passive load balance is unreachable, in seconds
 const (
 	ProxyTypeRoot ProxyType = iota //Root Proxy, everything not matching will be routed here
 	ProxyTypeHost                  //Host Proxy, match by host (domain) name
@@ -88,7 +87,7 @@ type RouterOption struct {
 	H2MaxUploadBufferPerStream     int32  //HTTP/2 max upload buffer per stream in bytes (0 = Go default)
 
 	/* HTTP/3 (QUIC) */
-	EnableH3              bool   //Enable HTTP/3 (QUIC) listener alongside HTTP/1.1+2 (requires TLS; DB-persisted, runtime-toggleable)
+	EnableH3               bool   //Enable HTTP/3 (QUIC) listener alongside HTTP/1.1+2 (requires TLS; DB-persisted, runtime-toggleable)
 	H3MaxConcurrentStreams uint32 //HTTP/3 max concurrent streams per connection (0 = quic-go default)
 
 	/* Authentication Providers */
@@ -115,8 +114,8 @@ type Router struct {
 	routingRules []*RoutingRule            //Special routing rules, handle high priority routing like ACME request handling
 	restarting   bool                      //If the router is restarting
 
-	h3Server *http3.Server   //HTTP/3 (QUIC) server, nil when disabled
-	h3Conn   net.PacketConn  //UDP connection serving the HTTP/3 listener; closed on shutdown
+	h3Server *http3.Server  //HTTP/3 (QUIC) server, nil when disabled
+	h3Conn   net.PacketConn //UDP connection serving the HTTP/3 listener; closed on shutdown
 
 	tlsListener      net.Listener //TLS listener, handle SNI routing
 	tlsBehaviorMutex sync.RWMutex //Mutex for tlsBehavior map
@@ -237,16 +236,6 @@ type AuthenticationProvider struct {
 // Type aliases for backward compatibility
 type CaptchaProvider = captcha.Provider
 type CaptchaConfig = captcha.Config
-type CaptchaExceptionType = captcha.ExceptionType
-type CaptchaExceptionRule = captcha.ExceptionRule
-
-const (
-	CaptchaProviderCloudflare = captcha.ProviderCloudflare
-	CaptchaProviderGoogle     = captcha.ProviderGoogle
-
-	CaptchaExceptionType_Paths = captcha.ExceptionTypePaths
-	CaptchaExceptionType_CIDR  = captcha.ExceptionTypeCIDR
-)
 
 // A proxy endpoint record, a general interface for handling inbound routing
 type ProxyEndpoint struct {

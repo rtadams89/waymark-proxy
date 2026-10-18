@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"imuslab.com/zoraxy/mod/auth"
 	"net/http"
 	"net/mail"
 	"sort"
 	"strings"
 	"time"
+
+	"imuslab.com/zoraxy/mod/auth"
 
 	"github.com/google/uuid"
 	"imuslab.com/zoraxy/mod/utils"

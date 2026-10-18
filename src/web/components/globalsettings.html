@@ -701,7 +701,7 @@
                     let domainsHTML = "";
                     if (listener.domains && listener.domains.length > 0){
                         domainsHTML = listener.domains.map(domain =>
-                            `<span class="ui tiny label">${domain}</span>`
+                            `<span class="ui tiny label">${htmlEscape(domain)}</span>`
                         ).join(" ");
                     } else {
                         domainsHTML = '<i style="opacity: 0.5;">No domains</i>';
@@ -709,7 +709,7 @@
 
                     $("#secondaryListenersTable").append(`<tr>
                         <td style="white-space: nowrap;">
-                            <i class="angle double right blue icon"></i> <b>${listener.address}</b>
+                            <i class="angle double right blue icon"></i> <b>${htmlEscape(listener.address)}</b>
                         </td>
                         <td>${domainsHTML}</td>
                     </tr>`);
@@ -726,5 +726,10 @@
 
     // Load secondary listeners on page load and refresh periodically
     loadSecondaryListeners();
-    setInterval(loadSecondaryListeners, 10000);
+    setInterval(function(){
+        //Custom fork: only while the Listeners page is on screen
+        if ($("#secondaryListenersTable").is(":visible") && !document.hidden){
+            loadSecondaryListeners();
+        }
+    }, 10000);
 </script>

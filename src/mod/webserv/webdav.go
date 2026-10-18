@@ -174,11 +174,6 @@ func (wd *WebDAVServer) IsRunning() bool {
 	return wd.isRunning
 }
 
-// Close stops the WebDAV server without returning an error
-func (wd *WebDAVServer) Close() {
-	wd.Stop()
-}
-
 // IsPortInUse checks if a port is in use.
 func isPortInUse(port string) bool {
 	portInt, err := strconv.Atoi(port)

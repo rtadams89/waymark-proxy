@@ -79,23 +79,6 @@ func TestRequestPathWithinPrefixRejectsUnusablePrefix(t *testing.T) {
 	}
 }
 
-func TestPrefixIsRoot(t *testing.T) {
-	cases := map[string]bool{
-		"/":        true,
-		"":         false,
-		"   ":      false,
-		"/public":  false,
-		"public":   false,
-		"/.":       true,
-		"/public/": false,
-	}
-	for prefix, want := range cases {
-		if got := PrefixIsRoot(prefix); got != want {
-			t.Errorf("PrefixIsRoot(%q) = %v, expected %v", prefix, got, want)
-		}
-	}
-}
-
 func TestCleanRequestPath(t *testing.T) {
 	cases := map[string]string{
 		"/a/b/../c":              "/a/c",
