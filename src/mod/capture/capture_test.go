@@ -265,3 +265,26 @@ func TestCaptureLimitsAndFilters(t *testing.T) {
 		t.Fatalf("files: %+v", files)
 	}
 }
+
+// Custom fork: oversized inputs are cut so every length field stays valid.
+func TestOversizedPacketsAreCut(t *testing.T) {
+	a := Endpoint{IP: net.ParseIP("10.0.0.1"), Port: 1}
+	b := Endpoint{IP: net.ParseIP("10.0.0.2"), Port: 2}
+	big := make([]byte, 200000)
+	for _, pkt := range [][]byte{udpPacket(a, b, big, 1), tcpPacket(a, b, 1, 1, tcpACK, big, 1)} {
+		if len(pkt) > 0xFFFF {
+			t.Fatalf("IPv4 packet of %d bytes", len(pkt))
+		}
+		if got := int(binary.BigEndian.Uint16(pkt[2:])); got != len(pkt) {
+			t.Fatalf("total length field %d, packet %d bytes", got, len(pkt))
+		}
+	}
+	var buf bytes.Buffer
+	p, err := newPcapng(&buf, "test", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.packet(time.Now(), big, strings.Repeat("x", 100000)); err != nil {
+		t.Fatal(err)
+	}
+}

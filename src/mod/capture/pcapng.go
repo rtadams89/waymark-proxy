@@ -13,6 +13,7 @@ package capture
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"time"
@@ -41,8 +42,26 @@ type pcapWriter struct {
 
 func pad4(n int) int { return (4 - n%4) % 4 }
 
+// Size limits (custom fork). Every length written into a pcapng block or an
+// IP, TCP or UDP header has to fit its field, so inputs are cut to these
+// limits before anything is allocated. Capture code stays far below them
+// (TCP data is split into segmentSize pieces, UDP reads at most 1500 bytes),
+// so they only guard against a future caller passing something huge.
+const (
+	maxOptionValue  = 0xFFFF - 3  // option length is a uint16
+	maxComment      = 4096        // packet comments are one line of text
+	maxIPPayload    = 0xFFFF - 40 // IPv4 total length / IPv6 payload length are uint16
+	maxTCPPayload   = maxIPPayload - 20
+	maxUDPPayload   = maxIPPayload - 8
+	maxPacketData   = maxIPPayload + 40
+	maxBlockBodyLen = 1 << 20
+)
+
 // option encodes one pcapng option.
 func option(code uint16, value []byte) []byte {
+	if len(value) > maxOptionValue {
+		value = value[:maxOptionValue]
+	}
 	b := make([]byte, 4+len(value)+pad4(len(value)))
 	binary.LittleEndian.PutUint16(b[0:], code)
 	binary.LittleEndian.PutUint16(b[2:], uint16(len(value)))
@@ -53,6 +72,9 @@ func option(code uint16, value []byte) []byte {
 func endOfOptions() []byte { return []byte{0, 0, 0, 0} }
 
 func (p *pcapWriter) block(typ uint32, body []byte) error {
+	if len(body) > maxBlockBodyLen {
+		return errors.New("pcapng block too large")
+	}
 	total := 12 + len(body)
 	b := make([]byte, 0, total)
 	b = binary.LittleEndian.AppendUint32(b, typ)
@@ -94,6 +116,12 @@ func newPcapng(w io.Writer, app string, ifaceDesc string) (*pcapWriter, error) {
 // packet writes one enhanced packet block, with an optional comment.
 func (p *pcapWriter) packet(ts time.Time, data []byte, comment string) error {
 	us := uint64(ts.UnixMicro())
+	if len(data) > maxPacketData {
+		data = data[:maxPacketData]
+	}
+	if len(comment) > maxComment {
+		comment = comment[:maxComment]
+	}
 	body := make([]byte, 0, 20+len(data)+4+len(comment)+12)
 	body = binary.LittleEndian.AppendUint32(body, 0) // interface 0
 	body = binary.LittleEndian.AppendUint32(body, uint32(us>>32))
@@ -210,6 +238,9 @@ func pseudoSum(src, dst net.IP, proto byte, length int) uint32 {
 // ipPacket wraps a transport segment in an IPv4 or IPv6 header.
 func ipPacket(src, dst net.IP, proto byte, segment []byte, id uint16) []byte {
 	s, d, v4 := addrPair(src, dst)
+	if len(segment) > maxIPPayload {
+		segment = segment[:maxIPPayload]
+	}
 	// Transport checksum over the pseudo header
 	csumAt := 16 // TCP
 	if proto == 17 {
@@ -245,6 +276,9 @@ func ipPacket(src, dst net.IP, proto byte, segment []byte, id uint16) []byte {
 }
 
 func tcpPacket(src, dst Endpoint, seq, ack uint32, flags byte, payload []byte, id uint16) []byte {
+	if len(payload) > maxTCPPayload {
+		payload = payload[:maxTCPPayload]
+	}
 	seg := make([]byte, 20, 20+len(payload))
 	binary.BigEndian.PutUint16(seg[0:], src.Port)
 	binary.BigEndian.PutUint16(seg[2:], dst.Port)
@@ -258,6 +292,9 @@ func tcpPacket(src, dst Endpoint, seq, ack uint32, flags byte, payload []byte, i
 }
 
 func udpPacket(src, dst Endpoint, payload []byte, id uint16) []byte {
+	if len(payload) > maxUDPPayload {
+		payload = payload[:maxUDPPayload]
+	}
 	seg := make([]byte, 8, 8+len(payload))
 	binary.BigEndian.PutUint16(seg[0:], src.Port)
 	binary.BigEndian.PutUint16(seg[2:], dst.Port)

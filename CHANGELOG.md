@@ -10,6 +10,11 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.7.1
+
+**Fixed**
+- Traffic capture: the pcapng writer now checks sizes before building packets and file blocks (GitHub code scanning: "size computation for allocation may overflow"). Data longer than an IP packet can hold is cut, instead of writing length fields that wrapped around. Capture never produced data that large (TCP data is written in 16 KB pieces, UDP packets are at most 1500 bytes), so existing capture files are not affected.
+
 ## 2.7.0
 
 A code review release: bug fixes found with the race detector, under load with live configuration changes, and by reading the code; unused code removed; some background work made cheaper; and web interface improvements. No configuration changes are needed.
