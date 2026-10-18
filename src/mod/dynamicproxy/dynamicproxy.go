@@ -37,7 +37,7 @@ func (router *Router) configureHTTP2(srv *http.Server) error {
 	if router.Option.DisableHttp2 {
 		//A non-nil TLSNextProto stops ServeTLS from setting up HTTP/2
 		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
-		router.Option.Logger.PrintAndLog("dprouter", "HTTP/2 disabled on TLS listener, serving HTTP/1.1 only", nil)
+		router.Option.Logger.PrintAndLog("http-proxy", "HTTP/2 disabled on TLS listener, serving HTTP/1.1 only", nil)
 		return nil
 	}
 
@@ -86,7 +86,7 @@ func (router *Router) startH3Listener(tlsConfig *tls.Config) (*http3.Server, err
 	}
 
 	if router.Option.UseProxyProtocol {
-		router.Option.Logger.PrintAndLog("dprouter", "HTTP/3 (QUIC) disabled: PROXY protocol is enabled and quic-go does not support PROXY protocol on QUIC listeners", nil)
+		router.Option.Logger.PrintAndLog("http-proxy", "HTTP/3 (QUIC) disabled: PROXY protocol is enabled and quic-go does not support PROXY protocol on QUIC listeners", nil)
 		return nil, nil
 	}
 
@@ -123,12 +123,12 @@ func (router *Router) startH3Listener(tlsConfig *tls.Config) (*http3.Server, err
 	}
 	router.h3Conn = udpConn
 
-	router.Option.Logger.PrintAndLog("dprouter", "HTTP/3 (QUIC) listener starting on UDP :"+port, nil)
+	router.Option.Logger.PrintAndLog("http-proxy", "HTTP/3 (QUIC) listener starting on UDP :"+port, nil)
 
 	go func() {
 		defer udpConn.Close()
 		if err := srv.Serve(udpConn); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
-			router.Option.Logger.PrintAndLog("dprouter", "HTTP/3 listener stopped", err)
+			router.Option.Logger.PrintAndLog("http-proxy", "HTTP/3 listener stopped", err)
 		}
 	}()
 
@@ -296,7 +296,7 @@ func (router *Router) StartProxyService() error {
 				IdleTimeout:       time.Duration(router.Option.IdleTimeout) * time.Second,
 			}
 
-			router.Option.Logger.PrintAndLog("dprouter", "Starting HTTP-to-HTTPS redirector (port 80)", nil)
+			router.Option.Logger.PrintAndLog("http-proxy", "Starting HTTP-to-HTTPS redirector (port 80)", nil)
 
 			//Create a redirection stop channel
 			stopChan := make(chan bool)
@@ -307,7 +307,7 @@ func (router *Router) StartProxyService() error {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				httpServer.Shutdown(ctx)
-				router.Option.Logger.PrintAndLog("dprouter", "HTTP to HTTPS redirection listener stopped", nil)
+				router.Option.Logger.PrintAndLog("http-proxy", "HTTP to HTTPS redirection listener stopped", nil)
 			}()
 
 			//Start the http server that listens to port 80 and redirect to 443
@@ -318,7 +318,7 @@ func (router *Router) StartProxyService() error {
 					// Disable port 80 listening to avoid terminating the whole process
 					router.Option.ListenOnPort80 = false
 					router.tlsRedirectStop = nil
-					router.Option.Logger.PrintAndLog("dprouter", "Could not start HTTP-to-HTTPS redirector (port 80); disabling port 80 listener", err)
+					router.Option.Logger.PrintAndLog("http-proxy", "Could not start HTTP-to-HTTPS redirector (port 80); disabling port 80 listener", err)
 					return
 				}
 			}()
@@ -326,12 +326,12 @@ func (router *Router) StartProxyService() error {
 		}
 
 		//Start the TLS server
-		router.Option.Logger.PrintAndLog("dprouter", "Reverse proxy service started in the background (TLS mode)", nil)
+		router.Option.Logger.PrintAndLog("http-proxy", "Reverse proxy service started in the background (TLS mode)", nil)
 		// Fixed #1206: passing the router.server into go routine to prevent nil pointer exception
 		go func(srv *http.Server) {
 			ln, err := net.Listen("tcp", srv.Addr)
 			if err != nil {
-				router.Option.Logger.PrintAndLog("dprouter", "Could not start proxy server (listen failed)", err)
+				router.Option.Logger.PrintAndLog("http-proxy", "Could not start proxy server (listen failed)", err)
 				return
 			}
 
@@ -340,14 +340,14 @@ func (router *Router) StartProxyService() error {
 			if router.Option.UseProxyProtocol {
 				// Wrapper Proxy Protocol v1/v2
 				finalListener = proxyproto.NewDefaultListener(ln)
-				router.Option.Logger.PrintAndLog("dprouter", "PROXY protocol v1/v2 enabled for TLS listener", nil)
+				router.Option.Logger.PrintAndLog("http-proxy", "PROXY protocol v1/v2 enabled for TLS listener", nil)
 			} else {
 				// Use direct TCP listener without PROXY protocol
 				finalListener = ln
 			}
 
 			if err := srv.ServeTLS(finalListener, "", ""); err != nil && err != http.ErrServerClosed {
-				router.Option.Logger.PrintAndLog("dprouter", "Could not start proxy server", err)
+				router.Option.Logger.PrintAndLog("http-proxy", "Could not start proxy server", err)
 			}
 
 		}(router.server)
@@ -355,14 +355,14 @@ func (router *Router) StartProxyService() error {
 		// Start HTTP/3 (QUIC) listener alongside the TLS server
 		h3Srv, err := router.startH3Listener(config)
 		if err != nil {
-			router.Option.Logger.PrintAndLog("dprouter", "Could not start HTTP/3 listener", err)
+			router.Option.Logger.PrintAndLog("http-proxy", "Could not start HTTP/3 listener", err)
 		}
 		router.h3Server = h3Srv
 	} else {
 		//Serve with non TLS mode
 		router.tlsListener = nil
 		if router.Option.EnableH3 {
-			router.Option.Logger.PrintAndLog("dprouter", "HTTP/3 (QUIC) requires TLS; skipping QUIC listener in plain HTTP mode", nil)
+			router.Option.Logger.PrintAndLog("http-proxy", "HTTP/3 (QUIC) requires TLS; skipping QUIC listener in plain HTTP mode", nil)
 		}
 		router.server = &http.Server{
 			Addr:    ":" + strconv.Itoa(router.Option.Port),
@@ -373,7 +373,7 @@ func (router *Router) StartProxyService() error {
 			IdleTimeout:       time.Duration(router.Option.IdleTimeout) * time.Second,
 		}
 		router.Running = true
-		router.Option.Logger.PrintAndLog("dprouter", "Reverse proxy service started in the background (Plain HTTP mode)", nil)
+		router.Option.Logger.PrintAndLog("http-proxy", "Reverse proxy service started in the background (Plain HTTP mode)", nil)
 
 		go func(srv *http.Server) {
 			srv.ListenAndServe()
@@ -466,7 +466,7 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 	selectedUpstream, err := router.loadBalancer.GetRequestUpstreamTarget(w, r, sep.ActiveOrigins, sep.UseStickySession, autoFallbackOff(sep))
 	if err != nil {
 		serveProxyRequestError(w, 404, router, ErrorTemplateHostError)
-		router.Option.Logger.PrintAndLog("dprouter", "failed to get upstream for hostname", err)
+		router.Option.Logger.PrintAndLog("http-proxy", "failed to get destination for hostname", err)
 		router.logRequest(r, false, 404, "vdir-http", r.Host, "", sep)
 		return
 	}
@@ -557,7 +557,7 @@ func (router *Router) startSecondaryListeners() {
 			continue
 		}
 
-		router.Option.Logger.PrintAndLog("dprouter", "Starting secondary listener on "+addr+" for domains: "+strings.Join(domains, ", "), nil)
+		router.Option.Logger.PrintAndLog("http-proxy", "Starting secondary listener on "+addr+" for domains: "+strings.Join(domains, ", "), nil)
 
 		// Create HTTP server for this secondary port
 		secondaryServer := &http.Server{
@@ -622,7 +622,7 @@ func (router *Router) startSecondaryListeners() {
 		// Start the server
 		go func(addr string) {
 			if err := secondaryServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				router.Option.Logger.PrintAndLog("dprouter", "Secondary listener on "+addr+" failed", err)
+				router.Option.Logger.PrintAndLog("http-proxy", "Secondary listener on "+addr+" failed", err)
 			}
 		}(addr)
 	}
@@ -663,7 +663,7 @@ func (router *Router) UpdateSecondaryListeners() {
 			}
 			delete(router.secondaryServers, addr)
 			delete(router.secondaryStopChans, addr)
-			router.Option.Logger.PrintAndLog("dprouter", "Stopped secondary listener on "+addr, nil)
+			router.Option.Logger.PrintAndLog("http-proxy", "Stopped secondary listener on "+addr, nil)
 		}
 	}
 	router.secondaryServerMutex.Unlock()
@@ -689,7 +689,7 @@ func (router *Router) StopProxyService() error {
 			defer cancel()
 			err := srv.Shutdown(ctx)
 			if err != nil {
-				router.Option.Logger.PrintAndLog("dprouter", "Graceful shutdown timeout, forcing close", err)
+				router.Option.Logger.PrintAndLog("http-proxy", "Graceful shutdown timeout, forcing close", err)
 				// Force close if graceful shutdown times out
 				srv.Close()
 			}
@@ -705,7 +705,7 @@ func (router *Router) StopProxyService() error {
 			defer cancel()
 			err := srv.Shutdown(ctx)
 			if err != nil {
-				router.Option.Logger.PrintAndLog("dprouter", "HTTP/3 graceful shutdown timeout, forcing close", err)
+				router.Option.Logger.PrintAndLog("http-proxy", "HTTP/3 graceful shutdown timeout, forcing close", err)
 				srv.Close()
 			}
 			// quic-go does not close a caller-supplied PacketConn; close it so
@@ -732,7 +732,7 @@ func (router *Router) StopProxyService() error {
 		go func(address string, ch chan bool) {
 			defer wg.Done()
 			ch <- true
-			router.Option.Logger.PrintAndLog("dprouter", "Secondary listener on "+address+" stopped", nil)
+			router.Option.Logger.PrintAndLog("http-proxy", "Secondary listener on "+address+" stopped", nil)
 		}(addr, stopChan)
 	}
 	router.secondaryServerMutex.Unlock()
@@ -763,7 +763,7 @@ func (router *Router) StopProxyService() error {
 
 	router.Running = false
 
-	router.Option.Logger.PrintAndLog("dprouter", "Proxy service stopped successfully", nil)
+	router.Option.Logger.PrintAndLog("http-proxy", "Proxy service stopped successfully", nil)
 
 	return nil
 }
@@ -780,7 +780,7 @@ func (router *Router) Restart() error {
 	}()
 	if router.Running {
 
-		router.Option.Logger.PrintAndLog("dprouter", "Restarting proxy server...", nil)
+		router.Option.Logger.PrintAndLog("http-proxy", "Restarting proxy server...", nil)
 		if err := router.StopProxyService(); err != nil {
 			return err
 		}
@@ -789,11 +789,11 @@ func (router *Router) Restart() error {
 	}
 
 	if err := router.StartProxyService(); err != nil {
-		router.Option.Logger.PrintAndLog("dprouter", "Failed to restart proxy server", err)
+		router.Option.Logger.PrintAndLog("http-proxy", "Failed to restart proxy server", err)
 		return err
 	}
 
-	router.Option.Logger.PrintAndLog("dprouter", "Proxy server restarted successfully", nil)
+	router.Option.Logger.PrintAndLog("http-proxy", "Proxy server restarted successfully", nil)
 	return nil
 }
 

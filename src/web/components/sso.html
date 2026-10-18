@@ -28,13 +28,13 @@
             <div class="field">
                 <label for="forwardAuthAddress">Address</label>
                 <input type="text" id="forwardAuthAddress" name="forwardAuthAddress" placeholder="Enter Forward Auth Address">
-                <small>The full remote address or URL of the authorization servers forward auth endpoint. <strong>Example:</strong> http://127.0.0.1:9091/authz/forward-auth<br><b>Using Authentik in single-application (per-app) mode?</b> You also need to set <b>Ignored Paths</b> under Advanced Options below, and add a matching Virtual Directory on each protected host, see the note on that field.</small>
+                <small>The full remote address or URL of the authorization servers forward auth endpoint. <strong>Example:</strong> http://127.0.0.1:9091/authz/forward-auth<br><b>Using Authentik in single-application (per-app) mode?</b> You also need to set <b>Ignored Paths</b> under Advanced Settings below, and add a matching Virtual Directory on each protected host, see the note on that field.</small>
             </div>
             <div class="ui basic segment advanceoptions" style="margin-top:0.6em;">
                 <div class="ui advancedSSOForwardAuthOptions accordion">
                     <div class="title">
                         <i class="dropdown icon"></i>
-                        Advanced Options
+                        Advanced Settings
                     </div>
                     <div class="content">
                         <div class="field">
@@ -282,7 +282,7 @@
                     <div class="ui advancedSSOZorxAuthOptions accordion">
                         <div class="title">
                             <i class="dropdown icon"></i>
-                            Advanced Options
+                            Advanced Settings
                         </div>
                         <div class="content">
                             <br>
@@ -708,11 +708,11 @@
 
         const ssoRedirectURL = $('#zorxAuthSSORedirectURL').val().trim();
         if (!ssoRedirectURL) {
-            msgbox('SSO Redirect URL is required', false);
+            msgbox('SSO redirect URL is required', false);
             return;
         }
         if (!/^https?:\/\//i.test(ssoRedirectURL)) {
-            msgbox('SSO Redirect URL must include the protocol (e.g. https://auth.example.com)', false);
+            msgbox('SSO redirect URL must include the protocol (e.g. https://auth.example.com)', false);
             return;
         }
         const ssoSessionSetURL = $('#zorxAuthSSOSessionSetURL').val();

@@ -659,7 +659,7 @@ func (p *ReverseProxy) ProxyHTTPS(rw http.ResponseWriter, req *http.Request, rrr
 	}
 	if connectTarget != allowedHost {
 		http.Error(rw, "Forbidden", http.StatusForbidden)
-		return http.StatusForbidden, errors.New("CONNECT to " + connectTarget + " denied: target must match the configured upstream")
+		return http.StatusForbidden, errors.New("CONNECT to " + connectTarget + " denied: target must match the configured destination")
 	}
 
 	hij, ok := rw.(http.Hijacker)

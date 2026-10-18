@@ -118,12 +118,12 @@ func (gs *GatewayServer) Start() error {
 	// Start server in a goroutine
 	go func() {
 		if gs.router.Logger != nil {
-			gs.router.Logger.PrintAndLog("zorxauth", fmt.Sprintf("Starting authentication gateway on port %d", port), nil)
+			gs.router.Logger.PrintAndLog("waymark-auth", fmt.Sprintf("Starting authentication gateway on port %d", port), nil)
 		}
 
 		if err := gs.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			if gs.router.Logger != nil {
-				gs.router.Logger.PrintAndLog("zorxauth", fmt.Sprintf("Gateway server error: %v", err), err)
+				gs.router.Logger.PrintAndLog("waymark-auth", fmt.Sprintf("Gateway server error: %v", err), err)
 			}
 		}
 	}()
@@ -141,7 +141,7 @@ func (gs *GatewayServer) Stop() error {
 	}
 
 	if gs.router.Logger != nil {
-		gs.router.Logger.PrintAndLog("zorxauth", "Stopping authentication gateway", nil)
+		gs.router.Logger.PrintAndLog("waymark-auth", "Stopping authentication gateway", nil)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -158,7 +158,7 @@ func (gs *GatewayServer) Stop() error {
 // Restart restarts the gateway server
 func (gs *GatewayServer) Restart() error {
 	if gs.router.Logger != nil {
-		gs.router.Logger.PrintAndLog("zorxauth", "Restarting authentication gateway", nil)
+		gs.router.Logger.PrintAndLog("waymark-auth", "Restarting authentication gateway", nil)
 	}
 
 	// Stop the server if it's running
@@ -215,7 +215,7 @@ func (gs *GatewayServer) handleAuthPage(w http.ResponseWriter, r *http.Request) 
 			host = parsedRedirectURL.Hostname()
 		} else {
 			if gs.router.Logger != nil {
-				gs.router.Logger.PrintAndLog("zorxauth", fmt.Sprintf("Error parsing redirect URL: %v", err), err)
+				gs.router.Logger.PrintAndLog("waymark-auth", fmt.Sprintf("Error parsing redirect URL: %v", err), err)
 			}
 		}
 

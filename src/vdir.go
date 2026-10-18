@@ -181,7 +181,7 @@ func ReverseProxyDeleteVdir(w http.ResponseWriter, r *http.Request) {
 
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("Config", "Fail to write vdir rules update to config file", err)
+		SystemWideLogger.PrintAndLog("proxy-config", "Fail to write vdir rules update to config file", err)
 		utils.SendErrorResponse(w, "unable to write changes to file")
 		return
 	}

@@ -17,7 +17,7 @@
             <h3 class="ui header">Basic Auth Credential</h3>
             <div class="scrolling content ui form">
                 <div id="inlineEditBasicAuthCredentials" class="field">
-                    <p>Enter the username and password for allowing them to access this proxy endpoint</p>
+                    <p>Enter the user names and passwords allowed to access this proxy rule</p>
                     <table class="ui basic very compacted unstackable celled table">
                         <thead>
                         <tr>
@@ -87,7 +87,7 @@
                     </div>
                     <div class="ui basic message" style="margin-top: 0.6em;">
                         <i class="ui info circle icon"></i>
-                        Request paths are case sensitive by default, so a rule for <code>/public/</code> will not exclude <code>/Public/</code>. Uncheck this if your upstream service treats those as the same resource.
+                        Request paths are case sensitive by default, so a rule for <code>/public/</code> will not exclude <code>/Public/</code>. Uncheck this if your destination service treats those as the same resource.
                     </div>
                 </div>
                 <div class="field" id="trustedProxyField" style="display: none;">
@@ -350,7 +350,7 @@
                                 let trustProxyBadge = '';
                                 if (rule.RuleType == 0x1) {
                                     if (rule.UseTrustedProxy) {
-                                        trustProxyBadge = stateIcon(true, "Enabled. Client IP is read from proxy headers, only safe behind a trusted upstream proxy.");
+                                        trustProxyBadge = stateIcon(true, "Enabled. Client IP is read from proxy headers, only safe behind a trusted proxy in front of Waymark.");
                                     } else {
                                         trustProxyBadge = stateIcon(false, "Disabled. Client IP is read from the connection only.");
                                     }
@@ -435,7 +435,7 @@
                         if (data.error != undefined){
                             parent.msgbox(data.error, false, 6000);
                         }else{
-                            parent.msgbox("Credentials Updated");
+                            parent.msgbox("Credentials updated");
                             //parent.hideSideWrapper(true);
                         }
                     }

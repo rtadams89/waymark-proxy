@@ -76,7 +76,7 @@ func ReverseProxyUpstreamAdd(w http.ResponseWriter, r *http.Request) {
 
 	upstreamOrigin, err := utils.PostPara(r, "origin")
 	if err != nil {
-		utils.SendErrorResponse(w, "upstream origin not set")
+		utils.SendErrorResponse(w, "destination not set")
 		return
 	}
 
@@ -124,8 +124,8 @@ func ReverseProxyUpstreamAdd(w http.ResponseWriter, r *http.Request) {
 	//Save changes to configs
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("INFO", "Unable to save new upstream to proxy config", err)
-		utils.SendErrorResponse(w, "Failed to save new upstream config")
+		SystemWideLogger.PrintAndLog("proxy-config", "Unable to save new destination to proxy config", err)
+		utils.SendErrorResponse(w, "Failed to save new destination config")
 		return
 	}
 
@@ -208,8 +208,8 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 	//Save changes to configs
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("INFO", "Unable to save upstream update to proxy config", err)
-		utils.SendErrorResponse(w, "Failed to save updated upstream config")
+		SystemWideLogger.PrintAndLog("proxy-config", "Unable to save destination update to proxy config", err)
+		utils.SendErrorResponse(w, "Failed to save updated destination config")
 		return
 	}
 
@@ -252,8 +252,8 @@ func ReverseProxyUpstreamSetPriority(w http.ResponseWriter, r *http.Request) {
 
 	editingUpstream, err := targetEndpoint.GetUpstreamOriginByMatchingIP(originIP)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("INFO", "Unable to update upstream weight", err)
-		utils.SendErrorResponse(w, "Failed to update upstream weight! (wrong origin?)")
+		SystemWideLogger.PrintAndLog("proxy-config", "Unable to update destination weight", err)
+		utils.SendErrorResponse(w, "Failed to update destination weight! (wrong origin?)")
 		return
 	}
 	editingUpstream.Weight = weight
@@ -263,8 +263,8 @@ func ReverseProxyUpstreamSetPriority(w http.ResponseWriter, r *http.Request) {
 
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("INFO", "Unable to update upstream weight", err)
-		utils.SendErrorResponse(w, "Failed to update upstream weight")
+		SystemWideLogger.PrintAndLog("proxy-config", "Unable to update destination weight", err)
+		utils.SendErrorResponse(w, "Failed to update destination weight")
 		return
 	}
 
@@ -293,7 +293,7 @@ func ReverseProxyUpstreamDelete(w http.ResponseWriter, r *http.Request) {
 	originIP = strings.TrimSpace(originIP)
 
 	if !targetEndpoint.UpstreamOriginExists(originIP) {
-		utils.SendErrorResponse(w, "target upstream not found")
+		utils.SendErrorResponse(w, "target destination not found")
 		return
 	}
 
@@ -305,8 +305,8 @@ func ReverseProxyUpstreamDelete(w http.ResponseWriter, r *http.Request) {
 	//Save changes to configs
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("INFO", "Unable to remove upstream", err)
-		utils.SendErrorResponse(w, "Failed to remove upstream from proxy rule")
+		SystemWideLogger.PrintAndLog("proxy-config", "Unable to remove destination", err)
+		utils.SendErrorResponse(w, "Failed to remove destination from proxy rule")
 		return
 	}
 

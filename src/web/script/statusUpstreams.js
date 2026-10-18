@@ -39,13 +39,13 @@
                 if (data.checkedRules == 0){
                     $("#zrHealthSub").text("No rule has health checks turned on (rule editor → Destinations → Health Checks)");
                 }else{
-                    $("#zrHealthSub").text(statuses.length + " health-checked upstream" + (statuses.length == 1 ? "" : "s") + " on " + data.checkedRules + " rule" + (data.checkedRules == 1 ? "" : "s"));
+                    $("#zrHealthSub").text(statuses.length + " health-checked destination" + (statuses.length == 1 ? "" : "s") + " on " + data.checkedRules + " rule" + (data.checkedRules == 1 ? "" : "s"));
                 }
 
                 let list = $("#zrHealthList");
                 if (down.length == 0 && maint.length == 0){
                     list.html(statuses.length > 0
-                        ? `<span class="dbstatDelta trendUp"><i class="check circle icon"></i>All health-checked upstreams are healthy</span>`
+                        ? `<span class="dbstatDelta trendUp"><i class="check circle icon"></i>All health-checked destinations are healthy</span>`
                         : "");
                     return;
                 }
@@ -71,7 +71,7 @@
                     </tr>`;
                 });
                 list.html(`<table class="ui very basic compact unstackable table" style="margin-top: 0;">
-                    <thead><tr><th>Rule</th><th>Upstream</th><th>State</th><th>Reason</th></tr></thead>
+                    <thead><tr><th>Rule</th><th>Destination</th><th>State</th><th>Reason</th></tr></thead>
                     <tbody>${rows}</tbody></table>`);
             }
         });

@@ -38,7 +38,7 @@ func NewAccessController(options *Options) (*Controller, error) {
 	var defaultAccessRule = AccessRule{
 		ID:                    "default",
 		Name:                  "Default",
-		Desc:                  "Default access rule for all HTTP proxy hosts",
+		Desc:                  "Default access rule for all proxy rules",
 		BlacklistEnabled:      false,
 		WhitelistEnabled:      false,
 		TrustProxyHeadersOnly: false,
@@ -54,7 +54,7 @@ func NewAccessController(options *Options) (*Controller, error) {
 		if err == nil {
 			err = json.Unmarshal(defaultRuleBytes, &defaultAccessRule)
 			if err != nil {
-				options.Logger.PrintAndLog("Access", "Unable to parse default routing rule config file. Using default", err)
+				options.Logger.PrintAndLog("access", "Unable to parse default routing rule config file. Using default", err)
 			}
 		}
 	} else {
@@ -88,7 +88,7 @@ func NewAccessController(options *Options) (*Controller, error) {
 
 		configContent, err := os.ReadFile(configFile)
 		if err != nil {
-			options.Logger.PrintAndLog("Access", "Unable to load config "+filepath.Base(configFile), err)
+			options.Logger.PrintAndLog("access", "Unable to load config "+filepath.Base(configFile), err)
 			continue
 		}
 

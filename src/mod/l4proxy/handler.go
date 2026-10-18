@@ -124,11 +124,11 @@ func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request)
 		//protocols and the active health check in step
 		if hc := existing.View().HealthCheck; hc != nil && hc.ActiveEnabled {
 			if hc.Type == healthcheck.CheckTCP && !useTCP {
-				utils.SendErrorResponse(w, "this proxy's health check uses TCP: change the health check before turning TCP off")
+				utils.SendErrorResponse(w, "this rule's health check uses TCP: change the health check before turning TCP off")
 				return
 			}
 			if hc.Type == healthcheck.CheckUDP && !useUDP {
-				utils.SendErrorResponse(w, "this proxy's health check uses UDP: change the health check before turning UDP off")
+				utils.SendErrorResponse(w, "this rule's health check uses UDP: change the health check before turning UDP off")
 				return
 			}
 		}
@@ -292,7 +292,7 @@ func (m *Manager) validateListener(listen string, useTCP, useUDP bool, exceptUUI
 			if name == "" {
 				name = v.UUID
 			}
-			return fmt.Errorf("Layer 4 proxy %q already uses %s", name, v.ListeningAddress)
+			return fmt.Errorf("Layer 4 rule %q already uses %s", name, v.ListeningAddress)
 		}
 	}
 	return nil

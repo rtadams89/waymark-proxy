@@ -72,7 +72,7 @@
                                 <i class="simplistic exchange icon"></i> Layer 4 Proxies
                             </a>
                             <a class="item" tag="l4rules" tab_group="proxy" highlight="l4proxy" style="display: none;">
-                                <i class="simplistic plus square icon"></i> Add Layer 4 Proxy
+                                <i class="simplistic plus square icon"></i> Add Layer 4 Rule
                             </a>
                             <a class="item" tag="redirectset" tab_group="proxy">
                                 <i class="simplistic level up alternate icon"></i> Redirects
@@ -117,7 +117,7 @@
                                 <i class="simplistic lock icon"></i> Certificates
                             </a>
                             <a class="item" tag="acme" tab_group="certificates" highlight="cert" style="display: none;">
-                                <i class="simplistic sync alternate icon"></i> ACME and auto-renew
+                                <i class="simplistic sync alternate icon"></i> ACME and Auto-Renew
                             </a>
                         </div>
                     </div>
@@ -703,13 +703,22 @@
                 return map;
             })();
 
+            //Custom fork: renamed from zoraxy_menu_groups; the old key is moved once
             function getMenuGroupStates() {
-                try { return JSON.parse(localStorage.getItem('zoraxy_menu_groups') || '{}'); }
+                try {
+                    let saved = localStorage.getItem('waymark_menu_groups');
+                    if (saved === null && localStorage.getItem('zoraxy_menu_groups') !== null){
+                        saved = localStorage.getItem('zoraxy_menu_groups');
+                        localStorage.setItem('waymark_menu_groups', saved);
+                        localStorage.removeItem('zoraxy_menu_groups');
+                    }
+                    return JSON.parse(saved || '{}');
+                }
                 catch(e) { return {}; }
             }
 
             function saveMenuGroupStates(states) {
-                localStorage.setItem('zoraxy_menu_groups', JSON.stringify(states));
+                try { localStorage.setItem('waymark_menu_groups', JSON.stringify(states)); } catch(e) {}
             }
 
             function toggleMenuGroup(groupId) {

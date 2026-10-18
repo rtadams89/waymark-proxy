@@ -147,7 +147,7 @@ func (ar *AuthRouter) initBrandingStore() {
 	folder := ar.brandingFolder()
 	if err := os.MkdirAll(folder, 0755); err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to create branding folder: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to create branding folder: "+err.Error(), err)
 		}
 		return
 	}
@@ -161,7 +161,7 @@ func (ar *AuthRouter) initBrandingStore() {
 	loaded := BrandingConfig{}
 	if err := json.Unmarshal(data, &loaded); err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to parse branding config, using defaults: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to parse branding config, using defaults: "+err.Error(), err)
 		}
 		return
 	}
@@ -536,7 +536,7 @@ func (ar *AuthRouter) HandleCustomizationUpload(w http.ResponseWriter, r *http.R
 	}
 
 	if ar.Logger != nil {
-		ar.Logger.PrintAndLog("zorxauth", "Login page "+spec.Label+" replaced with "+filename, nil)
+		ar.Logger.PrintAndLog("waymark-auth", "Login page "+spec.Label+" replaced with "+filename, nil)
 	}
 
 	utils.SendOK(w)
@@ -588,4 +588,3 @@ func (ar *AuthRouter) HandleCustomizationReset(w http.ResponseWriter, r *http.Re
 
 	utils.SendOK(w)
 }
-

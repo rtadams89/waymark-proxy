@@ -40,10 +40,10 @@
                 </div>
             </div>
 
-            <div class="ui blue message" id="hcSingleUpstreamNote" style="display:none;">
+            <div class="ui blue message" id="hcSingleDestinationNote" style="display:none;">
                 <i class="info circle icon"></i>
-                <span class="hcHttpText">This rule has only one upstream. While it fails its health checks, visitors get Waymark's "Web server is down" (521) error page straight away. Add a second upstream to fail over to it instead.</span>
-                <span class="hcL4Text">This proxy has only one destination. While it fails its health checks, new connections are closed straight away. Add a second destination to fail over to it instead.</span>
+                <span class="hcHttpText">This rule has only one destination. While it fails its health checks, visitors get Waymark's "Web server is down" (521) error page straight away. Add a second destination to fail over to it instead.</span>
+                <span class="hcL4Text">This rule has only one destination. While it fails its health checks, new connections are closed straight away. Add a second destination to fail over to it instead.</span>
             </div>
 
             <div class="ui form" id="hcForm">
@@ -51,7 +51,7 @@
                 <div class="hcSection" id="hcActiveSection">
                     <div class="ui toggle checkbox" id="hcActiveToggle">
                         <input type="checkbox" name="activeEnabled">
-                        <label><b>Active checks</b><br><span class="hcHint">Probe every upstream on a schedule</span></label>
+                        <label><b>Active checks</b><br><span class="hcHint">Probe every destination on a schedule</span></label>
                     </div>
                     <div class="hcBody" style="margin-top: 1em;">
                         <div class="field">
@@ -84,8 +84,8 @@
                             </div>
                             <div class="field">
                                 <label>Host header <span class="hcHint">(optional)</span></label>
-                                <input type="text" name="hostHeader" placeholder="Leave empty to use the upstream address" autocomplete="off">
-                                <div class="hcHint">For backends that route by hostname. Also used as the TLS server name for HTTPS upstreams.</div>
+                                <input type="text" name="hostHeader" placeholder="Leave empty to use the destination address" autocomplete="off">
+                                <div class="hcHint">For backends that route by hostname. Also used as the TLS server name for HTTPS destinations.</div>
                             </div>
                             <!-- Custom fork: response body match -->
                             <div class="field hcGetOnly">
@@ -136,7 +136,7 @@
                                 <div class="ui right labeled input"><input type="number" name="rise" min="1" max="20"><div class="ui basic label">passes</div></div>
                             </div>
                         </div>
-                        <div class="hcHint">Consecutive results. <span class="hcHttpText">An upstream</span><span class="hcL4Text">A destination</span> is disabled after "Disable after" failed checks in a row, and re-enabled after "Enable after" successful checks in a row.</div>
+                        <div class="hcHint">Consecutive results. A destination is disabled after "Disable after" failed checks in a row, and re-enabled after "Enable after" successful checks in a row.</div>
                     </div>
                 </div>
 
@@ -184,11 +184,11 @@
 
             <div class="ui divider"></div>
             <h4 class="ui header">
-                <span class="hcHttpText">Upstream status</span><span class="hcL4Text">Destination status</span>
+                Destination status
                 <div class="sub header">Updates every 5 seconds</div>
             </h4>
             <table class="ui very basic compact unstackable table">
-                <thead><tr><th><span class="hcHttpText">Upstream</span><span class="hcL4Text">Destination</span></th><th>State</th><th>Last check</th></tr></thead>
+                <thead><tr><th>Destination</th><th>State</th><th>Last check</th></tr></thead>
                 <tbody id="hcStatusBody"><tr><td colspan="3" class="hcHint">Loading…</td></tr></tbody>
             </table>
 
@@ -197,18 +197,18 @@
 
             <div class="ui divider"></div>
             <div class="ui bulleted list hcHint hcHttpText">
-                <div class="item">A disabled upstream gets no traffic. If every upstream of the rule is disabled, visitors get the "Web server is down" (521) error page until one passes its checks again.</div>
+                <div class="item">A disabled destination gets no traffic. If every destination of the rule is disabled, visitors get the "Web server is down" (521) error page until one passes its checks again.</div>
                 <div class="item">Every enable and disable is written to Waymark's log with its reason, under <code>[healthcheck]</code>.</div>
-                <div class="item">Active checks also feed the Health &amp; Uptime page (Monitoring): one entry per 5 minutes, marked down if the upstream was out of load balancing at any point in it. Rules without active checks are not shown there.</div>
+                <div class="item">Active checks also feed the Health &amp; Uptime page (Monitoring): one entry per 5 minutes, marked down if the destination was out of load balancing at any point in it. Rules without active checks are not shown there.</div>
                 <div class="item">ICMP ping uses an unprivileged ping socket (allowed by default on Debian through <code>net.ipv4.ping_group_range</code>) and falls back to a raw socket.</div>
-                <div class="item">If the same backend address is used by several rules, it is taken out of load balancing when any rule's checks find it unhealthy.</div>
+                <div class="item">If the same destination address is used by several rules, it is taken out of load balancing when any rule's checks find it unhealthy.</div>
             </div>
             <div class="ui bulleted list hcHint hcL4Text">
-                <div class="item">A disabled destination gets no new connections. If every destination of the proxy is disabled, new connections are closed until one passes its checks again. Open connections stay, unless "Close connections when a destination goes down" is on.</div>
+                <div class="item">A disabled destination gets no new connections. If every destination of the rule is disabled, new connections are closed until one passes its checks again. Open connections stay, unless "Close connections when a destination goes down" is on.</div>
                 <div class="item">Every enable and disable is written to Waymark's log with its reason, under <code>[healthcheck]</code>.</div>
-                <div class="item">Active checks also feed the Health &amp; Uptime page (Monitoring): one entry per 5 minutes, marked down if the destination was out of load balancing at any point in it. Proxies without active checks are not shown there.</div>
+                <div class="item">Active checks also feed the Health &amp; Uptime page (Monitoring): one entry per 5 minutes, marked down if the destination was out of load balancing at any point in it. Rules without active checks are not shown there.</div>
                 <div class="item">ICMP ping uses an unprivileged ping socket (allowed by default on Debian through <code>net.ipv4.ping_group_range</code>) and falls back to a raw socket.</div>
-                <div class="item">If the same address is used by several proxies or HTTP proxy rules, it is taken out of load balancing when any of their checks find it unhealthy.</div>
+                <div class="item">If the same address is used by several rules (HTTP or Layer 4), it is taken out of load balancing when any rule's checks find it unhealthy.</div>
             </div>
             <button class="ui basic button" style="float:right;" onclick="parent.hideSideWrapper(true);"><i class="remove icon"></i> Close</button>
             <br><br><br>
@@ -244,8 +244,8 @@
             const typeHints = {
                 "http-get": "Requests the path and checks the status code. The response body is ignored.",
                 "http-head": "Like GET but without a response body. Some backends answer HEAD incorrectly; use GET if checks fail unexpectedly.",
-                "tcp": "Healthy if a TCP connection to the upstream's port opens. Does not check the application.",
-                "icmp": "Healthy if the upstream's IP answers ping. Only proves the machine is up, not the service."
+                "tcp": "Healthy if a TCP connection to the destination's port opens. Does not check the application.",
+                "icmp": "Healthy if the destination's IP answers ping. Only proves the machine is up, not the service."
             };
             const l4TypeHints = {
                 "tcp": "Healthy if a TCP connection to the destination's port opens. Does not check the application.",
@@ -269,10 +269,10 @@
                 $("#hcTypeHint").text((l4Mode ? l4TypeHints[type] : typeHints[type]) || "");
                 if (active){
                     $("#hcRecoveryField").addClass("disabled");
-                    $("#hcRecoveryHint").text((l4Mode ? "Destinations" : "Upstreams") + " disabled by passive monitoring come back through the active checks (after the \"Enable after\" count of successful checks).");
+                    $("#hcRecoveryHint").text("Destinations disabled by passive monitoring come back through the active checks (after the \"Enable after\" count of successful checks).");
                 }else{
                     $("#hcRecoveryField").removeClass("disabled");
-                    $("#hcRecoveryHint").text("With no active checks, a disabled " + (l4Mode ? "destination" : "upstream") + " is given traffic again after this many seconds. If the errors continue it is disabled again.");
+                    $("#hcRecoveryHint").text("With no active checks, a disabled destination is given traffic again after this many seconds. If the errors continue it is disabled again.");
                 }
             }
 
@@ -359,7 +359,7 @@
                     if (initial || !formDirty){
                         setForm(data.config);
                     }
-                    $("#hcSingleUpstreamNote").toggle(data.upstreams.length < 2);
+                    $("#hcSingleDestinationNote").toggle(data.upstreams.length < 2);
                     renderStatus(data);
                     renderEvents(data.events);
                 });
@@ -373,11 +373,11 @@
                 $("#hcVdirSection").toggle(vdirs.length > 0);
                 $("#hcVdirList").text(vdirs.map(v => v.path).join(", "));
                 if (data.upstreams.length == 0 && vdirs.length == 0){
-                    body.append(`<tr><td colspan="3" class="hcHint">${l4Mode ? "This proxy has no destinations." : "This rule has no active upstreams."}</td></tr>`);
+                    body.append(`<tr><td colspan="3" class="hcHint">${l4Mode ? "This rule has no destinations." : "This rule has no active destinations."}</td></tr>`);
                     return;
                 }
                 let byAddr = {}, byLabel = {};
-                data.statuses.forEach(s => { if (s.label){ byLabel[s.label] = s; } else { byAddr[s.upstream] = s; } });
+                data.statuses.forEach(s => { if (s.label && s.label.startsWith("vdir ")){ byLabel[s.label] = s; } else { byAddr[s.upstream] = s; } });
                 let rows = data.upstreams.map(addr => ({addr: addr, s: byAddr[addr], note: ""}));
                 vdirs.forEach(v => {
                     let s = byLabel["vdir " + v.path] || (data.upstreams.includes(v.upstream) ? byAddr[v.upstream] : undefined);
@@ -389,12 +389,12 @@
                     let addr = row.addr, s = row.s;
                     let addrCell = `<td class="hcMono">${esc(addr)}${row.note ? `<div class="hcReason" style="font-family: inherit;">${esc(row.note)}</div>` : ""}</td>`;
                     if (!s){
-                        body.append(`<tr>${addrCell}<td colspan="2" class="hcHint">Not health checked${data.disabled ? (l4Mode ? " (proxy is stopped)" : " (rule is disabled)") : (row.note ? " yet" : "")}</td></tr>`);
+                        body.append(`<tr>${addrCell}<td colspan="2" class="hcHint">Not health checked${data.disabled ? (l4Mode ? " (rule is stopped)" : " (rule is disabled)") : (row.note ? " yet" : "")}</td></tr>`);
                         return;
                     }
                     let dot = "hcUp", label = "Healthy";
                     if (!s.enabled){ dot = "hcDown"; label = "Disabled"; }
-                    else if (!s.receivesTraffic){ dot = "hcHeld"; label = l4Mode ? "Healthy here, held out by another proxy or rule" : "Healthy here, held out by another rule"; }
+                    else if (!s.receivesTraffic){ dot = "hcHeld"; label = "Healthy here, held out by another rule"; }
                     let latency = (s.lastLatencyMs || 0) < 1 ? "<1 ms" : s.lastLatencyMs + " ms";
                     let last = s.lastCheck ? `${esc(s.lastDetail)}<br><span class="hcReason">${latency} · ${ago(s.lastCheck)}</span>` : (s.check ? `<span class="hcHint">pending</span>` : `<span class="hcHint">passive only</span>`);
                     let counters = [];
@@ -472,7 +472,6 @@
                 $("#hcType .hcHttpType").toggle(!l4Mode);
                 $("#hcType .hcL4Type").toggle(l4Mode);
                 if (l4Mode){
-                    $("#hcRuleName").parent().contents().first()[0].textContent = "Layer 4 proxy: ";
                     $("#hcActiveToggle .hcHint").text("Probe every destination on a schedule");
                     $("#hcPassiveToggle .hcHint").text("Watch real proxied connections for errors");
                 }

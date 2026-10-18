@@ -1,4 +1,4 @@
-<!-- Custom fork: Layer 4 proxy create form, laid out like Add Proxy Rule (rules.html) -->
+<!-- Custom fork: Layer 4 rule create form, laid out like Add Proxy Rule (rules.html) -->
 <style>
     #l4rules .l4RulesInstructions{
         background: var(--theme_background) !important;
@@ -11,18 +11,18 @@
         <div class="ten wide column">
             <div class="ui basic segment" style="border-radius: 1em; padding: 1em !important;">
                 <a class="ui basic tiny button" style="margin-bottom: 0.6em;" onclick="openTabById('l4proxy');"><i class="arrow left icon"></i> Back to Layer 4 Proxies</a>
-                <h2>Add Layer 4 Proxy</h2>
+                <h2>Add Layer 4 Rule</h2>
                 <p>Forward TCP or UDP traffic arriving on a port of this host to a destination server</p>
                 <div class="ui form" id="newL4ProxyForm">
                     <div class="field">
                         <label>Name</label>
                         <input type="text" id="newL4Name" placeholder="e.g. Minecraft server">
-                        <small>Shown in the Layer 4 proxy list. Leave empty to name it after the listening address.</small>
+                        <small>Shown in the Layer 4 Proxies list. Leave empty to name it after the listening address.</small>
                     </div>
                     <div class="field">
                         <label>Listening Address with Port</label>
                         <input type="text" id="newL4ListenAddr" placeholder=":25565">
-                        <small>e.g. :25565 for every address of this host, or 192.168.0.10:25565 for one address. If Waymark runs in Docker, also publish this port.</small>
+                        <small>e.g. :25565 for every address of this host, or 192.168.0.10:25565 for one address.</small>
                     </div>
                     <div class="field">
                         <label>Destination IP Address or Domain Name with port</label>
@@ -46,22 +46,22 @@
                         <div id="advanceL4Rules" class="ui fluid accordion">
                             <div class="title">
                                 <i class="dropdown icon"></i>
-                                Advance Settings
+                                Advanced Settings
                             </div>
                             <div class="content">
                                 <div class="field">
                                     <div class="ui checkbox">
                                         <input type="checkbox" id="newL4HealthCheck" checked>
-                                        <label>Enable health checks<br><small>Check destinations with a TCP connect every 10s, take them out of load balancing when they fail, and show them on Monitoring &gt; Health &amp; Uptime. UDP-only proxies need a UDP check, set under Destinations &rarr; Health Checks in the rule editor.</small></label>
+                                        <label>Enable health checks<br><small>Check destinations with a TCP connect every 10s, take them out of load balancing when they fail, and show them on Monitoring &gt; Health &amp; Uptime. UDP-only rules need a UDP check, set under Destinations &rarr; Health Checks in the rule editor.</small></label>
                                     </div>
                                 </div>
-                                <div class="field">
-                                    <label>Connection Timeout</label>
+                                <div class="field" id="newL4UDPTimeoutField" style="display: none;">
+                                    <label>UDP Idle Timeout</label>
                                     <div class="ui fluid right labeled input">
                                         <input type="number" id="newL4Timeout" min="0" value="10">
                                         <div class="ui basic label">seconds</div>
                                     </div>
-                                    <small>For UDP: how long an idle client session is kept. 0 uses 60 seconds.</small>
+                                    <small>How long a UDP client session is kept after its last packet. 0 uses 60 seconds.</small>
                                 </div>
                                 <div class="field">
                                     <label>Proxy Protocol</label>
@@ -79,7 +79,7 @@
                                 </div>
                                 <div class="ui horizontal divider">
                                     <i class="ui red ban icon"></i>
-                                    Access Control
+                                    Access Rules
                                 </div>
                                 <div class="field">
                                     <label>Access Rule</label>
@@ -108,7 +108,7 @@
                     </div>
                     <br>
                     <div style="display: inline-block;">
-                        <button class="ui basic button" onclick="newL4Proxy(); return false;"><i class="green add icon"></i> Create Layer 4 Proxy</button>
+                        <button class="ui basic button" onclick="newL4Proxy(); return false;"><i class="green add icon"></i> Create Layer 4 Rule</button>
                     </div>
                     <br><br>
                 </div>
@@ -150,7 +150,7 @@
                         <span style="font-size: 1.2em; font-weight: 300;"><i class="ui green sitemap icon"></i> Load balancing and failover</span><br>
                         <ul>
                             <li>Go to <b>Layer 4 Proxies</b> in the sidebar.</li>
-                            <li>Click <b>Edit</b> on your proxy.</li>
+                            <li>Click the edit button (&#8942;) of your rule.</li>
                             <li>Use <b>Destinations</b> &rarr; <b>Edit Destinations</b> to add more destination servers, and choose how new connections are spread across them.</li>
                         </ul>
                         <small>
@@ -167,6 +167,8 @@
 </div>
 <script>
     $("#advanceL4Rules").accordion();
+    //The timeout only applies to UDP
+    $("#newL4UseUDP").on("change", function(){ $("#newL4UDPTimeoutField").toggle(this.checked); });
 
     function newL4Proxy(){
         let listenAddr = $("#newL4ListenAddr").val().trim();
@@ -187,10 +189,10 @@
             return;
         }
         if (isNaN(timeout) || timeout < 0){
-            msgbox("Connection timeout must be a whole number of seconds", false, 5000);
+            msgbox("UDP idle timeout must be a whole number of seconds", false, 5000);
             return;
         }
-        //Without a name, the proxy is named after its listening address
+        //Without a name, the rule is named after its listening address
         let name = $("#newL4Name").val().trim();
         if (name == ""){
             name = listenAddr;
@@ -217,18 +219,18 @@
                     return;
                 }
                 let finish = function(warning){
-                    //Like HTTP proxy rules, a new Layer 4 proxy is live straight away
+                    //Like HTTP proxy rules, a new Layer 4 rule is live straight away
                     $.cjax({
                         url: "/api/l4proxy/config/start",
                         method: "POST",
                         data: {uuid: newUUID},
                         success: function(data){
                             if (data.error != undefined){
-                                msgbox("Layer 4 proxy added, but it could not start: " + data.error, false, 8000);
+                                msgbox("Layer 4 rule added, but it could not start: " + data.error, false, 8000);
                             }else if (warning){
                                 msgbox(warning, false, 8000);
                             }else{
-                                msgbox("Layer 4 Proxy Added");
+                                msgbox("Layer 4 rule added");
                             }
                             clearNewL4ProxyForm();
                             if (typeof initL4ProxyList == "function"){
@@ -255,7 +257,7 @@
                         })
                     },
                     success: function(data){
-                        finish(data.error != undefined ? "Layer 4 proxy added, but its health check was not saved: " + data.error : undefined);
+                        finish(data.error != undefined ? "Layer 4 rule added, but its health check was not saved: " + data.error : undefined);
                     }
                 });
             }
@@ -269,6 +271,7 @@
         $("#newL4Timeout").val("10");
         $("#newL4UseTCP").prop("checked", true);
         $("#newL4UseUDP").prop("checked", false);
+        $("#newL4UDPTimeoutField").hide();
         $("#newL4HealthCheck").prop("checked", true);
         $("#newL4EnableLogging").prop("checked", false);
         $("#newL4ProxyProtocol").parent().dropdown("set selected", "0");

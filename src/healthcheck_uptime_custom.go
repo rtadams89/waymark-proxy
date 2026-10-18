@@ -97,7 +97,7 @@ func healthCheckUptimeTargets(dp *dynamicproxy.Router) []*uptime.Target {
 			}
 			id := ruleID
 			if multiple {
-				id = fmt.Sprintf("%s (upstream:%d)", ruleID, i)
+				id = fmt.Sprintf("%s (destination %d)", ruleID, i)
 			}
 			t := &uptime.Target{
 				ID:                  id,

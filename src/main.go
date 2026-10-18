@@ -118,7 +118,7 @@ func main() {
 	}
 	uuidBytes, err := os.ReadFile(uuidRecord)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("ZeroTier", "Unable to read system uuid from file system", nil)
+		SystemWideLogger.PrintAndLog("system", "Unable to read system uuid from file system", nil)
 		panic(err)
 	}
 	nodeUUID = string(uuidBytes)

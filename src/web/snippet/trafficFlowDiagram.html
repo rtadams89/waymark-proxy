@@ -326,7 +326,7 @@
         </div>
         <div id="legend-overlay">
             <div class="legend-item"><div class="legend-line legend-line-proxy"></div> Clients → Proxy Rule</div>
-            <div class="legend-item"><div class="legend-line legend-line-upstream"></div> Proxy Rule → Upstream</div>
+            <div class="legend-item"><div class="legend-line legend-line-upstream"></div> Proxy Rule → Destination</div>
             <div class="legend-item"><div class="legend-line legend-line-disabled" style="border-top:2px dashed #bbb;height:0;width:24px;"></div> Disabled / Inactive</div>
         </div>
     </div>
@@ -356,7 +356,18 @@
        "vertical" (Internet on top, upstreams at the bottom).
        Defaults to vertical to fit the status page's tall left column.
        Persisted in localStorage so the user's preference sticks. */
-    let orientation = localStorage.getItem("zoraxy_trafficflow_orientation") || "vertical";
+    let orientation = (function(){
+        //Custom fork: renamed from zoraxy_trafficflow_orientation; the old key is moved once
+        try {
+            let saved = localStorage.getItem("waymark_trafficflow_orientation");
+            if (saved === null && localStorage.getItem("zoraxy_trafficflow_orientation") !== null){
+                saved = localStorage.getItem("zoraxy_trafficflow_orientation");
+                localStorage.setItem("waymark_trafficflow_orientation", saved);
+                localStorage.removeItem("zoraxy_trafficflow_orientation");
+            }
+            return saved || "vertical";
+        } catch(e) { return "vertical"; }
+    })();
     let _lastData = null; // cache of the most recent API payload for re-render on rotate
 
     /* SVG namespace helper */
@@ -429,7 +440,7 @@
 
         // Upstream count hint
         const uHint = svgEl("text", { x: x + PROXY_W - 10, y: y + 36, class: "node-subtitle", "text-anchor": "end" });
-        uHint.textContent = proxy.upstreams.length + " upstream" + (proxy.upstreams.length !== 1 ? "s" : "");
+        uHint.textContent = proxy.upstreams.length + " destination" + (proxy.upstreams.length !== 1 ? "s" : "");
         g.appendChild(uHint);
 
         return g;
@@ -737,7 +748,7 @@
                     width: UPSTREAM_W, height: UPSTREAM_H, rx: 8, ry: 8
                 }));
                 const phText = svgEl("text", { x: phTL.x + 10, y: phTL.y + 27, class: "node-subtitle" });
-                phText.textContent = "No upstreams configured";
+                phText.textContent = "No destinations configured";
                 ph.appendChild(phText);
                 nodeGroup.appendChild(ph);
             }
@@ -785,7 +796,7 @@
     /* Toggle between horizontal and vertical flow layouts */
     function toggleOrientation() {
         orientation = (orientation === "vertical") ? "horizontal" : "vertical";
-        localStorage.setItem("zoraxy_trafficflow_orientation", orientation);
+        try { localStorage.setItem("waymark_trafficflow_orientation", orientation); } catch(e) {}
         updateRotateButton();
         if (_lastData) {
             renderDiagram(_lastData);

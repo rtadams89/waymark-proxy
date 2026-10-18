@@ -77,7 +77,7 @@ func NewACME(
 }
 
 func (a *ACMEHandler) Logf(message string, err error) {
-	a.Logger.PrintAndLog("ACME", message, err)
+	a.Logger.PrintAndLog("acme", message, err)
 }
 
 func (a *ACMEHandler) writeFileWithMode(filename string, data []byte, mode os.FileMode) error {

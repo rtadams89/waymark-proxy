@@ -190,7 +190,7 @@ func ExportConfigAsZip(w http.ResponseWriter, r *http.Request) {
 
 	// Specify the folder path to be zipped
 	if !utils.FileExists(CONF_FOLDER) {
-		SystemWideLogger.PrintAndLog("Backup", "Configuration folder not found", nil)
+		SystemWideLogger.PrintAndLog("backup", "Configuration folder not found", nil)
 		return
 	}
 	folderPath := CONF_FOLDER
@@ -243,14 +243,14 @@ func ExportConfigAsZip(w http.ResponseWriter, r *http.Request) {
 		//Also zip in the sysdb
 		zipFile, err := zipWriter.Create("sys.db")
 		if err != nil {
-			SystemWideLogger.PrintAndLog("Backup", "Unable to zip sysdb", err)
+			SystemWideLogger.PrintAndLog("backup", "Unable to zip sysdb", err)
 			return
 		}
 
 		// Open the file on disk
 		file, err := os.Open(*path_database)
 		if err != nil {
-			SystemWideLogger.PrintAndLog("Backup", "Unable to open sysdb", err)
+			SystemWideLogger.PrintAndLog("backup", "Unable to open sysdb", err)
 			return
 		}
 		defer file.Close()

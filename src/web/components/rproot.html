@@ -16,8 +16,8 @@
                 <div class="field">
                     <div class="ui radio defaultsite checkbox">
                         <input type="radio" name="defaultsiteOption" value="proxy">
-                        <label>Reverse Proxy Target<br>
-                            <small>Proxy the request to a target IP / domain</small>
+                        <label>Reverse Proxy<br>
+                            <small>Proxy the request to a destination IP address or domain</small>
                         </label>
                     </div>
                 </div>
@@ -52,14 +52,14 @@
         <div id="defaultSiteProxyOptions" class="ui basic segment advanceoptions defaultSiteOptionDetails" style="display:none; ">
             <div class="ui form">
                 <div class="field">
-                        <label>Reverse Proxy Target</label>
+                        <label>Destination</label>
                         <input type="text" id="proxyRoot" onchange="checkRootRequireTLS(this.value);">
                         <small>e.g. localhost:8080 / 192.168.0.100:80 / example.com</small>
                 </div>
                 <div class="field">
                     <div class="ui checkbox">
                         <input type="checkbox" id="rootReqTLS">
-                        <label>Reverse proxy target require TLS connection <br><small>Check this if your proxy target URL require connection with https://</small></label>
+                        <label>Destination requires TLS <br><small>Check this if the destination address starts with https://</small></label>
                     </div>
                 </div>
             </div>
@@ -270,7 +270,7 @@
                                 setWebServerRunningState(true);
                             }
                             
-                            msgbox("Default Site Updated");
+                            msgbox("Default site updated");
                         })
                     });
                     
@@ -281,7 +281,7 @@
                 }
             },
             error: function(){
-                msgbox("Unknown error occured", false);
+                msgbox("Unknown error occurred", false);
             }
         });
 

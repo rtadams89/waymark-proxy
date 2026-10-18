@@ -25,7 +25,7 @@ func (router *Router) PrepareProxyRoute(endpoint *ProxyEndpoint) (*ProxyEndpoint
 		//Create the proxy routing handler
 		err := thisOrigin.StartProxy(endpoint.upstreamTLSServerName())
 		if err != nil {
-			log.Println("Unable to setup upstream " + thisOrigin.OriginIpOrDomain + ": " + err.Error())
+			log.Println("Unable to setup destination " + thisOrigin.OriginIpOrDomain + ": " + err.Error())
 			continue
 		}
 	}

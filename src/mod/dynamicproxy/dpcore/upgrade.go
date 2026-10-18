@@ -61,19 +61,19 @@ func (p *ReverseProxy) handleUpgradeResponse(rw http.ResponseWriter, reqUpType s
 	resUpType := upgradeType(res.Header)
 	if !isPrintableASCII(resUpType) {
 		res.Body.Close()
-		return http.StatusBadGateway, errors.New("upstream switched to an invalid protocol")
+		return http.StatusBadGateway, errors.New("destination switched to an invalid protocol")
 	}
 
 	if !strings.EqualFold(reqUpType, resUpType) {
 		res.Body.Close()
-		return http.StatusBadGateway, errors.New("upstream switched to protocol " + resUpType + " when " + reqUpType + " was requested")
+		return http.StatusBadGateway, errors.New("destination switched to protocol " + resUpType + " when " + reqUpType + " was requested")
 	}
 
 	//For a 101 response the transport hands us the raw upstream connection
 	backendConn, ok := res.Body.(io.ReadWriteCloser)
 	if !ok {
 		res.Body.Close()
-		return http.StatusBadGateway, errors.New("upstream returned 101 with a non-writable body")
+		return http.StatusBadGateway, errors.New("destination returned 101 with a non-writable body")
 	}
 	defer backendConn.Close()
 

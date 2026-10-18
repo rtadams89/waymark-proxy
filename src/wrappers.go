@@ -159,7 +159,7 @@ func UpdateUptimeMonitorTargets() {
 			uptimeMonitor.ExecuteUptimeCheck()
 		}()
 
-		SystemWideLogger.PrintAndLog("uptime-monitor", "Uptime monitor config updated", nil)
+		SystemWideLogger.PrintAndLog("uptime", "Uptime monitor config updated", nil)
 	}
 }
 
@@ -185,7 +185,7 @@ func GetUptimeTargetsFromReverseProxyRules(dp *dynamicproxy.Router) []*uptime.Ta
 			//Add the root url
 			hostIdAndName := hostid
 			if isMultipleUpstreams {
-				hostIdAndName = hostIdAndName + " (upstream:" + strconv.Itoa(i) + ")"
+				hostIdAndName = hostIdAndName + " (destination " + strconv.Itoa(i) + ")"
 			}
 			UptimeTargets = append(UptimeTargets, &uptime.Target{
 				ID:                hostIdAndName,

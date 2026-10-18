@@ -67,7 +67,7 @@ func l4HealthTargets() []healthcheck.Target {
 		}
 		cfg, err := c.HealthCheck.Validate()
 		if err != nil {
-			SystemWideLogger.PrintAndLog("healthcheck", "Ignoring invalid health check settings on Layer 4 proxy "+l4RuleName(c), err)
+			SystemWideLogger.PrintAndLog("healthcheck", "Ignoring invalid health check settings on Layer 4 rule "+l4RuleName(c), err)
 			continue
 		}
 		for _, addr := range rule.UpstreamList() {
@@ -75,7 +75,7 @@ func l4HealthTargets() []healthcheck.Target {
 				RuleID:   rule.HealthRuleID(),
 				Upstream: healthcheck.Upstream{Addr: addr},
 				Config:   *cfg,
-				Label:    "Layer 4 proxy " + l4RuleName(c),
+				RuleName: "Layer 4: " + l4RuleName(c),
 			})
 		}
 	}
@@ -135,7 +135,7 @@ func l4UptimeTargets(fed map[uptimeFeedKey]uptimeFeedTarget) []*uptime.Target {
 		for i, addr := range ups {
 			id := "Layer 4: " + l4RuleName(c)
 			if len(ups) > 1 {
-				id = fmt.Sprintf("%s (upstream:%d)", id, i)
+				id = fmt.Sprintf("%s (destination %d)", id, i)
 			}
 			t := &uptime.Target{
 				ID:                  id,
@@ -207,7 +207,7 @@ func HandleL4HealthCheckGet(w http.ResponseWriter, r *http.Request) {
 	}
 	rule, err := l4ProxyManager.GetConfigByUUID(id)
 	if err != nil {
-		utils.SendErrorResponse(w, "Layer 4 proxy not found")
+		utils.SendErrorResponse(w, "Layer 4 rule not found")
 		return
 	}
 	c := rule.View()
@@ -265,7 +265,7 @@ func HandleL4HealthCheckSet(w http.ResponseWriter, r *http.Request) {
 	}
 	rule, err := l4ProxyManager.GetConfigByUUID(id)
 	if err != nil {
-		utils.SendErrorResponse(w, "Layer 4 proxy not found")
+		utils.SendErrorResponse(w, "Layer 4 rule not found")
 		return
 	}
 	c := rule.View()
@@ -279,6 +279,6 @@ func HandleL4HealthCheckSet(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
-	SystemWideLogger.PrintAndLog("healthcheck", "Health check settings updated for Layer 4 proxy "+l4RuleName(c), nil)
+	SystemWideLogger.PrintAndLog("healthcheck", "Health check settings updated for Layer 4 rule "+l4RuleName(c), nil)
 	utils.SendOK(w)
 }

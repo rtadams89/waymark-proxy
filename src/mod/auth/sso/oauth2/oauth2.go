@@ -242,7 +242,7 @@ func (ar *OAuth2Router) fetchOAuth2Configuration(config *oauth2.Config) (*oauth2
 		defer resp.Body.Close()
 		oidcDiscoveryDocument := OIDCDiscoveryDocument{}
 		if err := json.NewDecoder(resp.Body).Decode(&oidcDiscoveryDocument); err != nil {
-			ar.options.Logger.PrintAndLog("OAuth2Router", fmt.Sprintf("Failed to decode ([%d] %s)", resp.StatusCode, resp.Status), err)
+			ar.options.Logger.PrintAndLog("oauth2", fmt.Sprintf("Failed to decode ([%d] %s)", resp.StatusCode, resp.Status), err)
 			return nil, err
 		}
 		if len(config.Scopes) == 0 {
@@ -301,7 +301,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 	oauthConfigCache, _ := ar.options.OAuth2ConfigCache.GetOrSetFunc(r.Host, func() *oauth2.Config {
 		oauthConfig, err := ar.newOAuth2Conf(scheme + "://" + r.Host + callbackPrefix)
 		if err != nil {
-			ar.options.Logger.PrintAndLog("OAuth2Router", "Failed to fetch OIDC configuration:", err)
+			ar.options.Logger.PrintAndLog("oauth2", "Failed to fetch OIDC configuration:", err)
 			return nil
 		}
 		return oauthConfig
@@ -314,7 +314,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 	}
 
 	if oauthConfig.Endpoint.AuthURL == "" || oauthConfig.Endpoint.TokenURL == "" || ar.options.OAuth2UserInfoUrl == "" {
-		ar.options.Logger.PrintAndLog("OAuth2Router", "Invalid OAuth2 configuration", nil)
+		ar.options.Logger.PrintAndLog("oauth2", "Invalid OAuth2 configuration", nil)
 		w.WriteHeader(500)
 		return errors.New("invalid OAuth2 configuration")
 	}
@@ -327,7 +327,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		if ar.options.OAuth2CodeChallengeMethod == "PKCE" || ar.options.OAuth2CodeChallengeMethod == "PKCE_S256" {
 			verifierCookie, err := r.Cookie(verifierCookie)
 			if err != nil || verifierCookie.Value == "" {
-				ar.options.Logger.PrintAndLog("OAuth2Router", "Read OAuth2 verifier cookie failed", err)
+				ar.options.Logger.PrintAndLog("oauth2", "Read OAuth2 verifier cookie failed", err)
 				w.WriteHeader(401)
 				return errors.New("unauthorized")
 			}
@@ -335,12 +335,12 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		}
 		token, err := oauthConfig.Exchange(ctx, code, authCodeOptions...)
 		if err != nil {
-			ar.options.Logger.PrintAndLog("OAuth2", "Token exchange failed", err)
+			ar.options.Logger.PrintAndLog("oauth2", "Token exchange failed", err)
 			w.WriteHeader(401)
 			return errors.New("unauthorized")
 		}
 		if !token.Valid() {
-			ar.options.Logger.PrintAndLog("OAuth2", "Invalid token", err)
+			ar.options.Logger.PrintAndLog("oauth2", "Invalid token", err)
 			w.WriteHeader(401)
 			return errors.New("unauthorized")
 		}
@@ -381,12 +381,12 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 			client := oauthConfig.Client(ctx, &oauth2.Token{AccessToken: cookie.Value})
 			req, err := client.Get(ar.options.OAuth2UserInfoUrl)
 			if err != nil {
-				ar.options.Logger.PrintAndLog("OAuth2", "Failed to get user info", err)
+				ar.options.Logger.PrintAndLog("oauth2", "Failed to get user info", err)
 				unauthorized = true
 			}
 			defer req.Body.Close()
 			if req.StatusCode != http.StatusOK {
-				ar.options.Logger.PrintAndLog("OAuth2", "Failed to get user info", err)
+				ar.options.Logger.PrintAndLog("oauth2", "Failed to get user info", err)
 				unauthorized = true
 			}
 		}

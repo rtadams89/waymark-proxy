@@ -211,7 +211,7 @@ func TestActiveRiseFall(t *testing.T) {
 		t.Fatal("should be disabled after 3 consecutive failures")
 	}
 	logs := rec.logText()
-	if !strings.Contains(logs, "Upstream 10.0.0.5:8080 on rule app.example.com DISABLED: HTTP GET / failed 3 time(s) in a row (last: status 503") {
+	if !strings.Contains(logs, "Destination 10.0.0.5:8080 of rule app.example.com DISABLED: HTTP GET / failed 3 time(s) in a row (last: status 503") {
 		t.Errorf("disable reason not logged clearly:\n%s", logs)
 	}
 

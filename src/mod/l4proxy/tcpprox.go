@@ -161,7 +161,7 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 			//Custom fork: pick an upstream from the pool (pool_custom.go)
 			target, targetAddress, err := c.dialUpstream(conn)
 			if err != nil {
-				c.LogMsg("[x] no upstream for client ["+conn.RemoteAddr().String()+"]: "+err.Error(), nil)
+				c.LogMsg("[x] no destination for client ["+conn.RemoteAddr().String()+"]: "+err.Error(), nil)
 				conn.Close()
 				return
 			}

@@ -93,9 +93,9 @@
                   <tbody id="domainTableBody"></tbody>
                 </table>
               </div>
-              <small><i class="ui red info circle icon"></i> Domain in red are expired</small><br>
+              <small><i class="ui red info circle icon"></i> Domains in red are expired</small><br>
               <div class="ui yellow message">
-                Certificate Renew only works on the certification authority (CA) supported by Waymark (the same as Zoraxy). Check the Zoraxy wiki for more information on supported list of CAs.
+                Automatic renewal only works with the certificate authorities in the CA list (or a custom ACME server you enter). Certificates from other sources have to be renewed and uploaded by hand.
               </div>
               <button class="ui basic right floated button" onclick="saveAutoRenewPolicy();"><i class="blue save icon"></i> Save Changes</button>
               <button id="renewSelectedButton" onclick="renewNow();" class="ui basic right floated disabled button"><i class="yellow refresh icon"></i> Renew Selected</button>
@@ -829,7 +829,7 @@
       }
 
       if (!longestSuffix.includes(".")){
-        parent.msgbox("Auto Detect failed: Multiple Domains", false, 5000);
+        parent.msgbox("Auto detect failed: multiple domains", false, 5000);
         return;
       }
       $("#filenameInput").val(longestSuffix);

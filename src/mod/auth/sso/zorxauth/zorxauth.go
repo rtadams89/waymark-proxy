@@ -82,7 +82,7 @@ func NewAuthRouter(db *database.Database, log *logger.Logger) *AuthRouter {
 		gatewayServer := NewGatewayServer(authRouter)
 		if err := gatewayServer.Start(); err != nil {
 			if log != nil {
-				log.PrintAndLog("zorxauth", "Failed to start gateway server: "+err.Error(), err)
+				log.PrintAndLog("waymark-auth", "Failed to start gateway server: "+err.Error(), err)
 			}
 		}
 
@@ -156,7 +156,7 @@ func (ar *AuthRouter) loadBrowserSessions() {
 	entries, err := ar.Database.ListTable(DB_BROWSER_SESSIONS_TABLE)
 	if err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to list browser sessions: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to list browser sessions: "+err.Error(), err)
 		}
 		return
 	}
@@ -171,7 +171,7 @@ func (ar *AuthRouter) loadBrowserSessions() {
 		err := ar.Database.Read(DB_BROWSER_SESSIONS_TABLE, key, &session)
 		if err != nil {
 			if ar.Logger != nil {
-				ar.Logger.PrintAndLog("zorxauth", "Failed to read browser session "+key+": "+err.Error(), err)
+				ar.Logger.PrintAndLog("waymark-auth", "Failed to read browser session "+key+": "+err.Error(), err)
 			}
 			continue
 		}
@@ -201,7 +201,7 @@ func (ar *AuthRouter) loadBrowserSessions() {
 	}
 
 	if ar.Logger != nil {
-		ar.Logger.PrintAndLog("zorxauth", "Loaded "+strconv.Itoa(loadedCount)+" browser sessions from database ("+strconv.Itoa(expiredCount)+" expired sessions removed)", nil)
+		ar.Logger.PrintAndLog("waymark-auth", "Loaded "+strconv.Itoa(loadedCount)+" browser sessions from database ("+strconv.Itoa(expiredCount)+" expired sessions removed)", nil)
 	}
 }
 
@@ -211,7 +211,7 @@ func (ar *AuthRouter) loadGatewaySessions() {
 	entries, err := ar.Database.ListTable(DB_GATEWAY_SESSIONS_TABLE)
 	if err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to list gateway sessions: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to list gateway sessions: "+err.Error(), err)
 		}
 		return
 	}
@@ -226,7 +226,7 @@ func (ar *AuthRouter) loadGatewaySessions() {
 		err := ar.Database.Read(DB_GATEWAY_SESSIONS_TABLE, key, &session)
 		if err != nil {
 			if ar.Logger != nil {
-				ar.Logger.PrintAndLog("zorxauth", "Failed to read gateway session "+key+": "+err.Error(), err)
+				ar.Logger.PrintAndLog("waymark-auth", "Failed to read gateway session "+key+": "+err.Error(), err)
 			}
 			continue
 		}
@@ -256,7 +256,7 @@ func (ar *AuthRouter) loadGatewaySessions() {
 	}
 
 	if ar.Logger != nil {
-		ar.Logger.PrintAndLog("zorxauth", "Loaded "+strconv.Itoa(loadedCount)+" gateway sessions from database ("+strconv.Itoa(expiredCount)+" expired sessions removed)", nil)
+		ar.Logger.PrintAndLog("waymark-auth", "Loaded "+strconv.Itoa(loadedCount)+" gateway sessions from database ("+strconv.Itoa(expiredCount)+" expired sessions removed)", nil)
 	}
 }
 
@@ -296,7 +296,7 @@ func (ar *AuthRouter) Close() {
 		dbKey := DB_BROWSER_SESSION_KEY_PREFIX + sessionID
 		err := ar.Database.Write(DB_BROWSER_SESSIONS_TABLE, dbKey, browserSession)
 		if err != nil && ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to save browser session: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to save browser session: "+err.Error(), err)
 		}
 
 		return true
@@ -323,13 +323,13 @@ func (ar *AuthRouter) Close() {
 		dbKey := DB_GATEWAY_SESSION_KEY_PREFIX + sessionID
 		err := ar.Database.Write(DB_GATEWAY_SESSIONS_TABLE, dbKey, gatewaySession)
 		if err != nil && ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to save gateway session: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to save gateway session: "+err.Error(), err)
 		}
 
 		return true
 	})
 
 	if ar.Logger != nil {
-		ar.Logger.PrintAndLog("zorxauth", "Browser and gateway sessions saved to database", nil)
+		ar.Logger.PrintAndLog("waymark-auth", "Browser and gateway sessions saved to database", nil)
 	}
 }

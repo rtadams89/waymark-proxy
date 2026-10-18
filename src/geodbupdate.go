@@ -30,12 +30,12 @@ func HandleGeoDBUpdateNow(w http.ResponseWriter, r *http.Request) {
 
 	err := geodbStore.UpdateGeoDBNow()
 	if err != nil {
-		SystemWideLogger.PrintAndLog("GeoDB", "Geo-IP database update failed", err)
+		SystemWideLogger.PrintAndLog("geodb", "Geo-IP database update failed", err)
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
-	SystemWideLogger.PrintAndLog("GeoDB", "Geo-IP database updated by administrator", nil)
+	SystemWideLogger.PrintAndLog("geodb", "Geo-IP database updated by administrator", nil)
 	utils.SendOK(w)
 }
 
@@ -57,9 +57,9 @@ func HandleGeoDBAutoUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if enable {
-		SystemWideLogger.PrintAndLog("GeoDB", "Scheduled Geo-IP database update enabled", nil)
+		SystemWideLogger.PrintAndLog("geodb", "Scheduled Geo-IP database update enabled", nil)
 	} else {
-		SystemWideLogger.PrintAndLog("GeoDB", "Scheduled Geo-IP database update disabled", nil)
+		SystemWideLogger.PrintAndLog("geodb", "Scheduled Geo-IP database update disabled", nil)
 	}
 	utils.SendOK(w)
 }

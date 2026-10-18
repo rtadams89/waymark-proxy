@@ -21,7 +21,6 @@ import (
 	"imuslab.com/zoraxy/mod/auth/sso/forward"
 	"imuslab.com/zoraxy/mod/auth/sso/zorxauth"
 	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/dockerux"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
 	"imuslab.com/zoraxy/mod/geodb"
@@ -66,7 +65,6 @@ var (
 	showver                    = flag.Bool("version", false, "Show version of this server")
 	allowMdnsScanning          = flag.Bool("mdns", true, "Enable mDNS scanner and transponder")
 	mdnsName                   = flag.String("mdnsname", "", "mDNS name, leave empty to use default (waymark_{node-uuid}.local)")
-	runningInDocker            = flag.Bool("docker", false, "Run Waymark in docker compatibility mode")
 	enableHighSpeedGeoIPLookup = flag.Bool("fastgeoip", true, "Enable high speed geoip lookup, disable this if you are using a very small memory footprint device")
 	enableAutoUpdate           = flag.Bool("cfgupgrade", true, "Enable auto config upgrade if breaking change is detected")
 
@@ -181,8 +179,7 @@ var (
 	zorxAuthRouter    *zorxauth.AuthRouter //ZorxAuth router for ZorxAuth SSO authentication
 
 	//Helper modules
-	AnalyticLoader    *analytic.DataLoader  //Data loader for Zoraxy Analytic
-	DockerUXOptimizer *dockerux.UXOptimizer //Docker user experience optimizer, community contribution only
-	SystemWideLogger  *logger.Logger        //Logger for Zoraxy
-	LogViewer         *logviewer.Viewer     //Log viewer HTTP handlers
+	AnalyticLoader   *analytic.DataLoader //Data loader for Zoraxy Analytic
+	SystemWideLogger *logger.Logger       //Logger for Zoraxy
+	LogViewer        *logviewer.Viewer    //Log viewer HTTP handlers
 )

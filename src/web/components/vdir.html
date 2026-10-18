@@ -58,14 +58,14 @@
                         <small>Path that follows your select host / domain, e.g. <code>/mysite/</code> as path prefix will forward all request that matches <code>mydomain.com/mysite/*</code></small>
                     </div>
                     <div class="field">
-                        <label>Target IP Address or Domain Name with port</label>
+                        <label>Destination IP Address or Domain Name with port</label>
                         <input type="text" id="virtualDirectoryDomain" onchange="updateVDTargetTLSState();">
                         <small>E.g. 192.168.0.101:8000 or example.com</small>
                     </div>
                     <div class="field">
                         <div class="ui checkbox">
                             <input type="checkbox" id="vdReqTls">
-                            <label>Proxy Target require TLS Connection <br><small>(i.e. Your proxy target starts with https://)</small></label>
+                            <label>Destination requires TLS <br><small>(i.e. the destination address starts with https://)</small></label>
                         </div>
                     </div>
 
@@ -74,7 +74,7 @@
                         <div id="advanceProxyRules" class="ui fluid accordion">
                             <div class="title">
                             <i class="dropdown icon"></i>
-                            Advance Settings
+                            Advanced Settings
                             </div>
                             <div class="content">
                                 <p></p>
@@ -273,13 +273,13 @@
                 if (data.error != undefined){
                     msgbox(data.error, false);
                 }else{
-                    msgbox("New Virtual Directory rule added");
+                    msgbox("New virtual directory rule added");
                     reloadVdirList();
                     resetVdirForm();
                 }
             }, 
             error: function(){
-                msgbox("Add Virtual Directory failed due to unknown reasons", false);
+                msgbox("Add virtual directory failed due to unknown reasons", false);
             }
         })
         
@@ -313,7 +313,7 @@
                 if (data.error != undefined){
                     msgbox(data.error, false);
                 }else{
-                    msgbox("Virtual Directory rule removed", true);
+                    msgbox("Virtual directory rule removed", true);
                     reloadVdirList();
                 }
             }
@@ -359,7 +359,7 @@
                     <div class="ui checkbox" style="margin-top: 0.4em;">
                         <input type="checkbox" class="SkipCertValidations" ${checkstate}>
                         <label>Skip Verification<br>
-                        <small>Check this if proxy target is using self signed certificates</small></label>
+                        <small>Check this if the destination uses a self-signed certificate</small></label>
                     </div>
                 `;
                 column.empty().append(input);
@@ -405,12 +405,12 @@
                 if (data.error != undefined){
                     msgbox(data.error, false);
                 }else{
-                    msgbox("Virtual Directory rule updated", true);
+                    msgbox("Virtual directory rule updated", true);
                     exitVdirInlineEdit();
                 }
             },
             error: function(){
-                msgbox("unknown error occured", false)
+                msgbox("Unknown error occurred", false)
             }
         })
     }

@@ -17,7 +17,7 @@ func (h *ProxyHandler) handleAccessRouting(ruleID string, w http.ResponseWriter,
 	accessRule, err := h.Parent.Option.AccessController.GetAccessRuleByID(ruleID)
 	if err != nil {
 		//Unable to load access rule. Target rule not found?
-		h.Parent.Option.Logger.PrintAndLog("proxy-access", "Unable to load access rule: "+ruleID, err)
+		h.Parent.Option.Logger.PrintAndLog("access", "Unable to load access rule: "+ruleID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500 - Internal Server Error"))
 		return true

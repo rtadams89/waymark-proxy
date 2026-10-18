@@ -47,7 +47,7 @@ func loadOrCreateStickyKey(db *database.Database) string {
 	}
 	key = hex.EncodeToString(b)
 	if err := db.Write(migrationTable, stickySessionKeyName, key); err != nil && SystemWideLogger != nil {
-		SystemWideLogger.PrintAndLog("loadbalancer", "Could not save the sticky session key; sticky sessions reset when Waymark restarts", err)
+		SystemWideLogger.PrintAndLog("load-balancer", "Could not save the sticky session key; sticky sessions reset when Waymark restarts", err)
 	}
 	return key
 }

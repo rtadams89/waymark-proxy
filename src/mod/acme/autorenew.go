@@ -111,7 +111,7 @@ func NewAutoRenewer(config string, certFolder string, renewCheckInterval int64, 
 }
 
 func (a *AutoRenewer) Logf(message string, err error) {
-	a.Logger.PrintAndLog("cert-renew", message, err)
+	a.Logger.PrintAndLog("acme", message, err)
 }
 
 func (a *AutoRenewer) StartAutoRenewTicker() {

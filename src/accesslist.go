@@ -145,9 +145,9 @@ func handleRemoveAccessRule(w http.ResponseWriter, r *http.Request) {
 			proxyEndpoint.UpdateToRuntime()
 			err = SaveReverseProxyConfig(proxyEndpoint)
 			if err != nil {
-				SystemWideLogger.PrintAndLog("Access", "Unable to save updated proxy endpoint "+proxyEndpoint.RootOrMatchingDomain, err)
+				SystemWideLogger.PrintAndLog("access", "Unable to save updated proxy endpoint "+proxyEndpoint.RootOrMatchingDomain, err)
 			} else {
-				SystemWideLogger.PrintAndLog("Access", "Updated "+proxyEndpoint.RootOrMatchingDomain+" access filter to \"default\"", nil)
+				SystemWideLogger.PrintAndLog("access", "Updated "+proxyEndpoint.RootOrMatchingDomain+" access filter to \"default\"", nil)
 			}
 		}
 	}
@@ -159,7 +159,7 @@ func handleRemoveAccessRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SystemWideLogger.PrintAndLog("Access", "Access Rule "+ruleID+" removed", nil)
+	SystemWideLogger.PrintAndLog("access", "Access Rule "+ruleID+" removed", nil)
 	utils.SendOK(w)
 }
 

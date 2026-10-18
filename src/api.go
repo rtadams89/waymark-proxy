@@ -464,10 +464,6 @@ func initAPIs(targetMux *http.ServeMux) {
 	RegisterStaticWebServerAPIs(authRouter)
 	RegisterPluginAPIs(authRouter)
 
-	//Docker UX Optimizations
-	authRouter.HandleFunc("/api/docker/available", DockerUXOptimizer.HandleDockerAvailable)
-	authRouter.HandleFunc("/api/docker/containers", DockerUXOptimizer.HandleDockerContainersList)
-
 	//Others
 	targetMux.HandleFunc("/api/info/x", HandleZoraxyInfo)
 	authRouter.HandleFunc("/api/info/geoip", HandleGeoIpLookup)

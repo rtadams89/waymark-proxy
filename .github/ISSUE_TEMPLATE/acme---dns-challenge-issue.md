@@ -37,6 +37,4 @@ Add any other context about the problem here.
 - Device: [e.g. Bananapi R2 PRO]
 - OS: [e.g. Armbian]
 - Version [e.g. 23.02 Bullseye ]
-- Are you using Docker? (yes / no)
-- Docker Version (fill in "N/A" for native deployment): [e.g. 3.0.4]
 - Waymark Proxy version [e.g. 1.0.0] (shown in the footer, or `waymark -version`)

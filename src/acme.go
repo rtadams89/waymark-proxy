@@ -127,7 +127,7 @@ func acmeRegisterSpecialRoutingRule() {
 		UseSystemAccessControl: false,
 	})
 	if err != nil {
-		SystemWideLogger.PrintAndLog("ACME", "Unable register temp port for DNS resolver", err)
+		SystemWideLogger.PrintAndLog("acme", "Unable register temp port for DNS resolver", err)
 	}
 }
 
@@ -143,7 +143,7 @@ func AcmeCheckAndHandleRenewCertificate(w http.ResponseWriter, r *http.Request) 
 			// Check if port 80 is enabled
 			if !dynamicProxyRouter.Option.ListenOnPort80 {
 				// Enable port 80 temporarily
-				SystemWideLogger.PrintAndLog("ACME", "Temporarily enabling port 80 listener to handle ACME request ", nil)
+				SystemWideLogger.PrintAndLog("acme", "Temporarily enabling port 80 listener to handle ACME request ", nil)
 				dynamicProxyRouter.UpdatePort80ListenerState(true)
 				requireRestorePort80 = true
 				time.Sleep(2 * time.Second)
@@ -179,12 +179,12 @@ func AcmeCheckAndHandleRenewCertificate(w http.ResponseWriter, r *http.Request) 
 	// Restore original settings only if they were changed
 	if requireRestorePort80 {
 		// Restore port 80 listener
-		SystemWideLogger.PrintAndLog("ACME", "Restoring previous port 80 listener settings", nil)
+		SystemWideLogger.PrintAndLog("acme", "Restoring previous port 80 listener settings", nil)
 		dynamicProxyRouter.UpdatePort80ListenerState(false)
 	}
 	if requireRestoreHttpsRedirect {
 		// Restore HTTP to HTTPS redirect setting that was temporarily enabled
-		SystemWideLogger.PrintAndLog("ACME", "Restoring HTTP to HTTPS redirect settings", nil)
+		SystemWideLogger.PrintAndLog("acme", "Restoring HTTP to HTTPS redirect settings", nil)
 		dynamicProxyRouter.UpdateHttpToHttpsRedirectSetting(false)
 	}
 }

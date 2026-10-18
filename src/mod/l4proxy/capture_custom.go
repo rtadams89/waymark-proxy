@@ -54,7 +54,7 @@ func (c *ProxyRelayInstance) captureComment(side string, upstreamAddr string) st
 		name = c.ListeningAddress
 	}
 	c.poolMu.RUnlock()
-	return "Layer 4 proxy " + name + " · " + side + " · upstream " + upstreamAddr
+	return "Layer 4: " + name + " · " + side + " · destination " + upstreamAddr
 }
 
 // captureTCP wraps a new TCP connection pair for the running capture.
@@ -72,7 +72,7 @@ func (c *ProxyRelayInstance) captureTCP(client, upstream net.Conn, upstreamAddr 
 		client = &capConn{Conn: client, flow: f, remoteIsA: true}
 	}
 	if cp.SideUpstream() {
-		f := cp.NewTCPFlow(capture.EndpointOf(upstream.LocalAddr()), capture.EndpointOf(upstream.RemoteAddr()), c.captureComment("Waymark to upstream, for client "+clientEP.String(), upstreamAddr))
+		f := cp.NewTCPFlow(capture.EndpointOf(upstream.LocalAddr()), capture.EndpointOf(upstream.RemoteAddr()), c.captureComment("Waymark to destination, for client "+clientEP.String(), upstreamAddr))
 		upstream = &capConn{Conn: upstream, flow: f, remoteIsA: false}
 	}
 	return client, upstream
@@ -101,7 +101,7 @@ func (c *ProxyRelayInstance) setupUDPCapture(conn *udpClientServerConn) {
 		u.listener = capture.EndpointOf(conn.listener)
 	}
 	u.commentC = c.captureComment("client to Waymark (UDP; listener address as configured)", conn.upstream)
-	u.commentU = c.captureComment("Waymark to upstream (UDP), for client "+u.client.String(), conn.upstream)
+	u.commentU = c.captureComment("Waymark to destination (UDP), for client "+u.client.String(), conn.upstream)
 	conn.capture = u
 }
 

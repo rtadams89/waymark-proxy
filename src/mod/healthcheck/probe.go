@@ -79,7 +79,7 @@ func probeHTTP(ctx context.Context, up Upstream, cfg *Config, timeout time.Durat
 	}
 	target, err := url.Parse(scheme + "://" + up.Addr + cfg.Path)
 	if err != nil || target.Host == "" {
-		return ProbeResult{Detail: "invalid upstream address or path"}
+		return ProbeResult{Detail: "invalid destination address or path"}
 	}
 	method := http.MethodGet
 	if cfg.Type == CheckHTTPHead {
@@ -414,7 +414,7 @@ func describeError(err error, timeout time.Duration) string {
 	}
 	var certErr *tls.CertificateVerificationError
 	if errors.As(err, &certErr) {
-		return "TLS certificate not trusted (enable Skip TLS Validation on the upstream if it is self-signed)"
+		return "TLS certificate not trusted (enable Skip TLS Validation on the destination if it is self-signed)"
 	}
 	msg := err.Error()
 	if len(msg) > 160 {

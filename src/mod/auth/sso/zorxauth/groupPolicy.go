@@ -44,7 +44,7 @@ func (ar *AuthRouter) initGroupPolicyStore() {
 	folder := ar.groupPolicyFolder()
 	if err := os.MkdirAll(folder, 0755); err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to create group policy folder: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to create group policy folder: "+err.Error(), err)
 		}
 		return
 	}
@@ -72,7 +72,7 @@ func (ar *AuthRouter) loadGroupPoliciesFromDisk() {
 	entries, err := os.ReadDir(folder)
 	if err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to read group policy folder: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to read group policy folder: "+err.Error(), err)
 		}
 		return
 	}
@@ -86,7 +86,7 @@ func (ar *AuthRouter) loadGroupPoliciesFromDisk() {
 		data, err := os.ReadFile(filepath.Join(folder, entry.Name()))
 		if err != nil {
 			if ar.Logger != nil {
-				ar.Logger.PrintAndLog("zorxauth", "Failed to read group policy file "+entry.Name()+": "+err.Error(), err)
+				ar.Logger.PrintAndLog("waymark-auth", "Failed to read group policy file "+entry.Name()+": "+err.Error(), err)
 			}
 			continue
 		}
@@ -94,7 +94,7 @@ func (ar *AuthRouter) loadGroupPoliciesFromDisk() {
 		var gp GroupPolicy
 		if err := json.Unmarshal(data, &gp); err != nil {
 			if ar.Logger != nil {
-				ar.Logger.PrintAndLog("zorxauth", "Failed to parse group policy file "+entry.Name()+": "+err.Error(), err)
+				ar.Logger.PrintAndLog("waymark-auth", "Failed to parse group policy file "+entry.Name()+": "+err.Error(), err)
 			}
 			continue
 		}
@@ -108,7 +108,7 @@ func (ar *AuthRouter) loadGroupPoliciesFromDisk() {
 	}
 
 	if ar.Logger != nil {
-		ar.Logger.PrintAndLog("zorxauth", "Loaded "+strconv.Itoa(loaded)+" group policies from disk", nil)
+		ar.Logger.PrintAndLog("waymark-auth", "Loaded "+strconv.Itoa(loaded)+" group policies from disk", nil)
 	}
 }
 
@@ -188,7 +188,7 @@ func (ar *AuthRouter) GetAllowedHostsForUser(user *User) []string {
 		}
 		// If group policy not found, log a warning and fall back to user's own hosts
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Group policy "+user.GroupID+" not found for user "+user.Username+", falling back to user-level hosts", nil)
+			ar.Logger.PrintAndLog("waymark-auth", "Group policy "+user.GroupID+" not found for user "+user.Username+", falling back to user-level hosts", nil)
 		}
 	}
 	return user.AllowedHosts
@@ -235,7 +235,7 @@ func (ar *AuthRouter) HandleGroupPolicyCreate(w http.ResponseWriter, r *http.Req
 
 	if err := ar.saveGroupPolicyToDisk(gp); err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to save group policy to disk: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to save group policy to disk: "+err.Error(), err)
 		}
 		utils.SendErrorResponse(w, "failed to persist group policy")
 		return
@@ -290,7 +290,7 @@ func (ar *AuthRouter) HandleGroupPolicyUpdate(w http.ResponseWriter, r *http.Req
 
 	if err := ar.saveGroupPolicyToDisk(&updated); err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to save group policy to disk: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to save group policy to disk: "+err.Error(), err)
 		}
 		utils.SendErrorResponse(w, "failed to persist group policy")
 		return
@@ -321,7 +321,7 @@ func (ar *AuthRouter) HandleGroupPolicyDelete(w http.ResponseWriter, r *http.Req
 
 	if err := ar.deleteGroupPolicyFromDisk(id); err != nil {
 		if ar.Logger != nil {
-			ar.Logger.PrintAndLog("zorxauth", "Failed to delete group policy file: "+err.Error(), err)
+			ar.Logger.PrintAndLog("waymark-auth", "Failed to delete group policy file: "+err.Error(), err)
 		}
 	}
 
@@ -334,7 +334,7 @@ func (ar *AuthRouter) HandleGroupPolicyDelete(w http.ResponseWriter, r *http.Req
 				user.GroupID = ""
 				if saveErr := ar.saveUser(user, ""); saveErr != nil {
 					if ar.Logger != nil {
-						ar.Logger.PrintAndLog("zorxauth", "Failed to unassign group policy from user "+user.Username+": "+saveErr.Error(), saveErr)
+						ar.Logger.PrintAndLog("waymark-auth", "Failed to unassign group policy from user "+user.Username+": "+saveErr.Error(), saveErr)
 					}
 				}
 			}

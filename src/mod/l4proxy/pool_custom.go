@@ -208,9 +208,9 @@ func (c *ProxyRelayInstance) dialUpstream(client net.Conn) (net.Conn, string, er
 	cands := c.candidates(clientIP)
 	if len(cands) == 0 {
 		if len(c.UpstreamList()) == 0 {
-			return nil, "", errors.New("no upstream configured")
+			return nil, "", errors.New("no destination configured")
 		}
-		return nil, "", errors.New("no healthy upstream")
+		return nil, "", errors.New("no healthy destination")
 	}
 	var lastErr error
 	for _, addr := range cands {
@@ -219,10 +219,10 @@ func (c *ProxyRelayInstance) dialUpstream(client net.Conn) (net.Conn, string, er
 			return target, addr, nil
 		}
 		lastErr = err
-		c.LogMsg("[x] connect to upstream ["+addr+"] failed: "+err.Error(), nil)
+		c.LogMsg("[x] connect to destination ["+addr+"] failed: "+err.Error(), nil)
 		c.reportConnectFailure(addr, err)
 	}
-	return nil, "", fmt.Errorf("all upstreams failed (last: %v)", lastErr)
+	return nil, "", fmt.Errorf("all destinations failed (last: %v)", lastErr)
 }
 
 // closeUpstreamConns closes this rule's open connections and sessions to
@@ -279,7 +279,7 @@ func (m *Manager) SetUpstreamOnline(addr string, online bool) {
 		for _, u := range c.UpstreamList() {
 			if u == addr {
 				if n := c.closeUpstreamConns(addr); n > 0 {
-					m.logf(fmt.Sprintf("Closed %d connection(s) of Layer 4 proxy %s to %s (upstream is down)", n, name, addr), nil)
+					m.logf(fmt.Sprintf("Closed %d connection(s) of Layer 4 rule %s to %s (destination is down)", n, name, addr), nil)
 				}
 			}
 		}
@@ -385,7 +385,7 @@ func (p *PoolSettings) Validate(useTCP, useUDP bool) error {
 			}
 		case healthcheck.CheckICMP:
 		default:
-			return errors.New("Layer 4 proxies support TCP, UDP and ping health checks")
+			return errors.New("Layer 4 rules support TCP, UDP and ping health checks")
 		}
 		// Layer 4 connections have no HTTP status codes
 		cfg.CountServerErrors = false
@@ -494,7 +494,7 @@ func (c *ProxyRelayInstance) newUDPSession(client *net.UDPAddr) *udpClientServer
 	for _, addr := range c.candidates(client.IP.String()) {
 		srv, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
-			c.LogMsg("[UDP] cannot resolve upstream "+addr+": "+err.Error(), nil)
+			c.LogMsg("[UDP] cannot resolve destination "+addr+": "+err.Error(), nil)
 			c.reportConnectFailure(addr, err)
 			continue
 		}
@@ -506,6 +506,6 @@ func (c *ProxyRelayInstance) newUDPSession(client *net.UDPAddr) *udpClientServer
 		conn.release = c.track(addr, conn)
 		return conn
 	}
-	c.LogMsg("[UDP] no healthy upstream for client "+client.String()+", dropping its packets", nil)
+	c.LogMsg("[UDP] no healthy destination for client "+client.String()+", dropping its packets", nil)
 	return nil
 }

@@ -211,11 +211,11 @@
                 <tr>
                     <th></th>
                     <th>Host</th>
-                    <th class="details-view">Alt. Listening Addr</th>
+                    <th class="details-view">Additional Listening Addresses</th>
                     <th>Destination</th>
                     <th class="no-sort">Health / Cache</th>
                     <th class="details-view">Authentication</th>
-                    <th>Virtual Directory</th>
+                    <th>Virtual Directories</th>
                     <th class="no-sort">Tags</th>
                     <th class="no-sort" style="width:100px; cursor: default !important;"></th>
                 </tr>
@@ -243,7 +243,7 @@
                         <i class="server icon"></i> <span class="editorSideMenuText">Destinations</span>
                     </a>
                     <a class="item hrpedit_menu_item" cfgpage="vdirs">
-                        <i class="angle folder icon"></i> <span class="editorSideMenuText">Virtual Directory</span>
+                        <i class="angle folder icon"></i> <span class="editorSideMenuText">Virtual Directories</span>
                     </a>
                      <a class="item hrpedit_menu_item" cfgpage="websocket">
                         <i class="exchange icon"></i> <span class="editorSideMenuText">WebSocket</span>
@@ -320,13 +320,13 @@
                                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                                 <input type="checkbox" class="EnableConnectSupport">
                                                 <label>Enable HTTP CONNECT tunneling<br>
-                                                    <small>Allow CONNECT method only to this route's configured upstream. Leave disabled unless you specifically need forward-proxy tunneling.</small></label>
+                                                    <small>Allow CONNECT method only to this route's configured destination. Leave disabled unless you specifically need forward-proxy tunneling.</small></label>
                                             </div>
                                             <br>
                                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                                 <input type="checkbox" class="EnableUpgradeForwarding">
                                                 <label>Enable protocol upgrade forwarding<br>
-                                                    <small>Forward non-WebSocket Upgrade requests (e.g. Tailscale / Headscale TS2021) to the upstream as a raw tunnel. WebSocket is handled separately in the WebSocket tab.</small></label>
+                                                    <small>Forward non-WebSocket Upgrade requests (e.g. Tailscale / Headscale TS2021) to the destination as a raw tunnel. WebSocket is handled separately in the WebSocket tab.</small></label>
                                             </div>
                                         </div>
                                     </div>
@@ -346,8 +346,8 @@
                                 <br>
                             </div>
                             <div class="ui divider"></div>
-                            <b>Alternative Listening Ports</b>
-                            <p style="margin-top: 0.4em;"><small>Define additional ports this proxy rule should listen on (e.g., :8080, 192.168.1.1:8080)</small></p>
+                            <b>Additional Listening Addresses</b>
+                            <p style="margin-top: 0.4em;"><small>Other addresses and ports this proxy rule also listens on, besides the main listening port (e.g. :8080 or 192.168.1.1:8080)</small></p>
                             <div class="listening_ports_list" style="margin-top:0.4em;">
                                 <!-- Listening ports will be populated here -->
                             </div>
@@ -363,11 +363,11 @@
                     <!-- Destinations -->
                     <div class="rpconfig_content" rpcfg="upstream">
                         <div class="ui segment">
-                            <b>Enabled Upstreams</b>
+                            <b>Enabled Destinations</b>
                             <div class="upstream_list" style="margin-top: 0.4em;">
 
                             </div>
-                            <button class="ui basic compact button editUpstreamButton" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey server icon"></i> Edit Upstreams</button>
+                            <button class="ui basic compact button editUpstreamButton" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey server icon"></i> Edit Destinations</button>
                             <!-- Custom fork: health checks (snippet/healthChecks.html) -->
                             <button class="ui basic compact button editHealthCheckButton" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey heartbeat icon"></i> Health Checks</button>
                             <div class="healthCheckSummary" style="margin-left: 0.4em; margin-top: 0.6em; opacity: 0.75; font-size: 0.9em;"></div>
@@ -378,14 +378,14 @@
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="EnableUptimeMonitor">
                                 <label>Monitor Uptime<br>
-                                    <small>Enable active uptime monitor and auto disable upstreams that are offline</small></label>
+                                    <small>Check destinations and take the offline ones out of load balancing</small></label>
                             </div>
                             <br>
                             <b>Health-check URI <span style="opacity:0.6; font-weight:normal;">(optional)</span></b>
                             <div class="ui small fluid input" style="margin-top: 0.4em;">
                                 <input type="text" class="UptimeMonitorURI" placeholder="/" autocomplete="off">
                             </div>
-                            <small style="opacity:0.7;">Path appended to the upstream URL when the uptime monitor performs its check (e.g. <code>/identity</code> for Plex, <code>/healthz</code>). Leave empty to use <code>/</code>.</small>
+                            <small style="opacity:0.7;">Path appended to the destination URL when the health check runs (e.g. <code>/identity</code> for Plex, <code>/healthz</code>). Leave empty to use <code>/</code>.</small>
                             <br>
                             </div>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
@@ -400,13 +400,13 @@
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="DisableChunkedTransferEncoding">
                                 <label>Disable Chunked Transfer Encoding<br>
-                                    <small>Enable this option if your upstream uses a legacy HTTP server implementation (e.g. Proxmox / opencloud)</small></label>
+                                    <small>Enable this option if your destination uses a legacy HTTP server implementation (e.g. Proxmox / opencloud)</small></label>
                             </div>
                             <br>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="ForceHTTP11">
                                 <label>Force HTTP/1.1<br>
-                                    <small>Force the proxy to use HTTP/1.1 for upstream connections, disabling HTTP/2</small></label>
+                                    <small>Force the proxy to use HTTP/1.1 for destination connections, disabling HTTP/2</small></label>
                             </div>
                             
                         </div>
@@ -420,7 +420,7 @@
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="EnableWebSocket" checked>
                                 <label>Enable WebSocket<br>
-                                    <small>Allow WebSocket upgrade requests to be proxied to this endpoint</small></label>
+                                    <small>Allow WebSocket upgrade requests to be proxied to this rule's destinations</small></label>
                             </div>
                             <br><br>
                             <b>Connection Timeout</b>
@@ -613,7 +613,7 @@
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="RequireCaptcha">
                                 <label>Require CAPTCHA Challenge<br>
-                                <small>Gate access to this endpoint with CAPTCHA verification</small></label>
+                                <small>Gate access to this rule with CAPTCHA verification</small></label>
                             </div>
                             <div class="captchaSettings" style="margin-top: 1em; padding-left: 1.5em;">
                                 <label>CAPTCHA Provider</label>
@@ -640,7 +640,7 @@
                                 <div style="margin-top: 0.8em;">
                                     <label>Protected Path Prefixes (Optional)</label>
                                     <textarea class="CaptchaPathPrefixes" rows="3" placeholder="/form&#10;/api" style="width: 100%; resize: vertical;"></textarea>
-                                    <small style="opacity:0.7;">Leave empty to protect all paths on this endpoint. One prefix per line, comma or semicolon is also supported.</small>
+                                    <small style="opacity:0.7;">Leave empty to protect all paths of this rule. One prefix per line, comma or semicolon is also supported.</small>
                                 </div>
                                 <!-- Google reCAPTCHA specific settings -->
                                 <div class="googleRecaptchaSettings" style="margin-top: 0.8em; display: none;">
@@ -702,7 +702,7 @@
         let upstreams = "";
         if (subd.ActiveOrigins.length == 0){
             //Invalid config
-            upstreams = `<i class="ui yellow exclamation triangle icon"></i> No Active Upstream Origin<br>`;
+            upstreams = `<i class="ui yellow exclamation triangle icon"></i> No Active Destination<br>`;
         }else{
             subd.ActiveOrigins.forEach(upstream => {
                 //console.log(upstream);
@@ -730,7 +730,7 @@
         });
         vdList += `</div>`
         if (subd.VirtualDirectories.length == 0){
-            vdList = `<small style="opacity: 0.3; pointer-events: none; user-select: none;">No Virtual Directory</small>`;
+            vdList = `<small style="opacity: 0.3; pointer-events: none; user-select: none;">No virtual directories</small>`;
         }
 
         return vdList;
@@ -1072,7 +1072,7 @@
                 if (data.error !== undefined){
                     msgbox(data.error, false, 3000);
                 }else{
-                    msgbox("TLS Config updated");
+                    msgbox("TLS config updated");
                 }
                 updateTlsResolveList(uuid);
             }
@@ -1140,7 +1140,7 @@
                                     if (data.error !== undefined) {
                                         msgbox(data.error, false, 3000);
                                     } else {
-                                        msgbox("Preferred Certificate updated");
+                                        msgbox("Preferred certificate updated");
                                     }
                                 }
                             });
@@ -1244,7 +1244,7 @@
                 if (data.error !== undefined){
                     msgbox(data.error, false, 6000);
                 }else{
-                    msgbox("Proxy endpoint updated");
+                    msgbox("Proxy rule updated");
                     listProxyEndpoints();
                 }
             }
@@ -1262,7 +1262,7 @@
                 success: function(data){
                     if (data.error == undefined){
                         listProxyEndpoints();
-                        msgbox("Proxy Rule Deleted", true);
+                        msgbox("Proxy rule deleted", true);
                         reloadUptimeList();
                     }else{
                         msgbox(data.error, false);
@@ -1377,7 +1377,7 @@
                 // ...and next to the host when none is left
                 if (list.length > 0 && down.length == list.length){
                     let hostCell = row.find("td[datatype='inbound']");
-                    let marker = `<i class="red heartbeat icon hcHostDown" title="All upstreams are down: visitors get the &quot;Web server is down&quot; (521) error page"></i>`;
+                    let marker = `<i class="red heartbeat icon hcHostDown" title="All destinations are down: visitors get the &quot;Web server is down&quot; (521) error page"></i>`;
                     let br = hostCell.children("br").first();
                     if (br.length){ br.before(marker); } else { hostCell.append(marker); }
                 }
@@ -1480,9 +1480,9 @@
                     msgbox(data.error, false);
                 }else{
                     if (isChecked){
-                        msgbox("Proxy Rule Enabled");
+                        msgbox("Proxy rule enabled");
                     }else{
-                        msgbox("Proxy Rule Disabled");
+                        msgbox("Proxy rule disabled");
                     }
                     
                 }
@@ -1529,7 +1529,7 @@
             },
             success: function(data){
                 if (data.error == undefined){
-                    msgbox("Self-Signed Certificate Generated", true);
+                    msgbox("Self-signed certificate generated", true);
                     resyncProxyEditorConfig();
                     if (typeof(initManagedDomainCertificateList) != undefined){
                         //Re-init the managed domain certificate list
@@ -1547,7 +1547,7 @@
         let editor = $("#httprpEditModalWrapper");
         let html = "";
         if (ports.length == 0) {
-            html = '<small style="opacity: 0.3;">No alternative listening ports configured</small>';
+            html = '<small style="opacity: 0.3;">No additional listening addresses</small>';
         } else {
             html = '<div class="ui list">';
             ports.forEach(function(port, index){
@@ -1571,11 +1571,11 @@
         // Bind remove button events
         editor.find(".removeListeningPortBtn").off("click").on("click", function(){
             let portToRemove = $(this).attr("data-port");
-            if (confirm("Remove listening port " + portToRemove + "?")) {
+            if (confirm("Remove listening address " + portToRemove + "?")) {
                 let newPorts = ports.filter(p => p !== portToRemove);
                 saveListeningPorts(uuid, newPorts, function(){
                     renderListeningPorts(uuid, newPorts);
-                    msgbox("Listening port removed");
+                    msgbox("Listening address removed");
                 });
             }
         });
@@ -1907,19 +1907,19 @@
         editor.find(".addListeningPortBtn").off("click").on("click", function(){
             let newPort = editor.find(".new_listening_port_input").val().trim();
             if (newPort == "") {
-                msgbox("Please enter a valid port", false);
+                msgbox("Please enter a listening address", false);
                 return;
             }
             
             // Validate format
             if (!newPort.includes(":")) {
-                msgbox("Port format must be :port or ip:port (e.g., :8080 or 192.168.1.1:8080)", false);
+                msgbox("Use :port or ip:port (e.g. :8080 or 192.168.1.1:8080)", false);
                 return;
             }
             
             // Check if already exists
             if (listeningPorts.includes(newPort)) {
-                msgbox("This port is already added", false);
+                msgbox("This listening address is already added", false);
                 return;
             }
             
@@ -1930,7 +1930,7 @@
             saveListeningPorts(uuid, listeningPorts, function(){
                 renderListeningPorts(uuid, listeningPorts);
                 editor.find(".new_listening_port_input").val("");
-                msgbox("Listening port added");
+                msgbox("Listening address added");
             });
         });
 

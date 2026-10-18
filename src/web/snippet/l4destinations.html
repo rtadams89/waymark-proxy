@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <!-- Custom fork: destination servers of a Layer 4 proxy, laid out like the HTTP
-             proxy rule's upstream editor (upstreams.html). Opened from the Layer 4 proxy
+        <!-- Custom fork: destination servers of a Layer 4 rule, laid out like the HTTP
+             proxy rule's destination editor (upstreams.html). Opened from the Layer 4 rule
              editor as snippet/l4destinations.html#{"ept":"l4","ep":"<uuid>"} and saved
              through it (components/l4proxy.html). -->
         <meta charset="utf-8">
@@ -115,7 +115,7 @@
                 let table = $("#upstreamTable");
                 table.html("");
                 if (c == null){
-                    table.append(`<div class="ui segment"><i class="ui yellow exclamation triangle icon"></i> This Layer 4 proxy is no longer open in the editor.</div>`);
+                    table.append(`<div class="ui segment"><i class="ui yellow exclamation triangle icon"></i> This Layer 4 rule is no longer open in the editor.</div>`);
                     return;
                 }
                 $("#lbModeHint").text(LB_HINTS[c.LoadBalancing || "roundrobin"] || LB_HINTS.roundrobin);
@@ -148,7 +148,7 @@
                             <button class="ui basic circular icon button movebtn ${i == 0 ? "disabled" : ""}" onclick="moveDestination(${i}, -1);" title="Move up (tried earlier in failover)"><i class="ui grey arrow up icon"></i></button>
                             <button class="ui basic circular icon button movebtn ${i == list.length - 1 ? "disabled" : ""}" onclick="moveDestination(${i}, 1);" title="Move down"><i class="ui grey arrow down icon"></i></button>
                             <button class="ui basic circular icon editbtn button" onclick="editDestination(${i});" title="Edit Destination"><i class="ui grey edit icon"></i></button>
-                            <button style="display:none;" class="ui basic circular icon trashbtn button ${isOnly ? "disabled" : ""}" onclick="removeDestination(${i});" title="${isOnly ? "A Layer 4 proxy needs at least one destination" : "Remove Destination"}"><i class="ui red trash icon"></i></button>
+                            <button style="display:none;" class="ui basic circular icon trashbtn button ${isOnly ? "disabled" : ""}" onclick="removeDestination(${i});" title="${isOnly ? "A Layer 4 rule needs at least one destination" : "Remove Destination"}"><i class="ui red trash icon"></i></button>
                             <button style="display:none;" class="ui basic circular icon savebtn button" onclick="saveDestination(${i});" title="Save Changes"><i class="ui green save icon"></i></button>
                             <button style="display:none;" class="ui basic circular icon cancelbtn button" onclick="initOriginList();" title="Cancel"><i class="ui grey times icon"></i></button>
                         </div>
@@ -230,7 +230,7 @@
                         }
                     }, 5000);
                 }catch(ex){
-                    console.log("Unable to load the Layer 4 proxy from the hash");
+                    console.log("Unable to load the Layer 4 rule from the hash");
                 }
             }
 

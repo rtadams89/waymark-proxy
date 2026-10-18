@@ -318,7 +318,7 @@ func (m *Monitor) getWebsiteStatusWithLatency(target *Target, timeout time.Durat
 	end := time.Now().UnixNano() / int64(time.Millisecond)
 	if err != nil {
 		if m.Config.Verbal {
-			m.Config.Logger.PrintAndLog(LOG_MODULE_NAME, "Ping upstream timeout. Assume offline", err)
+			m.Config.Logger.PrintAndLog(LOG_MODULE_NAME, "Ping destination timeout. Assume offline", err)
 		}
 
 		// Check if this is the first record

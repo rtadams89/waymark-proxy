@@ -553,7 +553,7 @@ func (ar *AuthRouter) ValidateUsername(username, password string) bool {
 			previous := user.Username
 			user.PasswordHash = newHash
 			if err := ar.saveUser(user, previous); err != nil && ar.Logger != nil {
-				ar.Logger.PrintAndLog("zorxauth", "Could not upgrade the password hash of "+user.Username, err)
+				ar.Logger.PrintAndLog("waymark-auth", "Could not upgrade the password hash of "+user.Username, err)
 			}
 		}
 	}

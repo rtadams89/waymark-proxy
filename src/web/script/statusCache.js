@@ -86,7 +86,7 @@
                 }else{
                     $("#zrCacheTodaySub").text("Static file requests on " + data.cachedHosts + " host" + (data.cachedHosts == 1 ? "" : "s") + " with caching on");
                 }
-                $("#zrCacheTodayDetail").text(served.toLocaleString() + " served from cache · " + fetched.toLocaleString() + " fetched from upstreams");
+                $("#zrCacheTodayDetail").text(served.toLocaleString() + " served from cache · " + fetched.toLocaleString() + " fetched from destinations");
 
                 let u = data.usage;
                 let full = u.maxBytes > 0 ? u.bytes / u.maxBytes : 0;

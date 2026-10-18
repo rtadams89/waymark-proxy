@@ -1,13 +1,13 @@
-# Zoraxy Modules
+# Waymark Modules
 
-This directory contains all the modular components that make up the Zoraxy reverse proxy server. Each module is designed to be independent and focused on a specific functionality, allowing for better maintainability and extensibility.
+This directory contains all the modular components that make up the Waymark reverse proxy server (forked from Zoraxy). Each module is designed to be independent and focused on a specific functionality, allowing for better maintainability and extensibility.
 
 ## Core Modules
 
 ### dynamicproxy
 **Purpose**: Advanced dynamic reverse proxy with comprehensive features
 - Manages multiple proxy endpoints with different configurations
-- Supports load balancing, sticky sessions, and upstream health monitoring
+- Supports load balancing, sticky sessions, and destination health monitoring
 - Implements access control, authentication, and custom headers
 - Provides exploit detection and mitigation
 - Handles virtual directories and path rewriting
@@ -63,7 +63,7 @@ This directory contains all the modular components that make up the Zoraxy rever
 ## Waymark additions
 
 ### healthcheck
-**Purpose**: Active and passive health checks for HTTP proxy upstreams and Layer 4 proxy destinations
+**Purpose**: Active and passive health checks for the destinations of HTTP and Layer 4 proxy rules
 
 ### hacluster
 **Purpose**: High availability: keepalived integration and configuration sync between nodes
@@ -147,12 +147,6 @@ This directory contains all the modular components that make up the Zoraxy rever
 
 ## Integration & External Services
 
-### dockerux
-**Purpose**: Docker integration and container management
-- Interacts with Docker daemon
-- Manages containerized applications
-- Provides Docker-specific utilities
-
 ### pathrule
 **Purpose**: Path-based routing rules
 - Implements advanced path matching and routing
@@ -191,7 +185,7 @@ When adding new modules:
 
 Modules may depend on:
 - Standard Go libraries
-- Other Zoraxy modules (through interfaces)
+- Other Waymark modules (through interfaces)
 - External libraries (documented in go.mod)
 
 For more detailed information about specific modules, refer to their individual README files or source code documentation.

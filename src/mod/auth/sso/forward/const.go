@@ -3,7 +3,7 @@ package forward
 import "errors"
 
 const (
-	LogTitle = "Forward Auth"
+	LogTitle = "forward-auth"
 
 	DatabaseTable = "auth_sso_forward"
 

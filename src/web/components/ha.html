@@ -78,7 +78,7 @@
             </table>
             <button class="ui basic small button" id="haAddVipBtn" onclick="haAddVip(); return false;"><i class="add icon"></i> Add floating IP</button>
             <div class="haHint" style="margin-top: 0.5em;">All floating IPs move together: the active node holds every one of them, on the nodes' interface. The first one is the primary: the node addresses below must be in its subnet. Up to 16.</div>
-            <div class="haHint" style="margin-top: 0.4em;">HTTP proxying listens on all addresses, so a new floating IP works straight away. A Layer 4 proxy (TCP/UDP) that listens on one specific floating IP can only start on the node holding it; to let it start on the standby too, set <span class="haMono">net.ipv4.ip_nonlocal_bind=1</span> on every node:
+            <div class="haHint" style="margin-top: 0.4em;">HTTP proxying listens on all addresses, so a new floating IP works straight away. A Layer 4 proxy rule (TCP/UDP) that listens on one specific floating IP can only start on the node holding it; to let it start on the standby too, set <span class="haMono">net.ipv4.ip_nonlocal_bind=1</span> on every node:
                 <pre class="haPre">echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf
 sudo sysctl --system</pre></div>
             <div class="ui yellow message" id="haNonlocalWarn" style="display:none;"></div>
@@ -332,7 +332,7 @@ sudo sysctl --system</pre></div>
             let nb = d.nonlocalBind || {};
             let boundProxies = nb.l4Proxies || [];
             if (c.enabled && nb.known && !nb.enabled && boundProxies.length > 0){
-                $("#haNonlocalWarn").html(`<i class="exclamation triangle icon"></i>These Layer 4 proxies listen on a floating IP, but <span class="haMono">net.ipv4.ip_nonlocal_bind</span> is off on this node, so they can't start while this node doesn't hold that address: ` +
+                $("#haNonlocalWarn").html(`<i class="exclamation triangle icon"></i>These Layer 4 rules listen on a floating IP, but <span class="haMono">net.ipv4.ip_nonlocal_bind</span> is off on this node, so they can't start while this node doesn't hold that address: ` +
                     boundProxies.map(p => `<b>${esc(p.name || "unnamed")}</b> <span class="haMono">${esc(p.address)}</span>`).join(", ") + `. Set it on every node (commands above), or make them listen on all addresses.`).show();
             }else{
                 $("#haNonlocalWarn").hide();

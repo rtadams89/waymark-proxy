@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -22,13 +21,11 @@ import (
 	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
 	"imuslab.com/zoraxy/mod/database"
 	"imuslab.com/zoraxy/mod/database/dbinc"
-	"imuslab.com/zoraxy/mod/dockerux"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
 	"imuslab.com/zoraxy/mod/geodb"
 	"imuslab.com/zoraxy/mod/info/logger"
 	"imuslab.com/zoraxy/mod/info/logviewer"
-	"imuslab.com/zoraxy/mod/info/shellexec"
 	"imuslab.com/zoraxy/mod/info/usageinfo"
 	"imuslab.com/zoraxy/mod/l4proxy"
 	"imuslab.com/zoraxy/mod/mdns"
@@ -231,14 +228,13 @@ func startupSequence() {
 	//Create a netstat buffer
 	netstatBuffers, err = netstat.NewNetStatBuffer(300, SystemWideLogger)
 	if err != nil {
-		SystemWideLogger.PrintAndLog("Network", "Failed to load network statistic info", err)
+		SystemWideLogger.PrintAndLog("netstat", "Failed to load network statistic info", err)
 		panic(err)
 	}
 
 	//Start the status page host resource monitors
 	//CPU / RAM usage is sampled once per second in the background so the
 	//dashboard API can return cached values without blocking
-	shellexec.SetDockerMode(*runningInDocker) //Docker images ship sh but not bash
 	usageinfo.StartBackgroundMonitor()
 	initDashboardBandwidthTracker()
 
@@ -417,12 +413,6 @@ func startupSequence() {
 	if err != nil {
 		SystemWideLogger.PrintAndLog("plugin-manager", "Failed to load plugins", err)
 	}
-
-	/* Docker UX Optimizer */
-	if runtime.GOOS == "windows" && *runningInDocker {
-		SystemWideLogger.PrintAndLog("warning", "Invalid start flag combination: docker=true && runtime.GOOS == windows. Running in docker UX development mode.", nil)
-	}
-	DockerUXOptimizer = dockerux.NewDockerOptimizer(*runningInDocker, SystemWideLogger)
 
 }
 

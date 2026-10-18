@@ -89,9 +89,9 @@ func HandleGeoIPEnabled(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if enable {
-		SystemWideLogger.PrintAndLog("GeoDB", "GeoIP lookups turned on", nil)
+		SystemWideLogger.PrintAndLog("geodb", "GeoIP lookups turned on", nil)
 	} else {
-		SystemWideLogger.PrintAndLog("GeoDB", "GeoIP lookups turned off; GeoIP database unloaded", nil)
+		SystemWideLogger.PrintAndLog("geodb", "GeoIP lookups turned off; GeoIP database unloaded", nil)
 	}
 	utils.SendOK(w)
 }

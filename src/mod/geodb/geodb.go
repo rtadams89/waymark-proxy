@@ -246,5 +246,5 @@ func (s *Store) log(message string, err error) {
 		}
 		return
 	}
-	s.option.Logger.PrintAndLog("GeoDB", message, err)
+	s.option.Logger.PrintAndLog("geodb", message, err)
 }

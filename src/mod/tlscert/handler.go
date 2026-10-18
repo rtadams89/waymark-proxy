@@ -210,7 +210,7 @@ func (m *Manager) HandleListDomains(w http.ResponseWriter, r *http.Request) {
 		certBtyes, err := os.ReadFile(certFilepath)
 		if err != nil {
 			// Unable to load this file
-			m.Logger.PrintAndLog("TLS", "Unable to load certificate: "+certFilepath, err)
+			m.Logger.PrintAndLog("tls", "Unable to load certificate: "+certFilepath, err)
 			continue
 		} else {
 			// Cert loaded. Check its expiry time

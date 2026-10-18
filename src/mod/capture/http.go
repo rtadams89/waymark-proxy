@@ -413,10 +413,10 @@ func (ex *httpExchange) emitUpstream(up *upstreamSide, note string) {
 		b.Port = 80
 	}
 	if up.h2 {
-		notes = append(notes, "upstream used HTTP/2 (shown as HTTP/1.1 on its own port)")
+		notes = append(notes, "destination used HTTP/2 (shown as HTTP/1.1 on its own port)")
 		a.Port = c.syntheticPort()
 	}
-	comment := fmt.Sprintf("Waymark %s → upstream %s · for client %s", up.local, realRemote, ex.clientIP)
+	comment := fmt.Sprintf("Waymark %s → destination %s · for client %s", up.local, realRemote, ex.clientIP)
 	if len(notes) > 0 {
 		comment += " · " + strings.Join(notes, " · ")
 	}

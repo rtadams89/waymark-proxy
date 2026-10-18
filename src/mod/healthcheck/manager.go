@@ -23,7 +23,8 @@ type Target struct {
 	RuleID   string // the rule's matching domain, lowercased
 	Upstream Upstream
 	Config   Config // validated
-	Label    string // "vdir /path" for a virtual directory backend, empty for a rule upstream
+	Label    string // "vdir /path" for a virtual directory backend, empty for a rule destination
+	RuleName string // how the rule is named in the log (custom fork); empty: RuleID
 }
 
 func (t Target) key() string { return t.RuleID + "\x00" + t.Upstream.Addr }
@@ -286,7 +287,7 @@ func Classify(statusCode int, err error) (ErrorKind, string) {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, os.ErrDeadlineExceeded) ||
 		(errors.As(err, &netErr) && netErr.Timeout()) ||
 		strings.Contains(err.Error(), "timeout awaiting response headers") {
-		return Timeout, "upstream timed out"
+		return Timeout, "destination timed out"
 	}
 	return ConnectionError, describeError(err, 0)
 }
@@ -377,7 +378,11 @@ func (m *Manager) transitionLocked(st *state, up bool, reason string) []pendingN
 	if st.target.Label != "" {
 		who += " (" + st.target.Label + ")"
 	}
-	m.logf(fmt.Sprintf("Upstream %s on rule %s %s: %s", who, st.target.RuleID, action, reason))
+	rule := st.target.RuleName
+	if rule == "" {
+		rule = st.target.RuleID
+	}
+	m.logf(fmt.Sprintf("Destination %s of rule %s %s: %s", who, rule, action, reason))
 	m.events = append(m.events, Event{Time: st.since.Unix(), RuleID: st.target.RuleID, Addr: st.target.Upstream.Addr, Enabled: up, Reason: reason, Label: st.target.Label})
 	if len(m.events) > m.maxEvents {
 		m.events = m.events[len(m.events)-m.maxEvents:]
@@ -402,7 +407,11 @@ func (m *Manager) reconcileLocked(addr string) (pendingNotify, bool) {
 		managed = true
 		if !st.up {
 			online = false
-			downRules = append(downRules, st.target.RuleID)
+			name := st.target.RuleName
+			if name == "" {
+				name = st.target.RuleID
+			}
+			downRules = append(downRules, name)
 		}
 	}
 	prev, known := m.notified[addr]
@@ -410,7 +419,7 @@ func (m *Manager) reconcileLocked(addr string) (pendingNotify, bool) {
 		if known {
 			delete(m.notified, addr)
 			if !prev {
-				m.logf("Upstream " + addr + " is no longer health checked; it receives traffic again")
+				m.logf("Destination " + addr + " is no longer health checked; it receives traffic again")
 				return pendingNotify{addr, true}, true
 			}
 		}
@@ -422,9 +431,9 @@ func (m *Manager) reconcileLocked(addr string) (pendingNotify, bool) {
 	m.notified[addr] = online
 	if !online && len(downRules) > 0 {
 		sort.Strings(downRules)
-		m.logf("Upstream " + addr + " removed from load balancing (unhealthy for: " + strings.Join(downRules, ", ") + ")")
+		m.logf("Destination " + addr + " removed from load balancing (unhealthy for: " + strings.Join(downRules, ", ") + ")")
 	} else if online && known {
-		m.logf("Upstream " + addr + " returned to load balancing")
+		m.logf("Destination " + addr + " returned to load balancing")
 	}
 	return pendingNotify{addr, online}, true
 }

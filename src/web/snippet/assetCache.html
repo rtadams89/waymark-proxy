@@ -50,18 +50,18 @@
                 <div class="acSection" id="acSection">
                     <div class="ui toggle checkbox" id="acEnabledToggle">
                         <input type="checkbox" name="enabled">
-                        <label><b>Cache static files for this host</b><br><span class="acHint">Keep images, stylesheets, scripts and fonts in memory and serve them without asking the upstream</span></label>
+                        <label><b>Cache static files for this host</b><br><span class="acHint">Keep images, stylesheets, scripts and fonts in memory and serve them without asking the destination</span></label>
                     </div>
                     <div class="acBody" style="margin-top: 1.2em;">
                         <div class="field">
                             <label>File extensions</label>
                             <textarea rows="3" name="extensions" class="acMono" placeholder="css, js, png, woff2"></textarea>
-                            <div class="acHint" style="margin-top: 0.3em;">Separated by commas or spaces. URLs with any other extension (pages, API calls) always go to the upstream. <a href="#" id="acResetExt">Reset to defaults</a></div>
+                            <div class="acHint" style="margin-top: 0.3em;">Separated by commas or spaces. URLs with any other extension (pages, API calls) always go to the destination. <a href="#" id="acResetExt">Reset to defaults</a></div>
                         </div>
                         <div class="field">
                             <div class="ui checkbox" id="acTypesToggle">
                                 <input type="checkbox" name="matchContentTypes">
-                                <label>Also cache URLs without an extension when the upstream answers with an image, font, stylesheet, script, audio or video file
+                                <label>Also cache URLs without an extension when the destination answers with an image, font, stylesheet, script, audio or video file
                                     <br><span class="acHint">For example <span class="acCode">/avatar?id=3</span> returning <span class="acCode">image/png</span></span></label>
                             </div>
                         </div>
@@ -76,7 +76,7 @@
                                     <option value="86400">days</option>
                                 </select>
                             </div>
-                            <div class="acHint" style="margin-top: 0.3em;">Used only when the upstream doesn't say how long a file stays fresh (<span class="acCode">Cache-Control: max-age</span> or <span class="acCode">Expires</span>). The upstream's own headers always win.</div>
+                            <div class="acHint" style="margin-top: 0.3em;">Used only when the destination doesn't say how long a file stays fresh (<span class="acCode">Cache-Control: max-age</span> or <span class="acCode">Expires</span>). The destination's own headers always win.</div>
                         </div>
                         <div class="field">
                             <label>Largest file to store</label>
@@ -120,11 +120,11 @@
 
             <div class="ui divider"></div>
             <div class="ui list acHint">
-                <div class="item">Files are stored only if the upstream allows it: responses marked <span class="acCode">no-store</span>, <span class="acCode">no-cache</span> or <span class="acCode">private</span>, responses that set a cookie, and error responses are always passed through.</div>
+                <div class="item">Files are stored only if the destination allows it: responses marked <span class="acCode">no-store</span>, <span class="acCode">no-cache</span> or <span class="acCode">private</span>, responses that set a cookie, and error responses are always passed through.</div>
                 <div class="item">Cached files are shared between everyone who can reach this host (after Waymark's access rules and authentication). If the app itself protects some files with its own login, make sure it marks them <span class="acCode">private</span>, or leave their extension out of the list.</div>
-                <div class="item">When a cached file expires, Waymark asks the upstream whether it changed (using its <span class="acCode">ETag</span> or <span class="acCode">Last-Modified</span>) and keeps the stored copy if it didn't.</div>
+                <div class="item">When a cached file expires, Waymark asks the destination whether it changed (using its <span class="acCode">ETag</span> or <span class="acCode">Last-Modified</span>) and keeps the stored copy if it didn't.</div>
                 <div class="item">Responses show <span class="acCode">X-Waymark-Cache: HIT</span>, <span class="acCode">REVALIDATED</span>, <span class="acCode">MISS</span> or <span class="acCode">BYPASS</span>, visible in the browser's developer tools.</div>
-                <div class="item">A browser hard reload fetches files from the upstream again. Virtual directories and WebSocket connections are never cached. Video seeking (range requests) is served from the cache only after the whole file has been stored once.</div>
+                <div class="item">A browser hard reload fetches files from the destination again. Virtual directories and WebSocket connections are never cached. Video seeking (range requests) is served from the cache only after the whole file has been stored once.</div>
             </div>
             <br>
         </div>
@@ -200,7 +200,7 @@
                 $("#acStored").text(fmtCount(st.entries));
                 let detail = fmtBytes(st.bytes) + " stored";
                 if (st.revalidated > 0){
-                    detail += " · " + fmtCount(st.revalidated) + " of the cache hits were confirmed unchanged by the upstream after expiring";
+                    detail += " · " + fmtCount(st.revalidated) + " of the cache hits were confirmed unchanged by the destination after expiring";
                 }
                 $("#acStatsDetail").text(detail);
 

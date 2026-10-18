@@ -1,7 +1,7 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Layer 4 Proxies</h2>
-        <p>Forward TCP and UDP traffic to one or more destination servers, with load balancing and health checks. For websites and web apps, use HTTP Proxies instead.</p>
+        <p>Forward TCP and UDP traffic to one or more destination servers, with load balancing and health checks. For websites and web apps, use HTTP proxy rules instead.</p>
     </div>
     <style>
         /* Custom fork: same look as the HTTP Proxies list (httprp.html) */
@@ -133,7 +133,7 @@
         }
     </style>
     <div class="l4ProxyListTools" style="margin-bottom: 1em;">
-        <button class="ui basic green button" onclick="openTabById('l4rules');"><i class="plus icon"></i> Add Layer 4 Proxy</button>
+        <button class="ui basic green button" onclick="openTabById('l4rules');"><i class="plus icon"></i> Add Layer 4 Rule</button>
         <div id="l4FilterDropdown" class="ui floating basic dropdown labeled icon button" style="min-width: 150px;">
             <i class="filter icon"></i>
             <span class="text">Filter</span>
@@ -166,7 +166,7 @@
                     <th>Destination</th>
                     <th class="no-sort">Health / Balancing</th>
                     <th>Protocol</th>
-                    <th>Timeout</th>
+                    <th>UDP Idle Timeout</th>
                     <th class="no-sort" style="width:100px; cursor: default !important;"></th>
                 </tr>
             </thead>
@@ -180,7 +180,7 @@
     <br><br>
 </div>
 
-<!-- Custom fork: editor for a Layer 4 proxy, the same as the HTTP proxy rule editor. Each setting is saved when it is changed. -->
+<!-- Custom fork: editor for a Layer 4 rule, the same as the HTTP proxy rule editor. Each setting is saved when it is changed. -->
 <div id="l4EditModalWrapper">
     <div id="l4EditModal" editing-uuid="">
         <div class="ui grid" style="height:100%;">
@@ -221,7 +221,7 @@
                             </div>
                             <div class="ui divider"></div>
                             <b>Listening Address</b>
-                            <p style="margin-top: 0.4em;"><small>Address and port of this host to listen on, e.g. :25565 or 192.168.1.1:25565. If Waymark runs in Docker, also publish this port.</small></p>
+                            <p style="margin-top: 0.4em;"><small>Address and port of this host to listen on, e.g. :25565 or 192.168.1.1:25565.</small></p>
                             <div class="ui action small fluid input">
                                 <input type="text" class="l4ListenAddr" placeholder=":25565">
                                 <button class="ui green basic icon button l4SaveListenBtn" title="Save">
@@ -240,13 +240,15 @@
                                 <label>Forward UDP<br>
                                     <small>Accept UDP packets on the listening address</small></label>
                             </div>
-                            <br><br>
-                            <b>Connection Timeout</b>
+                            <div class="l4UDPTimeoutField">
+                            <br>
+                            <b>UDP Idle Timeout</b>
                             <div class="ui small right labeled fluid input" style="margin-top: 0.8em;">
                                 <input type="number" class="l4Timeout" value="10" min="0">
                                 <label class="ui basic label">seconds</label>
                             </div>
-                            <small class="l4Hint">For UDP: how long an idle client session is kept. 0 uses 60 seconds.</small>
+                            <small class="l4Hint">How long a UDP client session is kept after its last packet. 0 uses 60 seconds. TCP connections stay open until either side closes them.</small>
+                            </div>
                             <div class="ui divider"></div>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="l4EnableLogging">
@@ -358,7 +360,7 @@
         let st = (l4UpstreamState[config.UUID] || []).find(s => s.address == addr) || {};
         let icon, title;
         if (!config.Running){
-            icon = `<i class="grey circle outline icon"></i>`; title = "Proxy stopped";
+            icon = `<i class="grey circle outline icon"></i>`; title = "Rule stopped";
         }else if (st.online === false){
             let why = l4HealthReasons["l4:" + config.UUID.toLowerCase() + "|" + addr] || "taken out by health checks";
             icon = `<i class="red heartbeat icon"></i>`; title = "Down: " + why;
@@ -386,7 +388,7 @@
     // describeL4HealthCheck is the summary under the Health Checks button
     function describeL4HealthCheck(hc){
         if (!hc || (!hc.activeEnabled && !hc.passiveEnabled)){
-            return "Health checks: off. No automatic failover, and this proxy is not shown on Health & Uptime.";
+            return "Health checks: off. No automatic failover, and this rule is not shown on Health & Uptime.";
         }
         let parts = [];
         if (hc.activeEnabled){
@@ -439,7 +441,7 @@
         let tableBody = $("#l4ProxyList");
         tableBody.empty();
         if (!Array.isArray(configs) || configs.length === 0) {
-            tableBody.append(`<tr><td data-label="" colspan="8"><i class="green check circle icon"></i> No Layer 4 Proxy</td></tr>`);
+            tableBody.append(`<tr><td data-label="" colspan="8"><i class="green check circle icon"></i> No Layer 4 Rule</td></tr>`);
             return;
         }
         configs = configs.slice().sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
@@ -460,10 +462,10 @@
                 <td data-label="" datatype="destinations" class="l4DestinationsCell" data-sort-value="${htmlEscape(l4DestinationList(config).join(","))}">${l4DestinationsCell(config)}</td>
                 <td data-label="" datatype="health" style="white-space: nowrap;">${l4HealthCell(config)}</td>
                 <td data-label="" datatype="protocol">${l4ProtocolCell(config)}</td>
-                <td data-label="" datatype="timeout" data-sort-value="${parseInt(config.Timeout) || 0}">${parseInt(config.Timeout) || 0}s</td>
+                <td data-label="" datatype="timeout" data-sort-value="${config.UseUDP ? (parseInt(config.Timeout) || 60) : -1}">${config.UseUDP ? ((parseInt(config.Timeout) || 60) + "s") : `<small style="opacity: 0.3; pointer-events: none; user-select: none;">—</small>`}</td>
                 <td class="center aligned ignoremw" datatype="action" data-label="">
-                    <button title="Edit Layer 4 Proxy" class="ui circular small basic icon button editBtn inlineEditActionBtn" onclick="editL4Proxy('${uuid}');"><i class="ellipsis vertical icon"></i></button>
-                    <button title="Remove Layer 4 Proxy" class="ui circular mini red basic icon button inlineEditActionBtn" onclick="deleteL4Proxy('${uuid}');"><i class="trash icon"></i></button>
+                    <button title="Edit Layer 4 Rule" class="ui circular small basic icon button editBtn inlineEditActionBtn" onclick="editL4Proxy('${uuid}');"><i class="ellipsis vertical icon"></i></button>
+                    <button title="Remove Layer 4 Rule" class="ui circular mini red basic icon button inlineEditActionBtn" onclick="deleteL4Proxy('${uuid}');"><i class="trash icon"></i></button>
                 </td>
             </tr>`);
             tableBody.append(row);
@@ -548,7 +550,7 @@
         if (config == null){
             return;
         }
-        if (!confirm("Confirm removing Layer 4 proxy " + (config.Name || config.ListeningAddress) + "?")){
+        if (!confirm("Confirm removing Layer 4 rule " + (config.Name || config.ListeningAddress) + "?")){
             return;
         }
         let remove = function(){
@@ -560,7 +562,7 @@
                     if (data.error != undefined){
                         msgbox(data.error, false, 6000);
                     }else{
-                        msgbox("Layer 4 Proxy Deleted");
+                        msgbox("Layer 4 rule deleted");
                     }
                     initL4ProxyList();
                 }
@@ -598,7 +600,7 @@
                 if (data.error != undefined){
                     msgbox(data.error, false, 6000);
                 }else{
-                    msgbox(start ? "Layer 4 Proxy Started" : "Layer 4 Proxy Stopped");
+                    msgbox(start ? "Layer 4 rule started" : "Layer 4 rule stopped");
                 }
                 //A listener that cannot open (address in use) stops the proxy
                 //again a moment after it starts, so look again shortly
@@ -627,7 +629,7 @@
     function editL4Proxy(uuid){
         let config = getL4Config(uuid);
         if (config == null){
-            msgbox("Unable to load this Layer 4 proxy", false);
+            msgbox("Unable to load this Layer 4 rule", false);
             return;
         }
         l4Editing = JSON.parse(JSON.stringify(config));
@@ -695,6 +697,7 @@
         }
         editor.find(".l4UseTCP").prop("checked", !!c.UseTCP);
         editor.find(".l4UseUDP").prop("checked", !!c.UseUDP);
+        editor.find(".l4UDPTimeoutField").toggle(!!c.UseUDP);
         let timeout = editor.find(".l4Timeout");
         if (!timeout.is(":focus")){
             timeout.val(parseInt(c.Timeout) || 0);
@@ -741,7 +744,7 @@
                 if (resp.error != undefined){
                     msgbox(resp.error, false, 6000);
                 }else{
-                    msgbox("Layer 4 proxy updated");
+                    msgbox("Layer 4 rule updated");
                 }
                 resyncL4Editor(function(){
                     if (callback != undefined) callback(resp.error);
@@ -773,7 +776,7 @@
                 if (resp.error != undefined){
                     msgbox(resp.error, false, 6000);
                 }else{
-                    msgbox("Layer 4 proxy updated");
+                    msgbox("Layer 4 rule updated");
                 }
                 resyncL4Editor(function(){
                     if (callback != undefined) callback(resp.error);
@@ -833,7 +836,7 @@
         editor.find(".l4UseTCP, .l4UseUDP").on("change", function(){
             let tcp = editor.find(".l4UseTCP")[0].checked, udp = editor.find(".l4UseUDP")[0].checked;
             if (!tcp && !udp){
-                msgbox("Keep TCP, UDP or both on (stop the proxy with its slider instead)", false, 6000);
+                msgbox("Keep TCP, UDP or both on (stop the rule with its slider instead)", false, 6000);
                 $(this).prop("checked", true);
                 return;
             }
@@ -842,7 +845,7 @@
         editor.find(".l4Timeout").on("change", function(){
             let t = parseInt($(this).val(), 10);
             if (isNaN(t) || t < 0){
-                msgbox("Connection timeout must be a whole number of seconds", false);
+                msgbox("UDP idle timeout must be a whole number of seconds", false);
                 return;
             }
             saveL4Config({timeout: t});
@@ -930,7 +933,7 @@
             url: "/api/l4proxy/config/list",
             success: function(configs){
                 if (!Array.isArray(configs)){
-                    if (!quiet) msgbox("Unable to load Layer 4 proxies", false);
+                    if (!quiet) msgbox("Unable to load Layer 4 rules", false);
                     return;
                 }
                 l4ProxyConfigs = configs;
@@ -949,7 +952,7 @@
             },
             error: function(){
                 if (!quiet){
-                    msgbox("Unable to load Layer 4 proxies", false);
+                    msgbox("Unable to load Layer 4 rules", false);
                 }
             }
         });

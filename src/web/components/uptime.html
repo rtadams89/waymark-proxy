@@ -1,7 +1,7 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Health &amp; Uptime</h2>
-        <p>Uptime of HTTP proxy upstreams and Layer 4 proxy destinations with active health checks, in 5 minute blocks. Set up health checks in the proxy's editor (Destinations &rarr; Health Checks).</p>
+        <p>Uptime of the destinations of HTTP and Layer 4 proxy rules with active health checks, in 5 minute blocks. Set up health checks in the rule editor (Destinations &rarr; Health Checks).</p>
     </div>
     <div class="ui divider"></div>
     <div id="utmrender" class="ui basic segment">
@@ -72,7 +72,7 @@
                         <i class="yellow clock outline icon"></i>
                         <div class="content">
                             Health &amp; Uptime is still initializing
-                            <div class="sub header">The uptime monitoring service is starting up. Please wait a moment and try again.</div>
+                            <div class="sub header">Health checks are starting up. Please wait a moment and try again.</div>
                         </div>
                     </h4>
                 </div>`);
@@ -108,7 +108,7 @@
                     <i class="green check circle icon"></i>
                     <div class="content">
                         No health-checked proxy rules
-                        <div class="sub header">This page shows proxy rules that have active health checks. Turn them on in the rule editor under <b>Upstream &rarr; Health Checks</b>, then refresh this page.</div>
+                        <div class="sub header">This page shows proxy rules that have active health checks. Turn them on in the rule editor under <b>Destinations &rarr; Health Checks</b>, then refresh this page.</div>
                     </div>
                 </h4>
             </div>`);
@@ -153,10 +153,10 @@
             $(statusInfoEle).text(httpErrorStatusCodeToText(statusData.StatusCode));
         }else if (statusData.StatusCode == 0 && !statusData.Online){
             $(statusDotInfoEle).addClass("red");
-            $(statusInfoEle).text("Upstream is offline");
+            $(statusInfoEle).text("Destination is offline");
         }else{
             $(statusDotInfoEle).addClass("green");
-            $(statusInfoEle).text("Upstream Online");
+            $(statusInfoEle).text("Destination Online");
         }
 
         $(statusDotInfoEle).show();
@@ -237,7 +237,7 @@
                 var latestStatusCode = value[value.length - 1].StatusCode
                 currentOnlineStatus = `${latestStatusCode} - ${resolveUptime5xxErrorMessage(latestStatusCode)}`;
                 onlineStatusCss = `color: #f38020;`;
-                reminderEle = `<small style="${onlineStatusCss}">Downstream proxy server is responsive but returning server error</small>`;
+                reminderEle = `<small style="${onlineStatusCss}">Destination is responsive but returning server errors</small>`;
             }else if (value[value.length - 1].StatusCode >= 400 && value[value.length - 1].StatusCode <= 405){
                 let latestStatusCode = value[value.length - 1].StatusCode;
                 switch(latestStatusCode){

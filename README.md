@@ -9,7 +9,7 @@
   A self-hosted reverse proxy with active/standby high availability, real health checks and static file caching, managed from a web UI.
 </p>
 
-Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more upstream servers, and can run as an active/standby pair that shares floating IP addresses. Everything is managed from a web UI; there are no configuration files to edit. It is built on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors.
+Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more destination servers, and can run as an active/standby pair that shares floating IP addresses. Everything is managed from a web UI; there are no configuration files to edit. It is built on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors.
 
 - [Why Waymark](#why-waymark)
 - [What's different from Zoraxy](#whats-different-from-zoraxy)
@@ -27,9 +27,9 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 ## Why Waymark
 
 - **No single point of failure.** Two to four nodes share up to 16 floating IPs through keepalived, and the standby nodes keep an exact copy of the active node's configuration, certificates and admin accounts. If the active node fails, another takes over within about 10 seconds, already configured. All of it is set up from the web UI.
-- **Real health checks.** Each proxy rule can check its upstreams actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed upstreams leave load balancing at once, and visitors get a clear "down" page instead of a timeout. Layer 4 (TCP/UDP) proxies get the same destination pools and checks.
-- **See what passed through.** Capture traffic from the web UI, on the client side, the upstream side or both, with HTTPS shown decrypted, and open it in Wireshark.
-- **Faster sites with static file caching**, per rule, in memory, honouring the upstream's cache headers.
+- **Real health checks.** Each proxy rule can check its destinations actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed destinations leave load balancing at once, and visitors get a clear "down" page instead of a timeout. Layer 4 (TCP/UDP) proxies get the same destination pools and checks.
+- **See what passed through.** Capture traffic from the web UI, on the client side, the destination side or both, with HTTPS shown decrypted, and open it in Wireshark.
+- **Faster sites with static file caching**, per rule, in memory, honouring the destination's cache headers.
 - **Everything in one web UI:** proxy rules, load balancing, TLS certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), access rules by IP or country, SSO, redirects, Layer 4 (TCP/UDP) proxies, maintenance mode, a live status dashboard, sending logs to syslog servers, and installing updates.
 - **Hardened and focused.** Waymark runs as an unprivileged user; the only root component is a small helper that checks every HA setting before writing keepalived's config. Passwords are stored with bcrypt, code scanning (CodeQL) and `govulncheck` run on every change, and features that don't belong in a reverse proxy (network scanners, a web SSH client, a forward proxy) were removed.
 - **One binary, no dependencies** beyond keepalived for HA: no database server, no containers required.
@@ -41,7 +41,7 @@ How it compares, out of the box, at the time of writing:
 | Manage everything from a web UI | Yes | Yes | Yes | Dashboard is read-only | No (config file or API) |
 | Automatic certificates (HTTP and DNS challenges) | Yes | Yes | Yes | Yes | Yes |
 | Built-in active/standby failover with config sync | Yes | No | No | No | No |
-| Active and passive upstream health checks | Yes | Fixed 5-minute uptime check | No | Yes | Yes |
+| Active and passive destination health checks | Yes | Fixed 5-minute uptime check | No | Yes | Yes |
 | Static file caching | Built in | No | Custom nginx config | Plugin | Plugin |
 | Layer 4 (TCP/UDP) proxying | Yes | Yes | Yes | Yes | Plugin |
 
@@ -63,25 +63,25 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 **Health checks** (per proxy rule)
 - Active checks: HTTP GET or HEAD (with expected status codes and optional "response must contain" text), TCP connect or ICMP ping, with interval, timeout and failure and recovery thresholds.
 - Passive monitoring of real traffic (5xx responses, timeouts, connection failures).
-- Upstreams that fail are taken out of load balancing. When all upstreams of a rule are down, visitors get a "Web server is down" page at once instead of waiting for a timeout. Virtual directories can be checked too.
+- Destinations that fail are taken out of load balancing. When all destinations of a rule are down, visitors get a "Web server is down" page at once instead of waiting for a timeout. Virtual directories can be checked too.
 - Replaces Zoraxy's fixed 5-minute uptime monitor; the **Health & Uptime** page is fed by the health checks.
 
-**Layer 4 proxies** (TCP and UDP; called stream proxies in Zoraxy)
-- The **Layer 4 Proxies** page works like **HTTP Proxies**: the same list with a start/stop slider, filter and quick search, an **Add Layer 4 Proxy** page, and the same editor, where each setting is saved as you change it.
-- **Destination pools:** several destination servers per proxy, with round robin, least connections, source IP hash (sticky) or failover. A TCP connection that can't reach its destination is retried on the next one, and with no healthy destination new connections are closed at once.
+**Layer 4 proxy rules** (TCP and UDP; called stream proxies in Zoraxy)
+- The **Layer 4 Proxies** page works like **HTTP Proxies**: the same list with a start/stop slider, filter and quick search, an **Add Layer 4 Rule** page, and the same editor, where each setting is saved as you change it.
+- **Destination pools:** several destination servers per rule, with round robin, least connections, source IP hash (sticky) or failover. A TCP connection that can't reach its destination is retried on the next one, and with no healthy destination new connections are closed at once.
 - **Health checks:** TCP connect, TCP send-and-expect (e.g. a banner or a PING/PONG), UDP send-and-expect, or ping, plus passive monitoring of failed connections, in the same Health Checks panel as HTTP proxy rules. Optionally close open connections to a destination when it goes down.
-- Destination health in the Layer 4 Proxies list, on **Health & Uptime** and in the Status page's upstream panel.
+- Destination health in the Layer 4 Proxies list, on **Health & Uptime** and in the Status page's **Destination Health** panel.
 
 **Static file caching**
-- Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the upstream's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
+- Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the destination's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
 
 **Operations**
 - **Updates from the web interface.** Waymark checks GitHub for a new release daily. **Install** downloads it, verifies its SHA-256 checksum and that it starts, and restarts Waymark; if the new version doesn't stay up, the previous one is put back automatically. In a cluster, each node is updated from the HA page.
-- **Traffic capture** (**Monitoring > Traffic Capture**): record HTTP and Layer 4 proxy traffic as a pcapng file for Wireshark, filtered by rule, host or client, on the client side, the upstream side or both. HTTPS is shown decrypted, with an option to hide credentials.
+- **Traffic capture** (**Monitoring > Traffic Capture**): record HTTP and Layer 4 proxy traffic as a pcapng file for Wireshark, filtered by rule, host or client, on the client side, the destination side or both. HTTPS is shown decrypted, with an option to hide credentials.
 - **Logs where you want them.** System logs and traffic (request) logs can each go to the log file, to up to 8 syslog servers (UDP, TCP or TLS; RFC 5424, RFC 3164 or JSON), to both, or to neither.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
-- **Status page panels** can be shown or hidden. New panels show upstream health, cache hit rate and memory, and the HA cluster.
-- The HTTP Proxies list shows health check and cache state per rule, with a red heart on upstreams that are down.
+- **Status page panels** can be shown or hidden. New panels show destination health, cache hit rate and memory, and the HA cluster.
+- The HTTP Proxies list shows health check and cache state per rule, with a red heart on destinations that are down.
 - **DNS credential sets** for ACME DNS challenges: save a provider token once and use it for any number of certificates.
 - **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
 
@@ -190,23 +190,23 @@ This example publishes an app running at `http://10.0.0.20:8080` as `https://app
 
 1. **Point DNS at Waymark.** Create an `A` record for `app.example.com` with Waymark's IP address (the floating IP if you run HA).
 2. **Check that the proxy is running.** On **Status**, the banner should say *Online* and *listening on port 443*. Port 80 is served too and redirects to HTTPS.
-3. **Set up certificates.** Under **Certificates**, open the **ACME and auto-renew** tab, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
+3. **Set up certificates.** Under **Certificates**, open the **ACME and Auto-Renew** tab, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
    - **HTTP challenge**: works when the name is reachable from the internet on port 80.
    - **DNS challenge**: also works for internal-only names. Pick your DNS provider and save its API token as a credential set (**Certificates > DNS credentials**) so other certificates can reuse it.
 4. **Create the proxy rule.** Under **Proxy > HTTP Proxies**, click **Add Proxy Rule**:
    - **Matching Keyword / Domain**: `app.example.com`
-   - **Target IP Address or Domain Name with port**: `10.0.0.20:8080`
-   - **Proxy Target require TLS Connection**: off (the app speaks plain HTTP)
+   - **Destination IP Address or Domain Name with port**: `10.0.0.20:8080`
+   - **Destination requires TLS**: off (the app speaks plain HTTP)
    - **Enable health checks**: on (the default)
-   - Click **Create Endpoint**.
-5. **Open `https://app.example.com`.** The rule now appears under **Proxy > HTTP Proxies**. Edit it there to add more upstreams for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
+   - Click **Create Proxy Rule**.
+5. **Open `https://app.example.com`.** The rule now appears under **Proxy > HTTP Proxies**. Edit it there to add more destinations for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
 
 Tips:
 - For an app that uses HTTPS itself, turn on **Proxy Target require TLS Connection** (and **Ignore TLS/SSL Verification Error** if it has a self-signed certificate).
-- For HTTPS upstreams you can choose, per upstream server (**Destinations**, edit the upstream), which name the certificate is checked against and sent as SNI:
-  - **Automatic**: the "Host" header override if set, otherwise the upstream's address. For an IP address, the host name the client asked for.
-  - **Upstream server name**: the host name or IP address in the upstream address, for an upstream with its own certificate.
-  - **Proxy host name**: the host name the client asked for, for an upstream that serves the public site's certificate.
+- For HTTPS destinations you can choose, per destination server (**Destinations > Edit Destinations**, edit the destination), which name the certificate is checked against and sent as SNI:
+  - **Automatic**: the "Host" header override if set, otherwise the destination's address. For an IP address, the host name the client asked for.
+  - **Destination server name**: the host name or IP address in the destination address, for a destination with its own certificate.
+  - **Proxy host name**: the host name the client asked for, for a destination that serves the public site's certificate.
 - Hostnames that match no rule get the **Default Site** (**Proxy > Default Site**): an error page, a redirect, or the built-in static web server.
 - To export your configuration, use **System Backup & Restore** under **System > Settings**.
 
@@ -250,16 +250,16 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 - **Make active** (on the HA page's cluster table) moves the floating IPs to a healthy standby. The active node reports itself unhealthy for a few seconds so keepalived hands over, then becomes the standby. It needs configuration sync on, and can be started from either node. With "prefer the higher-priority node" on, a higher-priority node takes the floating IPs back about 30 seconds later.
 - Only the active node renews certificates automatically.
 - Not synced (kept per node): the host UUID (`sys.uuid`), statistics, log files, traffic captures, the Geo-IP database, plugins, static web server files and live SSO sessions.
-- HTTP proxying listens on all addresses, so every floating IP works on whichever node holds it. A Layer 4 proxy that listens on one specific floating IP can only start on the node holding that address, unless every node has `net.ipv4.ip_nonlocal_bind=1` (`echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf && sudo sysctl --system`). The HA page warns when this applies.
+- HTTP proxying listens on all addresses, so every floating IP works on whichever node holds it. A Layer 4 proxy rule that listens on one specific floating IP can only start on the node holding that address, unless every node has `net.ipv4.ip_nonlocal_bind=1` (`echo 'net.ipv4.ip_nonlocal_bind=1' | sudo tee /etc/sysctl.d/90-waymark-ha.conf && sudo sysctl --system`). The HA page warns when this applies.
 - Logs: `journalctl -u waymark-ha-apply` for applying settings, `journalctl -u keepalived` for VRRP.
 
 ## Logs and syslog
 
-Waymark has two log streams:
-- **System**: Waymark's own messages, such as startup, settings changes, certificate renewal, high availability and errors. They are also printed to standard output, so `journalctl -u waymark` always has them.
-- **Traffic**: one line per HTTP request the proxy handles (host, client address, user agent, method, path and status).
+Waymark has two logs:
+- **System log**: Waymark's own messages, such as startup, settings changes, certificate renewal, high availability and errors. They are also printed to standard output, so `journalctl -u waymark` always has them.
+- **Traffic log**: one line per HTTP request the proxy handles (host, client address, user agent, method, path and status).
 
-Under **Monitoring > Logs**, choose where each stream goes: the log file, syslog servers, both, or neither. Both go to the log file by default. Rotation of the log file is set on the same page, and **Open Log Viewer** shows it.
+Under **Monitoring > Logs**, choose where each log goes: the log file, syslog servers, both, or neither. Both go to the log file by default. Rotation of the log file is set on the same page, and **Open Log Viewer** shows it.
 
 **Syslog servers.** Click **Add syslog server** (up to 8). For each one, choose:
 - the server's IP address or host name and port (default 514, or 6514 for TLS);
@@ -268,10 +268,10 @@ Under **Monitoring > Logs**, choose where each stream goes: the log file, syslog
 - the message format:
   - **RFC 5424**: `<134>1 2026-10-17T13:05:09.123456-07:00 waymark01 waymark 812 traffic - [router:host-http] [origin:app.example.com] ...`
   - **RFC 3164 (BSD)**: `<134>Oct 17 13:05:09 waymark01 waymark[812]: [router:host-http] ...`
-  - **JSON with an RFC 5424 header**, or **JSON lines** without a header, for collectors that parse JSON. Traffic messages have the fields `client`, `origin`, `method`, `uri`, `status`, `userAgent`, `upstream` and `class`; system messages have `module`, `message` and `error`. Both have `time`, `host`, `app`, `stream` and `severity`.
-- the facility (`local0` by default), and which streams to send.
+  - **JSON with an RFC 5424 header**, or **JSON lines** without a header, for collectors that parse JSON. Traffic messages have the fields `client`, `origin`, `method`, `uri`, `status`, `userAgent`, `upstream` and `class`; system messages have `module`, `message` and `error`. Both have `time`, `host`, `app`, `stream` (`system` or `traffic`) and `severity`. The `upstream` and `stream` field names are kept as they are, so existing collector parsing keeps working; `upstream` is the destination the request went to.
+- the facility (`local0` by default), and which logs to send (system, traffic or both).
 
-The message ID (RFC 5424) is the stream name. The severity is informational (6), or error (3) for system messages that report an error. **Send test message** checks a server before you save; for UDP it can only confirm that the message was sent. Each server shows whether it is connected, how many messages were sent and how many were dropped.
+The message ID (RFC 5424) is the log's name (`system` or `traffic`). The severity is informational (6), or error (3) for system messages that report an error. **Send test message** checks a server before you save; for UDP it can only confirm that the message was sent. Each server shows whether it is connected, how many messages were sent and how many were dropped.
 
 Each server has its own queue, so a slow or unreachable server never slows the proxy: up to 4,096 messages wait while Waymark reconnects (retrying every 1 to 30 seconds), and messages beyond that are dropped and counted. With high availability and configuration sync on, these settings are copied to the standby nodes, and each node sends with its own host name.
 
@@ -279,11 +279,11 @@ Each server has its own queue, so a slow or unreachable server never slows the p
 
 **Monitoring > Traffic Capture** records the traffic passing through Waymark on this node and saves it as a pcapng file to open in Wireshark.
 
-- **What:** HTTP proxy rules, Layer 4 proxies, or both. Narrow it to some HTTP rules or host names, some Layer 4 proxies, and some client addresses or ranges.
-- **Which side:** client to Waymark, Waymark to the upstream, or both. With both, each HTTP request appears twice: as the client sent it and as Waymark forwarded it.
+- **What:** HTTP proxy rules, Layer 4 proxy rules, or both. Narrow it to some HTTP rules or host names, some Layer 4 rules, and some client addresses or ranges.
+- **Which side:** client to Waymark, Waymark to the destination, or both. With both, each HTTP request appears twice: as the client sent it and as Waymark forwarded it.
 - **Limits:** every capture stops after a time limit (up to 60 minutes) and a size limit (up to 1 GB). HTTP bodies are kept up to a limit per request (1 MB by default).
 - **Decrypted HTTPS:** Waymark terminates TLS, so it records the plaintext. Each HTTP request and its response is shown as an HTTP/1.1 conversation on port 80, so Wireshark decodes it, even when the client used HTTP/2 or HTTP/3. The first packet of each conversation has a comment with the real addresses and ports (filter `frame.comment`).
-- **Layer 4 proxies** are recorded byte for byte on their real ports, for TCP connections and UDP sessions that start while the capture runs.
+- **Layer 4 proxy rules** are recorded byte for byte on their real ports, for TCP connections and UDP sessions that start while the capture runs.
 
 It is not a packet capture. Waymark builds the packets from what it received and sent, so it needs no extra privileges and can filter by rule, but TCP handshakes, sequence numbers and timing below the application are made up. Use tcpdump for network-level problems such as retransmissions or MTU issues.
 
@@ -293,7 +293,7 @@ Captures contain passwords, cookies, tokens and personal data. **Hide credential
 
 Read [CHANGELOG.md](CHANGELOG.md) first: a new major version (such as 2.0.0) lists the steps it needs.
 
-**From the web interface** (2.4.0 and later): **Settings > About** shows the latest release (Waymark asks GitHub once a day; **Check now** asks again), its release notes and an **Install** button. A pill next to the logo says when an update is available. Install:
+**From the web interface** (2.4.0 and later): **System > Settings > About** shows the latest release (Waymark asks GitHub once a day; **Check now** asks again), its release notes and an **Install** button. A pill next to the logo says when an update is available. Install:
 1. downloads `waymark_linux_amd64` and its `.sha256` from the GitHub release, over HTTPS, and checks the checksum;
 2. runs the new binary with `-version` to check that it starts and is the expected version;
 3. keeps the running binary as `waymark.prev` and swaps the new one in;
@@ -335,7 +335,7 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 |---|---|
 | `conf/` | Proxy rules, certificates and keys, access rules, log settings (`log_conf.json`, `log_outputs.json`) and other configuration files |
 | `sys.db` | Settings, admin accounts, ACME account, the sticky session key and statistics |
-| `sys.uuid` | This host's ID, created on first start (sent to upstreams in `X-Forwarded-Server`; each node has its own) |
+| `sys.uuid` | This host's ID, created on first start (sent to destinations in `X-Forwarded-Server`; each node has its own) |
 | `log/` | The log file (`waymark_<year>-<month>.log`) and rotated copies |
 | `waymark.prev` | The binary that ran before the last update or roll back (for **Roll back**) |
 | `.update-state.json` | The last update or roll back and its outcome |

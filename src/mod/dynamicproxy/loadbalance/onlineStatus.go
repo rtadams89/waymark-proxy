@@ -30,7 +30,7 @@ func (m *RouteManager) NotifyHostOnlineState(upstreamIP string, isOnline bool) {
 	}
 
 	m.OnlineStatus.Store(upstreamIP, isOnline)
-	m.println("Updating upstream "+upstreamIP+" online state to "+strconv.FormatBool(isOnline), nil)
+	m.println("Updating destination "+upstreamIP+" online state to "+strconv.FormatBool(isOnline), nil)
 }
 
 // Set this host unreachable for a given amount of time defined in timeout
@@ -51,7 +51,7 @@ func (m *RouteManager) NotifyHostUnreachableWithTimeout(upstreamIp string, timeo
 	}
 
 	m.OnlineStatus.Store(upstreamIp, false)
-	m.println("Setting upstream "+upstreamIp+" unreachable for "+strconv.FormatInt(timeout, 10)+"s", nil)
+	m.println("Setting destination "+upstreamIp+" unreachable for "+strconv.FormatInt(timeout, 10)+"s", nil)
 	go func() {
 		//Set the upstream back to online after the timeout
 		<-time.After(time.Duration(timeout) * time.Second)

@@ -10,6 +10,32 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.9.1
+
+A terminology clean-up release: the same thing now has the same name everywhere in the web interface, the logs and the documentation. No configuration changes are needed.
+
+**Changed: names**
+- **Destinations:** the servers a proxy rule forwards to are called destinations everywhere (they were also called upstreams, upstream origins, upstream endpoints, origin servers and proxy targets). This covers the HTTP rule editor, **Edit Destinations**, Add Proxy Rule, Default Site, Virtual Directories, Health Checks, Health & Uptime, Statistics, the Status page, Traffic Capture and the log messages. A proxy in front of Waymark is now called that, instead of an "upstream proxy".
+- **Rules:** an HTTP proxy entry is a **proxy rule** (no longer also an "endpoint" or "proxy host"); a Layer 4 entry is a **Layer 4 rule**. The buttons are **Create Proxy Rule**, **Add Layer 4 Rule** and **Create Layer 4 Rule**.
+- **Additional listening addresses:** a rule's extra listeners have one name in the HTTP Proxies list, the rule editor and the Listeners page (were "Alt. Listening Addr", "Alternative Listening Ports" and "Secondary Listening Ports"). The Listeners page's port is the **Main Listening Port**.
+- **Layer 4 UDP idle timeout:** the Layer 4 "Timeout" setting is now called **UDP Idle Timeout**, which is what it does: how long a UDP client session is kept after its last packet. It is only shown for rules with UDP on, and the list shows "—" for TCP-only rules.
+- Pop-up messages use sentence case throughout, collapsible sections are all called **Advanced Settings**, and a few labels match their page names (**Access Rules** headings on the Add pages, **Virtual Directories** in the HTTP editor, **DNS Credentials** and **ACME and Auto-Renew** on the Certificates pages).
+- Help text that pointed at places that don't exist now points at the right menu entry or tab (for example **Destinations > Health Checks**, **HTTP Proxies**, **System > Settings > About**), and the last mentions of the old uptime monitor say health checks.
+- The two notes about which certificate authorities auto-renew works with are now the same sentence, without sending you to the Zoraxy wiki.
+- README: the system and traffic logs are called logs instead of streams.
+
+**Changed: logs**
+- Log module names (the `[module]` in the log file, and the `module` field sent to syslog) are lowercase and hyphenated, with duplicates merged: `acme` (was `ACME` and `cert-renew`), `load-balancer` (`LoadBalancer`, `loadbalancer`), `http-proxy` (`dprouter`, `proxy`), `access` (`Access`, `proxy-access`), `oauth2` (`OAuth2`, `OAuth2Router`), `tls` (`TLS`, `tls-router`), `geodb` (`GeoDB`), `netstat` (`Network`), `proxy-config` (`INFO`, `Config`), `backup` (`Backup`), `uptime` (`uptime-monitor`), `forward-auth` (`Forward Auth`), `waymark-auth` (`zorxauth`) and `system` (`ZeroTier`, `warning`). **Update syslog or SIEM searches that filter on the old names.**
+- Health check log lines name the rule instead of its internal ID, for example `Destination 10.0.0.5:5432 of rule Layer 4: Postgres DISABLED: ...` (was `Upstream 10.0.0.5:5432 (Layer 4 proxy Postgres) on rule l4:<uuid> DISABLED`). Layer 4 rules are shown as "Layer 4: name" everywhere.
+- The JSON field names sent to syslog (`upstream`, `stream`) are unchanged, so collectors keep parsing them.
+
+**Removed**
+- The Docker container picker on Add Proxy Rule, the `/api/docker/...` API and the `-docker` start flag. Waymark doesn't ship a Docker image. **If a service file or script starts Waymark with `-docker`, remove the flag, or Waymark won't start.**
+
+**Fixed**
+- Layer 4 rules: the Health Checks panel listed every destination as "Not health checked" even while it was being checked.
+- Browser settings (collapsed menu groups and the traffic diagram orientation) are stored under `waymark_` names instead of `zoraxy_`. Existing settings are moved over on the first visit.
+
 ## 2.9.0
 
 Stream proxies are now called **Layer 4 proxies**, and their pages work the same way as the HTTP proxy pages. Existing rules are kept and moved automatically; no action is needed.

@@ -128,7 +128,7 @@ func (ar *AuthRouter) handleSettingsDELETE(w http.ResponseWriter, r *http.Reques
 	ar.Database.Delete(DB_NAME, "options")
 
 	if ar.Logger != nil {
-		ar.Logger.PrintAndLog("zorxauth", "ZorxAuth settings reset to defaults", nil)
+		ar.Logger.PrintAndLog("waymark-auth", "ZorxAuth settings reset to defaults", nil)
 	}
 
 	utils.SendOK(w)
@@ -204,7 +204,7 @@ func (ar *AuthRouter) handleGatewaySettingsPOST(w http.ResponseWriter, r *http.R
 			// Restart server to apply changes
 			if err := ar.gatewayServer.Restart(); err != nil {
 				if ar.Logger != nil {
-					ar.Logger.PrintAndLog("zorxauth", "Failed to start gateway server: "+err.Error(), err)
+					ar.Logger.PrintAndLog("waymark-auth", "Failed to start gateway server: "+err.Error(), err)
 				}
 				utils.SendErrorResponse(w, "Failed to start gateway server: "+err.Error())
 				return
@@ -213,7 +213,7 @@ func (ar *AuthRouter) handleGatewaySettingsPOST(w http.ResponseWriter, r *http.R
 			// Start server if it's not running
 			if err := ar.gatewayServer.Start(); err != nil {
 				if ar.Logger != nil {
-					ar.Logger.PrintAndLog("zorxauth", "Failed to start gateway server: "+err.Error(), err)
+					ar.Logger.PrintAndLog("waymark-auth", "Failed to start gateway server: "+err.Error(), err)
 				}
 				utils.SendErrorResponse(w, "Failed to start gateway server: "+err.Error())
 				return
@@ -224,7 +224,7 @@ func (ar *AuthRouter) handleGatewaySettingsPOST(w http.ResponseWriter, r *http.R
 		if ar.gatewayServer.IsRunning() {
 			if err := ar.gatewayServer.Stop(); err != nil {
 				if ar.Logger != nil {
-					ar.Logger.PrintAndLog("zorxauth", "Failed to stop gateway server: "+err.Error(), err)
+					ar.Logger.PrintAndLog("waymark-auth", "Failed to stop gateway server: "+err.Error(), err)
 				}
 				utils.SendErrorResponse(w, "Failed to stop gateway server: "+err.Error())
 				return
@@ -279,7 +279,7 @@ func (ar *AuthRouter) HandleLogoutAllUsers(w http.ResponseWriter, r *http.Reques
 	}
 
 	if ar.Logger != nil {
-		ar.Logger.PrintAndLog("zorxauth", "All user sessions have been cleared", nil)
+		ar.Logger.PrintAndLog("waymark-auth", "All user sessions have been cleared", nil)
 	}
 
 	utils.SendOK(w)

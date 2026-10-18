@@ -58,17 +58,17 @@
                     </tbody>
                 </table>
                 <p>
-                    <i class="angle double right blue icon"></i> Add or remove headers before sending to origin server <br>
+                    <i class="angle double right blue icon"></i> Add or remove headers before sending to the destination <br>
                     <i class="angle double left orange icon"></i> Modify headers from origin server responses before sending to client
                 </p>
                 <div class="ui divider"></div>
                 <h4>Edit Custom Header</h4>
-                <p>Add or remove custom header(s) over this proxy target</p>
+                <p>Add or remove custom headers for this proxy rule</p>
                 <div class="scrolling content ui form">
                     <div class="five small fields credentialEntry">
                         <div class="field" align="center">
-                            <button id="toOriginButton" style="margin-top: 0.6em;" title="Downstream to Upstream" class="ui circular basic active button">Waymark <i class="angle double right blue icon" style="margin-right: 0.4em;"></i> Origin</button>
-                            <button id="toClientButton" style="margin-top: 0.6em;" title="Upstream to Downstream" class="ui circular basic button">Client <i class="angle double left orange icon" style="margin-left: 0.4em;"></i> Waymark</button>
+                            <button id="toOriginButton" style="margin-top: 0.6em;" title="Client to destination" class="ui circular basic active button">Waymark <i class="angle double right blue icon" style="margin-right: 0.4em;"></i> Origin</button>
+                            <button id="toClientButton" style="margin-top: 0.6em;" title="Destination to client" class="ui circular basic button">Client <i class="angle double left orange icon" style="margin-left: 0.4em;"></i> Waymark</button>
                         </div>
                         <div class="field" align="center">
                             <button id="headerModeAdd" style="margin-top: 0.6em;" class="ui circular basic active button"><i class="ui green circle add icon"></i> Add Header</button>
@@ -94,14 +94,14 @@
                     <div class="ui fluid accordion">
                         <div class="title">
                         <i class="dropdown icon" tabindex="0"><div class="menu" tabindex="-1"></div></i>
-                        Advance Settings
+                        Advanced Settings
                         </div>
                         <div class="content">
                             <br>
                             <div class="ui container">
                                 <h4>Overwrite Host Header</h4>
                                 <p>Manual override the automatic "Host" header rewrite logic. Leave empty for automatic.<br>
-                                For HTTPS upstreams, this hostname is also used as the TLS SNI and the name the upstream certificate is verified against. Set this if your upstream is addressed by a name its certificate does not cover, such as a Docker service name.</p>
+                                For HTTPS destinations, this hostname is also used as the TLS SNI and the name the destination certificate is verified against. Set this if your destination is addressed by a name its certificate does not cover, such as a Docker service name.</p>
                                 <div class="ui fluid action input">
                                     <input type="text" id="manualHostOverwrite" placeholder="Overwrite Host name">
                                     <button onclick="updateManualHostOverwrite();" class="ui basic icon button" title="Update"><i class="ui green save icon"></i></button>
@@ -110,7 +110,7 @@
                                 
                                 <div class="ui divider"></div>
                                 <h4>Remove Hop-by-hop Headers</h4>
-                                <p>Remove headers like "Connection" and "Keep-Alive" from both upstream and downstream requests. Set to ON by default.</p>
+                                <p>Remove headers like "Connection" and "Keep-Alive" from requests to the destination and responses to the client. Set to ON by default.</p>
                                 <div class="ui toggle checkbox">
                                     <input type="checkbox" id="removeHopByHop" name="">
                                     <label>Remove Hop-by-hop Header<br>
@@ -119,7 +119,7 @@
 
                                  <div class="ui divider"></div>
                                 <h4>Remove User-Agent Header</h4>
-                                <p>Remove User-Agent header from upstream before sending to downstream. Set to ON by default.</p>
+                                <p>Remove the User-Agent header from responses before sending them to the client. Set to ON by default.</p>
                                 <div class="ui toggle checkbox">
                                     <input type="checkbox" id="removeUserAgent" name="">
                                     <label>Remove User-Agent Header<br>
@@ -384,7 +384,7 @@
                                 if (data.error != undefined){
                                     parent.msgbox(data.error, false);
                                 }else{
-                                    parent.msgbox(`HSTS ${HSTSEnabled?"Enabled":"Disabled"}`);
+                                    parent.msgbox(`HSTS ${HSTSEnabled?"enabled":"disabled"}`);
                                 }
                             }
                         })
@@ -459,7 +459,7 @@
                                 if (data.error != undefined){
                                     parent.msgbox(data.error, false);
                                 }else{
-                                    parent.msgbox(`Permission Policy ${ppEnabled?"Enabled":"Disabled"}`)
+                                    parent.msgbox(`Permission policy ${ppEnabled?"enabled":"disabled"}`)
                                 }
                             }
                         })
@@ -565,7 +565,7 @@
                         if (data.error != undefined){
                             parent.msgbox(data.error, false);
                         }else{
-                            parent.msgbox("Permission Policy Updated");
+                            parent.msgbox("Permission policy updated");
                         }
                     }
                 })
@@ -578,7 +578,7 @@
                     if (data.error != undefined){
                         parent.msgbox(data.error, false);
                     }else{
-                        parent.msgbox("Host field Overwrite Updated");
+                        parent.msgbox("Host field overwrite updated");
                         initManualHostOverwriteValue();
                     }
                 });
@@ -590,7 +590,7 @@
                     if (data.error != undefined){
                         parent.msgbox(data.error, false);
                     }else{
-                        parent.msgbox("Host field Overwrite Cleared");
+                        parent.msgbox("Host field overwrite cleared");
                         initManualHostOverwriteValue();
                     }
                 })
@@ -721,7 +721,7 @@
                                     if (data.error != undefined){
                                         parent.msgbox(data.error, false);
                                     }else{
-                                        parent.msgbox("WebSocket Custom Header rule updated");
+                                        parent.msgbox("WebSocket custom header rule updated");
                                     }
                                 }
                             })

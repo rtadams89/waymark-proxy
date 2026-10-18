@@ -67,14 +67,14 @@ func NewLoadBalancer(options *Options) *RouteManager {
 	cacheTicker := time.NewTicker(12 * time.Hour)
 	cacheTickerStop := make(chan bool)
 	go func() {
-		options.Logger.PrintAndLog("LoadBalancer", "Upstream state cache ticker started", nil)
+		options.Logger.PrintAndLog("load-balancer", "Destination state cache ticker started", nil)
 		for {
 			select {
 			case <-cacheTickerStop:
 				return
 			case <-cacheTicker.C:
 				//Clean up the cache
-				options.Logger.PrintAndLog("LoadBalancer", "Cleaning up upstream state cache", nil)
+				options.Logger.PrintAndLog("load-balancer", "Cleaning up destination state cache", nil)
 			}
 		}
 	}()
@@ -110,7 +110,7 @@ func GetUpstreamsAsString(upstreams []*Upstream) string {
 	}
 	if len(targets) == 0 {
 		//No upstream
-		return "(no upstream config)"
+		return "(no destination config)"
 	}
 	return strings.Join(targets, ", ")
 }
@@ -133,5 +133,5 @@ func (m *RouteManager) Close() {
 
 // Log Println, replace all log.Println or fmt.Println with this
 func (m *RouteManager) println(message string, err error) {
-	m.Options.Logger.PrintAndLog("LoadBalancer", message, err)
+	m.Options.Logger.PrintAndLog("load-balancer", message, err)
 }

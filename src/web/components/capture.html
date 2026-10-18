@@ -35,9 +35,9 @@
                 <div class="field">
                     <label>Side</label>
                     <select name="sides">
-                        <option value="both">Both: client to Waymark, and Waymark to upstream</option>
+                        <option value="both">Both: client to Waymark, and Waymark to destination</option>
                         <option value="client">Client to Waymark</option>
-                        <option value="upstream">Waymark to upstream</option>
+                        <option value="upstream">Waymark to destination</option>
                     </select>
                 </div>
             </div>
@@ -50,7 +50,7 @@
                 <input type="text" name="hosts" placeholder="app.example.com, *.internal.example.com">
             </div>
             <div class="field capL4">
-                <label>Layer 4 proxies <span class="capHint">(none selected: all)</span></label>
+                <label>Layer 4 proxy rules <span class="capHint">(none selected: all)</span></label>
                 <select name="l4Rules" multiple class="ui fluid search dropdown" id="capL4Rules"></select>
             </div>
             <div class="field">
@@ -139,7 +139,7 @@
                 capRules.l4 = (d.l4Rules || []).sort((a, b) => a.name.localeCompare(b.name));
                 l4Sel.empty();
                 capRules.l4.forEach(r => l4Sel.append($("<option>").val(r.uuid).text(r.name + (r.running ? "" : " (stopped)"))));
-                l4Sel.dropdown({placeholder: "All Layer 4 proxies"}).dropdown("set selected", keepL4);
+                l4Sel.dropdown({placeholder: "All Layer 4 proxy rules"}).dropdown("set selected", keepL4);
             }
         }
 
@@ -180,11 +180,11 @@
             $("#capStartBtn").addClass("disabled");
             let c = r.config;
             let what = {all: "HTTP and Layer 4 proxies", http: "HTTP proxies", l4: "Layer 4 proxies", stream: "Layer 4 proxies"}[c.scope]; //"stream": captures from before the rename
-            let side = {both: "both sides", client: "client to Waymark", upstream: "Waymark to upstream"}[c.sides];
+            let side = {both: "both sides", client: "client to Waymark", upstream: "Waymark to destination"}[c.sides];
             let filters = [];
             if (c.hosts && c.hosts.length) filters.push("hosts " + c.hosts.join(", "));
             if (c.l4Rules && c.l4Rules.length){
-                filters.push("Layer 4 proxies " + c.l4Rules.map(id => { let s = capRules.l4.find(x => x.uuid.toLowerCase() == id); return s ? s.name : id; }).join(", "));
+                filters.push("Layer 4 rules " + c.l4Rules.map(id => { let s = capRules.l4.find(x => x.uuid.toLowerCase() == id); return s ? s.name : id; }).join(", "));
             }
             if (c.clients && c.clients.length) filters.push("clients " + c.clients.join(", "));
             let detail = $("<div>");

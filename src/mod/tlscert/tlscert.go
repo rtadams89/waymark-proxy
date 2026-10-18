@@ -159,7 +159,7 @@ func (m *Manager) UpdateLoadedCertList() error {
 		priKey := filepath.Join(m.CertStore, certname+".key")
 		certificate, err := tls.LoadX509KeyPair(pubKey, priKey)
 		if err != nil {
-			m.Logger.PrintAndLog("tls-router", "Certificate load failed: "+certname, err)
+			m.Logger.PrintAndLog("tls", "Certificate load failed: "+certname, err)
 			continue
 		}
 
@@ -167,7 +167,7 @@ func (m *Manager) UpdateLoadedCertList() error {
 			loadedCert, err := x509.ParseCertificate(thisCert)
 			if err != nil {
 				//Error pasring cert, skip this byte segment
-				m.Logger.PrintAndLog("tls-router", "Certificate parse failed: "+certname, err)
+				m.Logger.PrintAndLog("tls", "Certificate parse failed: "+certname, err)
 				continue
 			}
 
@@ -243,7 +243,7 @@ func (m *Manager) GetCert(helloInfo *tls.ClientHelloInfo) (*tls.Certificate, err
 	//Look for the certificate by hostname
 	pubKey, priKey, err := m.GetCertificateByHostname(helloInfo.ServerName)
 	if err != nil {
-		m.Logger.PrintAndLog("tls-router", "Failed to get certificate for "+helloInfo.ServerName, err)
+		m.Logger.PrintAndLog("tls", "Failed to get certificate for "+helloInfo.ServerName, err)
 		return nil, err
 	}
 

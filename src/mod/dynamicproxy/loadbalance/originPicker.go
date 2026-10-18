@@ -21,7 +21,7 @@ const (
 // request should be routed
 func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.Request, origins []*Upstream, useStickySession bool, disableAutoFallback bool) (*Upstream, error) {
 	if len(origins) == 0 {
-		return nil, errors.New("no upstream is defined for this host")
+		return nil, errors.New("no destination is defined for this host")
 	}
 
 	//Pick the origin
@@ -34,13 +34,13 @@ func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.R
 			originalUpstreamCount := len(origins)
 			origins = m.FilterOfflineOrigins(origins, originalUpstreamCount, disableAutoFallback)
 			if len(origins) == 0 {
-				return nil, errors.New("no online upstream is available for origin: " + r.Host)
+				return nil, errors.New("no online destination is available for origin: " + r.Host)
 			}
 
 			//Get a random origin
 			targetOrigin, index, err := getRandomUpstreamByWeight(origins)
 			if err != nil {
-				m.println("Unable to get random upstream", err)
+				m.println("Unable to get random destination", err)
 				targetOrigin = origins[0]
 				index = 0
 			}
@@ -60,7 +60,7 @@ func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.R
 	originalUpstreamCount := len(origins)
 	origins = m.FilterOfflineOrigins(origins, originalUpstreamCount, disableAutoFallback)
 	if len(origins) == 0 {
-		return nil, errors.New("no online upstream is available for origin: " + r.Host)
+		return nil, errors.New("no online destination is available for origin: " + r.Host)
 	}
 
 	//Get a random origin
@@ -168,7 +168,7 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 			return fallbackUpstreams[randIndex].Upstream, fallbackUpstreams[randIndex].Index, nil
 		}
 		// No upstreams available at all
-		return nil, -1, errors.New("no valid upstream servers available")
+		return nil, -1, errors.New("no valid destination servers available")
 	}
 
 	// Random weight between 0 and total weight
@@ -191,5 +191,5 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 		return fallbackUpstreams[randIndex].Upstream, fallbackUpstreams[randIndex].Index, nil
 	}
 
-	return nil, -1, errors.New("failed to pick an upstream origin server")
+	return nil, -1, errors.New("failed to pick a destination server")
 }

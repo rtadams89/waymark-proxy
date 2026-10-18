@@ -140,7 +140,7 @@ func (h *ProxyHandler) upstreamHostSwap(w http.ResponseWriter, r *http.Request, 
 	loopbackProxyEndpoint := h.Parent.GetProxyEndpointFromHostname(upstreamHostname)
 	if loopbackProxyEndpoint != nil && loopbackProxyEndpoint != currentTarget {
 		//This is a loopback request. Swap the target to the loopback target
-		//h.Parent.Option.Logger.PrintAndLog("proxy", "Detected a loopback request to self. Swap the target to "+loopbackProxyEndpoint.RootOrMatchingDomain, nil)
+		//h.Parent.Option.Logger.PrintAndLog("http-proxy", "Detected a loopback request to self. Swap the target to "+loopbackProxyEndpoint.RootOrMatchingDomain, nil)
 		if loopbackProxyEndpoint.IsEnabled() {
 			h.hostRequest(w, r, loopbackProxyEndpoint)
 		} else {
@@ -185,7 +185,7 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	selectedUpstream, err := h.Parent.loadBalancer.GetRequestUpstreamTarget(w, r, target.ActiveOrigins, target.UseStickySession, autoFallbackOff(target))
 	if err != nil {
 		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
-		h.Parent.Option.Logger.PrintAndLog("proxy", "Failed to assign an upstream for this request", err)
+		h.Parent.Option.Logger.PrintAndLog("http-proxy", "Failed to assign a destination for this request", err)
 		h.Parent.logRequest(r, false, 521, "subdomain-http", r.URL.Hostname(), r.Host, target)
 		return
 	}

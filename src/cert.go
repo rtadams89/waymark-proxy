@@ -85,7 +85,7 @@ func handleSetTlsMinVersion(w http.ResponseWriter, r *http.Request) {
 	sysdb.Write("settings", "minTLSVersion", newVersion)
 	tlsVersionUint16 := minTlsVersionStringToUint16(newVersion)
 	// Update the setting
-	SystemWideLogger.PrintAndLog("TLS", "Updating minimum TLS version to v"+newVersion+" or above", nil)
+	SystemWideLogger.PrintAndLog("tls", "Updating minimum TLS version to v"+newVersion+" or above", nil)
 	dynamicProxyRouter.SetTlsMinVersion(tlsVersionUint16)
 	utils.SendOK(w)
 }
