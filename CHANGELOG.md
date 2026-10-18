@@ -20,6 +20,10 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - **Skip Verification** still turns certificate checking off; the chosen name is then only sent as SNI.
 - HTTP health checks on such upstreams use the same name. For **Proxy host name** that is the rule's host name, unless it is a wildcard.
 
+**Security**
+- Path blocking rules: the rule ID given to the remove API was used as a file name without checking it. A well-formed UUID is now required before Waymark reads or deletes a rule file (GitHub code scanning: "uncontrolled data used in path expression"). The API needs an admin login and only removes rules that exist, so this was defence in depth. Rule files are written `0640` instead of `0775`.
+- Traffic capture: the packet writer no longer adds input lengths to work out buffer sizes; buffers grow as data is appended (GitHub code scanning: "size computation for allocation may overflow", still reported after 2.7.1's size limits).
+
 **Faster**
 - Requests that need their own TLS server name (IP-addressed upstreams, Proxy host name) or HTTP/1.1 (WebSocket and other upgrades, Force HTTP/1.1) reuse connections. A copy of the connection pool was made for every such request before; now one is kept per name (up to 64 per upstream).
 

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"imuslab.com/zoraxy/mod/utils"
 )
 
@@ -111,14 +112,31 @@ func (h *Handler) RemoveBlockingPathByUUID(uuid string) error {
 	return h.RemoveBlockerFromFile(uuid)
 }
 
-func (h *Handler) SaveBlockerToFile(pathBlocker *BlockingPath) error {
-	saveFilename := filepath.Join(h.Options.ConfigFolder, pathBlocker.UUID)
-	js, _ := json.MarshalIndent(pathBlocker, "", " ")
-	return os.WriteFile(saveFilename, js, 0775)
+// blockerFilename returns the config file of a blocker, accepting only a
+// well-formed UUID as the name (custom fork: the UUID comes from API
+// requests, and "../" in it must never reach the file system).
+func (h *Handler) blockerFilename(id string) (string, error) {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return "", errors.New("invalid blocker UUID")
+	}
+	return filepath.Join(h.Options.ConfigFolder, parsed.String()), nil
 }
 
-func (h *Handler) RemoveBlockerFromFile(uuid string) error {
-	expectedConfigFile := filepath.Join(h.Options.ConfigFolder, uuid)
+func (h *Handler) SaveBlockerToFile(pathBlocker *BlockingPath) error {
+	saveFilename, err := h.blockerFilename(pathBlocker.UUID)
+	if err != nil {
+		return err
+	}
+	js, _ := json.MarshalIndent(pathBlocker, "", " ")
+	return os.WriteFile(saveFilename, js, 0640)
+}
+
+func (h *Handler) RemoveBlockerFromFile(id string) error {
+	expectedConfigFile, err := h.blockerFilename(id)
+	if err != nil {
+		return err
+	}
 	if !utils.FileExists(expectedConfigFile) {
 		return errors.New("config file not found on disk")
 	}

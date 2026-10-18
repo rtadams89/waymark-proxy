@@ -122,7 +122,7 @@ func (p *pcapWriter) packet(ts time.Time, data []byte, comment string) error {
 	if len(comment) > maxComment {
 		comment = comment[:maxComment]
 	}
-	body := make([]byte, 0, 20+len(data)+4+len(comment)+12)
+	body := make([]byte, 0, 64) // grows with append (no size arithmetic on input lengths)
 	body = binary.LittleEndian.AppendUint32(body, 0) // interface 0
 	body = binary.LittleEndian.AppendUint32(body, uint32(us>>32))
 	body = binary.LittleEndian.AppendUint32(body, uint32(us))
@@ -253,7 +253,7 @@ func ipPacket(src, dst net.IP, proto byte, segment []byte, id uint16) []byte {
 	}
 	binary.BigEndian.PutUint16(segment[csumAt:], cs)
 	if v4 {
-		h := make([]byte, 20, 20+len(segment))
+		h := make([]byte, 20)
 		h[0] = 0x45
 		binary.BigEndian.PutUint16(h[2:], uint16(20+len(segment)))
 		binary.BigEndian.PutUint16(h[4:], id)
@@ -265,7 +265,7 @@ func ipPacket(src, dst net.IP, proto byte, segment []byte, id uint16) []byte {
 		binary.BigEndian.PutUint16(h[10:], checksum(h, 0))
 		return append(h, segment...)
 	}
-	h := make([]byte, 40, 40+len(segment))
+	h := make([]byte, 40)
 	h[0] = 0x60
 	binary.BigEndian.PutUint16(h[4:], uint16(len(segment)))
 	h[6] = proto
@@ -279,7 +279,7 @@ func tcpPacket(src, dst Endpoint, seq, ack uint32, flags byte, payload []byte, i
 	if len(payload) > maxTCPPayload {
 		payload = payload[:maxTCPPayload]
 	}
-	seg := make([]byte, 20, 20+len(payload))
+	seg := make([]byte, 20)
 	binary.BigEndian.PutUint16(seg[0:], src.Port)
 	binary.BigEndian.PutUint16(seg[2:], dst.Port)
 	binary.BigEndian.PutUint32(seg[4:], seq)
@@ -295,7 +295,7 @@ func udpPacket(src, dst Endpoint, payload []byte, id uint16) []byte {
 	if len(payload) > maxUDPPayload {
 		payload = payload[:maxUDPPayload]
 	}
-	seg := make([]byte, 8, 8+len(payload))
+	seg := make([]byte, 8)
 	binary.BigEndian.PutUint16(seg[0:], src.Port)
 	binary.BigEndian.PutUint16(seg[2:], dst.Port)
 	binary.BigEndian.PutUint16(seg[4:], uint16(8+len(payload)))
