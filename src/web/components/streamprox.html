@@ -1,4 +1,8 @@
 <div class="standardContainer">
+    <div class="ui basic segment">
+        <h2>Stream Proxies</h2>
+        <p>Forward TCP and UDP traffic to one or more upstream servers, with load balancing and health checks</p>
+    </div>
     <style>
         /* Custom fork: stream proxy editor, styled like the HTTP proxy rule editor */
         #streamEditModal{
@@ -74,31 +78,65 @@
             }
         }
     </style>
-    <div class="ui basic segment">
-        <h2>Stream Proxies</h2>
-        <p>Forward TCP and UDP traffic to one or more upstream servers, with load balancing and health checks</p>
-    </div>
+    <style>
+        /* Custom fork: same look as the HTTP Proxies list */
+        #streamProxyList .ui.toggle.checkbox input:checked ~ label::before{
+            background-color: #00ca52 !important;
+        }
+        .streamEntry td:not(.ignoremw){
+            min-width: 100px;
+        }
+        .streamProxyListTools{
+            width: 100%;
+        }
+        #streamProxyTable th.no-sort{
+            cursor: default !important;
+        }
+    </style>
     <div class="streamProxyListTools" style="margin-bottom: 1em;">
         <button class="ui basic green button" onclick="openNewStreamProxyEditor();"><i class="plus icon"></i> Add Stream Proxy</button>
+        <div id="streamFilterDropdown" class="ui floating basic dropdown labeled icon button" style="min-width: 150px;">
+            <i class="filter icon"></i>
+            <span class="text">Filter</span>
+            <div class="menu">
+                <div class="item" data-value=""><div class="ui grey empty circular label"></div> Show all</div>
+                <div class="divider"></div>
+                <div class="item" data-value="running"><div class="ui green empty circular label"></div> Running</div>
+                <div class="item" data-value="stopped"><div class="ui black empty circular label"></div> Stopped</div>
+                <div class="divider"></div>
+                <div class="item" data-value="tcp"><div class="ui blue empty circular label"></div> TCP</div>
+                <div class="item" data-value="udp"><div class="ui violet empty circular label"></div> UDP</div>
+                <div class="divider"></div>
+                <div class="item" data-value="down"><div class="ui red empty circular label"></div> Upstream down</div>
+            </div>
+        </div>
+        <div class="ui small input" style="width: 300px; height: 38px;">
+            <!-- Prevent the browser from filling the saved Waymark login account into the input below -->
+            <input type="password" autocomplete="off" hidden/>
+            <input type="text" id="streamSearchInput" placeholder="Quick Search" onkeydown="handleStreamSearchInput(event);" onchange="handleStreamSearchInput(event);" onblur="handleStreamSearchInput(event);" oninput="filterStreamProxyList();">
+        </div>
     </div>
-    <div style="overflow-x: auto; margin-bottom: 1em;">
-        <table id="proxyTable" class="ui celled basic unstackable table">
+
+    <div id="streamProxyTableWrapper" style="width: 100%; overflow-x: auto; margin-bottom: 1em; min-height: 300px;">
+        <table id="streamProxyTable" class="ui unstackable sortable compact celled definition table">
             <thead>
                 <tr>
+                    <th></th>
                     <th>Name</th>
                     <th>Listening Address</th>
                     <th>Upstreams</th>
-                    <th>Mode</th>
-                    <th>Timeout (s)</th>
-                    <th>Enable Logging</th>
-                    <th>Actions</th>
+                    <th class="no-sort">Balancing / Health</th>
+                    <th>Protocol</th>
+                    <th>Timeout</th>
+                    <th class="no-sort" style="width:100px; cursor: default !important;"></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="streamProxyList">
 
             </tbody>
         </table>
     </div>
+
     <button class="ui icon right floated basic button" onclick="initProxyConfigList();" title="Refresh List"><i class="green refresh icon"></i> Refresh</button>
     <br><br>
 </div>
@@ -334,6 +372,9 @@
         function initStreamProxyAccessRuleDropdown(callback) {
             $.get("/api/access/list", function(data) {
                 if (data.error == undefined) {
+                    streamAccessRules = {};
+                    data.forEach(function(rule){ streamAccessRules[rule.ID] = rule; });
+                    renderStreamAccessRuleNames();
                     $("#streamProxyAccessRuleList").html("");
                     data.forEach(function(rule) {
                         let icon = `<i class="ui grey filter icon"></i>`;
@@ -509,75 +550,115 @@
             return true;
         }
 
+        // Custom fork: rows are laid out like the HTTP Proxies list
+        let streamAccessRules = {}; // access rule ID -> rule, for the names under each rule
         function renderProxyConfigs(proxyConfigs) {
-            var tableBody = $('#proxyTable tbody');
+            var tableBody = $('#streamProxyList');
             tableBody.empty();
-            if (proxyConfigs.length === 0) {
-            var noResultsRow = $('<tr><td colspan="7"><i class="green check circle icon"></i>No Proxy Configs</td></tr>');
-                tableBody.append(noResultsRow);
-            } else {
-               
-                proxyConfigs.forEach(function(config) {
-                    var runningLogo = 'Stopped';
-                    var runningClass = "stopped";
-                    var startButton = `<button onclick="startStreamProx('${config.UUID}');" class="ui basic mini circular icon button" title="Start Proxy"><i class="green play icon"></i></button>`;
-                    if (config.Running){
-                        runningLogo = 'Running';
-                        startButton = `<button onclick="stopStreamProx('${config.UUID}');" class="ui basic mini circular icon button" title="Stop Proxy"><i class="red stop icon"></i></button>`;
-                        runningClass = "running"
-                    }
-
-                    var modeText = [];
-                    if (config.UseTCP){
-                        modeText.push("TCP")
-                    }
-
-                    if (config.UseUDP){
-                        modeText.push("UDP")
-                    }
-
-                    if (config.ProxyProtocolVersion === 1) {
-                        modeText.push("ProxyProtocol V1");
-                    } else if (config.ProxyProtocolVersion === 2) {
-                        modeText.push("ProxyProtocol V2");
-                    }
-
-                    modeText = modeText.join(" & ")
-
-                    var thisConfig = encodeURIComponent(JSON.stringify(config));
-
-                    var row = $(`<tr class="streamproxConfig ${runningClass}" uuid="${config.UUID}" config="${thisConfig}">`);
-                    row.append($('<td>').html(`
-                        ${htmlEscape(config.Name)}
-                        <div class="statusText">${runningLogo}</div>`));
-                    row.append($('<td>').text(config.ListeningAddress));
-                    row.append($('<td class="streamUpstreamsCell">').html(streamUpstreamsCell(config)));
-                    row.append($('<td>').text(modeText));
-                    row.append($('<td>').text(config.Timeout));
-                    row.append($('<td>').html(config.EnableLogging ? 
-                        '<i class="green check icon" title="Logging Enabled"></i>' : 
-                        '<i class="red times icon" title="Logging Disabled"></i>'
-                    ));
-                    row.append($('<td>').html(`
-                        ${startButton}
-                        <button onclick="editTCPProxyConfig('${config.UUID}');" class="ui circular basic mini icon button" title="Edit Config"><i class="edit icon"></i></button>
-                        <button onclick="deleteTCPProxyConfig('${config.UUID}');" class="ui circular red basic mini icon button" title="Delete Config"><i class="trash icon"></i></button>
-                    `));
-                    tableBody.append(row);
-                });
+            if (!Array.isArray(proxyConfigs) || proxyConfigs.length === 0) {
+                tableBody.append(`<tr><td data-label="" colspan="8"><i class="green check circle icon"></i> No Stream Proxy Rule</td></tr>`);
+                return;
             }
+            proxyConfigs.sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
+            proxyConfigs.forEach(function(config) {
+                let protocols = [];
+                if (config.UseTCP) protocols.push("TCP");
+                if (config.UseUDP) protocols.push("UDP");
+                let protoExtra = [];
+                if (config.ProxyProtocolVersion === 1) protoExtra.push("Proxy Protocol v1");
+                else if (config.ProxyProtocolVersion === 2) protoExtra.push("Proxy Protocol v2");
+                if (config.EnableLogging) protoExtra.push("logging");
+                let protoCell = protocols.length ? htmlEscape(protocols.join(" + ")) : `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
+                if (protoExtra.length) protoCell += `<br><small style="opacity: 0.7;">${htmlEscape(protoExtra.join(" · "))}</small>`;
+                let thisConfig = encodeURIComponent(JSON.stringify(config));
+                let uuid = htmlEscape(config.UUID);
+                let row = $(`<tr class="streamEntry" uuid="${uuid}" config="${thisConfig}">
+                    <td class="collapsing ignoremw" datatype="enable">
+                        <div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Start / Stop Rule">
+                            <input type="checkbox" class="enableToggle" name="active" ${config.Running ? "checked" : ""} uuid="${uuid}" onchange="handleStreamProxyToggle(this);">
+                            <label></label>
+                        </div>
+                    </td>
+                    <td data-label="" datatype="name">
+                        ${htmlEscape(config.Name || config.ListeningAddress)}<br>
+                        <small class="streamAccessRuleName" ruleid="${htmlEscape(config.AccessRuleUUID || "")}"></small>
+                    </td>
+                    <td data-label="" datatype="listen" style="word-break: break-all;">${htmlEscape(config.ListeningAddress)}</td>
+                    <td data-label="" datatype="upstreams" class="streamUpstreamsCell" data-sort-value="${htmlEscape(streamUpstreamList(config).join(","))}">${streamUpstreamsCell(config)}</td>
+                    <td data-label="" datatype="health" class="streamHealthCell" style="white-space: nowrap;">${streamHealthCell(config)}</td>
+                    <td data-label="" datatype="protocol">${protoCell}</td>
+                    <td data-label="" datatype="timeout" data-sort-value="${parseInt(config.Timeout) || 0}">${parseInt(config.Timeout) || 0}s</td>
+                    <td class="center aligned ignoremw" datatype="action" data-label="">
+                        <button title="Edit Stream Proxy" class="ui circular small basic icon button editBtn inlineEditActionBtn" onclick="editTCPProxyConfig('${uuid}');"><i class="ellipsis vertical icon"></i></button>
+                        <button title="Remove Stream Proxy" class="ui circular mini red basic icon button inlineEditActionBtn" onclick="deleteTCPProxyConfig('${uuid}');"><i class="trash icon"></i></button>
+                    </td>
+                </tr>`);
+                tableBody.append(row);
+            });
+            renderStreamAccessRuleNames();
+            filterStreamProxyList();
         }
 
-        function getConfigDetailsFromDOM(configUUID){
-            let thisConfig = null;
-            $(".streamproxConfig").each(function(){
-                let uuid = $(this).attr("uuid");
-                if (configUUID == uuid){
-                    //This is the one we are looking for
-                    thisConfig = JSON.parse(decodeURIComponent($(this).attr("config")));
+        // Access rule name under each rule's name (nothing for the default rule)
+        function renderStreamAccessRuleNames(){
+            $("#streamProxyList .streamAccessRuleName").each(function(){
+                let id = $(this).attr("ruleid") || "default";
+                if (id == "default"){ $(this).html(""); return; }
+                let rule = streamAccessRules[id];
+                if (rule == undefined){
+                    $(this).html(`<i class="ui red exclamation triangle icon"></i> <b style="color: #db2828;">Access Rule Error</b>`);
+                    return;
                 }
+                let icon = `<i class="ui grey filter icon"></i>`;
+                if (rule.BlacklistEnabled && !rule.WhitelistEnabled) icon = `<i class="ui red filter icon"></i>`;
+                else if (rule.WhitelistEnabled && !rule.BlacklistEnabled) icon = `<i class="ui green filter icon"></i>`;
+                else if (rule.WhitelistEnabled && rule.BlacklistEnabled) icon = `<i class="ui yellow filter icon"></i>`;
+                $(this).html(`${icon} ${htmlEscape(rule.Name)}`);
             });
-            return thisConfig;
+        }
+
+        // Quick search and filter, like the HTTP Proxies list
+        function handleStreamSearchInput(event){
+            if (event.key == "Escape"){
+                $("#streamSearchInput").val("");
+            }
+            filterStreamProxyList();
+        }
+
+        function filterStreamProxyList(){
+            let search = ($("#streamSearchInput").val() || "").toLowerCase().trim();
+            let filter = $("#streamFilterDropdown").dropdown("get value") || "";
+            $("#streamProxyList tr.streamEntry").each(function(){
+                let cfg = JSON.parse(decodeURIComponent($(this).attr("config")));
+                let text = [cfg.Name, cfg.ListeningAddress].concat(streamUpstreamList(cfg)).join(" ").toLowerCase();
+                let match = search === "" || text.includes(search);
+                if (match && filter !== ""){
+                    let state = streamUpstreamState[cfg.UUID] || [];
+                    switch (filter){
+                        case "running": match = !!cfg.Running; break;
+                        case "stopped": match = !cfg.Running; break;
+                        case "tcp": match = !!cfg.UseTCP; break;
+                        case "udp": match = !!cfg.UseUDP; break;
+                        case "down": match = !!cfg.Running && state.some(s => s.online === false); break;
+                    }
+                }
+                $(this).toggle(match);
+            });
+        }
+
+        $("#streamFilterDropdown").dropdown();
+        //The page loader initialises every dropdown again (dropping options such
+        //as onChange), so react to the menu clicks instead
+        $(document).on("click", "#streamFilterDropdown .menu .item", function(){
+            setTimeout(filterStreamProxyList, 0);
+        });
+
+        function getConfigDetailsFromDOM(configUUID){
+            let row = $(`#streamProxyList tr.streamEntry[uuid='${configUUID}']`);
+            if (row.length == 0){
+                return null;
+            }
+            return JSON.parse(decodeURIComponent(row.attr("config")));
         }   
 
         function editTCPProxyConfig(configUUID){
@@ -709,54 +790,73 @@
         }
 
         function deleteTCPProxyConfig(configUUID){
-            $.cjax({
-                url: "/api/streamprox/config/delete",
-                method: "POST",
-                data: {uuid: configUUID},
-                success: function(data){
-                    if (data.error != undefined){
-                        msgbox(data.error, false, 6000);
-                    }else{
-                        msgbox("Proxy Config Removed");
+            let config = getConfigDetailsFromDOM(configUUID);
+            if (config == null){
+                return;
+            }
+            if (!confirm("Confirm remove stream proxy " + (config.Name || config.ListeningAddress) + "?")){
+                return;
+            }
+            let remove = function(){
+                $.cjax({
+                    url: "/api/streamprox/config/delete",
+                    method: "POST",
+                    data: {uuid: configUUID},
+                    success: function(data){
+                        if (data.error != undefined){
+                            msgbox(data.error, false, 6000);
+                        }else{
+                            msgbox("Stream Proxy Deleted", true);
+                        }
                         initProxyConfigList();
                     }
-                }
-            })
+                });
+            };
+            if (config.Running){
+                //A running rule is stopped first
+                $.cjax({
+                    url: "/api/streamprox/config/stop",
+                    method: "POST",
+                    data: {uuid: configUUID},
+                    success: function(data){
+                        if (data.error != undefined){
+                            msgbox(data.error, false, 6000);
+                            initProxyConfigList();
+                            return;
+                        }
+                        remove();
+                    }
+                });
+            }else{
+                remove();
+            }
         }
 
-        //Start a TCP proxy by their config UUID
-        function startStreamProx(configUUID){
+        //Start or stop a stream proxy from its slider (custom fork)
+        function handleStreamProxyToggle(object){
+            let uuid = $(object).attr("uuid");
+            let start = object.checked;
             $.cjax({
-                url: "/api/streamprox/config/start",
+                url: start ? "/api/streamprox/config/start" : "/api/streamprox/config/stop",
                 method: "POST",
-                data: {uuid: configUUID},
+                data: {uuid: uuid},
                 success: function(data){
                     if (data.error != undefined){
                         msgbox(data.error, false, 6000);
                     }else{
-                        msgbox("Service Started");
-                        initProxyConfigList();
+                        msgbox(start ? "Stream Proxy Started" : "Stream Proxy Stopped");
                     }
-                }
-
-            });
-        }
-
-        //Stop a TCP proxy by their config UUID
-        function stopStreamProx(configUUID){
-            $.cjax({
-                url: "/api/streamprox/config/stop",
-                method: "POST",
-                data: {uuid: configUUID},
-                success: function(data){
-                    if (data.error != undefined){
-                        msgbox(data.error, false, 6000);
-                    }else{
-                        msgbox("Service Stopped");
-                        initProxyConfigList();
+                    //A listener that cannot open (address in use) stops the rule
+                    //again a moment after it starts, so look again shortly
+                    initProxyConfigList(true);
+                    if (start){
+                        setTimeout(function(){ initProxyConfigList(true); }, 800);
                     }
+                },
+                error: function(){
+                    msgbox("Request failed", false);
+                    initProxyConfigList(true);
                 }
-
             });
         }
 
@@ -880,12 +980,17 @@
         const STREAM_LB_NAMES = {roundrobin: "Round robin", leastconn: "Least connections", sourcehash: "Source IP hash", failover: "Failover"};
 
         // streamUpstreamsCell lists a rule's upstreams with their health
+        function streamUpstreamList(config){
+            return (config.Upstreams && config.Upstreams.length) ? config.Upstreams : (config.ProxyTargetAddr ? [config.ProxyTargetAddr] : []);
+        }
+
+        // streamUpstreamsCell lists a rule's upstreams with their health
         function streamUpstreamsCell(config){
-            let ups = (config.Upstreams && config.Upstreams.length) ? config.Upstreams : (config.ProxyTargetAddr ? [config.ProxyTargetAddr] : []);
+            let ups = streamUpstreamList(config);
             let state = streamUpstreamState[config.UUID] || [];
             let hc = config.HealthCheck;
             let checked = hc && (hc.activeEnabled || hc.passiveEnabled);
-            let rows = ups.map(addr => {
+            return ups.map(addr => {
                 let st = state.find(s => s.address == addr) || {};
                 let icon, title;
                 if (!config.Running){
@@ -899,15 +1004,34 @@
                     icon = `<i class="grey circle icon"></i>`; title = "Not health checked";
                 }
                 let conns = st.active ? ` <span style="opacity: 0.7;">· ${st.active} open</span>` : "";
-                return `<div title="${htmlEscape(title)}" style="white-space: nowrap;">${icon}<span style="font-family: monospace;">${htmlEscape(addr)}</span>${conns}</div>`;
+                return `<div title="${htmlEscape(title)}" style="white-space: nowrap;">${icon}${htmlEscape(addr)}${conns}</div>`;
             }).join("");
-            let summary = [];
-            if (ups.length > 1) summary.push(STREAM_LB_NAMES[config.LoadBalancing] || "Round robin");
-            if (hc && hc.activeEnabled){
-                summary.push(hc.type == "icmp" ? "ping" : (hc.type == "udp" ? "UDP check" : ((hc.send || hc.expect) ? "TCP send/expect" : "TCP check")));
+        }
+
+        // streamHealthCell shows the load balancing mode and health checks,
+        // like the Health / Cache column of the HTTP Proxies list
+        function streamHealthCell(config){
+            let parts = [];
+            let ups = streamUpstreamList(config);
+            if (ups.length > 1){
+                parts.push(`<span title="Load balancing"><i class="grey random icon"></i>${htmlEscape(STREAM_LB_NAMES[config.LoadBalancing] || "Round robin")}</span>`);
             }
-            if (hc && hc.passiveEnabled) summary.push("passive");
-            return rows + (summary.length ? `<div style="font-size: 0.85em; opacity: 0.7; margin-top: 0.2em;">${htmlEscape(summary.join(" · "))}</div>` : "");
+            let hc = config.HealthCheck;
+            if (hc && (hc.activeEnabled || hc.passiveEnabled)){
+                let kinds = [];
+                if (hc.activeEnabled){
+                    kinds.push(hc.type == "icmp" ? "Ping" : (hc.type == "udp" ? "UDP check" : ((hc.send || hc.expect) ? "TCP send/expect" : "TCP check")));
+                }
+                if (hc.passiveEnabled) kinds.push("passive");
+                parts.push(`<span title="Health checks"><i class="grey heartbeat icon"></i>${htmlEscape(kinds.join(" + "))}</span>`);
+            }
+            if (config.CloseOnUpstreamDown){
+                parts.push(`<span title="Open connections to an upstream are closed when it goes down"><i class="grey unlink icon"></i>Close on down</span>`);
+            }
+            if (parts.length == 0){
+                return `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
+            }
+            return parts.join("<br>");
         }
 
         // Refresh the upstream health shown in the list
@@ -920,10 +1044,13 @@
                     (Array.isArray(statuses) ? statuses : []).forEach(s => {
                         if (!s.enabled) streamHealthReasons[s.rule + "|" + s.upstream] = s.reason;
                     });
-                    $(".streamproxConfig").each(function(){
+                    $("#streamProxyList tr.streamEntry").each(function(){
                         let cfg = JSON.parse(decodeURIComponent($(this).attr("config")));
                         $(this).find(".streamUpstreamsCell").html(streamUpstreamsCell(cfg));
                     });
+                    if ($("#streamFilterDropdown").dropdown("get value") == "down"){
+                        filterStreamProxyList();
+                    }
                 });
             });
         }
@@ -931,7 +1058,9 @@
         //editor is closed; with the editor open only the health is refreshed
         setInterval(function(){
             if (!$("#streamproxy").is(":visible") || document.hidden) return;
-            if (streamProxyEditorOpen() || $(".sideWrapper").is(":visible")){
+            if (streamProxyEditorOpen() || $(".sideWrapper").is(":visible")
+                || $("#streamFilterDropdown .menu:visible").length > 0
+                || $("#streamProxyTable th.sorted").length > 0){
                 refreshStreamUpstreamHealth();
             }else{
                 initProxyConfigList(true);
@@ -946,6 +1075,9 @@
                 success: function(response) {
                     renderProxyConfigs(response);
                     refreshStreamUpstreamHealth();
+                    if (!$("#streamProxyTable").data("tablesort")){
+                        $("#streamProxyTable").tablesort();
+                    }
                 },
                 error: function() {
                     if (!quiet){

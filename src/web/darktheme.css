@@ -691,59 +691,6 @@ body.darkTheme #rules .field small {
 
 */
 
-body.darkTheme #streamproxy {
-    background-color: var(--theme_bg) !important;
-    color: var(--text_color) !important;
-    border: 1px solid var(--divider_color) !important;
-}
-
-body.darkTheme #proxyTable {
-    background-color: transparent !important;
-    color: var(--text_color) !important;
-    border: 1px solid var(--divider_color) !important;
-}
-
-body.darkTheme #proxyTable thead th {
-    background-color: var(--table_header_color) !important;
-    color: var(--table_header_text_color) !important;
-    font-weight: bold !important;
-    border-color: var(--divider_color) !important;
-}
-
-body.darkTheme #proxyTable tbody tr td:not(:first-child) {
-    background-color: var(--theme_bg) !important;
-    color: var(--text_color) !important;
-    border-color: var(--divider_color) !important;
-}
-
-body.darkTheme #proxyTable tbody tr:hover {
-    background-color: var(--theme_bg_hover) !important;
-}
-
-body.darkTheme #proxyTable tbody td .statusText {
-    color: var(--text_color_secondary) !important;
-}
-
-body.darkTheme #proxyTable tbody td .ui.basic.mini.circular.icon.button {
-    color: var(--button_color) !important;
-    border: 1px solid var(--button_border_color) !important;
-}
-
-body.darkTheme #proxyTable tbody td .ui.basic.mini.circular.icon.button:hover {
-    background-color: var(--button_hover_bg) !important;
-    color: var(--button_hover_color) !important;
-    border: 1px solid var(--button_border_color) !important;
-}
-
-body.darkTheme #proxyTable tbody td .ui.circular.red.basic.mini.icon.button {
-    color: var(--button_red_color) !important;
-    border: 1px solid var(--button_red_border_color) !important;
-}
-
-body.darkTheme #proxyTable tbody td .ui.circular.red.basic.mini.icon.button:hover {
-    background-color: #380a0a !important;
-    color: var(--button_red_hover_color) !important;
-}
 
 /* 
 

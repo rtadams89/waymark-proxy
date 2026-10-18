@@ -12,6 +12,16 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 
 ## 2.7.1
 
+**Changed: web interface**
+- The Stream Proxies page now looks like the HTTP Proxies page:
+  - a slider in the first column starts and stops each rule;
+  - a filter (running, stopped, TCP, UDP, upstream down) and a quick search above the table;
+  - sortable columns: Name, Listening Address, Upstreams, Balancing / Health, Protocol and Timeout;
+  - the edit (⋮) and delete buttons at the end of each row.
+- Rules with an access rule other than the default show its name under the rule name.
+- Deleting a stream proxy asks for confirmation, and a running rule is stopped first instead of the delete being refused.
+- HTTP Proxies: access rule names under each host are escaped.
+
 **Fixed**
 - Traffic capture: the pcapng writer now checks sizes before building packets and file blocks (GitHub code scanning: "size computation for allocation may overflow"). Data longer than an IP packet can hold is cut, instead of writing length fields that wrapped around. Capture never produced data that large (TCP data is written in 16 KB pieces, UDP packets are at most 1500 bytes), so existing capture files are not affected.
 

@@ -564,33 +564,6 @@ body.darkTheme .menudivider{
 }
 
 /*
-    TCP Proxy
-*/
-
-.streamproxConfig td:first-child{
-    position: relative;
-}
-
-.streamproxConfig.running td:first-child{
-    border-left: 0.6em solid #01cb55 !important;
-}
-
-.streamproxConfig.stopped td:first-child{
-    border-left: 0.6em solid #1b1b1b !important;
-}
-
-.streamproxConfig td:first-child .statusText{
-    position: absolute;
-    bottom: 0.1em;
-    right: 0.2em;
-    font-size: 1em;
-    color:rgb(224, 224, 224);
-    opacity: 0.7;
-    pointer-events: none;
-    user-select: none;
-}
-
-/*
     ACME Renewer Status Panel
 */
 

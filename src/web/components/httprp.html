@@ -1018,7 +1018,7 @@
                     }
 
                     if (rule != undefined){
-                        $(this).html(`${icon} ${rule.Name}`);
+                        $(this).html(`${icon} ${htmlEscape(rule.Name)}`);
                     }
                 });
             }
