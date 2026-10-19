@@ -67,10 +67,10 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 - Replaces Zoraxy's fixed 5-minute uptime monitor; the **Health & Uptime** page is fed by the health checks.
 
 **Layer 4 proxy rules** (TCP and UDP; called stream proxies in Zoraxy)
-- The **Layer 4 Proxies** page works like **HTTP Proxies**: the same list with a start/stop slider, filter and quick search, an **Add Layer 4 Rule** page, and the same editor, where each setting is saved as you change it.
+- Layer 4 rules are on the same **Proxy Rules** page as HTTP rules (Type: TCP, UDP or TCP + UDP), with a start/stop slider, quick search and their own editor, where each setting is saved as you change it. **Add Proxy Rule** asks for the type first.
 - **Destination pools:** several destination servers per rule, load balanced like HTTP proxy rules: a weight per destination (0 makes it a backup), each one can be turned off, weighted or least connections balancing, and sticky sessions by client IP address. A TCP connection that can't reach its destination is retried on the next one, and with no healthy destination new connections are closed at once.
 - **Health checks:** TCP connect, TCP send-and-expect (e.g. a banner or a PING/PONG), UDP send-and-expect, or ping, plus passive monitoring of failed connections, in the same Health Checks panel as HTTP proxy rules. Optionally close open connections to a destination when it goes down.
-- Destination health in the Layer 4 Proxies list, on **Health & Uptime** and in the Status page's **Destination Health** panel.
+- Destination health in the Proxy Rules list, on **Health & Uptime** and in the Status page's **Destination Health** panel.
 
 **Static file caching**
 - Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the destination's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
@@ -81,7 +81,7 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 - **Logs where you want them.** System logs and traffic (request) logs can each go to the log file, to up to 8 syslog servers (UDP, TCP or TLS; RFC 5424, RFC 3164 or JSON), to both, or to neither.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
 - **Status page panels** can be shown or hidden. New panels show destination health, cache hit rate and memory, and the HA cluster.
-- The HTTP Proxies list shows health check and cache state per rule, with a red heart on destinations that are down.
+- **One list for every proxy rule:** **Proxy > Proxy Rules** shows HTTP and Layer 4 (TCP/UDP) rules together, with a Type column, All / HTTP / TCP / UDP buttons, tag filter and quick search, health check and cache state per rule, and a red heart on destinations that are down.
 - **Load balancing** works the same for HTTP and Layer 4 proxy rules: a weight per destination (0 makes it a backup), weighted or least connections balancing, and sticky sessions (a cookie for HTTP, the client IP address for Layer 4).
 - **DNS credential sets** for ACME DNS challenges: save a provider token once and use it for any number of certificates.
 - **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
@@ -194,13 +194,13 @@ This example publishes an app running at `http://10.0.0.20:8080` as `https://app
 3. **Set up certificates.** Under **Certificates**, open the **ACME and Auto-Renew** tab, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
    - **HTTP challenge**: works when the name is reachable from the internet on port 80.
    - **DNS challenge**: also works for internal-only names. Pick your DNS provider and save its API token as a credential set (**Certificates > DNS credentials**) so other certificates can reuse it.
-4. **Create the proxy rule.** Under **Proxy > HTTP Proxies**, click **Add Proxy Rule**:
+4. **Create the proxy rule.** Under **Proxy > Proxy Rules**, click **Add Proxy Rule** and choose **HTTP**:
    - **Matching Keyword / Domain**: `app.example.com`
    - **Destination IP Address or Domain Name with port**: `10.0.0.20:8080`
    - **Destination requires TLS**: off (the app speaks plain HTTP)
    - **Enable health checks**: on (the default)
-   - Click **Create Proxy Rule**.
-5. **Open `https://app.example.com`.** The rule now appears under **Proxy > HTTP Proxies**. Edit it there to add more destinations for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
+   - Click **Create HTTP Rule**.
+5. **Open `https://app.example.com`.** The rule now appears under **Proxy > Proxy Rules**. Edit it there to add more destinations for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
 
 Tips:
 - For an app that uses HTTPS itself, turn on **Proxy Target require TLS Connection** (and **Ignore TLS/SSL Verification Error** if it has a self-signed certificate).

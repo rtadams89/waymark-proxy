@@ -1,16 +1,35 @@
 <div class="standardContainer">
     <div class="ui basic segment">
-        <h2>HTTP Proxies</h2>
-        <p>Proxy HTTP server with HTTP or HTTPS for multiple hosts. If you are only proxying for one host / domain, use Default Site instead.</p>
+        <h2>Proxy Rules</h2>
+        <p><b>HTTP</b> rules share the HTTP(S) listener and are picked by host name: Waymark handles TLS, headers, authentication and caching for websites and web apps. <b>TCP / UDP</b> (Layer 4) rules each listen on their own port and forward the connection as it is, for anything that isn't HTTP. If you are only proxying for one host / domain, use Default Site instead.</p>
     </div>
     <style>
-        #httpProxyList .ui.toggle.checkbox input:checked ~ label::before{
+        #proxyRulesList .ui.toggle.checkbox input:checked ~ label::before{
             background-color: #00ca52 !important;
         }
 
-        .subdEntry td:not(.ignoremw){
+        .subdEntry td:not(.ignoremw), .l4Entry td:not(.ignoremw){
             min-width: 100px;
         }
+        /* Custom fork: type of each rule in the merged list */
+        .ruleTypeLabel{
+            display: inline-block;
+            padding: 0.15em 0.6em;
+            border-radius: 1em;
+            font-size: 0.85em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .ruleTypeLabel.http{ background: rgba(33,133,208,0.15); color: #2185d0; }
+        .ruleTypeLabel.l4{ background: rgba(100,53,201,0.15); color: #6435c9; }
+        body.darkTheme .ruleTypeLabel.http{ color: #54a9ec; }
+        body.darkTheme .ruleTypeLabel.l4{ color: #a68cf0; }
+        #ruleTypeFilter .button{ padding-left: 1.1em; padding-right: 1.1em; }
+        #ruleTypeFilter .button.active{ background: var(--accent_soft) !important; color: var(--accent_strong) !important; font-weight: 600; }
+        body.darkTheme #ruleTypeFilter{ border-color: var(--button_border_color) !important; }
+        body.darkTheme #ruleTypeFilter .button{ background: transparent !important; color: var(--text_color) !important; border-left-color: var(--button_border_color) !important; box-shadow: none !important; }
+        body.darkTheme #ruleTypeFilter .button:hover{ background: rgba(255,255,255,0.06) !important; }
+        body.darkTheme #ruleTypeFilter .button.active{ background: var(--accent_soft) !important; color: var(--accent) !important; }
 
         .httpProxyListTools{
             width: 100%;
@@ -40,7 +59,7 @@
         }
 
         /* Custom fork: all columns are always shown; the table scrolls inside its wrapper */
-        #httpProxyTableWrapper {
+        #proxyRulesTableWrapper {
             width: 100%;
             overflow-x: auto;
         }
@@ -176,7 +195,14 @@
         }
     </style>
     <div class="httpProxyListTools" style="margin-bottom: 1em;">
-        <button class="ui basic green button" onclick="openTabById('rules');"><i class="plus icon"></i> Add Proxy Rule</button>
+        <button class="ui basic green button" onclick="openAddProxyRule(ruleTypeFilter == 'tcp' || ruleTypeFilter == 'udp' ? 'l4' : 'http');"><i class="plus icon"></i> Add Proxy Rule</button>
+        <!-- Custom fork: which kind of rule to show (always starts on All) -->
+        <div id="ruleTypeFilter" class="ui basic buttons" style="vertical-align: top;">
+            <button class="ui active button" data-type="all" onclick="setRuleTypeFilter('all');">All</button>
+            <button class="ui button" data-type="http" onclick="setRuleTypeFilter('http');">HTTP</button>
+            <button class="ui button" data-type="tcp" onclick="setRuleTypeFilter('tcp');">TCP</button>
+            <button class="ui button" data-type="udp" onclick="setRuleTypeFilter('udp');">UDP</button>
+        </div>
         <div id="tagFilterDropdown" class="ui floating basic dropdown labeled icon button" style="min-width: 150px;">
             <i class="filter icon"></i>
             <span class="text">Filter by tags</span>
@@ -205,28 +231,29 @@
         </div>
     </div>
     
-    <div id="httpProxyTableWrapper" style="width: 100%; overflow-x: auto; margin-bottom: 1em; min-height: 300px;">
-        <table class="ui unstackable sortable compact celled definition table">
+    <!-- Custom fork: HTTP rules (this file) and Layer 4 rules (l4proxy.html) in one list -->
+    <div id="proxyRulesTableWrapper" style="width: 100%; overflow-x: auto; margin-bottom: 1em; min-height: 300px;">
+        <table id="proxyRulesTable" class="ui unstackable sortable compact celled definition table">
             <thead>
                 <tr>
-                    <th></th>
-                    <th>Host</th>
-                    <th class="details-view">Additional Listening Addresses</th>
+                    <th class="no-sort"></th>
+                    <th>Type</th>
+                    <th>Rule</th>
+                    <th>Listens On</th>
                     <th>Destination</th>
-                    <th class="no-sort">Health / Cache</th>
-                    <th class="details-view">Authentication</th>
-                    <th>Virtual Directories</th>
+                    <th class="no-sort">Health / Balancing</th>
+                    <th class="no-sort">Details</th>
                     <th class="no-sort">Tags</th>
                     <th class="no-sort" style="width:100px; cursor: default !important;"></th>
                 </tr>
             </thead>
-            <tbody id="httpProxyList">
+            <tbody id="proxyRulesList">
             
             </tbody>
         </table>
     </div>
 
-    <button class="ui icon right floated basic button" onclick="listProxyEndpoints();"><i class="green refresh icon"></i> Refresh</button>
+    <button class="ui icon right floated basic button" onclick="refreshProxyRules();"><i class="green refresh icon"></i> Refresh</button>
     <br><br>
 </div>
 
@@ -785,14 +812,15 @@
     function listProxyEndpoints(preserveFilters = true){
         let selectedTag = preserveFilters ? ($("#tagFilterDropdown").dropdown('get value') || "") : "";
         $.get("/api/proxy/list?type=host", function(data){
-            $("#httpProxyList").html(``);
+            $("#proxyRulesList tr.httpRow").remove();
             if (data.error !== undefined){
-                    $("#httpProxyList").append(`<tr>
+                    $("#proxyRulesList").append(`<tr class="httpRow emptyRow">
                     <td data-label="" colspan="9"><i class="remove icon"></i> ${htmlEscape(data.error)}</td>
                 </tr>`);
             }else if (data.length == 0){
-                $("#httpProxyList").append(`<tr>
-                    <td data-label="" colspan="9"><i class="green check circle icon"></i> No HTTP Proxy Record</td>
+                httpProxyList = [];
+                $("#proxyRulesList").append(`<tr class="httpRow emptyRow">
+                    <td data-label="" colspan="9"><i class="green check circle icon"></i> No HTTP rules</td>
                 </tr>`);
             }else{
                 //Sort by RootOrMatchingDomain field
@@ -896,20 +924,21 @@
                     }
                     let authDisplayEmpty = (subd.AuthenticationProvider.AuthMethod == 0x0);
                     
-                    $("#httpProxyList").append(`<tr eptuuid="${subd.RootOrMatchingDomain}" payload="${subdData}" class="subdEntry">
+                    $("#proxyRulesList").append(`<tr eptuuid="${subd.RootOrMatchingDomain}" payload="${subdData}" class="subdEntry httpRow" data-sortkey="${htmlEscape(String(subd.RootOrMatchingDomain).toLowerCase())}">
                         <td class="collapsing ignoremw" datatype="enable">
                             <div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Enable / Disable Rule">
                                 <input type="checkbox" class="enableToggle" name="active" ${enableChecked} eptuuid="${subd.RootOrMatchingDomain}" onchange="handleProxyRuleToggle(this);">
                                 <label></label>
                             </div>
                         </td>
+                        <td data-label="type" datatype="type" data-sort-value="http"><span class="ruleTypeLabel http" title="HTTP rule: picked by host name on the HTTP(S) listener">HTTP</span></td>
                         <td data-label="" editable="true" datatype="inbound">
                             <a href="${httpProto}${subd.RootOrMatchingDomain}${hostnameRedirectPort}" target="_blank">${subd.RootOrMatchingDomain}</a> ${inboundTlsIcon}<br>
                             ${aliasDomains}
                             <small class="accessRuleNameUnderHost" ruleid="${subd.AccessFilterUUID}"></small>
                         </td>
-                        <td data-label="listening-ports" datatype="ports" class="details-view">
-                            ${listeningPortsList}
+                        <td data-label="listening-ports" datatype="ports" data-sort-value=":${currentListeningPort}">
+                            <span title="The shared HTTP(S) listener">:${htmlEscape(String(currentListeningPort))}</span>${subd.ListeningPorts && subd.ListeningPorts.length > 0 ? `<br><small style="opacity: 0.8;" title="Additional listening addresses">${subd.ListeningPorts.map(p => htmlEscape(String(p))).join("<br>")}</small>` : ""}
                         </td>
                         <td data-label="" editable="true" datatype="domain" data-sort-value="${destSortValue}" style="word-break: break-all;">
                             <div class="upstreamList">
@@ -919,10 +948,10 @@
                         <td data-label="features" datatype="features" class="hcCacheCell" eptuuid="${subd.RootOrMatchingDomain}" style="white-space: nowrap;">
                             ${renderHealthCacheCell(subd)}
                         </td>
-                        <td data-label="auth" datatype="auth" class="details-view" style="${authDisplayEmpty?"text-align: center;":""}">
-                            ${authDisplay}
+                        <td data-label="" datatype="vdir" style="${vdIsEmpty && authDisplayEmpty?"text-align: center;":""}">
+                            ${authDisplayEmpty ? "" : `<div class="httpAuthDetail" style="margin-bottom: 0.3em;">${authDisplay}</div>`}
+                            ${vdIsEmpty && !authDisplayEmpty ? "" : vdList}
                         </td>
-                        <td data-label="" editable="true" datatype="vdir" style="${vdIsEmpty?"text-align: center;":""}">${vdList}</td>
                         <td data-label="tags" payload="${encodeURIComponent(JSON.stringify(subd.Tags))}" datatype="tags" style="${tagListEmpty?"text-align: center;":""}">
                             <div class="tags-list">
                             ${tagList}
@@ -948,7 +977,7 @@
             }
 
             resolveAccessRuleNameOnHostRPlist();
-            filterProxyList();
+            proxyRulesAfterRender();
             updateHealthIndicators();
             markMaintenanceHosts();
         });
@@ -1060,7 +1089,7 @@
 
     function exitProxyInlineEdit(){
         listProxyEndpoints();
-        $("#httpProxyList").find(".editBtn").removeClass("disabled");
+        $("#proxyRulesList").find(".editBtn").removeClass("disabled");
     }
 
     function saveTlsConfigs(uuid){
@@ -1358,7 +1387,7 @@
 
     //Custom fork: colour the health indicators from live health check state
     function updateHealthIndicators(){
-        if ($("#httpProxyList .hcIndicator").length == 0){
+        if ($("#proxyRulesList .hcIndicator").length == 0){
             return;
         }
         $.get("/api/proxy/healthcheck/status", function(statuses){
@@ -1367,8 +1396,8 @@
             }
             let byRule = {};
             statuses.forEach(s => { (byRule[s.rule] = byRule[s.rule] || []).push(s); });
-            $("#httpProxyList .hcHostDown, #httpProxyList .hcUpstreamDown").remove();
-            $("#httpProxyList .hcCacheCell").each(function(){
+            $("#proxyRulesList .hcHostDown, #proxyRulesList .hcUpstreamDown").remove();
+            $("#proxyRulesList .hcCacheCell").each(function(){
                 let ind = $(this).find(".hcIndicator");
                 if (ind.length == 0){
                     return;
@@ -1433,11 +1462,11 @@
             && !$("#httprpEditModalWrapper").is(":visible")
             && !$(".sideWrapper").is(":visible")
             && $("#tagFilterDropdown .menu:visible").length == 0
-            && $("#httpProxyTableWrapper th.sorted").length == 0
-            && $("#httpProxyList .editBtn.disabled").length == 0;
+            && $("#proxyRulesTable th.sorted").length == 0
+            && $("#proxyRulesList .editBtn.disabled").length == 0;
     }
     setInterval(function(){
-        if (!$("#httpProxyList").is(":visible")){
+        if (!$("#proxyRulesList").is(":visible")){
             return;
         }
         if (canAutoRefreshHttpProxyList()){
@@ -1449,12 +1478,12 @@
 
     //Custom fork: orange wrench next to hosts in maintenance mode
     function markMaintenanceHosts(){
-        $("#httpProxyList .maintenanceHost").remove();
+        $("#proxyRulesList .maintenanceHost").remove();
         (httpProxyList || []).forEach(subd => {
             if (!subd.Maintenance || !subd.Maintenance.enabled){
                 return;
             }
-            let hostCell = $(`#httpProxyList tr[eptuuid='${subd.RootOrMatchingDomain}'] td[datatype='inbound']`);
+            let hostCell = $(`#proxyRulesList tr[eptuuid='${subd.RootOrMatchingDomain}'] td[datatype='inbound']`);
             let marker = `<i class="orange wrench icon maintenanceHost" title="Maintenance mode: visitors see the maintenance page"></i>`;
             let br = hostCell.children("br").first();
             if (br.length){ br.before(marker); } else { hostCell.append(marker); }
@@ -1631,13 +1660,15 @@
             $("#searchInput").val("");
         }
         filterProxyList();
+        if (window.filterL4ProxyList) filterL4ProxyList();
     }
 
      // Function to filter the proxy list
      function filterProxyList() {
         let searchInput = $("#searchInput").val().toLowerCase();
         let selectedTag = $("#tagFilterDropdown").dropdown('get value');
-        $("#httpProxyList tr").each(function() {
+        let typeShown = ruleTypeFilter == "all" || ruleTypeFilter == "http";
+        $("#proxyRulesList tr.httpRow").each(function() {
             let host = $(this).find("td[data-label='']").text().toLowerCase();
             let tagElements = $(this).find("td[data-label='tags']");
             let tags = tagElements.attr("payload");
@@ -1646,7 +1677,7 @@
                 return;
             }
             tags = JSON.parse(decodeURIComponent(tags));
-            if ((host.includes(searchInput) || searchInput === "") && (tags.includes(selectedTag) || selectedTag === "")) {
+            if (typeShown && (host.includes(searchInput) || searchInput === "") && (tags.includes(selectedTag) || selectedTag === "")) {
                 $(this).show();
             } else {
                 $(this).hide();
@@ -2407,6 +2438,7 @@
             let tag = $(this).text().trim();
             $('#tagFilterDropdown').dropdown('set selected', tag);
             filterProxyList();
+            if (window.filterL4ProxyList) filterL4ProxyList();
         });
     });
 
@@ -2424,6 +2456,61 @@
         } else {
             listProxyEndpoints(false);
         }
+        //Layer 4 rules: running states and access rule names may have changed
+        if (window.initL4ProxyList && !(window.l4EditorOpen && l4EditorOpen())){
+            initL4ProxyList(true);
+            loadL4AccessRules();
+        }
+    }
+
+    /*
+        Custom fork: one list for HTTP and Layer 4 rules. Each kind renders its
+        own rows (tr.httpRow here, tr.l4Row in l4proxy.html) into #proxyRulesList;
+        after either renders, the rows are put in name order, the type filter
+        is applied and a single "no rules" row is shown when nothing is listed.
+    */
+    var ruleTypeFilter = "all"; //all, http, tcp or udp; not remembered on purpose
+
+    function setRuleTypeFilter(type){
+        ruleTypeFilter = type;
+        $("#ruleTypeFilter .button").removeClass("active");
+        $(`#ruleTypeFilter .button[data-type='${type}']`).addClass("active");
+        proxyRulesAfterRender(false);
+    }
+
+    function proxyRulesAfterRender(resort = true){
+        let list = $("#proxyRulesList");
+        if (resort){
+            //Name order across both kinds; a column sort the user picked is reset
+            let rows = list.children("tr").not(".emptyRow, .proxyRulesEmpty").get();
+            rows.sort((a, b) => String($(a).attr("data-sortkey") || "").localeCompare(String($(b).attr("data-sortkey") || "")));
+            rows.forEach(r => list.append(r));
+            $("#proxyRulesTable th").removeClass("sorted ascending descending");
+        }
+        filterProxyList();
+        if (window.filterL4ProxyList) filterL4ProxyList();
+
+        //Placeholder rows: each kind's own only when that kind is chosen
+        list.children(".proxyRulesEmpty").remove();
+        let httpShown = ruleTypeFilter == "all" || ruleTypeFilter == "http";
+        let l4Shown = ruleTypeFilter != "http";
+        list.children("tr.httpRow.emptyRow").toggle(ruleTypeFilter == "http");
+        list.children("tr.l4Row.emptyRow").toggle(ruleTypeFilter == "tcp" || ruleTypeFilter == "udp");
+        if (ruleTypeFilter == "all" && list.children("tr.subdEntry, tr.l4Entry").length == 0 && list.children("tr.emptyRow").length > 0){
+            list.append(`<tr class="proxyRulesEmpty"><td data-label="" colspan="9"><i class="green check circle icon"></i> No proxy rules yet. Use Add Proxy Rule to create one.</td></tr>`);
+        }else if (list.children("tr.subdEntry:visible, tr.l4Entry:visible").length == 0 && list.children("tr.subdEntry, tr.l4Entry").length > 0){
+            list.append(`<tr class="proxyRulesEmpty"><td data-label="" colspan="9"><i class="grey filter icon"></i> No rules match the filter</td></tr>`);
+        }
+    }
+
+    function refreshProxyRules(){
+        listProxyEndpoints();
+        if (window.initL4ProxyList) initL4ProxyList();
     }
         
-</script>
+</script>
+<!-- Custom fork: Layer 4 rules (their rows go into the list above, their editor is its own) -->
+<div id="l4proxyComponent"></div>
+<script>
+    $("#l4proxyComponent").load("./components/l4proxy.html");
+</script>

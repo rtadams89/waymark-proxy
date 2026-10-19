@@ -10,6 +10,23 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.12.0
+
+HTTP and Layer 4 (TCP/UDP) proxy rules are now on one page. Nothing about the rules themselves changes: they are stored and edited as before.
+
+**Changed: one Proxy Rules page**
+- **Proxy > Proxy Rules** replaces HTTP Proxies and Layer 4 Proxies. Every rule is in one list, in name order, with the same columns: Type (HTTP, TCP, UDP or TCP + UDP), Rule, Listens On (the shared HTTP(S) port for HTTP rules, the rule's own address for Layer 4), Destination, Health / Balancing, Details, and Tags.
+- **All / HTTP / TCP / UDP** buttons pick which rules are shown. The page always opens on All. The tag filter and quick search work across both kinds (Layer 4 rules have no tags, so choosing a tag shows HTTP rules only).
+- Details shows authentication and virtual directories for HTTP rules, and Proxy Protocol, UDP idle timeout and logging for Layer 4 rules. HTTP rules' additional listening addresses are now under Listens On.
+- Each rule opens its own editor, as before.
+- The Layer 4 list's Running / Stopped / Destination down filter is gone; the start/stop slider and red hearts show the same at a glance.
+
+**Changed: one Add Proxy Rule page**
+- **Add Proxy Rule** asks for the type first: **HTTP** (websites and web apps, by host name) or **TCP / UDP** (anything else, on its own port). Then it shows that type's fields, the same as before. Opened while the list shows TCP or UDP rules, it starts on TCP / UDP.
+- A rule's type can't be changed after it is created.
+
+**Bookmarks:** links to the old pages (`#l4proxy`, `#l4rules`, `#streamproxy`) open the new ones.
+
 ## 2.11.0
 
 An HA cluster can now be updated with one button: **Rolling update** installs the latest release on every node, one node at a time, and moves the floating IPs to an updated node before updating the one that was active.

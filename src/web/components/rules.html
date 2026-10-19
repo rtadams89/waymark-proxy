@@ -1,5 +1,20 @@
-<!-- Proxy Create Form-->
+<!-- Proxy Create Form. Custom fork: one Add Proxy Rule page for both kinds of
+     rule; the type chosen first shows the HTTP form (here) or the TCP / UDP
+     form (l4rules.html, loaded into #addRuleL4) -->
 <style>
+    #addRuleTypePicker .card{
+        cursor: pointer;
+        box-shadow: none !important;
+        border: 2px solid var(--divider_color, rgba(34,36,38,.15)) !important;
+        background: transparent;
+    }
+    #addRuleTypePicker .card .header{ font-size: 1.1em !important; }
+    #addRuleTypePicker .card.selected{
+        border-color: #21ba45 !important;
+        background: rgba(33,186,69,0.06);
+    }
+    #addRuleTypePicker .card .meta, #addRuleTypePicker .card .description{ color: var(--theme_lgrey, #767676) !important; }
+    body.darkTheme #addRuleTypePicker .card .header{ color: var(--text_color, #fff) !important; }
     .rulesInstructions{
         background: var(--theme_background) !important; 
         color: var(--theme_lgrey);
@@ -24,12 +39,33 @@
     }
 </style>
 <div class="standardContainer">
+    <div class="ui basic segment" style="padding-bottom: 0 !important;">
+        <a class="ui basic tiny button" style="margin-bottom: 0.6em;" onclick="openTabById('httprp');"><i class="arrow left icon"></i> Back to Proxy Rules</a>
+        <h2>Add Proxy Rule</h2>
+        <p>Choose what kind of traffic the rule handles. The type can't be changed later.</p>
+        <div id="addRuleTypePicker" class="ui two stackable cards" style="max-width: 62em;">
+            <a class="ui card selected" data-type="http" onclick="selectAddRuleType('http');">
+                <div class="content">
+                    <div class="header"><i class="blue globe icon"></i> HTTP</div>
+                    <div class="meta">Websites and web apps, picked by host name</div>
+                    <div class="description">Shares the HTTP(S) listener. Waymark handles certificates, headers, authentication, caching and virtual directories.</div>
+                </div>
+            </a>
+            <a class="ui card" data-type="l4" onclick="selectAddRuleType('l4');">
+                <div class="content">
+                    <div class="header"><i class="violet exchange icon"></i> TCP / UDP</div>
+                    <div class="meta">Anything else, on its own port (Layer 4)</div>
+                    <div class="description">Forwards connections byte for byte without reading them: databases, game servers, SSH, mail, DNS.</div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+<div id="addRuleHttp" class="standardContainer">
     <div class="ui stackable grid">
         <div class="ten wide column">
             <div class="ui basic segment" style="border-radius: 1em; padding: 1em !important;">
-                <a class="ui basic tiny button" style="margin-bottom: 0.6em;" onclick="openTabById('httprp');"><i class="arrow left icon"></i> Back to HTTP Proxies</a>
-                <h2>Add Proxy Rule</h2>
-                <p>You can add more proxy rules to support more site via domain / subdomains</p>
+                <h3>New HTTP Rule</h3>
                 <div class="ui form">
                     <div class="field">
                         <label>Matching Keyword / Domain</label>
@@ -249,7 +285,7 @@
                     </div>
                     <br>
                     <div style="display: inline-block;">
-                        <button class="ui basic button" onclick="newProxyEndpoint();"><i class="green add icon"></i> Create Proxy Rule</button>
+                        <button class="ui basic button" onclick="newProxyEndpoint();"><i class="green add icon"></i> Create HTTP Rule</button>
                     </div>
                     <br><br>
                 </div>
@@ -317,7 +353,7 @@
                         <div class="ui divider"></div>
                         <span style="font-size: 1.2em; font-weight: 300;"><i class="ui yellow star icon"></i> How to Add Multiple Destinations</span><br>
                         <ul>
-                            <li>Go to <b>HTTP Proxies</b> in the sidebar.</li>
+                            <li>Go to <b>Proxy Rules</b> in the sidebar.</li>
                             <li>Click the edit button (&#8942;) of your proxy rule.</li>
                             <li>Open <b>Destinations</b> &rarr; <b>Edit Destinations</b> to add more destinations for load balancing.</li>
                         </ul>
@@ -661,8 +697,23 @@
 
     //Bind on tab switch events
     tabSwitchEventBind["rules"] = function(){
-        //Update the access rule list
+        //Update the access rule lists
         initNewProxyRuleAccessDropdownList();
+        if (window.refreshNewL4AccessList) refreshNewL4AccessList();
+    }
+
+    /* Custom fork: rule type */
+    function selectAddRuleType(type){
+        $("#addRuleTypePicker .card").removeClass("selected");
+        $(`#addRuleTypePicker .card[data-type='${type}']`).addClass("selected");
+        $("#addRuleHttp").toggle(type == "http");
+        $("#addRuleL4").toggle(type == "l4");
+    }
+
+    // Open Add Proxy Rule with a type chosen: "l4" or "http"
+    function openAddProxyRule(type){
+        selectAddRuleType(type == "l4" ? "l4" : "http");
+        openTabById("rules");
     }
 
     /* UI Element Initialization */
@@ -689,4 +740,9 @@
    
  
    
+</script>
+<!-- Custom fork: the TCP / UDP (Layer 4) form -->
+<div id="addRuleL4" style="display: none;"></div>
+<script>
+    $("#addRuleL4").load("./components/l4rules.html");
 </script>

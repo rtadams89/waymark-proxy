@@ -1,6 +1,6 @@
 <!-- Custom fork: Layer 4 rule create form, laid out like Add Proxy Rule (rules.html) -->
 <style>
-    #l4rules .l4RulesInstructions{
+    #addRuleL4 .l4RulesInstructions{
         background: var(--theme_background) !important;
         color: var(--theme_lgrey);
         border-radius: 1em !important;
@@ -10,14 +10,13 @@
     <div class="ui stackable grid">
         <div class="ten wide column">
             <div class="ui basic segment" style="border-radius: 1em; padding: 1em !important;">
-                <a class="ui basic tiny button" style="margin-bottom: 0.6em;" onclick="openTabById('l4proxy');"><i class="arrow left icon"></i> Back to Layer 4 Proxies</a>
-                <h2>Add Layer 4 Rule</h2>
+                <h3>New TCP / UDP Rule</h3>
                 <p>Forward TCP or UDP traffic arriving on a port of this host to a destination server</p>
                 <div class="ui form" id="newL4ProxyForm">
                     <div class="field">
                         <label>Name</label>
                         <input type="text" id="newL4Name" placeholder="e.g. Minecraft server">
-                        <small>Shown in the Layer 4 Proxies list. Leave empty to name it after the listening address.</small>
+                        <small>Shown in the Proxy Rules list. Leave empty to name it after the listening address.</small>
                     </div>
                     <div class="field">
                         <label>Listening Address with Port</label>
@@ -114,7 +113,7 @@
                     </div>
                     <br>
                     <div style="display: inline-block;">
-                        <button class="ui basic button" onclick="newL4Proxy(); return false;"><i class="green add icon"></i> Create Layer 4 Rule</button>
+                        <button class="ui basic button" onclick="newL4Proxy(); return false;"><i class="green add icon"></i> Create TCP / UDP Rule</button>
                     </div>
                     <br><br>
                 </div>
@@ -155,7 +154,7 @@
                     <div class="content">
                         <span style="font-size: 1.2em; font-weight: 300;"><i class="ui green sitemap icon"></i> Load balancing and failover</span><br>
                         <ul>
-                            <li>Go to <b>Layer 4 Proxies</b> in the sidebar.</li>
+                            <li>Go to <b>Proxy Rules</b> in the sidebar.</li>
                             <li>Click the edit button (&#8942;) of your rule.</li>
                             <li>Use <b>Destinations</b> &rarr; <b>Edit Destinations</b> to add more destination servers and set their weights (0 makes a destination a backup). Choose weighted or least connections balancing and sticky sessions under <b>Destinations</b>.</li>
                         </ul>
@@ -335,8 +334,9 @@
         $("#newL4AccessFilter").parent().dropdown("set selected", "default");
     });
 
-    tabSwitchEventBind["l4rules"] = function(){
-        //Access rules may have changed on the Access Control page
+    //Called when Add Proxy Rule (rules.html) is opened: access rules may have
+    //changed on the Access Control page
+    window.refreshNewL4AccessList = function(){
         let current = $("#newL4AccessFilter").val() || "default";
         initNewL4AccessDropdownList(function(){
             $("#newL4AccessFilter").parent().dropdown("set selected", current);

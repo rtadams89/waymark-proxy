@@ -218,9 +218,9 @@
                                 $(".lowPriorityButton").addClass('disabled');
                             }
 
-                            if (parent && parent.document.getElementById("httpProxyList") != null){
+                            if (parent && parent.document.getElementById("proxyRulesList") != null){
                                 //Also update the parent display
-                                let element = $(parent.document.getElementById("httpProxyList")).find(".upstreamList.editing");
+                                let element = $(parent.document.getElementById("proxyRulesList")).find(".upstreamList.editing");
                                 let upstreams = "";
                                 data.ActiveOrigins.forEach(upstream => {
                                     //Check if the upstreams require TLS connections
@@ -634,4 +634,4 @@
             });
 </script>
     </body>
-</html>
+</html>

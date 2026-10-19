@@ -1,22 +1,7 @@
-<div class="standardContainer">
-    <div class="ui basic segment">
-        <h2>Layer 4 Proxies</h2>
-        <p>Forward TCP and UDP traffic to one or more destination servers, with load balancing and health checks. For websites and web apps, use HTTP proxy rules instead.</p>
-    </div>
+<!-- Custom fork: Layer 4 (TCP / UDP) rules. Loaded by httprp.html: their rows
+     go into the Proxy Rules list there (#proxyRulesList, tr.l4Row) and this
+     file holds their editor. -->
     <style>
-        /* Custom fork: same look as the HTTP Proxies list (httprp.html) */
-        #l4ProxyList .ui.toggle.checkbox input:checked ~ label::before{
-            background-color: #00ca52 !important;
-        }
-        .l4Entry td:not(.ignoremw){
-            min-width: 100px;
-        }
-        .l4ProxyListTools{
-            width: 100%;
-        }
-        #l4ProxyTable th.no-sort{
-            cursor: default !important;
-        }
 
         /* Editor, the same as the HTTP proxy rule editor */
         #l4EditModal{
@@ -132,54 +117,6 @@
             }
         }
     </style>
-    <div class="l4ProxyListTools" style="margin-bottom: 1em;">
-        <button class="ui basic green button" onclick="openTabById('l4rules');"><i class="plus icon"></i> Add Layer 4 Rule</button>
-        <div id="l4FilterDropdown" class="ui floating basic dropdown labeled icon button" style="min-width: 150px;">
-            <i class="filter icon"></i>
-            <span class="text">Filter</span>
-            <div class="menu">
-                <div class="item" data-value=""><div class="ui grey empty circular label"></div> Show all</div>
-                <div class="divider"></div>
-                <div class="item" data-value="running"><div class="ui green empty circular label"></div> Running</div>
-                <div class="item" data-value="stopped"><div class="ui black empty circular label"></div> Stopped</div>
-                <div class="divider"></div>
-                <div class="item" data-value="tcp"><div class="ui blue empty circular label"></div> TCP</div>
-                <div class="item" data-value="udp"><div class="ui violet empty circular label"></div> UDP</div>
-                <div class="divider"></div>
-                <div class="item" data-value="down"><div class="ui red empty circular label"></div> Destination down</div>
-            </div>
-        </div>
-        <div class="ui small input" style="width: 300px; height: 38px;">
-            <!-- Prevent the browser from filling the saved Waymark login account into the input below -->
-            <input type="password" autocomplete="off" hidden/>
-            <input type="text" id="l4SearchInput" placeholder="Quick Search" onkeydown="handleL4SearchInput(event);" onchange="handleL4SearchInput(event);" onblur="handleL4SearchInput(event);" oninput="filterL4ProxyList();">
-        </div>
-    </div>
-
-    <div id="l4ProxyTableWrapper" style="width: 100%; overflow-x: auto; margin-bottom: 1em; min-height: 300px;">
-        <table id="l4ProxyTable" class="ui unstackable sortable compact celled definition table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Name</th>
-                    <th>Listening Address</th>
-                    <th>Destination</th>
-                    <th class="no-sort">Health / Balancing</th>
-                    <th>Protocol</th>
-                    <th>UDP Idle Timeout</th>
-                    <th class="no-sort" style="width:100px; cursor: default !important;"></th>
-                </tr>
-            </thead>
-            <tbody id="l4ProxyList">
-
-            </tbody>
-        </table>
-    </div>
-
-    <button class="ui icon right floated basic button" onclick="initL4ProxyList();" title="Refresh List"><i class="green refresh icon"></i> Refresh</button>
-    <br><br>
-</div>
-
 <!-- Custom fork: editor for a Layer 4 rule, the same as the HTTP proxy rule editor. Each setting is saved when it is changed. -->
 <div id="l4EditModalWrapper">
     <div id="l4EditModal" editing-uuid="">
@@ -417,7 +354,7 @@
     }
 
     // l4HealthCell shows the health checks and load balancing, like the
-    // Health / Cache column of the HTTP Proxies list
+    // Health / Balancing column of the Proxy Rules list
     function l4HealthCell(config){
         let parts = [];
         let hc = config.HealthCheck;
@@ -440,45 +377,54 @@
         return parts.join("<br>");
     }
 
-    function l4ProtocolCell(config){
+    // Type label: TCP, UDP or TCP + UDP
+    function l4TypeCell(config){
         let protocols = [];
         if (config.UseTCP) protocols.push("TCP");
         if (config.UseUDP) protocols.push("UDP");
-        let extra = [];
-        if (config.ProxyProtocolVersion === 1) extra.push("Proxy Protocol v1");
-        else if (config.ProxyProtocolVersion === 2) extra.push("Proxy Protocol v2");
-        if (config.EnableLogging) extra.push("logging");
-        let cell = protocols.length ? htmlEscape(protocols.join(" + ")) : `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
-        if (extra.length) cell += `<br><small style="opacity: 0.7;">${htmlEscape(extra.join(" · "))}</small>`;
-        return cell;
+        let text = protocols.length ? protocols.join(" + ") : "TCP / UDP";
+        return `<span class="ruleTypeLabel l4" title="Layer 4 rule: forwards connections on its own port">${text}</span>`;
+    }
+
+    // Details: Proxy Protocol, logging, UDP idle timeout
+    function l4DetailsCell(config){
+        let parts = [];
+        if (config.ProxyProtocolVersion === 1) parts.push("Proxy Protocol v1");
+        else if (config.ProxyProtocolVersion === 2) parts.push("Proxy Protocol v2");
+        if (config.UseUDP) parts.push("UDP idle timeout " + (parseInt(config.Timeout) || 60) + "s");
+        if (config.EnableLogging) parts.push("Logging");
+        if (parts.length == 0) return `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
+        return parts.map(p => htmlEscape(p)).join("<br>");
     }
 
     function renderL4ProxyList(configs){
-        let tableBody = $("#l4ProxyList");
-        tableBody.empty();
+        let tableBody = $("#proxyRulesList");
+        tableBody.children("tr.l4Row").remove();
         if (!Array.isArray(configs) || configs.length === 0) {
-            tableBody.append(`<tr><td data-label="" colspan="8"><i class="green check circle icon"></i> No Layer 4 Rule</td></tr>`);
+            tableBody.append(`<tr class="l4Row emptyRow"><td data-label="" colspan="9"><i class="green check circle icon"></i> No TCP / UDP rules</td></tr>`);
+            if (window.proxyRulesAfterRender) proxyRulesAfterRender();
             return;
         }
-        configs = configs.slice().sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
         configs.forEach(function(config) {
             let uuid = htmlEscape(config.UUID);
-            let row = $(`<tr class="l4Entry" uuid="${uuid}">
+            let sortkey = htmlEscape(String(config.Name || config.ListeningAddress || "").toLowerCase());
+            let row = $(`<tr class="l4Entry l4Row" uuid="${uuid}" data-sortkey="${sortkey}">
                 <td class="collapsing ignoremw" datatype="enable">
                     <div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Start / Stop">
                         <input type="checkbox" class="enableToggle" name="active" ${config.Running ? "checked" : ""} uuid="${uuid}" onchange="handleL4ProxyToggle(this);">
                         <label></label>
                     </div>
                 </td>
-                <td data-label="" datatype="name">
+                <td data-label="type" datatype="type" data-sort-value="${config.UseTCP ? "tcp" : "udp"}">${l4TypeCell(config)}</td>
+                <td data-label="" datatype="name" data-sort-value="${sortkey}">
                     ${htmlEscape(config.Name || config.ListeningAddress)}<br>
                     <small class="l4AccessRuleName" ruleid="${htmlEscape(config.AccessRuleUUID || "")}"></small>
                 </td>
                 <td data-label="" datatype="listen" style="word-break: break-all;">${htmlEscape(config.ListeningAddress)}</td>
                 <td data-label="" datatype="destinations" class="l4DestinationsCell" data-sort-value="${htmlEscape(l4DestinationList(config).join(","))}">${l4DestinationsCell(config)}</td>
                 <td data-label="" datatype="health" style="white-space: nowrap;">${l4HealthCell(config)}</td>
-                <td data-label="" datatype="protocol">${l4ProtocolCell(config)}</td>
-                <td data-label="" datatype="timeout" data-sort-value="${config.UseUDP ? (parseInt(config.Timeout) || 60) : -1}">${config.UseUDP ? ((parseInt(config.Timeout) || 60) + "s") : `<small style="opacity: 0.3; pointer-events: none; user-select: none;">—</small>`}</td>
+                <td data-label="" datatype="details">${l4DetailsCell(config)}</td>
+                <td data-label="" datatype="tags" style="text-align: center;"><small style="opacity: 0.3; pointer-events: none; user-select: none;" title="Tags are for HTTP rules">—</small></td>
                 <td class="center aligned ignoremw" datatype="action" data-label="">
                     <button title="Edit Layer 4 Rule" class="ui circular small basic icon button editBtn inlineEditActionBtn" onclick="editL4Proxy('${uuid}');"><i class="ellipsis vertical icon"></i></button>
                     <button title="Remove Layer 4 Rule" class="ui circular mini red basic icon button inlineEditActionBtn" onclick="deleteL4Proxy('${uuid}');"><i class="trash icon"></i></button>
@@ -487,12 +433,12 @@
             tableBody.append(row);
         });
         renderL4AccessRuleNames();
-        filterL4ProxyList();
+        if (window.proxyRulesAfterRender) proxyRulesAfterRender(); else filterL4ProxyList();
     }
 
     // Access rule name under each rule's name (nothing for the default rule)
     function renderL4AccessRuleNames(){
-        $("#l4ProxyList .l4AccessRuleName").each(function(){
+        $("#proxyRulesList .l4AccessRuleName").each(function(){
             let id = $(this).attr("ruleid") || "default";
             if (id == "default"){ $(this).html(""); return; }
             let rule = l4AccessRules[id];
@@ -521,43 +467,23 @@
         return l4ProxyConfigs.find(c => c.UUID == uuid) || null;
     }
 
-    /* Quick search and filter, like the HTTP Proxies list */
-
-    function handleL4SearchInput(event){
-        if (event.key == "Escape"){
-            $("#l4SearchInput").val("");
-        }
-        filterL4ProxyList();
-    }
+    /* Quick search, tag and type filter: shared with the HTTP rules (httprp.html) */
 
     function filterL4ProxyList(){
-        let search = ($("#l4SearchInput").val() || "").toLowerCase().trim();
-        let filter = $("#l4FilterDropdown").dropdown("get value") || "";
-        $("#l4ProxyList tr.l4Entry").each(function(){
+        let search = ($("#searchInput").val() || "").toLowerCase().trim();
+        let tag = $("#tagFilterDropdown").dropdown("get value") || "";
+        let type = window.ruleTypeFilter || "all";
+        $("#proxyRulesList tr.l4Entry").each(function(){
             let cfg = getL4Config($(this).attr("uuid"));
             if (cfg == null) return;
             let text = [cfg.Name, cfg.ListeningAddress].concat(l4DestinationList(cfg)).join(" ").toLowerCase();
-            let match = search === "" || text.includes(search);
-            if (match && filter !== ""){
-                let state = l4UpstreamState[cfg.UUID] || [];
-                switch (filter){
-                    case "running": match = !!cfg.Running; break;
-                    case "stopped": match = !cfg.Running; break;
-                    case "tcp": match = !!cfg.UseTCP; break;
-                    case "udp": match = !!cfg.UseUDP; break;
-                    case "down": match = !!cfg.Running && state.some(s => s.online === false); break;
-                }
-            }
+            let match = (search === "" || text.includes(search)) && tag === ""; //Layer 4 rules have no tags
+            if (type == "http") match = false;
+            else if (type == "tcp") match = match && !!cfg.UseTCP;
+            else if (type == "udp") match = match && !!cfg.UseUDP;
             $(this).toggle(match);
         });
     }
-
-    $("#l4FilterDropdown").dropdown();
-    //The page loader initialises every dropdown again (dropping options such
-    //as onChange), so react to the menu clicks instead
-    $(document).on("click", "#l4FilterDropdown .menu .item", function(){
-        setTimeout(filterL4ProxyList, 0);
-    });
 
     /* List actions */
 
@@ -931,7 +857,7 @@
                 (Array.isArray(statuses) ? statuses : []).forEach(s => {
                     if (!s.enabled) l4HealthReasons[s.rule + "|" + s.upstream] = s.reason;
                 });
-                $("#l4ProxyList tr.l4Entry").each(function(){
+                $("#proxyRulesList tr.l4Entry").each(function(){
                     let cfg = getL4Config($(this).attr("uuid"));
                     if (cfg != null){
                         $(this).find(".l4DestinationsCell").html(l4DestinationsCell(cfg));
@@ -939,9 +865,6 @@
                 });
                 if (l4Editing != null){
                     $("#l4EditModal .l4_destination_list").html(l4DestinationsCell(l4Editing));
-                }
-                if ($("#l4FilterDropdown").dropdown("get value") == "down"){
-                    filterL4ProxyList();
                 }
                 if (callback != undefined) callback();
             });
@@ -966,9 +889,6 @@
                     }
                 }
                 renderL4ProxyList(configs);
-                if (!$("#l4ProxyTable").data("tablesort")){
-                    $("#l4ProxyTable").tablesort();
-                }
                 refreshL4DestinationHealth(callback);
             },
             error: function(){
@@ -982,10 +902,10 @@
     //Refresh the list every 10 s while it is on screen; with the editor or a
     //menu open, or the table sorted, only the health is refreshed
     setInterval(function(){
-        if (!$("#l4proxy").is(":visible") || document.hidden) return;
+        if (!$("#proxyRulesList").is(":visible") || document.hidden) return;
         if (l4EditorOpen() || $(".sideWrapper").is(":visible")
-            || $("#l4FilterDropdown .menu:visible").length > 0
-            || $("#l4ProxyTable th.sorted").length > 0){
+            || $("#tagFilterDropdown .menu:visible").length > 0
+            || $("#proxyRulesTable th.sorted").length > 0){
             refreshL4DestinationHealth();
         }else{
             initL4ProxyList(true);
@@ -995,10 +915,5 @@
     loadL4AccessRules();
     initL4ProxyList();
 
-    //Bind on tab switch events
-    tabSwitchEventBind["l4proxy"] = function(){
-        //Running states and access rule names may have changed
-        initL4ProxyList();
-        loadL4AccessRules();
-    };
+    //The Proxy Rules page (httprp.html) refreshes these rules when it is opened
 </script>
