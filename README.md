@@ -76,7 +76,7 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 - Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the destination's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
 
 **Operations**
-- **Updates from the web interface.** Waymark checks GitHub for a new release daily. **Install** downloads it, verifies its SHA-256 checksum and that it starts, and restarts Waymark; if the new version doesn't stay up, the previous one is put back automatically. In a cluster, each node is updated from the HA page.
+- **Updates from the web interface.** Waymark checks GitHub for a new release daily. **Install** downloads it, verifies its SHA-256 checksum and that it starts, and restarts Waymark; if the new version doesn't stay up, the previous one is put back automatically. In a cluster, **Rolling update** updates every node one at a time without you choosing when the floating IPs move.
 - **Traffic capture** (**Monitoring > Traffic Capture**): record HTTP and Layer 4 proxy traffic as a pcapng file for Wireshark, filtered by rule, host or client, on the client side, the destination side or both. HTTPS is shown decrypted, with an option to hide credentials.
 - **Logs where you want them.** System logs and traffic (request) logs can each go to the log file, to up to 8 syslog servers (UDP, TCP or TLS; RFC 5424, RFC 3164 or JSON), to both, or to neither.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
@@ -304,7 +304,15 @@ If the new version is started three times without staying up for two minutes (fo
 
 **By hand:** download the new binary as in [Install](#install) step 2, then run `sudo systemctl restart waymark`.
 
-**HA pair:** nodes only sync while they run the same version, so update them one at a time. On the HA page, each node in the cluster table has an **Update** button (a node updates itself when another node asks it to, over the sync connection):
+**HA cluster** (2.11.0 and later): click **Rolling update to x.y.z** on the HA page (Cluster), or **Rolling update of all nodes** on Settings > About, on any node. The active node then:
+1. checks that every node answers, that it is the only active node, and that every standby is healthy, runs keepalived and is in sync;
+2. updates the standby nodes one at a time, lowest priority first; each one installs the release itself (as above) and must come back on the new version, healthy and as a standby, and stay that way for 20 seconds before the next one starts;
+3. makes the updated standby with the highest priority active, as **Make active** does;
+4. updates itself; it restarts as a standby. With preempt on, it reports itself unhealthy until it runs the new version, so the floating IPs only move back to it afterwards.
+
+The HA page shows each step on every node. It stops at the first problem, and the node that was active is only updated once every other node runs the new version and has taken over; start it again after fixing the problem (nodes that already run the new version are skipped). Nodes only sync while they run the same version, so sync pauses during the update and resumes at the end.
+
+**By hand, node by node** (and to get to 2.11.0, since the node running a rolling update needs 2.11.0): each node in the HA page's cluster table has an **Update** button (a node updates itself when another node asks it to, over the sync connection):
 1. Update the standby. Sync pauses; the active node keeps working.
 2. Click **Make active** on the updated standby, so the floating IPs move when you choose.
 3. Update the old active node, now the standby. Sync resumes when both run the same version.
@@ -340,6 +348,7 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 | `log/` | The log file (`waymark_<year>-<month>.log`) and rotated copies |
 | `waymark.prev` | The binary that ran before the last update or roll back (for **Roll back**) |
 | `.update-state.json` | The last update or roll back and its outcome |
+| `.rolling-update.json` | The last rolling update of an HA cluster and its steps (on the node that ran it) |
 | `www/` | Static web server files and custom error page templates |
 | `captures/` | Traffic capture files (readable only by Waymark's user, deleted after 24 hours) |
 | `plugins/` | Installed plugins |

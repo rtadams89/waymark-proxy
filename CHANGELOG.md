@@ -10,6 +10,29 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.11.0
+
+An HA cluster can now be updated with one button: **Rolling update** installs the latest release on every node, one node at a time, and moves the floating IPs to an updated node before updating the one that was active.
+
+**Added: rolling update**
+- On **System > High Availability** (Cluster), **Rolling update to x.y.z** appears when a node runs an older version than the latest release; **System > Settings > About** has **Rolling update of all nodes** too. It can be started on any node; the active node runs it.
+- It checks the cluster first: every node must answer, only one may be active, and every standby must be healthy, running keepalived and in sync.
+- The standby nodes are updated first, one at a time, lowest priority first. Each must come back on the new version, healthy and as a standby, and stay that way for 20 seconds before the next one starts.
+- Then the updated standby with the highest priority is made active (as with **Make active**), and the node that was active is updated last and restarts as a standby. With "move the floating IP back" (preempt) on, it keeps reporting itself unhealthy until it runs the new version, so the floating IPs don't move back to it early; they move back once it is updated.
+- It stops at the first problem (an update that fails or is rolled back, a node that doesn't come back within 12 minutes, a standby that becomes active, a switch-over that doesn't happen), and the node that was active is only updated once every other node runs the new version and has taken over. Start it again after fixing the problem: nodes that already run the new version are skipped.
+- The HA page shows each step and its progress on every node, including while the node running it restarts. **Make active**, the per-node **Update** buttons, **Install** and **Roll back** are unavailable while it runs.
+- The per-node **Update** buttons are still there for updating nodes by hand.
+
+**Changed**
+- A standby that is installing an update waits until the update is installed (or has failed) before it restarts to load configuration copied from the active node, so the restart can no longer cut a download short.
+- A page whose node now runs another version (after an update, a roll back or a rolling update) reloads itself.
+- Failed-update messages in the cluster table wrap instead of running off the page.
+
+**Upgrading to 2.11.0:** the node running a rolling update must run 2.11.0 or later, so update to 2.11.0 node by node as before (README, Upgrading). From then on, use **Rolling update**.
+
+**API**
+- `POST /api/update/rolling` (`version`) starts a rolling update; `GET /api/update/rolling` returns its progress, which `/api/ha/status` and `/api/update/status` also include (`rolling`).
+
 ## 2.10.0
 
 Load balancing now works the same way for HTTP and Layer 4 proxy rules, with the same settings in the same places. Existing Layer 4 rules are converted automatically on the first start; no action is needed.

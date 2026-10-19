@@ -13,6 +13,10 @@
     #ha .haRole.UNKNOWN{ background: rgba(128,128,128,0.15); }
     #ha #haNodesTable input{ min-width: 6em; }
     #ha #haNodesTable td.haSelfCell{ white-space: nowrap; }
+    #ha .haRollSteps{ margin: 0.6em 0 0 0; }
+    #ha .haRollSteps .item{ display: flex; gap: 0.5em; align-items: baseline; padding: 0.25em 0; }
+    #ha .haRollSteps .item > i.icon{ flex: none; }
+    #ha .haRollSteps .haRollMsg{ color: var(--text_color_secondary); font-size: 0.9em; }
     @media (max-width: 700px){ #ha .haGrid{ grid-template-columns: 1fr; gap: 0.15em; } #ha .haGrid .haLabel{ margin-top: 0.6em; } }
 </style>
 <div class="standardContainer">
@@ -32,7 +36,8 @@
         <h3>Cluster</h3>
         <div id="haClusterBox"></div>
         <div class="ui message" id="haActionMsg" style="display:none;"></div>
-        <div class="haHint" style="margin-top: 0.6em;"><b>Make active</b> moves the floating IPs to a healthy standby: the active node reports itself unhealthy for a few seconds so keepalived hands over. <b>Update</b> installs the latest release on that node and restarts it; nodes on different versions pause configuration sync until they match. Both need configuration sync on.</div>
+        <div id="haRollBox" style="display:none; margin-top: 0.8em;"></div>
+        <div class="haHint" style="margin-top: 0.6em;"><b>Rolling update</b> installs the latest release on every node, one at a time: the standby nodes first, each of which must come back healthy, then an updated node is made active and the node that was active is updated last. It stops at the first problem. <b>Make active</b> moves the floating IPs to a healthy standby: the active node reports itself unhealthy for a few seconds so keepalived hands over. <b>Update</b> installs the latest release on that one node and restarts it; nodes on different versions pause configuration sync until they match. All of these need configuration sync on.</div>
     </div>
 
     <div class="ui segment">
@@ -365,10 +370,14 @@ sudo sysctl --system</pre></div>
             if (c.enabled && window.haRenderCluster){
                 let upd = window.updStatus ? updStatus() : null;
                 let sw = d.switchover || {};
-                haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, floatingIPs: fips, nodes: d.cluster || []},
-                    {actions: {latest: upd && upd.latest ? upd.latest.version : "",
-                               switching: sw.state == "switching" || (haActionLocal && haActionLocal.ok && Date.now() - haActionLocal.time < 20000)}});
-                renderSwitch(sw);
+                let rolling = !!(d.rolling && d.rolling.state && d.rolling.state.phase == "running");
+                haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, floatingIPs: fips, nodes: d.cluster || [], rollingUpdate: rolling},
+                    {actions: {latest: upd && upd.latest ? upd.latest.version : "", rolling: rolling,
+                               switching: rolling || sw.state == "switching" || (haActionLocal && haActionLocal.ok && Date.now() - haActionLocal.time < 20000)}});
+                // A switch-over made by a rolling update is shown with its steps instead
+                let rs = d.rolling && d.rolling.state;
+                renderSwitch(rs && sw.time && rs.started <= sw.time ? {} : sw);
+                renderRolling(d, upd);
             }
             renderSync(d);
         }
@@ -391,6 +400,52 @@ sudo sysctl --system</pre></div>
                 box.hide();
             }
         }
+        // Rolling update: its progress (from whichever node reports it), or
+        // the button to start one when a node runs an older version
+        const ROLL_ICONS = {pending: "grey circle outline", running: "blue sync loading", done: "green check circle",
+                            skipped: "grey minus circle", failed: "red times circle"};
+        function renderRolling(d, upd){
+            let box = $("#haRollBox");
+            let c = d.config, nodes = d.cluster || [];
+            let r = d.rolling && d.rolling.state;
+            let latest = upd && upd.latest ? upd.latest.version : "";
+            let parts = [];
+            if (r){
+                let me = nodes.find(n => n.self);
+                let label = {update: n => "Update " + n, switchover: n => "Make " + n + " active", updateself: n => "Update " + n + " (was active)"};
+                let steps = r.steps.map(s => `<div class="item"><i class="${ROLL_ICONS[s.state] || "grey circle outline"} icon"></i><div><b>${esc((label[s.action] || (n => n))(s.node))}</b>` +
+                    (s.message ? ` <span class="haRollMsg">${esc(s.message)}</span>` : "") + `</div></div>`).join("");
+                let head, cls;
+                if (r.phase == "running"){
+                    cls = "info"; head = `<i class="sync loading icon"></i>Rolling update to ${esc(r.to)} in progress <span class="haHint">(run by ${esc(r.coordinator)}, started ${ago(r.started)})</span>`;
+                }else if (r.phase == "done"){
+                    cls = "positive"; head = `<i class="check circle icon"></i>Rolling update to ${esc(r.to)} finished ${ago(r.finished)}: ${esc(r.message)}`;
+                }else{
+                    cls = "warning"; head = `<i class="exclamation triangle icon"></i>Rolling update to ${esc(r.to)} stopped ${ago(r.finished)}: ${esc(r.message)}`;
+                }
+                let stale = d.rolling.current === false ? `<div class="haHint" style="margin-top: 0.4em;">${esc(d.rolling.reportedBy)} is not answering right now (restarting?); this is its last report.</div>` : "";
+                let retry = r.phase == "failed" ? `<div class="haHint" style="margin-top: 0.4em;">Fix the problem, then start the rolling update again: nodes that already run ${esc(r.to)} are skipped. Nodes on different versions pause configuration sync until they match.</div>` : "";
+                parts.push(`<div class="ui ${cls} message" style="margin: 0;"><div>${head}</div><div class="haRollSteps">${steps}</div>${stale}${retry}</div>`);
+                // This node is updated in the last step: check its version with
+                // each refresh, so the page reloads as soon as it runs the new one
+                let last = r.steps[r.steps.length - 1];
+                if (r.phase == "running" && me && last && last.node == me.name && last.state == "running" && window.updRefresh){
+                    updRefresh();
+                }
+            }
+            let running = r && r.phase == "running";
+            let behind = nodes.filter(n => n.reachable && n.version && latest && haVersionNewer(latest, n.version));
+            if (!running && c.syncEnabled && nodes.length > 1 && behind.length > 0){
+                parts.push(`<div style="margin-top: 0.6em;"><button class="ui basic small green button" id="haRollingBtn" onclick="haRollingStart(); return false;"><i class="sync alternate icon"></i> Rolling update to ${esc(latest)}</button>` +
+                    ` <span class="haHint">${behind.map(n => esc(n.name)).join(", ")} ${behind.length > 1 ? "run" : "runs"} an older version</span></div>`);
+            }
+            box.html(parts.join("")).toggle(parts.length > 0);
+        }
+        window.haRollingStart = function(){
+            if (!window.updRollingStart) return;
+            updRollingStart(function(ok){ if (ok) setTimeout(function(){ haLoad(false); }, 1000); });
+        };
+
         function actionMsg(text, ok){
             haActionLocal = {text: text, ok: ok, time: Date.now()};
             $("#haActionMsg").attr("class", "ui " + (ok ? "info" : "negative") + " message").text(text).show();

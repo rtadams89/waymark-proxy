@@ -57,20 +57,21 @@ type haSyncApplied struct {
 // haSyncPeerInfo is what a node reports about itself to the other nodes
 // (/waymark-ha/v1/state): used for syncing and for the cluster overview.
 type haSyncPeerInfo struct {
-	Node            string `json:"node"`
-	Role            string `json:"role"`
-	Version         string `json:"version"`
-	Hash            string `json:"hash"`
-	HeartbeatOK     bool   `json:"heartbeatOk"`
-	HeartbeatReason string `json:"heartbeatReason"`
-	VIPHeld         bool   `json:"vipHeld"`    // holds the primary floating IP
-	VIPsHeld        int    `json:"vipsHeld"`   // how many floating IPs it holds
-	Keepalived      string `json:"keepalived"` // systemd state
-	SyncStatus      string `json:"syncStatus"`
-	SyncDetail      string `json:"syncDetail"`
-	Started         int64  `json:"started"`       // when Waymark started
-	UpdatePhase     string `json:"updatePhase"`   // selfupdate_custom.go: downloading, verifying, restarting, error
-	UpdateMessage   string `json:"updateMessage"` // its message
+	Node            string     `json:"node"`
+	Role            string     `json:"role"`
+	Version         string     `json:"version"`
+	Hash            string     `json:"hash"`
+	HeartbeatOK     bool       `json:"heartbeatOk"`
+	HeartbeatReason string     `json:"heartbeatReason"`
+	VIPHeld         bool       `json:"vipHeld"`    // holds the primary floating IP
+	VIPsHeld        int        `json:"vipsHeld"`   // how many floating IPs it holds
+	Keepalived      string     `json:"keepalived"` // systemd state
+	SyncStatus      string     `json:"syncStatus"`
+	SyncDetail      string     `json:"syncDetail"`
+	Started         int64      `json:"started"`           // when Waymark started
+	UpdatePhase     string     `json:"updatePhase"`       // selfupdate_custom.go: downloading, verifying, restarting, error
+	UpdateMessage   string     `json:"updateMessage"`     // its message
+	Rolling         *rollState `json:"rolling,omitempty"` // rollingupdate_custom.go: the rolling update it runs or ran last
 }
 
 // haPeerStatus is the last poll of another node.
@@ -250,6 +251,7 @@ func haLocalInfo() haSyncPeerInfo {
 		Node: haNodeName(cfg), Role: haEffectiveRole(haRuntime()).State, Version: DISPLAY_VERSION,
 		HeartbeatOK: hb.OK, HeartbeatReason: hb.Reason, VIPHeld: haVIPHeld(cfg), VIPsHeld: haCountFloatingIPsHeld(cfg),
 		Keepalived: haServiceState("keepalived"), SyncStatus: st, SyncDetail: detail, Started: bootTime,
+		Rolling: rollPeerState(),
 	}
 }
 
@@ -321,8 +323,9 @@ func haSyncReconcileListener() {
 			haSync.mu.Unlock()
 		},
 		Actions: map[string]func(string, []byte) (any, error){
-			"switchover": haSwitchAction, // haswitch_custom.go
-			"update":     haUpdateAction, // selfupdate_custom.go
+			"switchover":    haSwitchAction, // haswitch_custom.go
+			"update":        haUpdateAction, // selfupdate_custom.go
+			"rollingupdate": haRollAction,   // rollingupdate_custom.go
 		},
 	}
 	srv := &http.Server{Handler: handler, TLSConfig: hacluster.SyncServerTLSConfig(cert), ReadHeaderTimeout: 10 * time.Second, ErrorLog: log.New(io.Discard, "", 0)}
@@ -489,6 +492,17 @@ func haSyncTick(force bool) (string, bool) {
 			haSyncSetStatus("waiting", msg)
 			return msg, false
 		}
+	}
+
+	// Restarting now would cut short an update being downloaded (for example
+	// during a rolling update); copy once it is installed or has failed
+	upd.mu.Lock()
+	installing := upd.busy
+	upd.mu.Unlock()
+	if installing {
+		msg := "Configuration changed on " + m.node.Name + "; copying it once this node has installed its update"
+		haSyncSetStatus("waiting", msg)
+		return msg, false
 	}
 
 	var snap hacluster.Snapshot

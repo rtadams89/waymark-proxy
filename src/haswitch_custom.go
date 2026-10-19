@@ -54,6 +54,9 @@ var haSwitch struct {
 // haSwitchHolding reports whether this node is stepping down right now, and
 // the reason written to the heartbeat.
 func haSwitchHolding() (bool, string) {
+	if holding, why := rollHolding(); holding {
+		return true, why // rollingupdate_custom.go
+	}
 	haSwitch.mu.Lock()
 	defer haSwitch.mu.Unlock()
 	if time.Now().Before(haSwitch.holdUntil) {
@@ -262,7 +265,7 @@ func haStepDown(cfg *hacluster.Config, key []byte, target string) (string, error
 				// Give keepalived a moment to settle before this node is healthy again
 				time.Sleep(4 * time.Second)
 				msg := target + " is now the active node"
-				if cfg.Preempt && tnode.Priority < self.Priority {
+				if held, _ := rollHolding(); cfg.Preempt && tnode.Priority < self.Priority && !held {
 					msg += ". Preempt is on and " + self.Name + " has the higher priority, so it takes the floating IPs back in about 30 seconds"
 				}
 				haSwitchSet("done", msg)
@@ -290,6 +293,10 @@ func HandleHASwitchover(w http.ResponseWriter, r *http.Request) {
 	target, err := utils.PostPara(r, "target")
 	if err != nil || target == "" {
 		utils.SendErrorResponse(w, "target not defined")
+		return
+	}
+	if rollRunning() {
+		utils.SendErrorResponse(w, "a rolling update is in progress")
 		return
 	}
 	msg, err := haSwitchover(target)

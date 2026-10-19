@@ -77,7 +77,9 @@
                     errors.push(esc(n.name) + " unreachable (" + (n.lastRole == "MASTER" ? "was active, " : "") + seen + ")");
                 }
             });
-            nodes.filter(n => n.reachable && n.version && !n.versionMatch).forEach(n => errors.push(esc(n.name) + " runs " + esc(n.version)));
+            // Expected while a rolling update runs (HA page)
+            let vlist = data.rollingUpdate ? warnings : errors;
+            nodes.filter(n => n.reachable && n.version && !n.versionMatch).forEach(n => vlist.push(esc(n.name) + " runs " + esc(n.version)));
         }
         nodes.filter(n => n.reachable && n.role && n.heartbeatOk === false).forEach(n => errors.push(esc(n.name) + " unhealthy"));
         nodes.filter(n => n.reachable && (n.role == "FAULT" || n.role == "STOP")).forEach(n => errors.push(esc(n.name) + ": " + ROLES[n.role][0]));
@@ -103,13 +105,13 @@
         if (busy){
             out.push(`<span><i class="blue sync loading icon"></i>${esc(n.updateMessage || "Updating")}</span>`);
         }else if (n.updatePhase == "error"){
-            out.push(`<div style="color: #db2828; font-size: 0.85em; max-width: 22em;"><i class="times circle icon"></i>${esc(n.updateMessage)}</div>`);
+            out.push(`<div style="color: #db2828; font-size: 0.85em; max-width: 22em; margin-left: auto; white-space: normal; text-align: left;"><i class="times circle icon"></i>${esc(n.updateMessage)}</div>`);
         }
         let someoneActive = (data.nodes || []).some(m => m.reachable && m.role == "MASTER");
         if (!busy && !act.switching && data.syncEnabled && someoneActive && n.role == "BACKUP" && n.heartbeatOk && (n.keepalived == "active" || n.keepalived == "unknown" || !n.keepalived)){
             out.push(`<button class="ui mini basic button haMakeActive" data-node="${esc(n.name)}" title="Move the floating IPs to ${esc(n.name)}"><i class="exchange icon"></i>Make active</button>`);
         }
-        if (!busy && act.latest && versionNewer(act.latest, n.version) && (n.self || data.syncEnabled)){
+        if (!busy && !act.rolling && act.latest && versionNewer(act.latest, n.version) && (n.self || data.syncEnabled)){
             out.push(`<button class="ui mini basic button haUpdateNode" data-node="${esc(n.name)}" data-self="${n.self ? 1 : 0}" title="Install Waymark ${esc(act.latest)} on ${esc(n.name)}"><i class="green download icon"></i>Update to ${esc(act.latest)}</button>`);
         }
         return `<td style="text-align: right; white-space: nowrap;">${out.join(" ")}</td>`;
@@ -117,8 +119,8 @@
 
     // haRenderCluster fills container with the overview. data: {enabled,
     // syncEnabled, vip, floatingIPs, nodes}. opts.compact drops the version
-    // column; opts.actions ({latest, switching}) adds switch-over and update
-    // buttons.
+    // column; opts.actions ({latest, switching, rolling}) adds switch-over and
+    // update buttons (none while a rolling update runs).
     window.haRenderCluster = function(container, data, opts){
         opts = opts || {};
         let nodes = data.nodes || [];

@@ -19,10 +19,11 @@ package main
 	  the next start puts waymark.prev back.
 	- Roll back swaps waymark.prev and the running binary, with the same
 	  protection.
-	- In a cluster each node is updated on its own (HA page: per node
-	  buttons); a node asks another one to update itself over the sync
-	  connection (action "update"). Nodes on different versions keep running
-	  but pause configuration sync until they match.
+	- In a cluster, Rolling update updates every node one at a time
+	  (rollingupdate_custom.go), and each node can still be updated on its
+	  own (HA page: per node buttons); a node asks another one to update
+	  itself over the sync connection (action "update"). Nodes on different
+	  versions keep running but pause configuration sync until they match.
 
 	No root is involved: Waymark replaces the file in the folder it runs
 	from, so that folder must be writable by the waymark user (it is with the
@@ -676,6 +677,7 @@ func updateStartupCheck() {
 }
 
 func initSelfUpdate() {
+	initRollingUpdate() // rollingupdate_custom.go
 	go updateCheckLoop()
 }
 
@@ -759,6 +761,9 @@ func HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	resp := updateStatus()
 	cfg := haConfig()
 	resp["haActive"] = cfg.Enabled && len(cfg.Nodes) > 1 && haEffectiveRole(haRuntime()).State == "MASTER"
+	// rollingupdate_custom.go: a rolling update can update every node
+	resp["haCluster"] = cfg.Enabled && cfg.SyncEnabled && len(cfg.Nodes) > 1 && haSelf(cfg) >= 0
+	resp["rolling"] = rollView()
 	js, _ := json.Marshal(resp)
 	utils.SendJSONResponse(w, string(js))
 }
@@ -785,6 +790,10 @@ func HandleUpdateInstall(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if rollRunning() {
+		utils.SendErrorResponse(w, "a rolling update is in progress")
+		return
+	}
 	version, _ := utils.PostPara(r, "version")
 	msg, err := updateStart(version)
 	if err != nil {
@@ -802,6 +811,10 @@ func HandleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if rollRunning() {
+		utils.SendErrorResponse(w, "a rolling update is in progress")
+		return
+	}
 	msg, err := updateRollback()
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
@@ -816,6 +829,10 @@ func HandleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 func HandleUpdatePeer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if rollRunning() {
+		utils.SendErrorResponse(w, "a rolling update is in progress")
 		return
 	}
 	name, _ := utils.PostPara(r, "node")

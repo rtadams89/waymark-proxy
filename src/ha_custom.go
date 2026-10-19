@@ -371,6 +371,7 @@ func HandleHAStatus(w http.ResponseWriter, r *http.Request) {
 		"cluster":        haClusterView(),
 		"readOnly":       haIsReadOnly(),
 		"switchover":     haSwitchStatus(),
+		"rolling":        rollView(),
 	}
 	js, _ := json.Marshal(resp)
 	utils.SendJSONResponse(w, string(js))
