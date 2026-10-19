@@ -19,7 +19,10 @@ const (
 
 // GetRequestUpstreamTarget return the upstream target where this
 // request should be routed
-func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.Request, origins []*Upstream, useStickySession bool, disableAutoFallback bool) (*Upstream, error) {
+//
+// Custom fork: mode is the load balancing method (leastconn_custom.go); with
+// sticky sessions it picks the destination of a new session.
+func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.Request, origins []*Upstream, useStickySession bool, disableAutoFallback bool, mode string) (*Upstream, error) {
 	if len(origins) == 0 {
 		return nil, errors.New("no destination is defined for this host")
 	}
@@ -37,8 +40,8 @@ func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.R
 				return nil, errors.New("no online destination is available for origin: " + r.Host)
 			}
 
-			//Get a random origin
-			targetOrigin, index, err := getRandomUpstreamByWeight(origins)
+			//Pick an origin with the rule's load balancing method
+			targetOrigin, index, err := m.pickUpstream(origins, mode)
 			if err != nil {
 				m.println("Unable to get random destination", err)
 				targetOrigin = origins[0]
@@ -63,8 +66,8 @@ func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.R
 		return nil, errors.New("no online destination is available for origin: " + r.Host)
 	}
 
-	//Get a random origin
-	targetOrigin, _, err := getRandomUpstreamByWeight(origins)
+	//Pick an origin with the rule's load balancing method
+	targetOrigin, _, err := m.pickUpstream(origins, mode)
 	if err != nil {
 		m.println("Failed to get next origin", err)
 		targetOrigin = origins[0]

@@ -55,6 +55,12 @@
                                         <label>Enable health checks<br><small>Check destinations with a TCP connect every 10s, take them out of load balancing when they fail, and show them on Monitoring &gt; Health &amp; Uptime. UDP-only rules need a UDP check, set under Destinations &rarr; Health Checks in the rule editor.</small></label>
                                     </div>
                                 </div>
+                                <div class="field">
+                                    <div class="ui checkbox">
+                                        <input type="checkbox" id="newL4StickySessions">
+                                        <label>Use Sticky Sessions<br><small>Keep sending a client to the same destination (by its IP address) while that destination is healthy</small></label>
+                                    </div>
+                                </div>
                                 <div class="field" id="newL4UDPTimeoutField" style="display: none;">
                                     <label>UDP Idle Timeout</label>
                                     <div class="ui fluid right labeled input">
@@ -151,7 +157,7 @@
                         <ul>
                             <li>Go to <b>Layer 4 Proxies</b> in the sidebar.</li>
                             <li>Click the edit button (&#8942;) of your rule.</li>
-                            <li>Use <b>Destinations</b> &rarr; <b>Edit Destinations</b> to add more destination servers, and choose how new connections are spread across them.</li>
+                            <li>Use <b>Destinations</b> &rarr; <b>Edit Destinations</b> to add more destination servers and set their weights (0 makes a destination a backup). Choose weighted or least connections balancing and sticky sessions under <b>Destinations</b>.</li>
                         </ul>
                         <small>
                             With health checks on, a destination that fails its checks gets no new connections until it passes again.
@@ -239,6 +245,7 @@
                         }
                     });
                 };
+                let setHealthCheck = function(){
                 if (!wantHealthCheck){
                     finish();
                     return;
@@ -260,6 +267,26 @@
                         finish(data.error != undefined ? "Layer 4 rule added, but its health check was not saved: " + data.error : undefined);
                     }
                 });
+                };
+                if (!$("#newL4StickySessions")[0].checked){
+                    setHealthCheck();
+                    return;
+                }
+                //Sticky sessions are a destination pool setting
+                $.cjax({
+                    url: "/api/l4proxy/config/pool",
+                    method: "POST",
+                    data: {uuid: newUUID, pool: JSON.stringify({
+                        destinations: [{address: destination, weight: 1, enabled: true}],
+                        loadBalancing: "weighted", stickySessions: true, healthCheck: null, closeOnUpstreamDown: false
+                    })},
+                    success: function(data){
+                        if (data.error != undefined){
+                            msgbox("Layer 4 rule added, but sticky sessions were not turned on: " + data.error, false, 8000);
+                        }
+                        setHealthCheck();
+                    }
+                });
             }
         });
     }
@@ -273,6 +300,7 @@
         $("#newL4UseUDP").prop("checked", false);
         $("#newL4UDPTimeoutField").hide();
         $("#newL4HealthCheck").prop("checked", true);
+        $("#newL4StickySessions").prop("checked", false);
         $("#newL4EnableLogging").prop("checked", false);
         $("#newL4ProxyProtocol").parent().dropdown("set selected", "0");
         $("#newL4AccessFilter").parent().dropdown("set selected", "default");

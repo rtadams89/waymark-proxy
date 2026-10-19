@@ -388,10 +388,21 @@
                             <small style="opacity:0.7;">Path appended to the destination URL when the health check runs (e.g. <code>/identity</code> for Plex, <code>/healthz</code>). Leave empty to use <code>/</code>.</small>
                             <br>
                             </div>
+                            <!-- Custom fork: the same load balancing settings as Layer 4 rules -->
+                            <div class="ui form">
+                                <div class="field">
+                                    <label>Load Balancing</label>
+                                    <select class="LoadBalancingMode">
+                                        <option value="weighted">Weighted</option>
+                                        <option value="leastconn">Least connections</option>
+                                    </select>
+                                    <small class="lbModeHint" style="opacity: 0.7;"></small>
+                                </div>
+                            </div>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="UseStickySession">
-                                <label>Use Sticky Session<br>
-                                    <small>Enable stick session on load balancing</small></label>
+                                <label>Use Sticky Sessions<br>
+                                    <small>Keep sending a browser to the same destination (with a cookie) while that destination is healthy</small></label>
                             </div>
                             
                             <!-- Compatibility Settings -->
@@ -1163,6 +1174,7 @@
         
         let epttype = "host";
         let useStickySession =  $(editor).find(".UseStickySession")[0].checked;
+        let loadBalancingMode = $(editor).find(".LoadBalancingMode").val() || "weighted";
         let DisableUptimeMonitor = !$(editor).find(".EnableUptimeMonitor")[0].checked;
         let uptimeMonitorURI = $(editor).find(".UptimeMonitorURI").val().trim();
         let disableAutoFallback = false; //$(editor).find(".DisableAutoFallback")[0].checked;
@@ -1205,6 +1217,7 @@
                 "type": epttype,
                 "rootname": uuid,
                 "ss":useStickySession,
+                "lbmode": loadBalancingMode,
                 "dutm": DisableUptimeMonitor,
                 "utmURI": uptimeMonitorURI,
                 "dAutoFallback": disableAutoFallback,
@@ -1306,6 +1319,13 @@
     }
 
     //Custom fork: health check and caching indicators in the rule list
+    //Custom fork: the same load balancing methods as Layer 4 rules
+    const HTTP_LB_NAMES = {weighted: "Weighted", leastconn: "Least connections"};
+    const HTTP_LB_HINTS = {
+        weighted: "Each new request goes to a random healthy destination, in proportion to its weight. Destinations with weight 0 are backups.",
+        leastconn: "Each new request goes to the healthy destination with the fewest requests in progress for its weight. Destinations with weight 0 are backups."
+    };
+
     function renderHealthCacheCell(subd){
         let hc = subd.HealthCheck;
         let parts = [];
@@ -1317,6 +1337,12 @@
             let kind = hc.activeEnabled && hc.passiveEnabled ? "Active + passive" : (hc.activeEnabled ? "Active" : "Passive");
             let title = htmlEscape(describeHealthCheck(hc));
             parts.push(`<span class="hcIndicator" title="${title}"><i class="grey heartbeat icon"></i><span class="hcIndicatorText">${kind}</span></span>`);
+        }
+        if (subd.ActiveOrigins && subd.ActiveOrigins.length > 1){
+            parts.push(`<span title="Load balancing"><i class="grey random icon"></i>${HTTP_LB_NAMES[subd.LoadBalancingMode == "leastconn" ? "leastconn" : "weighted"]}</span>`);
+        }
+        if (subd.UseStickySession){
+            parts.push(`<span title="Sticky sessions: a browser keeps going to the same destination"><i class="grey thumbtack icon"></i>Sticky</span>`);
         }
         let ac = subd.AssetCache;
         if (ac && ac.enabled){
@@ -1970,6 +1996,15 @@
         editor.find(".DisableAutoFallback").prop("checked", subd.DisableAutoFallback);
         editor.find(".DisableAutoFallback").prop("disabled", subd.DisableUptimeMonitor);
         editor.find(".DisableAutoFallback").on("change", function() {
+            saveProxyInlineEdit(uuid);
+        });
+
+        let lbMode = subd.LoadBalancingMode == "leastconn" ? "leastconn" : "weighted";
+        editor.find(".LoadBalancingMode").off("change");
+        editor.find(".LoadBalancingMode").val(lbMode);
+        editor.find(".lbModeHint").text(HTTP_LB_HINTS[lbMode]);
+        editor.find(".LoadBalancingMode").on("change", function() {
+            editor.find(".lbModeHint").text(HTTP_LB_HINTS[$(this).val()] || "");
             saveProxyInlineEdit(uuid);
         });
 

@@ -90,7 +90,7 @@
                     </div>
                 </div>
                 <div class="ui message">
-                    <i class="ui blue info circle icon"></i> Requests are spread by weighted random. Set each destination's weight with its edit button; weight 0 makes it a fallback only.
+                    <i class="ui blue info circle icon"></i> Set each destination's weight with its edit button: a destination with weight 2 gets twice the share of one with weight 1, and weight 0 makes it a backup, used only when no other destination is available. Choose weighted or least connections balancing in the rule editor (Destinations).
                  </div>
             </div>
             <div class="ui tab basic segment" data-tab="newupstream">
@@ -99,7 +99,7 @@
                     <i class="green add icon"></i>
                     <div class="content">
                         Add Destination Server
-                        <div class="sub header">Create new load balance or fallback destination</div>
+                        <div class="sub header">Add a load balancing or backup destination</div>
                     </div>
                 </h4>
                 <p style="margin-bottom: 0.4em;">Destination IP address or domain name with port</p>
@@ -272,7 +272,7 @@
                         </div>
                         <div class="content">
                         <a href="${htmlEscape(url)}" target="_blank" class="upstreamLink">${htmlEscape(upstream.OriginIpOrDomain)}</a>&nbsp;${tlsIcon}
-                            <div class="sub header">${isActive?(upstream.Weight==0?"Fallback Only":"Active"):"Inactive"} | Weight: ${upstream.Weight}x </div>
+                            <div class="sub header">${isActive?(upstream.Weight==0?"Backup only":"Active"):"Inactive"} | Weight: ${upstream.Weight}x </div>
                         </div>
                     </h4>
                     <div class="advanceOptions" style="display:none;">
@@ -289,7 +289,7 @@
                             <div class="ui small input" style="margin-top: -0.6em; width: 8em;">
                                 <input type="number" class="newWeight" min="0" max="100" step="1" value="${parseInt(upstream.Weight) || 0}">
                             </div>
-                            <br><small>Share of requests compared with the other destinations (weighted random): a destination with weight 2 gets twice as many as one with 1. 0 makes it a fallback, used only when no destination with a higher weight is available.</small>
+                            <br><small>Share of the load compared with the other destinations: a destination with weight 2 gets twice as much as one with 1. 0 makes it a backup, used only when no destination with a higher weight is available.</small>
                         </div>
                         <div class="ui divider"></div>
                         <div class="ui checkbox">

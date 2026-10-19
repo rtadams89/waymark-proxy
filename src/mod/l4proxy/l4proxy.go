@@ -75,8 +75,10 @@ type ProxyRelayInstance struct {
 	Timeout              int                  //Timeout for connection in sec
 
 	/* Custom fork: upstream pool (pool_custom.go) */
-	Upstreams           []string            //Upstream servers (host:port); ProxyTargetAddr mirrors the first one
-	LoadBalancing       string              //roundrobin (default), leastconn, sourcehash or failover
+	Destinations        []Destination       //Destination servers with weights; Upstreams and ProxyTargetAddr mirror them
+	Upstreams           []string            //Every destination address (for older versions)
+	LoadBalancing       string              //weighted (default) or leastconn; older modes are converted by normalizePool
+	StickySessions      bool                //Keep a client IP address on the same destination
 	HealthCheck         *healthcheck.Config //Active checks and passive monitoring; nil for none
 	CloseOnUpstreamDown bool                //Close open connections to an upstream when health checks take it out
 
@@ -114,8 +116,10 @@ type InstanceView struct {
 	AccessRuleUUID       string
 	EnableLogging        bool
 	Timeout              int
+	Destinations         []Destination
 	Upstreams            []string
 	LoadBalancing        string
+	StickySessions       bool
 	HealthCheck          *healthcheck.Config
 	CloseOnUpstreamDown  bool
 }
@@ -138,7 +142,11 @@ func (c *ProxyRelayInstance) View() InstanceView {
 		EnableLogging:        c.EnableLogging,
 		Timeout:              c.Timeout,
 		LoadBalancing:        c.LoadBalancing,
+		StickySessions:       c.StickySessions,
 		CloseOnUpstreamDown:  c.CloseOnUpstreamDown,
+	}
+	if c.Destinations != nil {
+		v.Destinations = append([]Destination{}, c.Destinations...)
 	}
 	if c.Upstreams != nil {
 		v.Upstreams = append([]string{}, c.Upstreams...)
@@ -193,6 +201,7 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 
 	//Load relay configs from db
 	previousRules := []*ProxyRelayInstance{}
+	convertedRules := false
 	l4ProxyConfigFiles, err := filepath.Glob(options.ConfigStore + "/*.config")
 	if err != nil {
 		return nil, err
@@ -238,6 +247,11 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 			options.Logger.PrintAndLog("l4-proxy", "Updated Layer 4 rule config with new UUID: "+thisRelayConfig.UUID, nil)
 		}
 
+		//Custom fork: rules from 2.9.1 and earlier get destinations with weights (pool_custom.go)
+		if thisRelayConfig.normalizePool() {
+			convertedRules = true
+		}
+
 		//Append the config to the list
 		previousRules = append(previousRules, thisRelayConfig)
 	}
@@ -259,6 +273,9 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 	//Inject manager into the rules
 	for _, rule := range previousRules {
 		rule.parent = thisManager
+	}
+	if convertedRules {
+		thisManager.SaveConfigToDatabase()
 	}
 	for _, rule := range previousRules {
 		if rule.Running {
@@ -298,6 +315,8 @@ func (m *Manager) NewConfig(config *ProxyRelayOptions) string {
 		ListeningAddress:            config.ListeningAddr,
 		ProxyTargetAddr:             config.ProxyAddr,
 		Upstreams:                   []string{config.ProxyAddr}, //Custom fork: pool_custom.go
+		Destinations:                []Destination{{Address: config.ProxyAddr, Weight: 1, Enabled: true}},
+		LoadBalancing:               LBWeighted,
 		UseTCP:                      config.UseTCP,
 		UseUDP:                      config.UseUDP,
 		ProxyProtocolVersion:        config.ProxyProtocolVersion,
@@ -396,9 +415,15 @@ func (m *Manager) EditConfig(newConfig *ProxyRuleUpdateConfig) error {
 	}
 	if newConfig.NewProxyAddr != "" {
 		foundConfig.ProxyTargetAddr = newConfig.NewProxyAddr
-		if len(foundConfig.Upstreams) <= 1 { //Custom fork: a single upstream follows the target address
+		if len(foundConfig.Destinations) <= 1 { //Custom fork: a single destination follows the target address
 			foundConfig.Upstreams = []string{newConfig.NewProxyAddr}
+			d := Destination{Address: newConfig.NewProxyAddr, Weight: 1, Enabled: true}
+			if len(foundConfig.Destinations) == 1 {
+				d.Weight, d.Enabled = foundConfig.Destinations[0].Weight, foundConfig.Destinations[0].Enabled
+			}
+			foundConfig.Destinations = []Destination{d}
 		}
+		foundConfig.syncAddresses()
 	}
 
 	foundConfig.UseTCP = newConfig.UseTCP

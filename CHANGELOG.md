@@ -10,6 +10,29 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.10.0
+
+Load balancing now works the same way for HTTP and Layer 4 proxy rules, with the same settings in the same places. Existing Layer 4 rules are converted automatically on the first start; no action is needed.
+
+**Changed: Layer 4 rules**
+- **Edit Destinations** looks and works like the HTTP one: each destination has an on/off toggle and a **weight** (0-100). Weight 0 makes a destination a backup, used only when no destination with a higher weight is healthy. The arrows for reordering destinations are gone, since the order no longer matters.
+- **Load Balancing** offers **Weighted** (the default: a random healthy destination in proportion to its weight, as for HTTP) or **Least connections** (the fewest open connections for its weight).
+- **Use Sticky Sessions** is its own checkbox, as for HTTP: a client IP address keeps going to the destination it was given while that destination is healthy, and is remembered for a day after its last connection.
+- Rules from earlier versions are converted: round robin becomes equal weights; failover becomes the first destination at weight 1 and the others as backups (weight 0); source IP hash becomes equal weights with sticky sessions; least connections stays.
+- The Add Layer 4 Rule page has the **Use Sticky Sessions** option, like Add Proxy Rule.
+- The list's Health / Balancing column shows the method and "Sticky", as the HTTP list now does.
+
+**Added: HTTP proxy rules**
+- **Load Balancing** in the rule editor (Destinations): **Weighted** (the behaviour so far) or **Least connections**, which sends each request to the destination with the fewest requests in progress for its weight.
+- The HTTP Proxies list shows the load balancing method (with more than one destination) and "Sticky" in the Health / Cache column.
+
+**Changed: wording**
+- "Fallback" destinations are called backups everywhere, and the sticky session options read the same on both kinds of rule.
+
+**API**
+- `/api/l4proxy/config/pool` takes `destinations` (`address`, `weight`, `enabled`), `loadBalancing` (`weighted` or `leastconn`) and `stickySessions`. A plain `upstreams` address list is still accepted (each destination with weight 1).
+- `/api/proxy/edit` takes `lbmode` (`weighted` or `leastconn`).
+
 ## 2.9.1
 
 A terminology clean-up release: the same thing now has the same name everywhere in the web interface, the logs and the documentation. No configuration changes are needed.

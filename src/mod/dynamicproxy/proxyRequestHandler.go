@@ -182,13 +182,15 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	}
 
 	/* Load balancing */
-	selectedUpstream, err := h.Parent.loadBalancer.GetRequestUpstreamTarget(w, r, target.ActiveOrigins, target.UseStickySession, autoFallbackOff(target))
+	selectedUpstream, err := h.Parent.loadBalancer.GetRequestUpstreamTarget(w, r, target.ActiveOrigins, target.UseStickySession, autoFallbackOff(target), target.LoadBalancingMode)
 	if err != nil {
 		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 		h.Parent.Option.Logger.PrintAndLog("http-proxy", "Failed to assign a destination for this request", err)
 		h.Parent.logRequest(r, false, 521, "subdomain-http", r.URL.Hostname(), r.Host, target)
 		return
 	}
+	//Custom fork: count the request in progress for least connections
+	defer h.Parent.loadBalancer.Track(selectedUpstream.OriginIpOrDomain)()
 
 	/* Upstream Host Swap (use to detect loopback to self) */
 	if h.upstreamHostSwap(w, r, selectedUpstream, target) {

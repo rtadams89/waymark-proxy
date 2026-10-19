@@ -3,41 +3,46 @@ package l4proxy
 /*
 	pool_custom.go (custom fork)
 
-	Upstream pools for Layer 4 proxies: several upstream servers per rule,
-	load balancing between the healthy ones, and health checks (run by
-	mod/healthcheck from the main package, which reports each upstream's
-	state with Manager.SetUpstreamOnline).
+	Destination pools for Layer 4 rules, load balanced the same way as HTTP
+	proxy rules (mod/dynamicproxy/loadbalance):
+	- each destination has a weight (0-100) and can be turned off; weight 0
+	  makes it a backup, used only when no destination with a weight above 0
+	  is healthy
+	- weighted (the default): a new TCP connection or UDP client session goes
+	  to a random healthy destination, in proportion to its weight
+	- leastconn: to the healthy destination with the fewest open connections
+	  (TCP) or sessions (UDP) for its weight
+	- sticky sessions: a client IP address keeps going to the destination it
+	  was given while that destination is healthy (remembered for a day
+	  after its last connection), like the HTTP sticky session cookie
 
-	Load balancing modes:
-	- roundrobin: each new TCP connection or UDP client session goes to the
-	  next healthy upstream
-	- leastconn: to the healthy upstream with the fewest open connections
-	  (TCP) or sessions (UDP)
-	- sourcehash: the same client IP address always goes to the same
-	  upstream while the set of healthy upstreams stays the same
-	  (rendezvous hashing, so a change only moves the clients of the
-	  upstream that came or went)
-	- failover: the first healthy upstream in the list; the others are
-	  backups, used in order
+	Health checks are run by mod/healthcheck from the main package, which
+	reports each destination's state with Manager.SetUpstreamOnline.
 
-	TCP: when connecting to the chosen upstream fails, the next candidate is
-	tried before the client connection is given up. With no healthy upstream
-	the client connection is closed at once. UDP: a new client session goes
-	to the first candidate; with no healthy upstream its packets are dropped.
+	TCP: when connecting to the chosen destination fails, the others are
+	tried before the client connection is given up. With no healthy
+	destination the client connection is closed at once. UDP: a new client
+	session goes to the first candidate; with no healthy destination its
+	packets are dropped.
 
 	A connection failure (refused, unreachable, timed out; for UDP an ICMP
 	port unreachable) is reported to passive monitoring.
 
-	With CloseOnUpstreamDown, connections and sessions to an upstream are
+	With CloseOnUpstreamDown, connections and sessions to a destination are
 	closed when health checks take it out of load balancing.
+
+	Rules saved by Waymark 2.9.1 and earlier have a plain address list and
+	one of four modes; normalizePool converts them (round robin: equal
+	weights; failover: the first destination, the others as backups; source
+	IP hash: equal weights with sticky sessions).
 */
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"sort"
@@ -51,18 +56,40 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// Load balancing modes.
+// Load balancing methods, the same as HTTP proxy rules.
 const (
-	LBRoundRobin = "roundrobin"
-	LBLeastConn  = "leastconn"
-	LBSourceHash = "sourcehash"
-	LBFailover   = "failover"
+	LBWeighted  = "weighted"
+	LBLeastConn = "leastconn"
 )
 
-// MaxUpstreams is the most upstream servers one Layer 4 proxy can have.
+// Modes of Waymark 2.9.1 and earlier, converted by normalizePool.
+const (
+	legacyRoundRobin = "roundrobin"
+	legacySourceHash = "sourcehash"
+	legacyFailover   = "failover"
+)
+
+// MaxUpstreams is the most destination servers one Layer 4 rule can have.
 const MaxUpstreams = 32
 
+// MaxWeight is the highest destination weight (as for HTTP proxy rules).
+const MaxWeight = 100
+
 const upstreamDialTimeout = 5 * time.Second
+
+// Sticky sessions: how long a client IP address is remembered after its
+// last connection, and how many are remembered per rule.
+const (
+	stickyTTL = 24 * time.Hour
+	stickyMax = 65536
+)
+
+// Destination is one destination server of a Layer 4 rule.
+type Destination struct {
+	Address string `json:"address"` // host:port
+	Weight  int    `json:"weight"`  // 0-100; 0: backup only
+	Enabled bool   `json:"enabled"` // off: kept but not used
+}
 
 // upstreamStats counts one upstream's use by one rule.
 type upstreamStats struct {
@@ -73,13 +100,20 @@ type upstreamStats struct {
 }
 
 type upstreamPool struct {
-	mu    sync.Mutex
-	stats map[string]*upstreamStats
-	rr    atomic.Uint64
+	mu     sync.Mutex
+	stats  map[string]*upstreamStats
+	sticky map[string]stickyEntry // client IP -> destination (guarded by mu)
+}
+
+type stickyEntry struct {
+	addr string
+	seen time.Time
 }
 
 func (c *ProxyRelayInstance) getPool() *upstreamPool {
-	c.poolOnce.Do(func() { c.pool = &upstreamPool{stats: map[string]*upstreamStats{}} })
+	c.poolOnce.Do(func() {
+		c.pool = &upstreamPool{stats: map[string]*upstreamStats{}, sticky: map[string]stickyEntry{}}
+	})
 	return c.pool
 }
 
@@ -99,28 +133,99 @@ func (c *ProxyRelayInstance) HealthRuleID() string {
 	return "l4:" + strings.ToLower(c.UUID)
 }
 
-// UpstreamList is the rule's upstream servers. Rules saved before pools
-// existed have only ProxyTargetAddr.
-func (c *ProxyRelayInstance) UpstreamList() []string {
-	c.poolMu.RLock()
-	defer c.poolMu.RUnlock()
-	if len(c.Upstreams) > 0 {
-		return append([]string{}, c.Upstreams...)
+// normalizePool fills Destinations from the address list of older rules,
+// converts their load balancing mode, and keeps Upstreams and
+// ProxyTargetAddr in step with Destinations. Call with poolMu held for
+// writing (or before the rule is shared). Reports whether anything changed.
+func (c *ProxyRelayInstance) normalizePool() bool {
+	changed := false
+	if len(c.Destinations) == 0 {
+		addrs := c.Upstreams
+		if len(addrs) == 0 && strings.TrimSpace(c.ProxyTargetAddr) != "" {
+			addrs = []string{strings.TrimSpace(c.ProxyTargetAddr)}
+		}
+		for i, a := range addrs {
+			w := 1
+			if c.LoadBalancing == legacyFailover && i > 0 {
+				w = 0
+			}
+			c.Destinations = append(c.Destinations, Destination{Address: a, Weight: w, Enabled: true})
+		}
+		if c.LoadBalancing == legacySourceHash {
+			c.StickySessions = true
+		}
+		changed = len(addrs) > 0
 	}
-	if t := strings.TrimSpace(c.ProxyTargetAddr); t != "" {
-		return []string{t}
+	switch c.LoadBalancing {
+	case LBWeighted, LBLeastConn:
+	default:
+		c.LoadBalancing = LBWeighted
+		changed = true
 	}
-	return nil
+	c.syncAddresses()
+	return changed
 }
 
-func (c *ProxyRelayInstance) lbMode() string {
+// syncAddresses mirrors Destinations into Upstreams (every address, for
+// older versions and the list view) and ProxyTargetAddr (the first enabled
+// destination).
+func (c *ProxyRelayInstance) syncAddresses() {
+	if len(c.Destinations) == 0 {
+		return
+	}
+	addrs := make([]string, 0, len(c.Destinations))
+	first := ""
+	for _, d := range c.Destinations {
+		addrs = append(addrs, d.Address)
+		if first == "" && d.Enabled {
+			first = d.Address
+		}
+	}
+	if first == "" {
+		first = addrs[0]
+	}
+	c.Upstreams = addrs
+	c.ProxyTargetAddr = first
+}
+
+// DestinationList is a copy of the rule's destinations, enabled or not.
+func (c *ProxyRelayInstance) DestinationList() []Destination {
 	c.poolMu.RLock()
 	defer c.poolMu.RUnlock()
-	switch c.LoadBalancing {
-	case LBLeastConn, LBSourceHash, LBFailover:
-		return c.LoadBalancing
+	if len(c.Destinations) > 0 {
+		return append([]Destination{}, c.Destinations...)
 	}
-	return LBRoundRobin
+	// A rule that has not been normalised yet (tests, older callers)
+	out := []Destination{}
+	addrs := c.Upstreams
+	if len(addrs) == 0 && strings.TrimSpace(c.ProxyTargetAddr) != "" {
+		addrs = []string{strings.TrimSpace(c.ProxyTargetAddr)}
+	}
+	for _, a := range addrs {
+		out = append(out, Destination{Address: a, Weight: 1, Enabled: true})
+	}
+	return out
+}
+
+// UpstreamList is the addresses of the rule's enabled destinations: the
+// ones that are load balanced and health checked.
+func (c *ProxyRelayInstance) UpstreamList() []string {
+	var out []string
+	for _, d := range c.DestinationList() {
+		if d.Enabled {
+			out = append(out, d.Address)
+		}
+	}
+	return out
+}
+
+func (c *ProxyRelayInstance) lbSettings() (mode string, sticky bool) {
+	c.poolMu.RLock()
+	defer c.poolMu.RUnlock()
+	if c.LoadBalancing == LBLeastConn {
+		return LBLeastConn, c.StickySessions
+	}
+	return LBWeighted, c.StickySessions
 }
 
 func (c *ProxyRelayInstance) upstreamOnline(addr string) bool {
@@ -130,44 +235,125 @@ func (c *ProxyRelayInstance) upstreamOnline(addr string) bool {
 	return c.parent.UpstreamOnline(addr)
 }
 
-// candidates returns the healthy upstreams in the order to try them for a
-// new connection or session from clientIP.
+// candidates returns the healthy enabled destinations in the order to try
+// them for a new connection or session from clientIP: the chosen one
+// first, then the other destinations with a weight above 0, then backups.
 func (c *ProxyRelayInstance) candidates(clientIP string) []string {
-	all := c.UpstreamList()
-	healthy := make([]string, 0, len(all))
-	for _, a := range all {
-		if c.upstreamOnline(a) {
-			healthy = append(healthy, a)
+	mode, sticky := c.lbSettings()
+	var primary, backup []Destination
+	for _, d := range c.DestinationList() {
+		if !d.Enabled || !c.upstreamOnline(d.Address) {
+			continue
+		}
+		if d.Weight > 0 {
+			primary = append(primary, d)
+		} else {
+			backup = append(backup, d)
 		}
 	}
-	if len(healthy) <= 1 {
-		return healthy
+	if len(primary) == 0 {
+		// Only backups are healthy: they share the load evenly
+		primary, backup = backup, nil
+		for i := range primary {
+			primary[i].Weight = 1
+		}
+	}
+	if len(primary) == 0 {
+		return nil
 	}
 	pool := c.getPool()
-	switch c.lbMode() {
-	case LBFailover:
-		return healthy
-	case LBSourceHash:
-		score := func(a string) uint64 {
-			h := fnv.New64a()
-			h.Write([]byte(clientIP))
-			h.Write([]byte{0})
-			h.Write([]byte(a))
-			return h.Sum64()
+	ordered := c.order(primary, mode)
+	if sticky && clientIP != "" {
+		if addr, ok := pool.stickyGet(clientIP); ok {
+			for i, d := range ordered {
+				if d.Address == addr {
+					ordered = append([]Destination{d}, append(ordered[:i:i], ordered[i+1:]...)...)
+					break
+				}
+			}
 		}
-		sort.SliceStable(healthy, func(i, j int) bool { return score(healthy[i]) > score(healthy[j]) })
-		return healthy
-	case LBLeastConn:
-		start := int(pool.rr.Add(1) % uint64(len(healthy)))
-		rotated := append(append([]string{}, healthy[start:]...), healthy[:start]...)
-		sort.SliceStable(rotated, func(i, j int) bool {
-			return pool.get(rotated[i]).active.Load() < pool.get(rotated[j]).active.Load()
-		})
-		return rotated
-	default:
-		start := int((pool.rr.Add(1) - 1) % uint64(len(healthy)))
-		return append(append([]string{}, healthy[start:]...), healthy[:start]...)
+		pool.stickySet(clientIP, ordered[0].Address)
 	}
+	out := make([]string, 0, len(ordered)+len(backup))
+	for _, d := range ordered {
+		out = append(out, d.Address)
+	}
+	rand.Shuffle(len(backup), func(i, j int) { backup[i], backup[j] = backup[j], backup[i] })
+	for _, d := range backup {
+		out = append(out, d.Address)
+	}
+	return out
+}
+
+// order sorts destinations (all with weight > 0) for a new connection:
+// leastconn by open connections per weight, weighted by repeated weighted
+// random draws, so the first one is picked in proportion to its weight.
+func (c *ProxyRelayInstance) order(list []Destination, mode string) []Destination {
+	list = append([]Destination{}, list...)
+	if mode == LBLeastConn {
+		pool := c.getPool()
+		rand.Shuffle(len(list), func(i, j int) { list[i], list[j] = list[j], list[i] }) // even ties
+		load := func(d Destination) float64 {
+			return float64(pool.get(d.Address).active.Load()+1) / float64(d.Weight)
+		}
+		sort.SliceStable(list, func(i, j int) bool { return load(list[i]) < load(list[j]) })
+		return list
+	}
+	out := make([]Destination, 0, len(list))
+	for len(list) > 0 {
+		total := 0
+		for _, d := range list {
+			total += d.Weight
+		}
+		r := rand.Intn(total)
+		for i, d := range list {
+			if r < d.Weight {
+				out = append(out, d)
+				list = append(list[:i], list[i+1:]...)
+				break
+			}
+			r -= d.Weight
+		}
+	}
+	return out
+}
+
+func (p *upstreamPool) stickyGet(client string) (string, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	e, ok := p.sticky[client]
+	if !ok || time.Since(e.seen) > stickyTTL {
+		return "", false
+	}
+	return e.addr, true
+}
+
+func (p *upstreamPool) stickySet(client, addr string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if _, ok := p.sticky[client]; !ok && len(p.sticky) >= stickyMax {
+		now := time.Now()
+		for k, e := range p.sticky {
+			if now.Sub(e.seen) > stickyTTL {
+				delete(p.sticky, k)
+			}
+		}
+		// Still full: forget a quarter (map order is random)
+		for k := range p.sticky {
+			if len(p.sticky) < stickyMax*3/4 {
+				break
+			}
+			delete(p.sticky, k)
+		}
+	}
+	p.sticky[client] = stickyEntry{addr: addr, seen: time.Now()}
+}
+
+// forgetSticky drops the remembered clients (when the destinations change).
+func (p *upstreamPool) forgetSticky() {
+	p.mu.Lock()
+	p.sticky = map[string]stickyEntry{}
+	p.mu.Unlock()
 }
 
 // track counts a connection or session to addr and remembers it for
@@ -349,25 +535,45 @@ func validHostname(h string) bool {
 
 // PoolSettings are the pool settings of one rule, as the UI sends them.
 type PoolSettings struct {
-	Upstreams           []string            `json:"upstreams"`
-	LoadBalancing       string              `json:"loadBalancing"`
+	Destinations        []Destination       `json:"destinations"`
+	Upstreams           []string            `json:"upstreams,omitempty"` // older clients: addresses, each with weight 1
+	LoadBalancing       string              `json:"loadBalancing"`       // weighted (default) or leastconn
+	StickySessions      bool                `json:"stickySessions"`
 	HealthCheck         *healthcheck.Config `json:"healthCheck"` // nil: no checks
 	CloseOnUpstreamDown bool                `json:"closeOnUpstreamDown"`
 }
 
 // Validate checks settings for a rule using the given protocols.
 func (p *PoolSettings) Validate(useTCP, useUDP bool) error {
-	ups, err := ValidateUpstreams(p.Upstreams)
+	if len(p.Destinations) == 0 {
+		for _, a := range p.Upstreams {
+			p.Destinations = append(p.Destinations, Destination{Address: a, Weight: 1, Enabled: true})
+		}
+	}
+	addrs := make([]string, 0, len(p.Destinations))
+	for _, d := range p.Destinations {
+		addrs = append(addrs, d.Address)
+	}
+	ups, err := ValidateUpstreams(addrs)
 	if err != nil {
 		return err
 	}
-	p.Upstreams = ups
+	if len(ups) != len(p.Destinations) {
+		return errors.New("a destination address is empty")
+	}
+	for i := range p.Destinations {
+		p.Destinations[i].Address = ups[i]
+		if w := p.Destinations[i].Weight; w < 0 || w > MaxWeight {
+			return fmt.Errorf("%s: weight must be a whole number from 0 to %d", ups[i], MaxWeight)
+		}
+	}
+	p.Upstreams = nil
 	switch p.LoadBalancing {
 	case "":
-		p.LoadBalancing = LBRoundRobin
-	case LBRoundRobin, LBLeastConn, LBSourceHash, LBFailover:
+		p.LoadBalancing = LBWeighted
+	case LBWeighted, LBLeastConn:
 	default:
-		return errors.New("unknown load balancing mode")
+		return errors.New("unknown load balancing method")
 	}
 	if p.HealthCheck != nil {
 		cfg, err := p.HealthCheck.Validate()
@@ -412,21 +618,27 @@ func (m *Manager) ApplyPoolSettings(uuid string, p *PoolSettings) error {
 		return err
 	}
 	c.poolMu.Lock()
-	c.Upstreams = p.Upstreams
-	c.ProxyTargetAddr = p.Upstreams[0] // kept for older versions and the list view
+	c.Destinations = append([]Destination{}, p.Destinations...)
+	c.syncAddresses() // Upstreams and ProxyTargetAddr, for older versions and the list view
 	c.LoadBalancing = p.LoadBalancing
+	c.StickySessions = p.StickySessions
 	c.HealthCheck = p.HealthCheck
 	c.CloseOnUpstreamDown = p.CloseOnUpstreamDown
 	c.poolMu.Unlock()
+	if !p.StickySessions {
+		c.getPool().forgetSticky()
+	}
 	m.SaveConfigToDatabase()
 	m.changed()
-	// Running connections keep their upstream; new ones use the new list
+	// Running connections keep their destination; new ones use the new list
 	return nil
 }
 
-// UpstreamInfo is one upstream's state for the UI.
+// UpstreamInfo is one destination's state for the UI.
 type UpstreamInfo struct {
 	Address string `json:"address"`
+	Weight  int    `json:"weight"`
+	Enabled bool   `json:"enabled"`
 	Online  bool   `json:"online"` // health checks let it receive traffic
 	Active  int64  `json:"active"` // open connections or sessions
 	Total   uint64 `json:"total"`
@@ -437,9 +649,9 @@ type UpstreamInfo struct {
 func (c *ProxyRelayInstance) UpstreamInfos() []UpstreamInfo {
 	out := []UpstreamInfo{}
 	pool := c.getPool()
-	for _, a := range c.UpstreamList() {
-		s := pool.get(a)
-		out = append(out, UpstreamInfo{Address: a, Online: c.upstreamOnline(a), Active: s.active.Load(), Total: s.total.Load(), Failed: s.failed.Load()})
+	for _, d := range c.DestinationList() {
+		s := pool.get(d.Address)
+		out = append(out, UpstreamInfo{Address: d.Address, Weight: d.Weight, Enabled: d.Enabled, Online: c.upstreamOnline(d.Address), Active: s.active.Load(), Total: s.total.Load(), Failed: s.failed.Load()})
 	}
 	return out
 }

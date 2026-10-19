@@ -715,6 +715,14 @@ func ReverseProxyHandleEditEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	useStickySession, _ := utils.PostBool(r, "ss")
 
+	//Custom fork: load balancing method (loadbalance/leastconn_custom.go);
+	//not sent: keep the current one
+	lbMode, lbErr := utils.PostPara(r, "lbmode")
+	if lbErr == nil && !loadbalance.ValidLoadBalancingMode(lbMode) {
+		utils.SendErrorResponse(w, "unknown load balancing method")
+		return
+	}
+
 	//Load bypass TLS option
 	bypassGlobalTLS, _ := utils.PostBool(r, "bpgtls")
 
@@ -850,6 +858,9 @@ func ReverseProxyHandleEditEndpoint(w http.ResponseWriter, r *http.Request) {
 	newProxyEndpoint.RequireCaptcha = requireCaptcha
 	newProxyEndpoint.CaptchaConfig = captchaConfig
 	newProxyEndpoint.UseStickySession = useStickySession
+	if lbErr == nil {
+		newProxyEndpoint.LoadBalancingMode = lbMode
+	}
 	newProxyEndpoint.DisableUptimeMonitor = disbleUtm
 	newProxyEndpoint.UptimeMonitorURI = utmURI
 	newProxyEndpoint.DisableAutoFallback = disableAutoFallback

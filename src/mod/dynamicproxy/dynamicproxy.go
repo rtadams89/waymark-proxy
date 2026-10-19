@@ -463,13 +463,15 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 		defer cacheSession.Finish()
 	}
 
-	selectedUpstream, err := router.loadBalancer.GetRequestUpstreamTarget(w, r, sep.ActiveOrigins, sep.UseStickySession, autoFallbackOff(sep))
+	selectedUpstream, err := router.loadBalancer.GetRequestUpstreamTarget(w, r, sep.ActiveOrigins, sep.UseStickySession, autoFallbackOff(sep), sep.LoadBalancingMode)
 	if err != nil {
 		serveProxyRequestError(w, 404, router, ErrorTemplateHostError)
 		router.Option.Logger.PrintAndLog("http-proxy", "failed to get destination for hostname", err)
 		router.logRequest(r, false, 404, "vdir-http", r.Host, "", sep)
 		return
 	}
+	//Custom fork: count the request in progress for least connections
+	defer router.loadBalancer.Track(selectedUpstream.OriginIpOrDomain)()
 
 	if isWebSocketRequest(r) {
 		proxyHandler.hostWebSocketRequest(w, r, sep, selectedUpstream)

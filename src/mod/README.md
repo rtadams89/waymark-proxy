@@ -51,7 +51,7 @@ This directory contains all the modular components that make up the Waymark reve
 ### l4proxy
 **Purpose**: Layer 4 (TCP/UDP) proxy, called streamproxy in Zoraxy
 - Proxies TCP and UDP connections
-- Spreads connections over a pool of destination servers (round robin, least connections, source IP hash, failover)
+- Spreads connections over a pool of destination servers (weights and backups, weighted or least connections, sticky sessions by client IP)
 - Takes unhealthy destinations out using the healthcheck module
 
 ### websocketproxy

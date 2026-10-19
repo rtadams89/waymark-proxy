@@ -68,7 +68,7 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 
 **Layer 4 proxy rules** (TCP and UDP; called stream proxies in Zoraxy)
 - The **Layer 4 Proxies** page works like **HTTP Proxies**: the same list with a start/stop slider, filter and quick search, an **Add Layer 4 Rule** page, and the same editor, where each setting is saved as you change it.
-- **Destination pools:** several destination servers per rule, with round robin, least connections, source IP hash (sticky) or failover. A TCP connection that can't reach its destination is retried on the next one, and with no healthy destination new connections are closed at once.
+- **Destination pools:** several destination servers per rule, load balanced like HTTP proxy rules: a weight per destination (0 makes it a backup), each one can be turned off, weighted or least connections balancing, and sticky sessions by client IP address. A TCP connection that can't reach its destination is retried on the next one, and with no healthy destination new connections are closed at once.
 - **Health checks:** TCP connect, TCP send-and-expect (e.g. a banner or a PING/PONG), UDP send-and-expect, or ping, plus passive monitoring of failed connections, in the same Health Checks panel as HTTP proxy rules. Optionally close open connections to a destination when it goes down.
 - Destination health in the Layer 4 Proxies list, on **Health & Uptime** and in the Status page's **Destination Health** panel.
 
@@ -82,6 +82,7 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
 - **Status page panels** can be shown or hidden. New panels show destination health, cache hit rate and memory, and the HA cluster.
 - The HTTP Proxies list shows health check and cache state per rule, with a red heart on destinations that are down.
+- **Load balancing** works the same for HTTP and Layer 4 proxy rules: a weight per destination (0 makes it a backup), weighted or least connections balancing, and sticky sessions (a cookie for HTTP, the client IP address for Layer 4).
 - **DNS credential sets** for ACME DNS challenges: save a provider token once and use it for any number of certificates.
 - **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
 

@@ -21,8 +21,12 @@
                 display: inline;
                 overflow-wrap: anywhere;
             }
+            .upstreamEntry > h4.ui.header{
+                display: flex; /* keep the toggle beside a long status line */
+                align-items: flex-start;
+            }
             .upstreamEntry > h4.ui.header > .content{
-                padding-right: 6em; /* room for the buttons */
+                padding-right: 3em; /* room for the edit button */
             }
             #upstreamTable{
                 max-height: 480px;
@@ -36,6 +40,13 @@
             .upstreamEntry{
                 border-radius: 0.4em !important;
                 border: 1px solid rgb(233, 233, 233) !important;
+            }
+            .upstreamEntry.inactive{
+                background-color: #f3f3f3 !important;
+            }
+            .upstreamEntry .ui.toggle.checkbox input:checked ~ label::before,
+            #activateNewUpstream.ui.toggle.checkbox input:checked ~ label::before{
+                background-color: #00ca52 !important;
             }
             @media (max-width: 499px) {
                 .upstreamActions{
@@ -63,7 +74,7 @@
                     </div>
                 </div>
                 <div class="ui message">
-                    <i class="ui blue info circle icon"></i> <span id="lbModeHint"></span>
+                    <i class="ui blue info circle icon"></i> Set each destination's weight with its edit button: a destination with weight 2 gets twice the share of one with weight 1, and weight 0 makes it a backup, used only when no other destination is available. Choose weighted or least connections balancing in the rule editor (Destinations).
                 </div>
             </div>
             <div class="ui tab basic segment" data-tab="newupstream">
@@ -71,7 +82,7 @@
                     <i class="green add icon"></i>
                     <div class="content">
                         Add Destination Server
-                        <div class="sub header">Create a new load balance or failover destination</div>
+                        <div class="sub header">Add a load balancing or backup destination</div>
                     </div>
                 </h4>
                 <p style="margin-bottom: 0.4em;">Destination IP address or domain name with port</p>
@@ -79,6 +90,12 @@
                     <input type="text" id="newDestination" placeholder="192.168.0.101:25565">
                 </div>
                 <small>E.g. 192.168.0.101:25565, [fd00::5]:53 or db.example.lan:5432</small>
+                <br><br>
+                <div id="activateNewUpstream" class="ui toggle checkbox" style="display:inline-block;">
+                    <input type="checkbox" id="activateNewUpstreamCheckbox" style="margin-top: 0.4em;" checked>
+                    <label>Activate<br>
+                    <small>Enable this destination for load balancing</small></label>
+                </div>
                 <br><br>
                 <button class="ui basic button" onclick="addDestination();"><i class="ui green circle add icon"></i> Create</button>
             </div>
@@ -90,13 +107,6 @@
             let editingEndpoint = {};
             $('.menu .item').tab();
 
-            const LB_HINTS = {
-                roundrobin: "Load balancing: round robin. Each new connection or UDP client goes to the next healthy destination.",
-                leastconn: "Load balancing: least connections. New connections go to the healthy destination with the fewest open ones.",
-                sourcehash: "Load balancing: source IP hash. A client IP address keeps going to the same destination while the healthy set stays the same.",
-                failover: "Load balancing: failover. Always the first healthy destination in this list; the others are backups, in order. Use the arrows to change the order."
-            };
-
             function currentConfig(){
                 let c = parent.l4CurrentConfig ? parent.l4CurrentConfig() : null;
                 if (c == null || c.UUID != editingEndpoint.ep){
@@ -105,11 +115,13 @@
                 return c;
             }
 
+            // destinations is a copy of the rule's destinations: [{address, weight, enabled}]
             function destinations(){
                 let c = currentConfig();
-                return c ? parent.l4DestinationList(c).slice() : [];
+                return c ? parent.l4Destinations(c).map(d => ({address: d.address, weight: d.weight, enabled: d.enabled})) : [];
             }
 
+            // Laid out like the HTTP destination entries (upstreams.html)
             function initOriginList(){
                 let c = currentConfig();
                 let table = $("#upstreamTable");
@@ -118,35 +130,51 @@
                     table.append(`<div class="ui segment"><i class="ui yellow exclamation triangle icon"></i> This Layer 4 rule is no longer open in the editor.</div>`);
                     return;
                 }
-                $("#lbModeHint").text(LB_HINTS[c.LoadBalancing || "roundrobin"] || LB_HINTS.roundrobin);
-                let list = parent.l4DestinationList(c);
-                list.forEach((addr, i) => {
-                    let st = parent.l4DestinationStatus(c, addr);
-                    let detail = [st.title];
-                    if (c.Running){
-                        detail.push(st.active + " open");
-                        detail.push(st.total + " total");
-                        if (st.failed) detail.push(st.failed + " failed");
+                let list = destinations();
+                if (list.filter(d => d.enabled).length == 0){
+                    table.append(`<div class="ui segment"><b><i class="ui yellow exclamation triangle icon"></i> No Active Destination</b><br>
+                        New connections to this rule are closed. To fix this, add or enable a destination.</div>`);
+                }
+                list.forEach((d, i) => {
+                    let st = parent.l4DestinationStatus(c, d.address);
+                    let state = d.enabled ? (d.weight == 0 ? "Backup only" : "Active") : "Inactive";
+                    let detail = [state, "Weight: " + d.weight + "x"];
+                    if (d.enabled){
+                        detail.push(st.title);
+                        if (c.Running){
+                            detail.push(st.active + " open");
+                            if (st.failed) detail.push(st.failed + " failed");
+                        }
                     }
                     let isOnly = list.length == 1;
-                    table.append(`<div class="ui upstreamEntry basic segment" data-index="${i}">
+                    table.append(`<div class="ui upstreamEntry ${d.enabled ? "" : "inactive"} basic segment" data-index="${i}">
                         <h4 class="ui header">
-                            ${st.icon}
+                            <div class="ui toggle checkbox" style="display:inline-block;">
+                                <input type="checkbox" class="enableState" name="enabled" style="margin-top: 0.4em;" onchange="toggleDestination(${i}, this.checked);" ${d.enabled ? "checked" : ""}>
+                                <label></label>
+                            </div>
                             <div class="content">
-                                <span class="upstreamLink">${htmlEscape(addr)}</span>
+                                <span class="upstreamLink">${htmlEscape(d.address)}</span> ${d.enabled ? st.icon : ""}
                                 <div class="sub header">${htmlEscape(detail.join(" | "))}</div>
                             </div>
                         </h4>
                         <div class="advanceOptions" style="display:none;">
-                            <p>New destination IP address or domain name with port</p>
-                            <div class="ui small fluid input" style="margin-top: -0.6em;">
-                                <input type="text" class="newOrigin" value="${htmlEscape(addr)}">
+                            <div class="upstreamOriginField">
+                                <p>New destination IP address or domain name with port</p>
+                                <div class="ui small fluid input" style="margin-top: -0.6em;">
+                                    <input type="text" class="newOrigin" value="${htmlEscape(d.address)}">
+                                </div>
+                                <small>e.g. 192.168.0.101:25565 or db.example.lan:5432</small>
                             </div>
-                            <small>e.g. 192.168.0.101:25565 or db.example.lan:5432</small>
+                            <div class="upstreamWeightField" style="margin-top: 0.8em;">
+                                <p>Weight</p>
+                                <div class="ui small input" style="margin-top: -0.6em; width: 8em;">
+                                    <input type="number" class="newWeight" min="0" max="100" step="1" value="${parseInt(d.weight) || 0}">
+                                </div>
+                                <br><small>Share of the load compared with the other destinations: a destination with weight 2 gets twice as much as one with 1. 0 makes it a backup, used only when no destination with a higher weight is available.</small>
+                            </div>
                         </div>
                         <div class="upstreamActions">
-                            <button class="ui basic circular icon button movebtn ${i == 0 ? "disabled" : ""}" onclick="moveDestination(${i}, -1);" title="Move up (tried earlier in failover)"><i class="ui grey arrow up icon"></i></button>
-                            <button class="ui basic circular icon button movebtn ${i == list.length - 1 ? "disabled" : ""}" onclick="moveDestination(${i}, 1);" title="Move down"><i class="ui grey arrow down icon"></i></button>
                             <button class="ui basic circular icon editbtn button" onclick="editDestination(${i});" title="Edit Destination"><i class="ui grey edit icon"></i></button>
                             <button style="display:none;" class="ui basic circular icon trashbtn button ${isOnly ? "disabled" : ""}" onclick="removeDestination(${i});" title="${isOnly ? "A Layer 4 rule needs at least one destination" : "Remove Destination"}"><i class="ui red trash icon"></i></button>
                             <button style="display:none;" class="ui basic circular icon savebtn button" onclick="saveDestination(${i});" title="Save Changes"><i class="ui green save icon"></i></button>
@@ -154,18 +182,25 @@
                         </div>
                     </div>`);
                 });
+                $(".ui.checkbox").checkbox();
             }
 
             function save(list, done){
-                parent.saveL4Pool({upstreams: list}, function(err){
+                parent.saveL4Pool({destinations: list}, function(err){
                     initOriginList();
                     if (!err && done) done();
                 });
             }
 
+            function toggleDestination(i, enabled){
+                let list = destinations();
+                list[i].enabled = enabled;
+                save(list);
+            }
+
             function editDestination(i){
                 let entry = $(`.upstreamEntry[data-index=${i}]`);
-                $(".editbtn, .movebtn").hide();
+                $(".editbtn").hide();
                 entry.find(".trashbtn, .savebtn, .cancelbtn, .advanceOptions").show();
                 entry.find(".newOrigin").focus();
             }
@@ -173,12 +208,18 @@
             function saveDestination(i){
                 let entry = $(`.upstreamEntry[data-index=${i}]`);
                 let addr = entry.find(".newOrigin").val().trim();
+                let weight = parseInt(entry.find(".newWeight").val(), 10);
                 if (addr == ""){
                     parent.msgbox("Destination cannot be empty", false);
                     return;
                 }
+                if (isNaN(weight) || weight < 0 || weight > 100){
+                    parent.msgbox("Weight must be a whole number from 0 to 100", false);
+                    return;
+                }
                 let list = destinations();
-                list[i] = addr;
+                list[i].address = addr;
+                list[i].weight = weight;
                 save(list);
             }
 
@@ -187,18 +228,10 @@
                 if (list.length <= 1){
                     return;
                 }
-                if (!confirm("Confirm removing " + list[i] + " from the destinations?")){
+                if (!confirm("Confirm removing destination " + list[i].address + "?")){
                     return;
                 }
                 list.splice(i, 1);
-                save(list);
-            }
-
-            function moveDestination(i, by){
-                let list = destinations();
-                let j = i + by;
-                if (j < 0 || j >= list.length) return;
-                [list[i], list[j]] = [list[j], list[i]];
                 save(list);
             }
 
@@ -209,7 +242,7 @@
                     return;
                 }
                 let list = destinations();
-                list.push(addr);
+                list.push({address: addr, weight: 1, enabled: $("#activateNewUpstreamCheckbox")[0].checked});
                 save(list, function(){
                     $("#newDestination").val("");
                     $('.menu .item').tab("change tab", "upstreamlist");
@@ -225,7 +258,7 @@
                     initOriginList();
                     //Keep the health and connection counts current
                     setInterval(function(){
-                        if ($(".savebtn:visible").length == 0){
+                        if ($(".savebtn:visible").length == 0 && !$("#newDestination").is(":focus")){
                             initOriginList();
                         }
                     }, 5000);

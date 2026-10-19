@@ -270,8 +270,9 @@ func HandleL4HealthCheckSet(w http.ResponseWriter, r *http.Request) {
 	}
 	c := rule.View()
 	pool := &l4proxy.PoolSettings{
-		Upstreams:           rule.UpstreamList(),
+		Destinations:        rule.DestinationList(),
 		LoadBalancing:       c.LoadBalancing,
+		StickySessions:      c.StickySessions,
 		HealthCheck:         submitted,
 		CloseOnUpstreamDown: c.CloseOnUpstreamDown,
 	}

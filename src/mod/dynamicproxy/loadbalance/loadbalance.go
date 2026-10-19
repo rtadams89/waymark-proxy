@@ -32,6 +32,8 @@ type RouteManager struct {
 
 	cacheTicker     *time.Ticker //Ticker for cache cleanup
 	cacheTickerStop chan bool    //Stop the cache cleanup
+
+	inflight sync.Map //Custom fork: destination address -> *atomic.Int64 requests in progress (leastconn_custom.go)
 }
 
 /* Upstream or Origin Server */

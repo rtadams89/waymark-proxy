@@ -58,7 +58,7 @@
                                 <div class="field">
                                     <div class="ui checkbox">
                                         <input type="checkbox" id="useStickySessionLB">
-                                        <label>Sticky Session<br><small>Enable stick session on destination load balancing</small></label>
+                                        <label>Use Sticky Sessions<br><small>Keep sending a browser to the same destination (with a cookie) while that destination is healthy</small></label>
                                     </div>
                                 </div>
                                 <div class="field">
@@ -307,10 +307,10 @@
 
                     <div class="title" style="color: white;">
                         <i class="dropdown icon"></i>
-                        What is Sticky Session?
+                        What are Sticky Sessions?
                     </div>
                     <div class="content">
-                        <span style="font-size: 1.2em; font-weight: 300;"><i class="ui green sync icon"></i> Sticky Session (Session Affinity)</span><br>
+                        <span style="font-size: 1.2em; font-weight: 300;"><i class="ui green sync icon"></i> Sticky Sessions (Session Affinity)</span><br>
                         <p>
                             Sticky session ensures that requests from the same client are always forwarded to the same destination server. This is useful for applications that store session data locally and require the client to consistently connect to the same backend.<br>
                         </p>
@@ -322,7 +322,7 @@
                             <li>Open <b>Destinations</b> &rarr; <b>Edit Destinations</b> to add more destinations for load balancing.</li>
                         </ul>
                         <small>
-                            Sticky session will only work if you have more than one destination configured.
+                            Sticky sessions only matter when the rule has more than one destination.
                         </small>
                     </div>
                 </div>

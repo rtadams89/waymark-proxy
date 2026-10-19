@@ -272,14 +272,18 @@
                                 <div class="field">
                                     <label>Load Balancing</label>
                                     <select class="l4LoadBalancing">
-                                        <option value="roundrobin">Round robin</option>
+                                        <option value="weighted">Weighted</option>
                                         <option value="leastconn">Least connections</option>
-                                        <option value="sourcehash">Source IP hash (sticky)</option>
-                                        <option value="failover">Failover (first healthy in the list)</option>
                                     </select>
                                     <small class="l4Hint l4LBHint"></small>
                                 </div>
                             </div>
+                            <div class="ui checkbox" style="margin-top: 0.4em;">
+                                <input type="checkbox" class="l4StickySessions">
+                                <label>Use Sticky Sessions<br>
+                                    <small>Keep sending a client to the same destination (by its IP address) while that destination is healthy</small></label>
+                            </div>
+                            <br>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="l4CloseOnDown">
                                 <label>Close connections when a destination goes down<br>
@@ -336,18 +340,27 @@
     let l4HealthReasons = {};       // "l4:uuid|addr" -> why it is down
     let l4AccessRules = {};         // access rule ID -> rule, for the names under each rule
 
-    const L4_LB_NAMES = {roundrobin: "Round robin", leastconn: "Least connections", sourcehash: "Source IP hash", failover: "Failover"};
+    //Custom fork: the same load balancing methods as HTTP proxy rules
+    const L4_LB_NAMES = {weighted: "Weighted", leastconn: "Least connections"};
     const L4_LB_HINTS = {
-        roundrobin: "Each new connection or UDP client goes to the next healthy destination.",
-        leastconn: "To the healthy destination with the fewest open connections (UDP: client sessions).",
-        sourcehash: "A client IP address keeps going to the same destination while the healthy set stays the same.",
-        failover: "Always the first healthy destination in the list; the others are backups, in order."
+        weighted: "Each new connection or UDP client goes to a random healthy destination, in proportion to its weight. Destinations with weight 0 are backups.",
+        leastconn: "Each new connection or UDP client goes to the healthy destination with the fewest open connections for its weight. Destinations with weight 0 are backups."
     };
 
     /* Renderers */
 
+    // l4Destinations is a rule's destinations: [{address, weight, enabled}]
+    function l4Destinations(config){
+        if (config.Destinations && config.Destinations.length){
+            return config.Destinations;
+        }
+        let addrs = (config.Upstreams && config.Upstreams.length) ? config.Upstreams : (config.ProxyTargetAddr ? [config.ProxyTargetAddr] : []);
+        return addrs.map(a => ({address: a, weight: 1, enabled: true}));
+    }
+
+    // l4DestinationList is the addresses of a rule's enabled destinations
     function l4DestinationList(config){
-        return (config.Upstreams && config.Upstreams.length) ? config.Upstreams : (config.ProxyTargetAddr ? [config.ProxyTargetAddr] : []);
+        return l4Destinations(config).filter(d => d.enabled).map(d => d.address);
     }
 
     function l4HealthCheckOn(config){
@@ -376,7 +389,7 @@
     function l4DestinationsCell(config){
         let dests = l4DestinationList(config);
         if (dests.length == 0){
-            return `<i class="ui yellow exclamation triangle icon"></i> No Destination`;
+            return `<i class="ui yellow exclamation triangle icon"></i> No Active Destination`;
         }
         return dests.map(addr => {
             let st = l4DestinationStatus(config, addr);
@@ -413,7 +426,10 @@
             parts.push(`<span title="${htmlEscape(describeL4HealthCheck(hc))}"><i class="grey heartbeat icon"></i>${kind}</span>`);
         }
         if (l4DestinationList(config).length > 1){
-            parts.push(`<span title="Load balancing"><i class="grey random icon"></i>${htmlEscape(L4_LB_NAMES[config.LoadBalancing] || "Round robin")}</span>`);
+            parts.push(`<span title="Load balancing"><i class="grey random icon"></i>${htmlEscape(L4_LB_NAMES[config.LoadBalancing] || "Weighted")}</span>`);
+        }
+        if (config.StickySessions){
+            parts.push(`<span title="Sticky sessions: a client keeps going to the same destination"><i class="grey thumbtack icon"></i>Sticky</span>`);
         }
         if (config.CloseOnUpstreamDown){
             parts.push(`<span title="Open connections to a destination are closed when it goes down"><i class="grey unlink icon"></i>Close on down</span>`);
@@ -706,8 +722,9 @@
 
         editor.find(".l4_destination_list").html(l4DestinationsCell(c));
         editor.find(".l4HealthCheckSummary").text(describeL4HealthCheck(c.HealthCheck));
-        editor.find(".l4LoadBalancing").val(c.LoadBalancing || "roundrobin");
-        editor.find(".l4LBHint").text(L4_LB_HINTS[c.LoadBalancing || "roundrobin"] || "");
+        editor.find(".l4LoadBalancing").val(c.LoadBalancing == "leastconn" ? "leastconn" : "weighted");
+        editor.find(".l4LBHint").text(L4_LB_HINTS[c.LoadBalancing == "leastconn" ? "leastconn" : "weighted"]);
+        editor.find(".l4StickySessions").prop("checked", !!c.StickySessions);
         editor.find(".l4CloseOnDown").prop("checked", !!c.CloseOnUpstreamDown);
         editor.find(".l4ProxyProtocol").val(String(c.ProxyProtocolVersion || 0));
         editor.find(".l4ProxyProtocolUdpWarning").toggle(c.ProxyProtocolVersion === 1 && !!c.UseUDP);
@@ -762,8 +779,9 @@
         let c = l4Editing;
         if (c == null) return;
         let pool = {
-            upstreams: l4DestinationList(c),
-            loadBalancing: c.LoadBalancing || "roundrobin",
+            destinations: l4Destinations(c).map(d => ({address: d.address, weight: d.weight, enabled: d.enabled})),
+            loadBalancing: c.LoadBalancing == "leastconn" ? "leastconn" : "weighted",
+            stickySessions: !!c.StickySessions,
             healthCheck: c.HealthCheck || null,
             closeOnUpstreamDown: !!c.CloseOnUpstreamDown
         };
@@ -855,6 +873,9 @@
         });
         editor.find(".l4LoadBalancing").on("change", function(){
             saveL4Pool({loadBalancing: $(this).val()});
+        });
+        editor.find(".l4StickySessions").on("change", function(){
+            saveL4Pool({stickySessions: this.checked});
         });
         editor.find(".l4CloseOnDown").on("change", function(){
             saveL4Pool({closeOnUpstreamDown: this.checked});
