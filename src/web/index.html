@@ -161,6 +161,9 @@
                             <a class="item" tag="utils" tab_group="system">
                                 <i class="simplistic cog icon"></i> Settings
                             </a>
+                            <a class="item" tag="about" tab_group="system">
+                                <i class="simplistic info circle icon"></i> About
+                            </a>
                         </div>
                     </div>
 
@@ -258,6 +261,7 @@
 
                 <!-- Utilities -->
                 <div id="utils" class="functiontab" target="utils.html"></div>
+                <div id="about" class="functiontab" target="about.html"></div>
 
                 <!-- Plugin Context Menu -->
                 <div id="pluginContextWindow" class="functiontab" target="plugincontext.html"></div>
@@ -277,7 +281,8 @@
         <br>
         <div class="ui divider"></div>
         <div class="ui container" style="color: grey; font-size: 90%; padding-bottom: 1em;">
-            <p><a href="https://github.com/rtadams89/waymark-proxy" target="_blank">Waymark Proxy</a> <span class="zrversion"></span> © 2026 Ryan Adams · Based on <a href="https://github.com/tobychui/zoraxy" target="_blank">Zoraxy</a> © 2021 - <span class="year"></span> tobychui and contributors · Licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">GNU AGPL v3</a>, with no warranty · <a href="https://github.com/rtadams89/waymark-proxy" target="_blank">Source code</a></p>
+            <!-- Custom fork: copyright, license and source are on System > About (components/about.html) -->
+            <p>Waymark Proxy <span class="zrversion"></span> · <a href="#about" onclick="openTabById('about'); return false;">About, license &amp; source code</a></p>
         </div>
         
         <div id="messageBox" class="ui green floating big compact message">

@@ -295,7 +295,7 @@ Captures contain passwords, cookies, tokens and personal data. **Hide credential
 
 Read [CHANGELOG.md](CHANGELOG.md) first: a new major version (such as 2.0.0) lists the steps it needs.
 
-**From the web interface** (2.4.0 and later): **System > Settings > About** shows the latest release (Waymark asks GitHub once a day; **Check now** asks again), its release notes and an **Install** button. A pill next to the logo says when an update is available. Install:
+**From the web interface** (2.4.0 and later): **System > About** shows the latest release (Waymark asks GitHub once a day; **Check now** asks again), its release notes and an **Install** button. A pill next to the logo says when an update is available. Install:
 1. downloads `waymark_linux_amd64` and its `.sha256` from the GitHub release, over HTTPS, and checks the checksum;
 2. runs the new binary with `-version` to check that it starts and is the expected version;
 3. keeps the running binary as `waymark.prev` and swaps the new one in;
@@ -305,7 +305,7 @@ If the new version is started three times without staying up for two minutes (fo
 
 **By hand:** download the new binary as in [Install](#install) step 2, then run `sudo systemctl restart waymark`.
 
-**HA cluster** (2.11.0 and later): click **Rolling update to x.y.z** on the HA page (Cluster), or **Rolling update of all nodes** on Settings > About, on any node. The active node then:
+**HA cluster** (2.11.0 and later): click **Rolling update to x.y.z** on the HA page (Cluster), or **Rolling update of all nodes** on System > About, on any node. The active node then:
 1. checks that every node answers, that it is the only active node, and that every standby is healthy, runs keepalived and is in sync;
 2. updates the standby nodes one at a time, lowest priority first; each one installs the release itself (as above) and must come back on the new version, healthy and as a standby, and stay that way for 20 seconds before the next one starts;
 3. makes the updated standby with the highest priority active, as **Make active** does;

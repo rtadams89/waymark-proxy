@@ -223,12 +223,18 @@
             </svg>
         </div>
         <div class="wavebase">
-            <p><a href="https://github.com/rtadams89/waymark-proxy" target="_blank">Waymark Proxy</a> · based on <a href="https://github.com/tobychui/zoraxy" target="_blank">Zoraxy</a> · <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">AGPL v3</a></p>
+            <!-- Custom fork: System > About needs a sign-in, so the license notice is also here in short -->
+            <p>Waymark Proxy, based on Zoraxy · <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">AGPL v3</a>, no warranty · <a href="https://github.com/rtadams89/waymark-proxy" target="_blank">Source code</a> · <a href="/index.html#about">About</a></p>
         </div>
     <script>
         AOS.init();
         var registerMode = false;
         var redirectionAddress = "/";
+        //Custom fork: a page asked for before signing in (e.g. #about from the
+        //footer, kept through the redirect to this page) opens after signing in
+        if (/^#[A-Za-z0-9]{1,32}$/.test(window.location.hash)){
+            redirectionAddress = "/index.html" + window.location.hash;
+        }
         var loginAddress = "/api/auth/login";
         $(".checkbox").checkbox();
         $(document).ready(function(){
@@ -409,4 +415,4 @@
         });
     </script>
     </body>
-</html>
+</html>

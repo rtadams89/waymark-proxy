@@ -1,12 +1,11 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Settings</h2>
-        <p>Admin account, Geo-IP, backup and restore, and information about this Waymark host. Logs are under Monitoring &gt; Logs.</p>
+        <p>Admin account, Geo-IP, backup and restore. Logs are under Monitoring &gt; Logs; version, updates and license under System &gt; About.</p>
     </div>
     <div class="ui top attached tabular menu">
         <a class="utils item active" data-tab="utiltab1"><i class="ui user circle blue icon"></i> Accounts</a>
         <a class="utils item" data-tab="utiltab4"><i class="ui grey cog icon"></i> System</a>
-        <a class="utils item" data-tab="utiltab5"><i class="ui teal info circle icon"></i> About</a>
     </div>
 
     <div class="ui bottom attached tab segment utilitiesTabs active" data-tab="utiltab1">
@@ -117,71 +116,6 @@
         <div class="ui divider"></div>
         
     </div>
-    <div class="ui bottom attached tab segment utilitiesTabs" data-tab="utiltab5">
-        <!-- Updates (script/updateNotice.js, selfupdate_custom.go) -->
-        <style>
-            #updateBox .updLabel{ display: inline-block; min-width: 9em; color: var(--text_color_secondary); }
-            #updateBox .updHint{ color: var(--text_color_secondary); font-size: 0.9em; }
-            #updateBox .updMono{ font-family: monospace; }
-            #updateBox pre.updNotes{ white-space: pre-wrap; word-break: break-word; max-height: 24em; overflow-y: auto; font-size: 0.85em; line-height: 1.45;
-                background: var(--theme_bg_secondary, rgba(128,128,128,0.08)); border: 1px solid var(--divider_color); border-radius: 0.5em; padding: 0.9em; margin-top: 0.5em; }
-            #updateBox > div{ margin-bottom: 0.3em; }
-        </style>
-        <h3 class="ui header">Updates</h3>
-        <div id="updateBox"><div class="ui active inline mini loader"></div></div>
-        <div class="ui divider"></div>
-        <!-- System Information -->
-        <div id="zoraxyinfo">
-            <h3 class="ui header">
-                System Information
-            </h3>
-            <p>Basic information about this Waymark host</p>
-            <table class="ui very basic collapsing celled table">
-                <tbody>
-                    <tr>
-                        <td>Host UUID</td>
-                        <td class="uuid"></td>
-                    </tr>
-                    <tr>
-                        <td>Version</td>
-                        <td class="version"></td>
-                    </tr>
-                    <tr>
-                        <td>Based on</td>
-                        <td class="upstreamBase"></td>
-                    </tr>
-                    <tr>
-                        <td>Build</td>
-                        <td class="development"></td>
-                    </tr>
-                    <tr>
-                        <td>Running Since</td>
-                        <td class="boottime"></td>
-                    </tr>
-                </tbody>
-            </table>
-            <p><b>Waymark Proxy</b> is maintained by Ryan Adams (<a href="https://github.com/rtadams89/waymark-proxy" target="_blank">github.com/rtadams89/waymark-proxy</a>). It is a modified version of <a href="https://github.com/tobychui/zoraxy" target="_blank">Zoraxy</a>, created by tobychui for <a href="//imuslab.com" target="_blank">imuslab</a> and developed with many contributors.</p>
-            <p>Waymark Proxy is free software under the <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">GNU Affero General Public License v3</a>. It comes with absolutely no warranty. Its complete source code is available from the repository above.</p>
-        </div>
-        <div class="ui divider"></div>
-        <!-- Financial Supporters -->
-        <h3><i class="heart red icon"></i> Zoraxy's Financial Supporters</h3>
-        <p>Waymark Proxy is built on Zoraxy, which is made possible by the generosity of its supporters. Thank you to everyone who has donated to keep Zoraxy free and open source.</p>
-        <div class="ui basic segment">
-            <div id="supportersList" class="ui">
-                <div class="ui active centered inline loader" style="margin: 2em 0;"></div>
-            </div>
-        </div>
-        <div class="ui divider"></div>
-        <!-- Privacy Notice -->
-        <div class="ui info message">
-            <i class="info circle icon"></i>
-            <strong>Privacy Notice:</strong> If you would prefer not to have your name displayed here, please open a pull request on the
-            <a href="https://github.com/tobychui/zoraxy" target="_blank">Zoraxy GitHub repository</a>
-            and edit the <code>src/web/script/supporters.txt</code> file — you may replace your name with a pseudonym or any text you like.
-            We fully respect your privacy and will merge such requests promptly.
-        </div>
-    </div>
     <br>
 </div>
 <script>
@@ -205,43 +139,6 @@
             $(".selfauthOnly").hide();
             $(".extAuthOnly").show();
         }
-    });
-
-    $.get("/api/info/x", function(data){
-        function timeConverter(UNIX_timestamp){
-            var a = new Date(UNIX_timestamp * 1000);
-            var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-            var year = a.getFullYear();
-            var month = months[a.getMonth()];
-            var date = a.getDate();
-            var hour = a.getHours();
-            var min = a.getMinutes();
-            var sec = a.getSeconds();
-            var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
-            return time;
-        }
-
-        function secondsToDhms(seconds) {
-            seconds = Number(seconds);
-            var d = Math.floor(seconds / (3600*24));
-            var h = Math.floor(seconds % (3600*24) / 3600);
-            var m = Math.floor(seconds % 3600 / 60);
-            var s = Math.floor(seconds % 60);
-
-            var dDisplay = d > 0 ? d + (d == 1 ? " day, " : " days, ") : "";
-            var hDisplay = h > 0 ? h + (h == 1 ? " hour, " : " hours, ") : "";
-            var mDisplay = m > 0 ? m + (m == 1 ? " minute, " : " minutes, ") : "";
-            var sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
-            return dDisplay + hDisplay + mDisplay + sDisplay;
-        }
-
-        console.log(data);
-        $("#zoraxyinfo .uuid").text(data.NodeUUID);
-        $("#zoraxyinfo .development").text(data.Development?"Development":"Release");
-        $("#zoraxyinfo .version").text(data.Version);
-        $.get("/api/info/brand", function(b){ if (b && b.upstreamBase){ $("#zoraxyinfo .upstreamBase").text("Zoraxy " + b.upstreamBase); } });
-        $(".zrversion").text("v." + data.Version); //index footer
-        $("#zoraxyinfo .boottime").text(timeConverter(data.BootTime) + ` ( ${secondsToDhms(parseInt(Date.now()/1000) - data.BootTime)} ago)`);
     });
 
     function changePassword() {
@@ -495,42 +392,3 @@
         }
     }
 
-    /*
-        Financial Supporters
-    */
-    function loadSupporters() {
-        $.get("/script/supporters.txt", function(raw) {
-            var names = [];
-            raw.split("\n").forEach(function(line) {
-                var trimmed = line.trim();
-                if (trimmed && trimmed[0] !== '#') {
-                    names.push(trimmed);
-                }
-            });
-
-            var container = $("#supportersList");
-            container.empty();
-
-            if (names.length === 0) {
-                container.html('<p style="color: grey;">No supporters listed yet.</p>');
-                return;
-            }
-
-            var html = '<div style="display: flex; flex-wrap: wrap; gap: 0.6em; padding: 0.5em 0;">';
-            names.forEach(function(name) {
-                html += '<div class="ui black label" style="font-size: 1em; padding: 0.6em 1em;">'
-                    + '<i class="heart red icon" style="color: #db2828 !important; background-color: transparent !important;"></i>'
-                    + $('<span>').text(name).html()
-                    + '</div>';
-            });
-            html += '</div>';
-            html += '<p style="margin-top: 1.2em; color: grey; font-size: 0.9em;">'
-                + names.length + ' generous supporter' + (names.length !== 1 ? 's' : '') + ' and counting &mdash; thank you!'
-                + '</p>';
-            container.html(html);
-        }).fail(function() {
-            $("#supportersList").html('<p style="color: grey;">Unable to load supporters list.</p>');
-        });
-    }
-
-    loadSupporters();

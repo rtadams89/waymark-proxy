@@ -3,8 +3,8 @@
 
     Waymark updates (selfupdate_custom.go):
     - a pill next to the logo when a newer release is available on GitHub
-      (click opens Settings > About)
-    - the Updates box on Settings > About: current and latest version,
+      (click opens System > About)
+    - the Updates box on System > About: current and latest version,
       release notes, Check now, Install and Roll back
     - while this node installs an update and restarts, waits for it to come
       back and reloads the page on the new version
@@ -31,8 +31,7 @@
     }
 
     window.updOpenAbout = function(){
-        openTabById("utils");
-        setTimeout(function(){ $('.menu .utils.item[data-tab="utiltab5"]').trigger("click"); }, 300);
+        openTabById("about");
     };
 
     function renderPill(){

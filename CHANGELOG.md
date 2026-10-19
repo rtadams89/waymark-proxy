@@ -22,6 +22,10 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - Health is shown the same way for HTTP and Layer 4 rules. Each destination has an icon in the Destination column: a green heart when healthy, a red heartbeat when down (hover for the reason), a grey outline heart until the first result, a grey circle when the rule has no health checks, and a grey ring when the rule is off. The Health / Balancing column's heartbeat sums it up: green when every destination is healthy, red with "x of n down", grey when the rule is off. Layer 4 rules used to show a grey heartbeat there whatever the state, and HTTP rules used to show a red heart only next to destinations that were down, plus a second one next to the host when all were down (that note is now in the heartbeat's tooltip).
 - Caching moved to the **Details** column and is always shown for HTTP rules: **Caching off**, or **Caching** with the hit rate and memory used since Waymark started (hover for the counts).
 
+**Changed: About is its own page**
+- **System > About** (was a tab of System > Settings) holds the updates, this host's details, and the license: Waymark's and Zoraxy's copyright, the AGPL v3 terms, no warranty, and links to the source code and license text. The update pill next to the logo opens it.
+- The page footer is now one line: the version and a link to About. The sign-in page keeps a short license line (About needs a sign-in) with a link that opens About after signing in.
+
 **Fixed**
 - Add Proxy Rule's **Advanced Settings** sometimes didn't open: the page shared an element ID with Virtual Directories.
 

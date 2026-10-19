@@ -254,7 +254,7 @@ func rollSetHold(d time.Duration, why string) {
 // its steps. states must hold every node (haFetchNodeStates).
 func rollPlan(states []haNodeState, target string) ([]rollStep, error) {
 	if len(states) < 2 {
-		return nil, errors.New("a rolling update needs at least two nodes; use Install on Settings > About instead")
+		return nil, errors.New("a rolling update needs at least two nodes; use Install on System > About instead")
 	}
 	for _, s := range states {
 		if s.Err != nil {
