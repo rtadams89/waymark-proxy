@@ -1,47 +1,10 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Settings</h2>
-        <p>Admin account, Geo-IP, backup and restore. Logs are under Monitoring &gt; Logs; version, updates and license under System &gt; About.</p>
-    </div>
-    <div class="ui top attached tabular menu">
-        <a class="utils item active" data-tab="utiltab1"><i class="ui user circle blue icon"></i> Accounts</a>
-        <a class="utils item" data-tab="utiltab4"><i class="ui grey cog icon"></i> System</a>
+        <p>Geo-IP, backup and restore, and statistics. The admin password is under System &gt; Admin Account, logs under Monitoring &gt; Logs, and version, updates and license under System &gt; About.</p>
     </div>
 
-    <div class="ui bottom attached tab segment utilitiesTabs active" data-tab="utiltab1">
-        <div class="extAuthOnly" style="display:none;">
-            <div class="ui basic segment">
-                <i class="ui green circle check icon"></i> Account options are not available due to -noauth flag is set to true.
-            </div>
-        </div>
-        <div class="selfauthOnly">
-            <h3>Change Password</h3>
-            <p>Update the current account credentials</p>
-            <div class="ui basic segment">
-                <h5><i class="chevron down icon"></i> Change Password</h5>
-                <div class="ui form">
-                    <div class="field">
-                        <label>Current Password</label>
-                        <input type="password" name="oldPassword" placeholder="Current Password">
-                    </div>
-                    <div class="field">
-                        <label>New Password</label>
-                        <input type="password" name="newPassword" placeholder="New Password">
-                    </div>
-                    <div class="field">
-                        <label>Confirm New Password</label>
-                        <input type="password" name="confirmNewPassword" placeholder="Confirm New Password">
-                    </div>
-                    <button class="ui basic button" onclick="changePassword()"><i class="ui teal key icon"></i> Change Password</button>
-                </div>
-    
-                <div id="passwordChangeSuccMsg" class="ui green message" style="display:none;">
-                    <i class="ui circle checkmark green icon "></i> Password Updated
-                </div>
-            </div>
-     </div>
-    </div>
-    <div class="ui bottom attached tab segment utilitiesTabs" data-tab="utiltab4">
+    <div class="ui segment">
         <!-- Custom fork: GeoIP lookups on/off (geoip_custom.go) -->
         <h3>Geo-IP Lookups</h3>
         <p>Resolves visitor IP addresses into countries for country-based access rules, visitor statistics and the status page's visitor map. On a proxy that only serves your own network, turning this off saves the memory the database uses and a lookup on every request.</p>
@@ -105,72 +68,18 @@
 
         <!-- Config Tools -->
         <h3>System Backup & Restore</h3>
-        <p>Options related to system backup, migrate and restore.</p>
+        <p>Export the configuration to a file, or restore one (also for moving Waymark to another host).</p>
         <button class="ui basic button" onclick="showSideWrapper('snippet/configTools.html');"><i class="ui green undo icon icon"></i> Open Config Tools</button>
         <div class="ui divider"></div>
         
-        <!-- Statistic Reset or Export -->
-        <h3>Advanced Statistics Operations</h3>
-        <p>Export or reset the statistics collected by Waymark within a selected time range</p>
+        <!-- Statistics reset -->
+        <h3>Statistics</h3>
+        <p>Reset everything Waymark has collected for the statistics pages. This can't be undone.</p>
         <button class="ui basic red button" onclick="handleResetAllStats();"><i class="trash icon"></i> RESET ALL STATISTICS</button>
-        <div class="ui divider"></div>
-        
     </div>
     <br>
 </div>
 <script>
-    $('.menu .utils.item').tab();
-    // Switch tabs when clicking on the menu items
-    $('.menu .utils.item').on('click', function() {
-        $('.menu .utils.item').removeClass('active');
-        $(this).addClass('active');
-        var tab = $(this).attr('data-tab');
-        $('.utilitiesTabs.tab.segment').removeClass('active');
-        $('div[data-tab="' + tab + '"]').addClass('active');
-    }); 
-
-    /*
-        Account Password utilities
-    */
-
-    $.get("/api/auth/userCount", function(data){
-        if (data == 0){
-            //Using external auth manager. Hide options
-            $(".selfauthOnly").hide();
-            $(".extAuthOnly").show();
-        }
-    });
-
-    function changePassword() {
-        const oldPassword = document.getElementsByName('oldPassword')[0].value;
-        const newPassword = document.getElementsByName('newPassword')[0].value;
-        const confirmNewPassword = document.getElementsByName('confirmNewPassword')[0].value;
-        
-        $.cjax({
-            type: "POST",
-            url: "/api/auth/changePassword",
-            data: {
-                oldPassword: oldPassword,
-                newPassword: newPassword,
-                confirmPassword: confirmNewPassword,
-            },
-            success: function (data) {
-                if (data.error != undefined){
-                    alert(data.error);
-                }else{
-                    $("#passwordChangeSuccMsg").stop().finish().slideDown("fast").delay(3000).slideUp("fast");
-                    $('[name="oldPassword"]').val('');
-                    $('[name="newPassword"]').val('');
-                    $('[name="confirmNewPassword"]').val('');
-                }
-            },
-            error: function (xhr, status, error) {
-                alert("Error changing password: " + error);
-            },
-        });
-    }
-
-
     /*
         Geo-IP Database Update
     */

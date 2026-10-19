@@ -10,6 +10,14 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.13.3
+
+**Changed: System menu**
+- **System > Admin Account** is its own page (was the Accounts tab of Settings): change the password of the account you are signed in with.
+- **System > Settings** is a single page without tabs: Geo-IP lookups, Geo-IP database updates, backup and restore, and statistics.
+- The System menu reads Listeners, High Availability, Static Web Server, Settings, Admin Account, About.
+- The statistics section no longer says it can export statistics (it only resets them).
+
 ## 2.13.2
 
 The same changes as the v2.13.1 tag, which was pushed while the version in the code still said 2.13.0 (so CI could not build it).

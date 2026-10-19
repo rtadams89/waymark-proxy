@@ -210,7 +210,7 @@ Tips:
   - **Destination server name**: the host name or IP address in the destination address, for a destination with its own certificate.
   - **Proxy host name**: the host name the client asked for, for a destination that serves the public site's certificate.
 - Hostnames that match no rule get the **Default Site** (**Proxy > Default Site**): an error page, a redirect, or the built-in static web server.
-- To export your configuration, use **System Backup & Restore** under **System > Settings**.
+- To export your configuration, use **System Backup & Restore** under **System > Settings**. The admin password is changed under **System > Admin Account**.
 
 ## High availability (optional)
 
