@@ -65,8 +65,8 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Host Routing
 	*/
 	//Extract request host to see if any proxy rule is matched
-	domainOnly := requestHostname(r.Host) //Custom fork: also handles IPv6 hosts
-	sep := h.Parent.GetProxyEndpointFromHostname(domainOnly)
+	domainOnly := requestHostname(r.Host)         //Custom fork: also handles IPv6 hosts
+	sep := h.Parent.GetProxyEndpointForRequest(r) //Custom fork: skips rules bound to another address (listenip_custom.go)
 	if sep != nil && !sep.Disabled {
 		//Matching proxy rule found
 		//Access Check (blacklist / whitelist)

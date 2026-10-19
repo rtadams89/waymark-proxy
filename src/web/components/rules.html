@@ -85,12 +85,18 @@
                     </div>
                     <!-- Advance configs -->
                     <div class="ui basic segment advanceoptions">
-                        <div id="advanceProxyRules" class="ui fluid accordion">
+                        <div id="advanceNewProxyRules" class="ui fluid accordion">
                             <div class="title">
                             <i class="dropdown icon"></i>
                             Advanced Settings
                             </div>
                             <div class="content">
+                                <!-- Custom fork: the address the rule answers on (listenip_custom.go) -->
+                                <div class="field">
+                                    <label>Listen On</label>
+                                    <select id="newRuleListenIP"></select>
+                                    <small>The address of this host the rule answers on. Any address unless you want this site on one floating IP only.</small>
+                                </div>
                                 <div class="field">
                                     <div class="ui checkbox">
                                         <input type="checkbox" id="useStickySessionLB">
@@ -431,6 +437,7 @@
                 cred: JSON.stringify(credentials),
                 access: accessRuleToUse,
                 stickysess: useStickySessionLB,
+                listenip: $("#newRuleListenIP").val() || "",
                 tags: tags,
                 enableUtm: enableUtm,
                 utmURI: utmURI,
@@ -696,9 +703,19 @@
     initNewProxyRuleAccessDropdownList();
 
     //Bind on tab switch events
+    function initNewRuleListenIPList(){
+        if (!window.loadProxyListenOptions) return;
+        let current = $("#newRuleListenIP").val() || "";
+        loadProxyListenOptions(function(opts){
+            fillListenIPSelect($("#newRuleListenIP"), opts, "");
+            if (opts && opts.options.some(o => o.address == current)) $("#newRuleListenIP").val(current);
+        });
+    }
+
     tabSwitchEventBind["rules"] = function(){
-        //Update the access rule lists
+        //Update the access rule lists and the addresses
         initNewProxyRuleAccessDropdownList();
+        initNewRuleListenIPList();
         if (window.refreshNewL4AccessList) refreshNewL4AccessList();
     }
 
@@ -723,12 +740,12 @@
             return events && events.click && events.click.length > 0;
         }
 
-         $("#advanceProxyRules").accordion();
-        if (!hasClickEvent($("#advanceProxyRules"))){
+         $("#advanceNewProxyRules").accordion();
+        if (!hasClickEvent($("#advanceNewProxyRules"))){
             // Not sure why sometime the accordion events are not binding
             // to the DOM element. This makes sure the element is binded
             // correctly by checking it again after 300ms
-            $("#advanceProxyRules").accordion();
+            $("#advanceNewProxyRules").accordion();
             $("#newProxyRuleAccessFilter").parent().dropdown();
             $("#mitigationAction").parent().dropdown();
             setTimeout(function(){

@@ -314,6 +314,8 @@
         }else if (st.online === false){
             let why = l4HealthReasons["l4:" + config.UUID.toLowerCase() + "|" + addr] || "taken out by health checks";
             icon = `<i class="red heartbeat icon"></i>`; title = "Down: " + why;
+        }else if (l4HealthCheckOn(config) && l4UpstreamState[config.UUID] === undefined){
+            icon = `<i class="grey heart outline icon"></i>`; title = "Health not known yet";
         }else if (l4HealthCheckOn(config)){
             icon = `<i class="green heart icon"></i>`; title = "Healthy";
         }else{
@@ -359,8 +361,16 @@
         let parts = [];
         let hc = config.HealthCheck;
         if (l4HealthCheckOn(config)){
+            //Coloured like the HTTP rules' indicator: green all healthy, red some down, grey stopped or not known yet
             let kind = hc.activeEnabled && hc.passiveEnabled ? "Active + passive" : (hc.activeEnabled ? "Active" : "Passive");
-            parts.push(`<span title="${htmlEscape(describeL4HealthCheck(hc))}"><i class="grey heartbeat icon"></i>${kind}</span>`);
+            let dests = l4DestinationList(config);
+            let known = l4UpstreamState[config.UUID] !== undefined;
+            let down = dests.filter(a => l4DestinationStatus(config, a).title.startsWith("Down")).length;
+            let color = !config.Running || !known || dests.length == 0 ? "grey" : (down == 0 ? "green" : "red");
+            let title = describeL4HealthCheck(hc);
+            if (config.Running && dests.length > 0 && down == dests.length) title += " All destinations are down: new connections are closed.";
+            let note = color == "red" ? `<span style="color: #db2828;"> · ${down} of ${dests.length} down</span>` : "";
+            parts.push(`<span class="hcIndicator" title="${htmlEscape(title)}"><i class="${color} heartbeat icon"></i>${kind}${note}</span>`);
         }
         if (l4DestinationList(config).length > 1){
             parts.push(`<span title="Load balancing"><i class="grey random icon"></i>${htmlEscape(L4_LB_NAMES[config.LoadBalancing] || "Weighted")}</span>`);
@@ -861,6 +871,7 @@
                     let cfg = getL4Config($(this).attr("uuid"));
                     if (cfg != null){
                         $(this).find(".l4DestinationsCell").html(l4DestinationsCell(cfg));
+                        $(this).find("td[datatype='health']").html(l4HealthCell(cfg));
                     }
                 });
                 if (l4Editing != null){

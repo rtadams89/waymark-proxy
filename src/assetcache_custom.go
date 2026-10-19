@@ -263,3 +263,23 @@ func HandleAssetCacheSummary(w http.ResponseWriter, r *http.Request) {
 	})
 	utils.SendJSONResponse(w, string(js))
 }
+
+// HandleAssetCacheStats returns every rule's cache counters, for the Proxy
+// Rules list: {rule: {hits, revalidated, misses, uncacheable, bytesServed,
+// entries, bytes, hitRate}} (hitRate -1 when nothing was requested yet).
+// GET /api/proxy/assetcache/stats
+func HandleAssetCacheStats(w http.ResponseWriter, r *http.Request) {
+	out := map[string]any{}
+	if dynamicProxyRouter != nil {
+		for _, ep := range dynamicProxyRouter.GetProxyEndpointsAsMap() {
+			st := dynamicproxy.AssetCache.Stats(ep.RootOrMatchingDomain)
+			day := assetcache.DayStats{Hits: st.Hits, Revalidated: st.Revalidated, Misses: st.Misses, Uncacheable: st.Uncacheable}
+			out[ep.RootOrMatchingDomain] = map[string]any{
+				"hits": st.Hits, "revalidated": st.Revalidated, "misses": st.Misses, "uncacheable": st.Uncacheable,
+				"bytesServed": st.BytesServed, "entries": st.Entries, "bytes": st.Bytes, "hitRate": day.HitRate(),
+			}
+		}
+	}
+	js, _ := json.Marshal(out)
+	utils.SendJSONResponse(w, string(js))
+}

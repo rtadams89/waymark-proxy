@@ -81,7 +81,8 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 - **Logs where you want them.** System logs and traffic (request) logs can each go to the log file, to up to 8 syslog servers (UDP, TCP or TLS; RFC 5424, RFC 3164 or JSON), to both, or to neither.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
 - **Status page panels** can be shown or hidden. New panels show destination health, cache hit rate and memory, and the HA cluster.
-- **One list for every proxy rule:** **Proxy > Proxy Rules** shows HTTP and Layer 4 (TCP/UDP) rules together, with a Type column, All / HTTP / TCP / UDP buttons, tag filter and quick search, health check and cache state per rule, and a red heart on destinations that are down.
+- **One list for every proxy rule:** **Proxy > Proxy Rules** shows HTTP and Layer 4 (TCP/UDP) rules together, with a Type column, All / HTTP / TCP / UDP buttons, tag filter and quick search. Every destination shows its health the same way for both kinds (green heart healthy, red heartbeat down), the Health column sums it up, and Details shows whether caching is on and its hit rate.
+- **An HTTP rule can answer on one floating IP only** (rule editor, **Listen On**), for example to keep internal sites off the public floating IP. Requests that arrive on another address are handled as if the rule did not exist. The Proxy Rules list shows the address under Listens On.
 - **Load balancing** works the same for HTTP and Layer 4 proxy rules: a weight per destination (0 makes it a backup), weighted or least connections balancing, and sticky sessions (a cookie for HTTP, the client IP address for Layer 4).
 - **DNS credential sets** for ACME DNS challenges: save a provider token once and use it for any number of certificates.
 - **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.

@@ -244,8 +244,7 @@ func (router *Router) StartProxyService() error {
 				Addr: ":80",
 				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					//Check if the domain requesting allow non TLS mode
-					domainOnly := requestHostname(r.Host) //Custom fork: also handles IPv6 hosts
-					sep := router.GetProxyEndpointFromHostname(domainOnly)
+					sep := router.GetProxyEndpointForRequest(r) //Custom fork: by host name and the address the request arrived on
 					if sep != nil && sep.BypassGlobalTLS {
 						//Allow routing via non-TLS handler
 						router.handleNonTLSRequest(w, r, sep)

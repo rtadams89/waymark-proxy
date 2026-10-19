@@ -35,10 +35,17 @@ func (router *Router) getTargetProxyEndpointFromRequestURI(requestURI string) *P
 
 // Get the proxy endpoint from hostname, which might includes checking of wildcard certificates
 func (router *Router) GetProxyEndpointFromHostname(hostname string) *ProxyEndpoint {
+	return router.getProxyEndpoint(hostname, nil)
+}
+
+// getProxyEndpoint finds the rule for hostname. Custom fork: with local set
+// (the address the request arrived on), rules that only answer on another
+// address are skipped (listenip_custom.go).
+func (router *Router) getProxyEndpoint(hostname string, local net.IP) *ProxyEndpoint {
 	var targetSubdomainEndpoint *ProxyEndpoint = nil
 	hostname = strings.ToLower(hostname)
 	ep, ok := router.ProxyEndpoints.Load(hostname)
-	if ok {
+	if ok && ep.(*ProxyEndpoint).answersOn(local) {
 		//Exact hit
 		targetSubdomainEndpoint = ep.(*ProxyEndpoint)
 		if !targetSubdomainEndpoint.Disabled {
@@ -50,8 +57,8 @@ func (router *Router) GetProxyEndpointFromHostname(hostname string) *ProxyEndpoi
 	matchProxyEndpoints := []*ProxyEndpoint{}
 	router.ProxyEndpoints.Range(func(k, v interface{}) bool {
 		ep := v.(*ProxyEndpoint)
-		if ep.Disabled {
-			//Skip disabled endpoint
+		if ep.Disabled || !ep.answersOn(local) {
+			//Skip disabled endpoint, and rules that answer on another address
 			return true
 		}
 

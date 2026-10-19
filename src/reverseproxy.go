@@ -485,6 +485,14 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 	tags = filteredTags
 
+	// Custom fork: the address the rule answers on, "" for every address (listenip_custom.go)
+	listenIPStr, _ := utils.PostPara(r, "listenip")
+	listenIP, err := normalizeListenIP(strings.TrimSpace(listenIPStr), "")
+	if err != nil {
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
 	// Exploit prevention settings
 	blockCommonExploits, _ := utils.PostBool(r, "blockCommonExploits")
 	blockAICrawlers, _ := utils.PostBool(r, "blockAICrawlers")
@@ -565,6 +573,7 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 			},
 			InactiveOrigins:  []*loadbalance.Upstream{},
 			UseStickySession: useStickySession,
+			ListenIP:         listenIP,
 
 			//TLS
 			BypassGlobalTLS:      useBypassGlobalTLS,

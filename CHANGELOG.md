@@ -10,6 +10,25 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.13.0
+
+**Added: an HTTP rule can answer on one floating IP**
+- **Listen On** in the rule editor (and in Add Proxy Rule, under Advanced Settings): **Any address** (the default and the behaviour so far) or one floating IP of the HA cluster. With high availability off, this host's own addresses are offered instead.
+- A request that arrives on another address is handled as if the rule did not exist: another matching rule answers (for example a wildcard rule bound to that address), or the default site. This applies to the main HTTP(S) listener and the port 80 listener; a rule's additional listening addresses are used as written.
+- This routes requests; it does not restrict who can connect. Use an access rule for that. Over HTTP/3, whose listener does not report which address a request arrived on, a bound rule still answers.
+- The Proxy Rules list shows the address under **Listens On**, with the floating IP's label, and an orange warning when the address is no longer a floating IP (or an address of this host).
+
+**Changed: Proxy Rules list**
+- Health is shown the same way for HTTP and Layer 4 rules. Each destination has an icon in the Destination column: a green heart when healthy, a red heartbeat when down (hover for the reason), a grey outline heart until the first result, a grey circle when the rule has no health checks, and a grey ring when the rule is off. The Health / Balancing column's heartbeat sums it up: green when every destination is healthy, red with "x of n down", grey when the rule is off. Layer 4 rules used to show a grey heartbeat there whatever the state, and HTTP rules used to show a red heart only next to destinations that were down, plus a second one next to the host when all were down (that note is now in the heartbeat's tooltip).
+- Caching moved to the **Details** column and is always shown for HTTP rules: **Caching off**, or **Caching** with the hit rate and memory used since Waymark started (hover for the counts).
+
+**Fixed**
+- Add Proxy Rule's **Advanced Settings** sometimes didn't open: the page shared an element ID with Virtual Directories.
+
+**API**
+- `POST /api/proxy/listenip/set` (`ep`, `ip`; empty for every address), `GET /api/proxy/listenip/options`; `/api/proxy/add` takes `listenip`. Rules have a `ListenIP` field.
+- `GET /api/proxy/assetcache/stats` returns every rule's cache counters and hit rate.
+
 ## 2.12.0
 
 HTTP and Layer 4 (TCP/UDP) proxy rules are now on one page. Nothing about the rules themselves changes: they are stored and edited as before.

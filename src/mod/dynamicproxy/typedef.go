@@ -249,6 +249,7 @@ type ProxyEndpoint struct {
 	UseActiveLoadBalance bool                    //Use active loadbalancing, default passive
 	Disabled             bool                    //If the rule is disabled
 	ListeningPorts       []string                //Alternative listening ports in format "ip:port" or ":port" (e.g., ":8080", "192.168.1.1:8080")
+	ListenIP             string                  //Custom fork: answer only on this address of the host (e.g. a floating IP); "" for every address (listenip_custom.go)
 
 	//Inbound TLS/SSL Related
 	BypassGlobalTLS      bool                             //Bypass global TLS setting options if TLS Listener enabled (parent.tlsListener != nil)

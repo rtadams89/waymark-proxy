@@ -373,6 +373,12 @@
                                 <br>
                             </div>
                             <div class="ui divider"></div>
+                            <!-- Custom fork: the address this rule answers on (listenip_custom.go) -->
+                            <b>Listen On</b>
+                            <p style="margin-top: 0.4em;"><small>The address of this host the rule answers on, through the main HTTP(S) listener. Requests that arrive on another address are handled as if this rule did not exist (another matching rule, or the default site). This routes requests; to limit who can reach the site, use an access rule.</small></p>
+                            <select class="ruleListenIP" style="margin-top: 0.4em; width: 100%; padding: 0.55em 0.6em; border-radius: 0.3em; border: 1px solid var(--button_border_color); background: var(--theme_bg_primary); color: var(--text_color);"></select>
+                            <small class="ruleListenIPNote" style="display: block; margin-top: 0.4em; opacity: 0.8;"></small>
+                            <div class="ui divider"></div>
                             <b>Additional Listening Addresses</b>
                             <p style="margin-top: 0.4em;"><small>Other addresses and ports this proxy rule also listens on, besides the main listening port (e.g. :8080 or 192.168.1.1:8080)</small></p>
                             <div class="listening_ports_list" style="margin-top:0.4em;">
@@ -755,10 +761,28 @@
 
                 let upstreamLink = `${upstream.RequireTLS?"https://":"http://"}${upstream.OriginIpOrDomain}`;
 
-                upstreams += `<a href="${htmlEscape(upstreamLink)}" target="_blank">${htmlEscape(upstream.OriginIpOrDomain)} ${tlsIcon}</a><br>`;
+                //Custom fork: health of each destination, as for Layer 4 rules (filled in by updateHealthIndicators)
+                upstreams += `<div style="white-space: nowrap;">${httpDestStatusIcon(subd, upstream.OriginIpOrDomain)}<a href="${htmlEscape(upstreamLink)}" target="_blank">${htmlEscape(upstream.OriginIpOrDomain)} ${tlsIcon}</a></div>`;
             })
         }
         return upstreams;
+    }
+
+    // Custom fork: a destination's health icon before its address, the same as
+    // for Layer 4 rules: green heart healthy, red heartbeat down, grey circle
+    // not health checked, grey outline rule disabled
+    function httpHcOn(subd){
+        let hc = subd.HealthCheck;
+        return !!(hc && (hc.activeEnabled || hc.passiveEnabled));
+    }
+    function httpDestStatusIcon(subd, origin){
+        let icon = `<i class="grey circle icon"></i>`, title = "Not health checked";
+        if (subd.Disabled){
+            icon = `<i class="grey circle outline icon"></i>`; title = "Rule disabled";
+        }else if (httpHcOn(subd)){
+            icon = `<i class="grey heart outline icon"></i>`; title = "Health not known yet";
+        }
+        return `<span class="destStatus" data-upstream="${htmlEscape(origin)}" title="${title}">${icon}</span>`;
     }
 
     function renderVirtualDirectoryList(subd){
@@ -800,6 +824,104 @@
         }
         
         return portsList;
+    }
+
+    /* Custom fork: the address a rule answers on (listenip_custom.go) */
+    var proxyListenOptions = null; // /api/proxy/listenip/options
+
+    function hostPort(ip, port){
+        return (ip.includes(":") ? "[" + ip + "]" : ip) + ":" + port;
+    }
+
+    function renderListenCell(subd){
+        let port = htmlEscape(String(currentListeningPort));
+        let main;
+        if (!subd.ListenIP){
+            main = `<span title="Answers on every address of this host">:${port}</span><br><small style="opacity: 0.6;">Any address</small>`;
+        }else{
+            let opt = proxyListenOptions ? proxyListenOptions.options.find(o => o.address == subd.ListenIP) : null;
+            main = htmlEscape(hostPort(subd.ListenIP, currentListeningPort));
+            if (opt && opt.label){
+                main += `<br><small style="opacity: 0.7;">${htmlEscape(opt.label)}</small>`;
+            }else if (opt && opt.floating){
+                main += `<br><small style="opacity: 0.7;">Floating IP</small>`;
+            }
+            if (proxyListenOptions && !opt){
+                let why = proxyListenOptions.haEnabled ? "is no longer a floating IP of the cluster" : "is not an address of this host";
+                main += ` <i class="orange exclamation triangle icon" title="${htmlEscape(subd.ListenIP)} ${why}: requests can't reach this rule. Choose another address in the rule editor."></i>`;
+            }
+        }
+        if (subd.ListeningPorts && subd.ListeningPorts.length > 0){
+            main += `<br><small style="opacity: 0.8;" title="Additional listening addresses">${subd.ListeningPorts.map(p => htmlEscape(String(p))).join("<br>")}</small>`;
+        }
+        return main;
+    }
+
+    // fillListenIPSelect fills a <select> with Any address and the options
+    // (shared with Add Proxy Rule)
+    function fillListenIPSelect(select, opts, current){
+        let html = `<option value="">Any address (:${htmlEscape(String(currentListeningPort))})</option>`;
+        let list = opts ? opts.options : [];
+        list.forEach(o => {
+            let text = o.address + (o.label ? " · " + o.label : "") + (o.floating ? (o.held ? " (floating IP, on this node)" : " (floating IP)") : "");
+            html += `<option value="${htmlEscape(o.address)}">${htmlEscape(text)}</option>`;
+        });
+        if (current && !list.some(o => o.address == current)){
+            html += `<option value="${htmlEscape(current)}">${htmlEscape(current)} (no longer available)</option>`;
+        }
+        $(select).html(html).val(current || "");
+    }
+
+    function listenIPNote(opts){
+        if (!opts) return "";
+        if (opts.haEnabled){
+            return opts.options.length ? "The floating IPs come from System > High Availability. A floating IP works on whichever node holds it." : "No floating IPs are set up yet (System > High Availability).";
+        }
+        return "High availability is off, so this host's own addresses are offered. With high availability on, only floating IPs are offered.";
+    }
+
+    function loadProxyListenOptions(callback){
+        $.get("/api/proxy/listenip/options", function(d){
+            if (d && Array.isArray(d.options)){
+                proxyListenOptions = d;
+                (httpProxyList || []).forEach(subd => {
+                    $(`#proxyRulesList tr.subdEntry[eptuuid='${subd.RootOrMatchingDomain}'] td[datatype='ports']`).html(renderListenCell(subd));
+                });
+            }
+            if (callback) callback(proxyListenOptions);
+        });
+    }
+
+    /* Custom fork: caching state and hit rate, in the Details column */
+    function renderCacheDetail(subd){
+        let ac = subd.AssetCache;
+        if (ac && ac.enabled){
+            let ttl = ac.defaultTTLSeconds;
+            let ttlText = ttl % 86400 == 0 ? (ttl / 86400) + "d" : (ttl % 3600 == 0 ? (ttl / 3600) + "h" : (ttl % 60 == 0 ? (ttl / 60) + "m" : ttl + "s"));
+            return `<div class="cacheIndicator" eptuuid="${htmlEscape(subd.RootOrMatchingDomain)}" title="Static file caching on: ${(ac.extensions || []).length} file types${ac.matchContentTypes ? " + by content type" : ""}, default lifetime ${ttlText}"><i class="teal archive icon"></i>Caching<span class="cacheStats"></span></div>`;
+        }
+        return `<div class="cacheIndicator off" title="Static file caching is off (rule editor: Caching)"><i class="grey archive icon" style="opacity: 0.5;"></i><span style="opacity: 0.5;">Caching off</span></div>`;
+    }
+
+    function formatBytes(n){
+        if (n >= 1048576) return (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + " MB";
+        if (n >= 1024) return Math.round(n / 1024) + " KB";
+        return n + " B";
+    }
+
+    function updateCacheStats(){
+        if ($("#proxyRulesList .cacheIndicator:not(.off)").length == 0) return;
+        $.get("/api/proxy/assetcache/stats", function(stats){
+            if (!stats || typeof stats != "object" || stats.error != undefined) return;
+            $("#proxyRulesList .cacheIndicator:not(.off)").each(function(){
+                let st = stats[$(this).attr("eptuuid")];
+                if (!st) return;
+                let text = st.hitRate < 0 ? " · no requests yet" : ` · ${Math.round(st.hitRate * 100)}% hits`;
+                if (st.bytes > 0) text += " · " + formatBytes(st.bytes);
+                $(this).find(".cacheStats").text(text);
+                $(this).attr("title", $(this).attr("title").split(". Since")[0] + `. Since Waymark started: ${st.hits} hits, ${st.revalidated} revalidated, ${st.misses} misses, ${st.entries} files stored (${formatBytes(st.bytes)}), ${formatBytes(st.bytesServed)} served from memory`);
+            });
+        });
     }
 
     function renderAccessRuleName(subd){
@@ -937,9 +1059,7 @@
                             ${aliasDomains}
                             <small class="accessRuleNameUnderHost" ruleid="${subd.AccessFilterUUID}"></small>
                         </td>
-                        <td data-label="listening-ports" datatype="ports" data-sort-value=":${currentListeningPort}">
-                            <span title="The shared HTTP(S) listener">:${htmlEscape(String(currentListeningPort))}</span>${subd.ListeningPorts && subd.ListeningPorts.length > 0 ? `<br><small style="opacity: 0.8;" title="Additional listening addresses">${subd.ListeningPorts.map(p => htmlEscape(String(p))).join("<br>")}</small>` : ""}
-                        </td>
+                        <td data-label="listening-ports" datatype="ports" data-sort-value="${htmlEscape(subd.ListenIP || "")}:${currentListeningPort}">${renderListenCell(subd)}</td>
                         <td data-label="" editable="true" datatype="domain" data-sort-value="${destSortValue}" style="word-break: break-all;">
                             <div class="upstreamList">
                                 ${upstreams}        
@@ -948,9 +1068,10 @@
                         <td data-label="features" datatype="features" class="hcCacheCell" eptuuid="${subd.RootOrMatchingDomain}" style="white-space: nowrap;">
                             ${renderHealthCacheCell(subd)}
                         </td>
-                        <td data-label="" datatype="vdir" style="${vdIsEmpty && authDisplayEmpty?"text-align: center;":""}">
-                            ${authDisplayEmpty ? "" : `<div class="httpAuthDetail" style="margin-bottom: 0.3em;">${authDisplay}</div>`}
-                            ${vdIsEmpty && !authDisplayEmpty ? "" : vdList}
+                        <td data-label="" datatype="vdir">
+                            ${renderCacheDetail(subd)}
+                            ${authDisplayEmpty ? "" : `<div class="httpAuthDetail">${authDisplay}</div>`}
+                            ${vdIsEmpty ? "" : vdList}
                         </td>
                         <td data-label="tags" payload="${encodeURIComponent(JSON.stringify(subd.Tags))}" datatype="tags" style="${tagListEmpty?"text-align: center;":""}">
                             <div class="tags-list">
@@ -979,6 +1100,8 @@
             resolveAccessRuleNameOnHostRPlist();
             proxyRulesAfterRender();
             updateHealthIndicators();
+            updateCacheStats();
+            loadProxyListenOptions();
             markMaintenanceHosts();
         });
     }
@@ -1365,7 +1488,7 @@
         if (hc && (hc.activeEnabled || hc.passiveEnabled)){
             let kind = hc.activeEnabled && hc.passiveEnabled ? "Active + passive" : (hc.activeEnabled ? "Active" : "Passive");
             let title = htmlEscape(describeHealthCheck(hc));
-            parts.push(`<span class="hcIndicator" title="${title}"><i class="grey heartbeat icon"></i><span class="hcIndicatorText">${kind}</span></span>`);
+            parts.push(`<span class="hcIndicator${subd.Disabled ? " ruleOff" : ""}" title="${title}"><i class="grey heartbeat icon"></i><span class="hcIndicatorText">${kind}</span></span>`);
         }
         if (subd.ActiveOrigins && subd.ActiveOrigins.length > 1){
             parts.push(`<span title="Load balancing"><i class="grey random icon"></i>${HTTP_LB_NAMES[subd.LoadBalancingMode == "leastconn" ? "leastconn" : "weighted"]}</span>`);
@@ -1373,12 +1496,7 @@
         if (subd.UseStickySession){
             parts.push(`<span title="Sticky sessions: a browser keeps going to the same destination"><i class="grey thumbtack icon"></i>Sticky</span>`);
         }
-        let ac = subd.AssetCache;
-        if (ac && ac.enabled){
-            let ttl = ac.defaultTTLSeconds;
-            let ttlText = ttl % 86400 == 0 ? (ttl / 86400) + "d" : (ttl % 3600 == 0 ? (ttl / 3600) + "h" : (ttl % 60 == 0 ? (ttl / 60) + "m" : ttl + "s"));
-            parts.push(`<span class="cacheIndicator" title="Static file caching on: ${(ac.extensions || []).length} file types${ac.matchContentTypes ? " + by content type" : ""}, default lifetime ${ttlText}"><i class="teal archive icon"></i>Caching</span>`);
-        }
+        //Caching is shown in the Details column (renderCacheDetail)
         if (parts.length == 0){
             return `<small style="opacity: 0.3; pointer-events: none; user-select: none;">None</small>`;
         }
@@ -1396,10 +1514,10 @@
             }
             let byRule = {};
             statuses.forEach(s => { (byRule[s.rule] = byRule[s.rule] || []).push(s); });
-            $("#proxyRulesList .hcHostDown, #proxyRulesList .hcUpstreamDown").remove();
+            $("#proxyRulesList .hcUpstreamDown").remove();
             $("#proxyRulesList .hcCacheCell").each(function(){
                 let ind = $(this).find(".hcIndicator");
-                if (ind.length == 0){
+                if (ind.length == 0 || ind.hasClass("ruleOff")){
                     return;
                 }
                 let row = $(this).closest("tr");
@@ -1420,22 +1538,18 @@
                     });
                 });
 
-                // Red heart next to each upstream that is out of the pool
-                down.forEach(s => {
-                    row.find(".upstreamList a").each(function(){
-                        if ($(this).text().trim() == s.upstream){
-                            let why = (s.reason || "Failed its health checks").replace(/"/g, "&quot;");
-                            $(this).after(`<i class="red heartbeat icon hcUpstreamDown" style="margin-left: 0.3em;" title="Down: ${why}"></i>`);
-                        }
-                    });
+                // Each destination's icon: green heart healthy, red heartbeat down
+                row.find(".destStatus").each(function(){
+                    let s = list.find(x => x.upstream == $(this).attr("data-upstream"));
+                    if (s == undefined) return;
+                    if (!s.enabled || !s.receivesTraffic){
+                        $(this).attr("title", "Down: " + (s.reason || "failed its health checks")).html(`<i class="red heartbeat icon"></i>`);
+                    }else{
+                        $(this).attr("title", "Healthy").html(`<i class="green heart icon"></i>`);
+                    }
                 });
-                // ...and next to the host when none is left
-                if (list.length > 0 && down.length == list.length){
-                    let hostCell = row.find("td[datatype='inbound']");
-                    let marker = `<i class="red heartbeat icon hcHostDown" title="All destinations are down: visitors get the &quot;Web server is down&quot; (521) error page"></i>`;
-                    let br = hostCell.children("br").first();
-                    if (br.length){ br.before(marker); } else { hostCell.append(marker); }
-                }
+                ind.attr("title", String(ind.attr("title") || "").split(" All destinations are down")[0] +
+                    (list.length > 0 && down.length == list.length ? ` All destinations are down: visitors get the "Web server is down" (521) error page.` : ""));
                 let icon = ind.find(".heartbeat.icon").removeClass("grey green red");
                 ind.find(".hcDownNote").remove();
                 if (list.length == 0){
@@ -1473,6 +1587,7 @@
             listProxyEndpoints();
         }else{
             updateHealthIndicators();
+            updateCacheStats();
         }
     }, 15000);
 
@@ -1955,6 +2070,28 @@
         });
         editor.find(".downstream_alias_hostname").html(aliasHTML);
 
+        /* ------------ Listen On (custom fork) ------------ */
+        loadProxyListenOptions(function(opts){
+            fillListenIPSelect(editor.find(".ruleListenIP"), opts, subd.ListenIP || "");
+            editor.find(".ruleListenIPNote").text(listenIPNote(opts));
+        });
+        editor.find(".ruleListenIP").off("change").on("change", function(){
+            let ip = $(this).val() || "";
+            $.cjax({
+                url: "/api/proxy/listenip/set", method: "POST", data: {ep: uuid, ip: ip},
+                success: function(data){
+                    if (data.error !== undefined){
+                        msgbox(data.error, false);
+                        fillListenIPSelect(editor.find(".ruleListenIP"), proxyListenOptions, subd.ListenIP || "");
+                        return;
+                    }
+                    subd.ListenIP = ip;
+                    msgbox(ip ? "Rule now answers on " + ip : "Rule now answers on every address");
+                    listProxyEndpoints();
+                }
+            });
+        });
+
         /* ------------ Listening Ports ------------ */
         // Populate listening ports
         let listeningPorts = subd.ListeningPorts || [];
@@ -1993,6 +2130,11 @@
 
         /* ------------ Upstreams ------------ */
         editor.find(".upstream_list").html(renderUpstreamList(subd));
+        //Health of each destination, as last shown in the list
+        editor.find(".upstream_list .destStatus").each(function(){
+            let shown = $(`#proxyRulesList tr.subdEntry[eptuuid='${subd.RootOrMatchingDomain}'] .destStatus`).filter((i, e) => $(e).attr("data-upstream") == $(this).attr("data-upstream")).first();
+            if (shown.length) $(this).attr("title", shown.attr("title")).html(shown.html());
+        });
         editor.find(".editUpstreamButton").off("click").on("click", function(){
             editUpstreams(uuid);
         });

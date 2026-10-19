@@ -86,6 +86,9 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/proxy/assetcache/purge", HandleAssetCachePurge)
 	authRouter.HandleFunc("/api/proxy/assetcache/limit", HandleAssetCacheLimit)
 	authRouter.HandleFunc("/api/proxy/assetcache/summary", HandleAssetCacheSummary)
+	authRouter.HandleFunc("/api/proxy/assetcache/stats", HandleAssetCacheStats)      // assetcache_custom.go
+	authRouter.HandleFunc("/api/proxy/listenip/options", HandleProxyListenIPOptions) // listenip_custom.go
+	authRouter.HandleFunc("/api/proxy/listenip/set", HandleProxyListenIPSet)         // listenip_custom.go
 	/* Reverse proxy virtual directory */
 	authRouter.HandleFunc("/api/proxy/vdir/list", ReverseProxyListVdir)
 	authRouter.HandleFunc("/api/proxy/vdir/add", ReverseProxyAddVdir)
