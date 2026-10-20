@@ -27,8 +27,8 @@ const geoIPEnabledKey = "geoip_enabled"
 // geoIPEnabledSetting reads the saved setting (on unless turned off).
 func geoIPEnabledSetting() bool {
 	enabled := true
-	if sysdb != nil && sysdb.TableExists(migrationTable) && sysdb.KeyExists(migrationTable, geoIPEnabledKey) {
-		sysdb.Read(migrationTable, geoIPEnabledKey, &enabled)
+	if sysdb != nil && sysdb.KeyExists(systemTable, geoIPEnabledKey) {
+		sysdb.Read(systemTable, geoIPEnabledKey, &enabled)
 	}
 	return enabled
 }
@@ -81,10 +81,7 @@ func HandleGeoIPEnabled(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "could not load the GeoIP database: "+err.Error())
 		return
 	}
-	if !sysdb.TableExists(migrationTable) {
-		sysdb.NewTable(migrationTable)
-	}
-	if err := sysdb.Write(migrationTable, geoIPEnabledKey, enable); err != nil {
+	if err := sysdb.Write(systemTable, geoIPEnabledKey, enable); err != nil {
 		utils.SendErrorResponse(w, "setting applied but could not be saved")
 		return
 	}

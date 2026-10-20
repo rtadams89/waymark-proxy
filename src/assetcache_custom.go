@@ -103,9 +103,9 @@ func saveAssetCacheTotals() {
 
 func assetCacheLimitMB() int {
 	mb := assetCacheDefaultMB
-	if sysdb != nil && sysdb.TableExists(migrationTable) && sysdb.KeyExists(migrationTable, assetCacheLimitKey) {
+	if sysdb != nil && sysdb.KeyExists(systemTable, assetCacheLimitKey) {
 		var saved int
-		if err := sysdb.Read(migrationTable, assetCacheLimitKey, &saved); err == nil && saved >= assetCacheMinLimitMB && saved <= assetCacheMaxLimitMB {
+		if err := sysdb.Read(systemTable, assetCacheLimitKey, &saved); err == nil && saved >= assetCacheMinLimitMB && saved <= assetCacheMaxLimitMB {
 			mb = saved
 		}
 	}
@@ -264,10 +264,7 @@ func HandleAssetCacheLimit(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "memory limit must be a whole number between "+strconv.Itoa(assetCacheMinLimitMB)+" and "+strconv.Itoa(assetCacheMaxLimitMB)+" MB")
 		return
 	}
-	if !sysdb.TableExists(migrationTable) {
-		sysdb.NewTable(migrationTable)
-	}
-	if err := sysdb.Write(migrationTable, assetCacheLimitKey, mb); err != nil {
+	if err := sysdb.Write(systemTable, assetCacheLimitKey, mb); err != nil {
 		utils.SendErrorResponse(w, "could not save the memory limit")
 		return
 	}

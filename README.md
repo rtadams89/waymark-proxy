@@ -343,8 +343,12 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 
 | Path | Contents |
 |---|---|
-| `conf/` | Proxy rules, certificates and keys, access rules, log settings (`log_conf.json`, `log_outputs.json`) and other configuration files |
-| `sys.db` | Settings, admin accounts, ACME account, the sticky session key and statistics |
+| `conf/` | Proxy rules, certificates and keys, access rules, log settings (`log_conf.json`, `log_outputs.json`) and other configuration files, including the settings files below |
+| `conf/listener.json` | Listening port, TLS, HTTP/2, QUIC, timeouts, port 80 and development mode |
+| `conf/system.json` | Geo-IP lookups on or off, asset cache memory limit |
+| `conf/acme_prefs.json`, `conf/redirect_options.json`, `conf/webserv.json`, `conf/ui.json` | Preferred certificate authority, redirect matching options, static web server and WebDAV (readable only by Waymark's user), status page panels |
+| `conf/plugins.json` | Plugins turned on and plugin store sources (each HA node keeps its own) |
+| `sys.db` | Secrets and accounts (admin accounts, Waymark Auth users, ACME accounts, DNS credentials, the sticky session key), SSO and HA settings, and per-node state (statistics, counters, sessions) |
 | `sys.uuid` | This host's ID, created on first start (sent to destinations in `X-Forwarded-Server`; each node has its own) |
 | `log/` | The log file (`waymark_<year>-<month>.log`) and rotated copies |
 | `waymark.prev` | The binary that ran before the last update or roll back (for **Roll back**) |

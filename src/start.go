@@ -118,6 +118,7 @@ func startupSequence() {
 		log.Fatal(err)
 	}
 	sysdb = db
+	moveTablesToFiles()  //Custom fork: settings kept as files in the config folder
 	haApplyPendingSync() //Custom fork: apply configuration copied from the HA active node
 	//Create tables for the database
 	sysdb.NewTable("settings")

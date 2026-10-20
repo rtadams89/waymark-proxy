@@ -10,6 +10,22 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.15.0
+
+**Changed: settings moved from sys.db to files in `conf/`**
+- These settings are now JSON files in the config folder, which you can read, compare and back up like the rest of the configuration:
+  - `listener.json`: listening port, TLS on or off and minimum version, HTTP/2, QUIC, proxy protocol, timeouts, listening on port 80, HTTPS redirect, development mode
+  - `system.json`: Geo-IP lookups on or off, asset cache memory limit
+  - `acme_prefs.json`: preferred certificate authority
+  - `redirect_options.json`: regular expressions and case sensitivity for redirection rules
+  - `webserv.json`: static web server and WebDAV (holds the WebDAV password hash, so only Waymark's user can read it)
+  - `ui.json`: status page panels
+  - `plugins.json`: plugins turned on and plugin store sources
+- **Upgrading:** nothing to do. On first start the settings are moved out of sys.db into the files. The same happens when restoring a backup from an earlier version.
+- A file edited by hand is picked up the next time the setting is read; most take effect after a restart. If a file isn't valid JSON, Waymark refuses to start and says which file to fix, rather than starting with default settings.
+- HA configuration sync copies these files from the active node, except `plugins.json`, which each node keeps for itself as before.
+- sys.db now holds secrets and accounts (admin accounts, Waymark Auth users, ACME accounts and DNS credentials, the sticky session key), SSO and HA settings (to move in a later release), and per-node state (statistics, counters, sessions).
+
 ## 2.14.1
 
 **Fixed: configuration files survive a crash or power cut**

@@ -63,15 +63,22 @@ var SyncConfEntries = []string{
 	"trusted_proxies.json", // trusted proxy addresses
 	"log_conf.json",        // log rotation settings
 	"log_outputs.json",     // log file and syslog outputs
+	// Settings that were in sys.db until 2.15.0 (plugins.json stays per node)
+	"listener.json",         // listening port, TLS and HTTP options
+	"system.json",           // Geo-IP lookups, asset cache memory limit
+	"acme_prefs.json",       // preferred certificate authority
+	"redirect_options.json", // redirection matching options
+	"webserv.json",          // static web server and WebDAV
+	"ui.json",               // status page panels
 }
 
 // SyncTables are the database tables copied from the active node.
 // Statistics, dashboard counters, the Geo-IP updater state, plugin state
 // and live SSO sessions stay per node.
 var SyncTables = []string{
-	"settings", "auth", "acme", "acme_dns_profiles", "acmepref", "redirect",
+	"auth", "acme", "acme_dns_profiles",
 	"oauth2", "authelia", "authentik", "auth_sso_forward",
-	"zorxauth", "zorxauth_users", "webserv", "custom_ui", "custom_fork",
+	"zorxauth", "zorxauth_users", "custom_fork",
 }
 
 // SyncSkipKeys are per-node keys inside synced tables.
