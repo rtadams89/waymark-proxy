@@ -370,3 +370,21 @@ func TestRollSelfCameBackOnOldVersion(t *testing.T) {
 		t.Fatalf("%+v", st)
 	}
 }
+
+func TestRollPlanNeedsLatestConfiguration(t *testing.T) {
+	saved := rollLocalHash
+	defer func() { rollLocalHash = saved }()
+	rollLocalHash = func() string { return "active-hash" }
+	f := newFakeCluster(t)
+	i := f.info["b"]
+	i.Hash = "older-hash"
+	f.info["b"] = i
+	if _, err := rollPlan(f.fetch(nil, nil), "2.11.0"); err == nil || !strings.Contains(err.Error(), "b has not copied the latest configuration") {
+		t.Errorf("older configuration on b: %v", err)
+	}
+	i.Hash = "active-hash"
+	f.info["b"] = i
+	if _, err := rollPlan(f.fetch(nil, nil), "2.11.0"); err != nil {
+		t.Errorf("same configuration: %v", err)
+	}
+}

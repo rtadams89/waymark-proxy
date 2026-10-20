@@ -607,12 +607,31 @@ func updateRollback() (string, error) {
 
 /* Startup */
 
+// plannedRestartVar is set in the environment of a restart Waymark does
+// itself after a clean shutdown, so the start is not counted against a new
+// version.
+const plannedRestartVar = "WAYMARK_PLANNED_RESTART"
+
+func plannedRestartEnv() []string {
+	env := []string{}
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, plannedRestartVar+"=") {
+			env = append(env, e)
+		}
+	}
+	return append(env, plannedRestartVar+"=1")
+}
+
 // updateStartupCheck runs early at every start. After an update or roll
 // back it counts starts of the new version; when the new version has been
 // started updateMaxStarts times without running updateHealthyAfter, the
 // previous binary is put back. Once it has run that long, the update is
 // recorded as done.
 func updateStartupCheck() {
+	// A restart Waymark did itself (to load the configuration from the HA
+	// active node) is not a failed start.
+	planned := os.Getenv(plannedRestartVar) == "1"
+	os.Unsetenv(plannedRestartVar)
 	exe, err := updateExecutable()
 	if err != nil {
 		return
@@ -627,7 +646,9 @@ func updateStartupCheck() {
 		writeUpdateState(exe, st)
 		return
 	}
-	st.Starts++
+	if !planned {
+		st.Starts++
+	}
 	if st.Starts > updateMaxStarts {
 		prev := exe + updatePrevSuffix
 		if v, err := binaryVersion(prev); err == nil && v == st.From {
@@ -675,6 +696,9 @@ func haUpdateAction(remote string, body []byte) (any, error) {
 		Version string `json:"version"`
 	}
 	json.Unmarshal(body, &in)
+	if haSyncRestarting.Load() {
+		return nil, errors.New(errSyncRestarting)
+	}
 	upd.mu.Lock()
 	stale := upd.latest == nil || time.Since(time.Unix(upd.checked, 0)) > 10*time.Minute
 	upd.mu.Unlock()

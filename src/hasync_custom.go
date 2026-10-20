@@ -32,6 +32,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -152,12 +153,12 @@ func haApplyPendingSync() {
 		return
 	}
 	snap := &pending.Snapshot
-	if err := snap.Validate(); err != nil {
-		fail(snap.Hash, err)
+	if snap.Version != DISPLAY_VERSION { // checked first: another version's snapshot may hold other entries
+		fail(snap.Hash, fmt.Errorf("staged configuration is from Waymark %s, this is %s", snap.Version, DISPLAY_VERSION))
 		return
 	}
-	if snap.Version != DISPLAY_VERSION {
-		fail(snap.Hash, fmt.Errorf("staged configuration is from Waymark %s, this is %s", snap.Version, DISPLAY_VERSION))
+	if err := snap.Validate(); err != nil {
+		fail(snap.Hash, err)
 		return
 	}
 	if err := hacluster.ApplyContent(CONF_FOLDER, sysdb, &snap.Content); err != nil {
@@ -177,7 +178,16 @@ func shortHash(h string) string {
 
 // haRestartForSync restarts Waymark in place (same process ID, so systemd
 // keeps tracking it) to load a staged configuration.
+// haSyncRestarting is set once a restart to load the active node's
+// configuration has begun; update requests are refused from then on.
+var haSyncRestarting atomic.Bool
+
+// errSyncRestarting is returned to an update request that arrives while
+// this node is restarting for sync; the rolling update asks again.
+const errSyncRestarting = "restarting to load the configuration from the active node; ask again in a few seconds"
+
 func haRestartForSync() {
+	haSyncRestarting.Store(true)
 	SystemWideLogger.PrintAndLog("ha-sync", "Restarting to load the configuration from the active node", nil)
 	exe, err := os.Executable()
 	if err != nil {
@@ -186,7 +196,7 @@ func haRestartForSync() {
 	}
 	mdnsTickerStop = nil // the mDNS ticker may be mid-scan; exec ends it anyway
 	ShutdownSeq()
-	err = syscall.Exec(exe, os.Args, os.Environ())
+	err = syscall.Exec(exe, os.Args, plannedRestartEnv())
 	// Only reached if exec failed; exit so systemd can restart Waymark
 	fmt.Println("HA sync: restart failed: " + err.Error())
 	os.Exit(1)
@@ -524,18 +534,18 @@ func haSyncTick(force bool) (string, bool) {
 // haSyncCheckSnapshot validates a downloaded snapshot and makes sure it
 // would keep this node in a syncing cluster.
 func haSyncCheckSnapshot(snap *hacluster.Snapshot) error {
+	if snap.Version != DISPLAY_VERSION { // checked first: another version's snapshot may hold other entries
+		return fmt.Errorf("it is from Waymark %s, this node runs %s", snap.Version, DISPLAY_VERSION)
+	}
 	if err := snap.Validate(); err != nil {
 		return err
 	}
-	if snap.Version != DISPLAY_VERSION {
-		return fmt.Errorf("it is from Waymark %s, this node runs %s", snap.Version, DISPLAY_VERSION)
-	}
-	raw, ok := snap.Content.Tables[migrationTable][haConfigKey]
+	f, ok := snap.Content.Files[haConfigFile]
 	if !ok {
 		return errors.New("it has no HA settings")
 	}
 	incoming := hacluster.DefaultConfig()
-	if err := json.Unmarshal(raw, incoming); err != nil {
+	if err := json.Unmarshal(f.Data, incoming); err != nil {
 		return errors.New("its HA settings are unreadable")
 	}
 	if !incoming.Enabled || !incoming.SyncEnabled {

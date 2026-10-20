@@ -32,11 +32,11 @@ func TestFileTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.WriteFile(conf, []byte(`{"inbound": 443, "devMode": true}`), 0640)
-	if err := db.UseFileTable("settings", conf, 0640); err != nil {
+	if err := db.UseFileTable("settings", conf, 0640, true); err != nil {
 		t.Fatal(err)
 	}
-	if db.Backend.TableExists("settings") {
-		t.Fatal("database table not dropped after the move")
+	if !db.Backend.KeyExists("settings", "inbound") {
+		t.Fatal("database copy should be kept for an earlier version")
 	}
 	var port int
 	db.Read("settings", "inbound", &port)
@@ -113,7 +113,14 @@ func TestFileTable(t *testing.T) {
 
 	// A new install: the file is created on first write
 	ui := filepath.Join(dir, "conf", "webserv.json")
-	if err := db.UseFileTable("webserv", ui, 0600); err != nil {
+	db.Write("other2", "port", 1)
+	if err := db.UseFileTable("other2", filepath.Join(dir, "conf", "o2.json"), 0640, false); err != nil {
+		t.Fatal(err)
+	}
+	if db.KeyExists("other2", "port") {
+		t.Fatal("rows copied although copyRows was false")
+	}
+	if err := db.UseFileTable("webserv", ui, 0600, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(ui); err == nil {

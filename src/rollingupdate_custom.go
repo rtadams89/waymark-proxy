@@ -63,6 +63,7 @@ const (
 // Timings and cluster access, replaced in tests.
 var (
 	rollPoll        = 2 * time.Second
+	rollAskRetryFor = 60 * time.Second // keep asking a node that is restarting
 	rollStableFor   = 20 * time.Second // a node must stay healthy on the new version this long
 	rollNodeTimeout = 12 * time.Minute // download (up to 10 minutes) and restart of one node
 	rollSelfTimeout = 3 * time.Minute  // this node becoming healthy after its own restart
@@ -74,6 +75,7 @@ var (
 	rollSelfUpdate  func(version string) (string, error)
 	rollSelfPhase   func() (string, string)
 	rollSelfHealthy func() (bool, string)
+	rollLocalHash   func() string // hash of this node's synced configuration
 	rollStatePath   = rollStatePathDefault
 )
 
@@ -91,6 +93,12 @@ func init() {
 		return upd.phase, upd.message
 	}
 	rollSelfHealthy = rollSelfHealthyDefault
+	rollLocalHash = func() string {
+		if c, err := hacluster.BuildContent(CONF_FOLDER, sysdb); err == nil {
+			return c.Hash()
+		}
+		return ""
+	}
 }
 
 // rollStep is one node's part of a rolling update.
@@ -303,6 +311,13 @@ func rollPlan(states []haNodeState, target string) ([]rollStep, error) {
 				detail = roleOrUnknown(s.Info.SyncStatus)
 			}
 			return nil, fmt.Errorf("%s has not finished copying the active node's configuration (%s); try again in a minute", name, detail)
+		}
+		// ... and have the latest configuration: a standby made active during
+		// the update would otherwise hand an older one back to this node
+		if s.Info.Version == self0(states).Info.Version && s.Info.Hash != "" {
+			if h := rollLocalHash(); h != "" && h != s.Info.Hash {
+				return nil, fmt.Errorf("%s has not copied the latest configuration changes yet; try again in a minute (or use Sync now)", name)
+			}
 		}
 		standbys = append(standbys, *s)
 	}
@@ -551,9 +566,21 @@ func rollAskUpdateDefault(cfg *hacluster.Config, key []byte, n hacluster.Node, v
 func rollUpdateStandby(i int, cfg *hacluster.Config, key []byte, n hacluster.Node, to string) error {
 	rollSetStep(i, "running", "Asking "+n.Name+" to install "+to)
 	asked := time.Now()
-	if err := rollAskUpdate(cfg, key, n, to); err != nil {
-		return err
+	for {
+		err := rollAskUpdate(cfg, key, n, to)
+		if err == nil {
+			break
+		}
+		// The node may be restarting to load the active node's configuration
+		// (it refuses, or does not answer, for a few seconds): ask again
+		retry := strings.Contains(err.Error(), "restarting to load the configuration") || strings.Contains(err.Error(), "could not ask")
+		if !retry || time.Since(asked) > rollAskRetryFor {
+			return err
+		}
+		rollSetStep(i, "running", n.Name+" is restarting; asking it again to install "+to)
+		time.Sleep(rollPoll)
 	}
+	asked = time.Now()
 	rollSetStep(i, "running", n.Name+" is installing "+to)
 	deadline := asked.Add(rollNodeTimeout)
 	var stableSince time.Time

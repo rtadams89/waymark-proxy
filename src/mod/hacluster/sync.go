@@ -70,6 +70,7 @@ var SyncConfEntries = []string{
 	"redirect_options.json", // redirection matching options
 	"webserv.json",          // static web server and WebDAV
 	"ui.json",               // status page panels
+	"ha.json",               // HA cluster settings (2.16.0; the SSO settings are in sso/)
 }
 
 // SyncTables are the database tables copied from the active node.
@@ -77,13 +78,13 @@ var SyncConfEntries = []string{
 // and live SSO sessions stay per node.
 var SyncTables = []string{
 	"auth", "acme", "acme_dns_profiles",
-	"oauth2", "authelia", "authentik", "auth_sso_forward",
-	"zorxauth", "zorxauth_users", "custom_fork",
+	"authelia", "authentik", // from old Zoraxy versions; no longer used
+	"zorxauth_users", "custom_fork",
 }
 
 // SyncSkipKeys are per-node keys inside synced tables.
 var SyncSkipKeys = map[string]map[string]bool{
-	"custom_fork": {"asset_cache_daily": true},
+	"custom_fork": {"asset_cache_daily": true, "conf_copied": true},
 }
 
 const (

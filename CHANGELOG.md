@@ -10,6 +10,24 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.16.0
+
+**Fixed: an updated node could roll itself back after a rolling update**
+- After an update, a node counts its starts and puts the previous version back if the new one is started three times without staying up for 2 minutes. Restarts to load the configuration from the active node were counted too, so a standby that copied the configuration a few times right after updating rolled itself back, after the rolling update had already reported success. Restarts Waymark does itself are no longer counted.
+- An update request that reaches a node while it is restarting to load the configuration is now refused, and the rolling update asks again (for up to a minute). Before, the node could accept the request and then restart without installing, which stopped the rolling update.
+- A rolling update now starts only when every standby has the active node's latest configuration. Before, a change made just before starting could be lost: a standby that had not copied it yet became the active node during the update and handed its older configuration back.
+- A configuration copied from a node running another version is now reported as such ("it is from Waymark 2.15.0") instead of as an unexpected table or file.
+
+**Changed: SSO and HA settings moved from sys.db to files in `conf/`**
+- `sso/oauth2.json`: OAuth2 / OIDC provider (holds the client secret, so only Waymark's user can read it)
+- `sso/forward.json`: forward auth server
+- `sso/zorxauth/options.json`: Waymark Auth gateway options
+- `ha.json`: HA cluster settings (holds the cluster key and VRRP password; only Waymark's user can read it)
+- **Upgrading:** nothing to do. On first start the settings are copied from sys.db into the files. HA configuration sync copies them like the other files in `conf/`.
+- The copy in sys.db is now left in place (for these and for the settings moved in 2.15.0, where sys.db still had them), so if an update is rolled back to an earlier version, that version still finds its settings, as they were when the update was installed. 2.15.0 removed its rows from sys.db after copying them; a node rolled back from 2.15.0 to 2.14.1 used default settings until it was updated again.
+- A record in sys.db notes what has been copied, so each setting is copied once. Restoring a backup from an earlier version copies its settings again.
+- Waymark Auth users, passkeys and sessions stay in sys.db.
+
 ## 2.15.0
 
 **Changed: settings moved from sys.db to files in `conf/`**

@@ -54,9 +54,11 @@ func (d *Database) fileTable(table string) *fileTable {
 }
 
 // UseFileTable keeps table in the JSON file at path (created with perm)
-// from now on. Rows already in the database are moved into the file, where
-// they replace rows with the same key, and the database table is dropped.
-func (d *Database) UseFileTable(table, path string, perm os.FileMode) error {
+// from now on. With copyRows, rows already in the database are copied into
+// the file, where they replace rows with the same key. The database table
+// itself is left as it is (no longer read or written), so an earlier
+// version put back after an update still finds its settings.
+func (d *Database) UseFileTable(table, path string, perm os.FileMode, copyRows bool) error {
 	if d.fileTable(table) != nil {
 		return fmt.Errorf("table %s is already kept in a file", table)
 	}
@@ -70,10 +72,10 @@ func (d *Database) UseFileTable(table, path string, perm os.FileMode) error {
 		return err
 	}
 
-	if d.Backend != nil && d.Backend.TableExists(table) {
+	if copyRows && d.Backend != nil && d.Backend.TableExists(table) {
 		entries, err := d.Backend.ListTable(table)
 		if err != nil {
-			return fmt.Errorf("reading table %s for the move to %s: %w", table, path, err)
+			return fmt.Errorf("reading table %s to copy it to %s: %w", table, path, err)
 		}
 		moved := 0
 		for _, kv := range entries {
@@ -85,11 +87,8 @@ func (d *Database) UseFileTable(table, path string, perm os.FileMode) error {
 		}
 		if moved > 0 || !ft.exists() {
 			if err := ft.save(); err != nil {
-				return fmt.Errorf("moving table %s to %s: %w", table, path, err)
+				return fmt.Errorf("copying table %s to %s: %w", table, path, err)
 			}
-		}
-		if err := d.Backend.DropTable(table); err != nil {
-			return fmt.Errorf("removing table %s after the move to %s: %w", table, path, err)
 		}
 	}
 

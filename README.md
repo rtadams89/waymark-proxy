@@ -348,7 +348,9 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 | `conf/system.json` | Geo-IP lookups on or off, asset cache memory limit |
 | `conf/acme_prefs.json`, `conf/redirect_options.json`, `conf/webserv.json`, `conf/ui.json` | Preferred certificate authority, redirect matching options, static web server and WebDAV (readable only by Waymark's user), status page panels |
 | `conf/plugins.json` | Plugins turned on and plugin store sources (each HA node keeps its own) |
-| `sys.db` | Secrets and accounts (admin accounts, Waymark Auth users, ACME accounts, DNS credentials, the sticky session key), SSO and HA settings, and per-node state (statistics, counters, sessions) |
+| `conf/ha.json` | HA cluster settings, including the cluster key (readable only by Waymark's user) |
+| `conf/sso/` | SSO settings: `oauth2.json` (readable only by Waymark's user), `forward.json`, and Waymark Auth's `options.json`, group policies and branding in `zorxauth/` |
+| `sys.db` | Secrets and accounts (admin accounts, Waymark Auth users and passkeys, ACME accounts, DNS credentials, the sticky session key) and per-node state (statistics, counters, sessions). It also keeps the copies of settings that moved to `conf/` for an earlier version after a roll back; Waymark itself no longer reads them |
 | `sys.uuid` | This host's ID, created on first start (sent to destinations in `X-Forwarded-Server`; each node has its own) |
 | `log/` | The log file (`waymark_<year>-<month>.log`) and rotated copies |
 | `waymark.prev` | The binary that ran before the last update or roll back (for **Roll back**) |

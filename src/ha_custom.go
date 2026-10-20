@@ -17,6 +17,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -24,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,7 +42,54 @@ var (
 	haStateDirFlag    = flag.String("ha-state-dir", hacluster.DefaultStateDir, "Custom fork: folder where the HA helper reports results (created by the HA installer)")
 )
 
-const haConfigKey = "ha_cluster"
+// HA settings: conf/ha.json (in sys.db as custom_fork/ha_cluster until 2.16.0)
+const (
+	haConfigKey  = "ha_cluster"
+	haConfigFile = "ha.json"
+)
+
+func haConfigPath() string { return filepath.Join(CONF_FOLDER, haConfigFile) }
+
+// readHAConfigFile reads conf/ha.json; nil, nil when there is none.
+func readHAConfigFile() (*hacluster.Config, error) {
+	b, err := os.ReadFile(haConfigPath())
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	cfg := hacluster.DefaultConfig()
+	if err := json.Unmarshal(b, cfg); err != nil {
+		return nil, fmt.Errorf("%s is not valid JSON: %w", haConfigPath(), err)
+	}
+	return cfg, nil
+}
+
+func writeHAConfigFile(cfg *hacluster.Config) error {
+	b, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return utils.WriteFileAtomic(haConfigPath(), append(b, '\n'), 0600) // holds the cluster key
+}
+
+// moveHAConfigToFile copies the HA settings from sys.db to conf/ha.json
+// when copyFromDB (on the first start of 2.16.0, or after restoring an
+// older backup) and checks that the file can be read. The copy in sys.db is
+// kept for an earlier version put back by a roll back. Run at start-up
+// before anything uses haConfig.
+func moveHAConfigToFile(copyFromDB bool) error {
+	if copyFromDB && sysdb.TableExists(migrationTable) && sysdb.KeyExists(migrationTable, haConfigKey) {
+		cfg := hacluster.DefaultConfig()
+		if err := sysdb.Read(migrationTable, haConfigKey, cfg); err != nil {
+			return err
+		}
+		return writeHAConfigFile(cfg)
+	}
+	_, err := readHAConfigFile()
+	return err
+}
 
 type haHeartbeat struct {
 	OK     bool   `json:"ok"`
@@ -84,11 +133,10 @@ func haConfig() *hacluster.Config {
 	defer ha.mu.Unlock()
 	if ha.cfg == nil {
 		cfg := hacluster.DefaultConfig()
-		if sysdb != nil && sysdb.TableExists(migrationTable) && sysdb.KeyExists(migrationTable, haConfigKey) {
-			loaded := hacluster.DefaultConfig()
-			if err := sysdb.Read(migrationTable, haConfigKey, loaded); err == nil {
-				cfg = loaded
-			}
+		if loaded, err := readHAConfigFile(); err == nil && loaded != nil {
+			cfg = loaded
+		} else if err != nil {
+			SystemWideLogger.PrintAndLog("ha", "Cannot read the HA settings", err)
 		}
 		ha.cfg = cfg
 	}
@@ -405,10 +453,7 @@ func HandleHAConfig(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "none of the nodes has an address of this machine ("+strings.Join(nonLoopback(), ", ")+"); add this node to the list")
 		return
 	}
-	if !sysdb.TableExists(migrationTable) {
-		sysdb.NewTable(migrationTable)
-	}
-	if err := sysdb.Write(migrationTable, haConfigKey, cfg); err != nil {
+	if err := writeHAConfigFile(cfg); err != nil {
 		utils.SendErrorResponse(w, "could not save HA settings")
 		return
 	}
