@@ -276,6 +276,7 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 			serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 			h.Parent.logRequest(r, false, 521, "host-http", reqHostname, upstreamHostname, target)
 		}
+		return //Custom fork: log a failed request once, not a second time as a success
 	}
 
 	h.Parent.logRequest(r, true, statusCode, "host-http", reqHostname, upstreamHostname, target)
@@ -446,6 +447,7 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 			//log.Println(err.Error())
 			h.Parent.logRequest(r, false, 521, "vdir-http", reqHostname, target.Domain, target.parent)
 		}
+		return //Custom fork: log a failed request once, not a second time as a success
 	}
 	h.Parent.logRequest(r, true, statusCode, "vdir-http", reqHostname, target.Domain, target.parent)
 

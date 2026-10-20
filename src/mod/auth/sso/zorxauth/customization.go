@@ -220,7 +220,7 @@ func (ar *AuthRouter) saveBranding() error {
 		return err
 	}
 
-	return os.WriteFile(ar.brandingConfigPath(), data, 0644)
+	return utils.WriteFileAtomic(ar.brandingConfigPath(), data, 0644)
 }
 
 // brandingAssetFile returns the stored file name for the given asset key, or empty when the default is in use
@@ -516,7 +516,7 @@ func (ar *AuthRouter) HandleCustomizationUpload(w http.ResponseWriter, r *http.R
 
 	//The file name is derived from the asset key, never from user input
 	filename := assetKey + ext
-	if err := os.WriteFile(filepath.Join(folder, filename), content, 0644); err != nil {
+	if err := utils.WriteFileAtomic(filepath.Join(folder, filename), content, 0644); err != nil {
 		utils.SendErrorResponse(w, "Failed to save uploaded file: "+err.Error())
 		return
 	}

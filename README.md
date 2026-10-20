@@ -192,9 +192,9 @@ This example publishes an app running at `http://10.0.0.20:8080` as `https://app
 
 1. **Point DNS at Waymark.** Create an `A` record for `app.example.com` with Waymark's IP address (the floating IP if you run HA).
 2. **Check that the proxy is running.** On **Status**, the banner should say *Online* and *listening on port 443*. Port 80 is served too and redirects to HTTPS.
-3. **Set up certificates.** Under **Certificates**, open the **ACME and Auto-Renew** tab, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
+3. **Set up certificates.** Open **Certificates > ACME and Auto-Renew**, enter an email address and turn on automatic renewal. Then click **Open ACME Tool** and request a certificate for `app.example.com`:
    - **HTTP challenge**: works when the name is reachable from the internet on port 80.
-   - **DNS challenge**: also works for internal-only names. Pick your DNS provider and save its API token as a credential set (**Certificates > DNS credentials**) so other certificates can reuse it.
+   - **DNS challenge**: also works for internal-only names. Pick your DNS provider and save its API token as a credential set (**Certificates > DNS Credentials**) so other certificates can reuse it.
 4. **Create the proxy rule.** Under **Proxy > Proxy Rules**, click **Add Proxy Rule** and choose **HTTP**:
    - **Matching Keyword / Domain**: `app.example.com`
    - **Destination IP Address or Domain Name with port**: `10.0.0.20:8080`
@@ -259,9 +259,9 @@ Waymark itself can only write to its own folder, `/var/lib/waymark/ha`. Because 
 
 Waymark has two logs:
 - **System log**: Waymark's own messages, such as startup, settings changes, certificate renewal, high availability and errors. They are also printed to standard output, so `journalctl -u waymark` always has them.
-- **Traffic log**: one line per HTTP request the proxy handles (host, client address, user agent, method, path and status).
+- **Access log**: one line per HTTP request the proxy handles (host, client address, user agent, method, path and status). Syslog messages call it "traffic".
 
-Under **Monitoring > Logs**, choose where each log goes: the log file, syslog servers, both, or neither. Both go to the log file by default. Rotation of the log file is set on the same page, and **Open Log Viewer** shows it.
+Under **System > Logging**, choose where each log goes: the log file, syslog servers, both, or neither. Both go to the log file by default. Rotation of the log file is set on the same page. Read the log file on **Monitoring > Access Logs** and **System > System Logs**: a table, newest first, with a choice of log file, search, a status or level filter, automatic refresh and a download button.
 
 **Syslog servers.** Click **Add syslog server** (up to 8). For each one, choose:
 - the server's IP address or host name and port (default 514, or 6514 for TLS);

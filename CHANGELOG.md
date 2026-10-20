@@ -10,6 +10,31 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.14.1
+
+**Fixed: configuration files survive a crash or power cut**
+- Every configuration and state file Waymark writes is now replaced safely: written to a temporary file in the same folder, flushed to disk, renamed over the old file, and the folder flushed. A crash or power cut during a save leaves the old file or the new one, never a truncated or empty one. Until now, proxy rules, access rules, trusted proxies, redirects, path rules, ACME settings, log rotation settings, plugin groups and Waymark Auth policies were overwritten in place.
+- Covers: HTTP and Layer 4 proxy rules, certificates and keys (uploaded and from ACME), the fallback certificate, access rules, trusted proxies, redirects, path rules, ACME settings and certificate details, Waymark Auth group policies and branding, plugin groups, log rotation and log output settings, the host UUID, the downloaded Geo-IP database, the traffic capture index, files applied by HA configuration sync, and the HA and update state files.
+- New files get exactly the permissions intended (configuration 0644, Layer 4 rules and path rules 0640, private keys 0600) instead of 0775 reduced by the umask.
+
+## 2.14.0
+
+**Changed: menus and page titles**
+- Browser tabs read "Waymark | <page>" (for example "Waymark | Proxy Rules").
+- **Certificates** has three pages instead of tabs: **Installed Certificates**, **ACME and Auto-Renew** and **DNS Credentials** (which was a side panel). A certificate's own credential set is still chosen with its key button on Installed Certificates.
+- Access rules have a raised-hand icon, in the menu (Access > Access Rules), under each rule in the Proxy Rules list (hover for the rule's name and whether it is an allowlist or a blocklist), in the rule editors and on the Access Rules page. The colours still say which lists are on (green allowlist, red blocklist, yellow both).
+
+**Changed: logs**
+- **System > Logging** has the log settings: where system and access logs go (log file and syslog servers) and log file rotation. "Traffic" logs are called access logs in the interface.
+- **Monitoring > Access Logs** shows the access log lines of the log file as a table, newest first: time, status, method, host, path, client and browser. **System > System Logs** shows system messages the same way: time, level, module and message. Both have a log file picker (rotated files too), how many lines to read, a status or level filter, search, refresh every 5 seconds, and download. When a log isn't written to the file, the page says so and where it goes instead.
+- The separate log viewer page (with its hit charts) is gone, with its `/api/log/summary` and `/api/log/errors` API calls.
+
+**Changed: Proxy Rules list**
+- The cache hit rate in the Details column is for all time: counters are kept across restarts and purges, per node, in `conf/assetcache_totals.json` (not copied by HA configuration sync). The hover text has the counts and what is in memory now. Counters of a removed rule are dropped.
+
+**Fixed**
+- A request whose destination failed was counted twice, in the access log and in the statistics: once as the error (521) and again as a 502.
+
 ## 2.13.3
 
 **Changed: System menu**

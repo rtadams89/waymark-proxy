@@ -3,7 +3,7 @@ package plugins
 import (
 	"encoding/json"
 	"errors"
-	"os"
+	"imuslab.com/zoraxy/mod/utils"
 
 	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
 )
@@ -93,7 +93,7 @@ func (m *Manager) SavePluginGroupsToFile() error {
 
 	//Write to file
 	js, _ := json.Marshal(pluginGroupsCopy)
-	err := os.WriteFile(m.Options.PluginGroupsConfig, js, 0644)
+	err := utils.WriteFileAtomic(m.Options.PluginGroupsConfig, js, 0644)
 	if err != nil {
 		return err
 	}

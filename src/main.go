@@ -114,7 +114,7 @@ func main() {
 	uuidRecord := *path_uuid
 	if !utils.FileExists(uuidRecord) {
 		newSystemUUID := uuid.New().String()
-		os.WriteFile(uuidRecord, []byte(newSystemUUID), 0775)
+		utils.WriteFileAtomic(uuidRecord, []byte(newSystemUUID), 0644)
 	}
 	uuidBytes, err := os.ReadFile(uuidRecord)
 	if err != nil {

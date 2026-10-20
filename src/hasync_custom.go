@@ -116,20 +116,7 @@ func writeSyncFileAtomic(name string, v any) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(*haDirFlag, "."+name+".*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(b); err != nil {
-		tmp.Close()
-		return err
-	}
-	tmp.Chmod(0600) // contains keys and password hashes
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), haSyncPath(name))
+	return utils.WriteFileAtomic(haSyncPath(name), b, 0600) // contains keys and password hashes
 }
 
 func haSyncSetStatus(status, detail string) {

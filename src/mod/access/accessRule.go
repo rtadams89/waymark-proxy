@@ -3,6 +3,7 @@ package access
 import (
 	"encoding/json"
 	"errors"
+	"imuslab.com/zoraxy/mod/utils"
 	"net"
 	"os"
 	"path/filepath"
@@ -127,7 +128,7 @@ func (s *AccessRule) SaveChanges() error {
 		return err
 	}
 
-	err = os.WriteFile(saveTarget, js, 0775)
+	err = utils.WriteFileAtomic(saveTarget, js, 0644)
 	return err
 }
 

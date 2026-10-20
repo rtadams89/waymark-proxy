@@ -456,11 +456,11 @@
                 $(this).html(`<i class="ui red exclamation triangle icon"></i> <b style="color: #db2828;">Access Rule Error</b>`);
                 return;
             }
-            let icon = `<i class="ui grey filter icon"></i>`;
-            if (rule.BlacklistEnabled && !rule.WhitelistEnabled) icon = `<i class="ui red filter icon"></i>`;
-            else if (rule.WhitelistEnabled && !rule.BlacklistEnabled) icon = `<i class="ui green filter icon"></i>`;
-            else if (rule.WhitelistEnabled && rule.BlacklistEnabled) icon = `<i class="ui yellow filter icon"></i>`;
-            $(this).html(`${icon} ${htmlEscape(rule.Name)}`);
+            let icon = `<i class="ui grey hand paper icon"></i>`;
+            if (rule.BlacklistEnabled && !rule.WhitelistEnabled) icon = `<i class="ui red hand paper icon"></i>`;
+            else if (rule.WhitelistEnabled && !rule.BlacklistEnabled) icon = `<i class="ui green hand paper icon"></i>`;
+            else if (rule.WhitelistEnabled && rule.BlacklistEnabled) icon = `<i class="ui yellow hand paper icon"></i>`;
+            $(this).html(`${icon} ${htmlEscape(rule.Name)}`).attr("title", window.accessRuleTitle ? accessRuleTitle(rule) : "Access rule");
         });
     }
 

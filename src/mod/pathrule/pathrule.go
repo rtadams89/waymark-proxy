@@ -129,7 +129,7 @@ func (h *Handler) SaveBlockerToFile(pathBlocker *BlockingPath) error {
 		return err
 	}
 	js, _ := json.MarshalIndent(pathBlocker, "", " ")
-	return os.WriteFile(saveFilename, js, 0640)
+	return utils.WriteFileAtomic(saveFilename, js, 0640)
 }
 
 func (h *Handler) RemoveBlockerFromFile(id string) error {

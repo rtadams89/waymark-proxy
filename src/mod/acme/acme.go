@@ -81,12 +81,7 @@ func (a *ACMEHandler) Logf(message string, err error) {
 }
 
 func (a *ACMEHandler) writeFileWithMode(filename string, data []byte, mode os.FileMode) error {
-	err := os.WriteFile(filename, data, mode)
-	if err != nil {
-		return err
-	}
-
-	return os.Chmod(filename, mode)
+	return utils.WriteFileAtomic(filename, data, mode) //Custom fork: durable, exact mode
 }
 
 // ObtainCert obtains a certificate for the specified domains.

@@ -779,15 +779,15 @@
             if (data.error == undefined){
                 $("#accessRuleList").html("");
                 data.forEach(function(rule){
-                    let icon = `<i class="ui grey filter icon"></i>`;
+                    let icon = `<i class="ui grey hand paper icon"></i>`;
                     if (rule.ID == "default"){
                         icon = `<i class="ui yellow star icon"></i>`;
                     }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
                         //This is a blacklist filter
-                        icon = `<i class="ui red filter icon"></i>`;
+                        icon = `<i class="ui red hand paper icon"></i>`;
                     }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
                         //This is a whitelist filter
-                        icon = `<i class="ui green filter icon"></i>`;
+                        icon = `<i class="ui green hand paper icon"></i>`;
                     }
                     $("#accessRuleList").append(`<div class="item" data-value="${rule.ID}">${icon} ${rule.Name}</div>`);
                 });

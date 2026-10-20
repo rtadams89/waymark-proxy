@@ -292,7 +292,7 @@ func (r *RedirectRule) SaveChangeToFile() error {
 		return err
 	}
 
-	err = os.WriteFile(filepath, js, 0644)
+	err = utils.WriteFileAtomic(filepath, js, 0644)
 	if err != nil {
 		r.parent.log("Error writing JSON to file "+filepath, err)
 		return err

@@ -124,7 +124,7 @@ func (ar *AuthRouter) saveGroupPolicyToDisk(gp *GroupPolicy) error {
 		return err
 	}
 
-	return os.WriteFile(ar.groupPolicyFilePath(gp.ID), data, 0644)
+	return utils.WriteFileAtomic(ar.groupPolicyFilePath(gp.ID), data, 0644)
 }
 
 // deleteGroupPolicyFromDisk removes the JSON file for a group policy

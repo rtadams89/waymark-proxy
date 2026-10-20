@@ -334,23 +334,7 @@ func writeUpdateState(exe string, st updateState) error {
 // writeFileAtomic writes data to a temporary file in the same folder and
 // renames it into place.
 func writeFileAtomic(dst string, data []byte, mode os.FileMode) error {
-	tmp, err := os.CreateTemp(filepath.Dir(dst), "."+filepath.Base(dst)+".*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Chmod(mode); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), dst)
+	return utils.WriteFileAtomic(dst, data, mode) // flushed to disk before and after the rename
 }
 
 // copyFileAtomic copies src to dst (through a temporary file).

@@ -11,14 +11,8 @@
 </style>
 <div class="standardContainer">
     <div class="ui basic segment">
-        <h2>Certificates</h2>
+        <h2>ACME and Auto-Renew</h2>
         <p>Preferred certificate authority, automatic renewal, and requesting new certificates with ACME</p>
-    </div>
-    <!-- Certificates sub-pages: certificates, ACME and DNS credentials -->
-    <div class="ui secondary pointing menu" style="margin-top: -0.5em;">
-        <a class="item" style="cursor: pointer;" onclick="openTabById('cert');"><i class="lock icon"></i> Installed Certificates</a>
-        <a class="item active" style="cursor: pointer;" onclick="openTabById('acme');"><i class="sync alternate icon"></i> ACME and Auto-Renew</a>
-        <a class="item" style="cursor: pointer;" onclick="showSideWrapper('snippet/dnsProfiles.html');"><i class="key icon"></i> DNS Credentials</a>
     </div>
     <div class="ui basic segment acmeRenewStateWrapper">
         <h4 class="ui header" id="acmeAutoRenewer">
@@ -133,7 +127,7 @@
     <h3>Generate New Certificate</h3>
     <p>Manually generate a certificate if one of your domain do not have certificate.</p>
     <button class="ui basic button" onclick="openACMEManager();"><i class="yellow external icon"></i> Open ACME Tool</button>
-    <button class="ui basic button" onclick="showSideWrapper('snippet/dnsProfiles.html');"><i class="yellow key icon"></i> Manage DNS Credentials</button>
+    <button class="ui basic button" onclick="openTabById('dnscreds');"><i class="yellow key icon"></i> Manage DNS Credentials</button>
 </div>
 <script>
 (function(){

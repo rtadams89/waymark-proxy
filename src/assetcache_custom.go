@@ -8,11 +8,14 @@ package main
 	- the shared memory limit, stored in sysdb
 	- per-rule settings, stored in the rule's config file
 	- stats and purge, used by snippet/assetCache.html
+	- all-time counters per rule (Proxy Rules list), kept per node in
+	  conf/assetcache_totals.json (not copied by HA config sync)
 */
 
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +45,12 @@ func initAssetCache() {
 				dynamicproxy.AssetCache.RestoreDaily(saved)
 			}
 		}
+		if raw, err := os.ReadFile(assetCacheTotalsPath()); err == nil {
+			saved := map[string]assetcache.Totals{}
+			if json.Unmarshal(raw, &saved) == nil {
+				dynamicproxy.AssetCache.RestoreTotals(saved)
+			}
+		}
 		go func() {
 			for range time.Tick(time.Minute) {
 				saveAssetCacheDaily()
@@ -63,6 +72,33 @@ func saveAssetCacheDaily() {
 	}
 	today, yesterday := dynamicproxy.AssetCache.Daily()
 	sysdb.Write(migrationTable, assetCacheDailyKey, []assetcache.DayStats{today, yesterday})
+	saveAssetCacheTotals()
+}
+
+func assetCacheTotalsPath() string { return CONF_FOLDER + "/assetcache_totals.json" }
+
+// saveAssetCacheTotals writes every rule's all-time counters. Counters of
+// rules that no longer exist are dropped (unless no rule is loaded at all).
+func saveAssetCacheTotals() {
+	totals := dynamicproxy.AssetCache.AllTotals()
+	if dynamicProxyRouter != nil {
+		exists := map[string]bool{}
+		for _, ep := range dynamicProxyRouter.GetProxyEndpointsAsMap() {
+			exists[strings.ToLower(ep.RootOrMatchingDomain)] = true
+		}
+		if len(exists) > 0 {
+			for r := range totals {
+				if !exists[r] {
+					delete(totals, r)
+					dynamicproxy.AssetCache.ForgetTotals(r)
+				}
+			}
+		}
+	}
+	js, err := json.Marshal(totals)
+	if err == nil {
+		writeFileAtomic(assetCacheTotalsPath(), js, 0644)
+	}
 }
 
 func assetCacheLimitMB() int {
@@ -266,17 +302,23 @@ func HandleAssetCacheSummary(w http.ResponseWriter, r *http.Request) {
 
 // HandleAssetCacheStats returns every rule's cache counters, for the Proxy
 // Rules list: {rule: {hits, revalidated, misses, uncacheable, bytesServed,
-// entries, bytes, hitRate}} (hitRate -1 when nothing was requested yet).
+// hitRate, entries, bytes}}. The counters and hit rate are for all time
+// (hitRate -1 when nothing was requested yet); entries and bytes are what is
+// in memory now.
 // GET /api/proxy/assetcache/stats
 func HandleAssetCacheStats(w http.ResponseWriter, r *http.Request) {
 	out := map[string]any{}
+	totals := dynamicproxy.AssetCache.AllTotals()
 	if dynamicProxyRouter != nil {
 		for _, ep := range dynamicProxyRouter.GetProxyEndpointsAsMap() {
 			st := dynamicproxy.AssetCache.Stats(ep.RootOrMatchingDomain)
-			day := assetcache.DayStats{Hits: st.Hits, Revalidated: st.Revalidated, Misses: st.Misses, Uncacheable: st.Uncacheable}
+			t := totals[strings.ToLower(ep.RootOrMatchingDomain)]
 			out[ep.RootOrMatchingDomain] = map[string]any{
-				"hits": st.Hits, "revalidated": st.Revalidated, "misses": st.Misses, "uncacheable": st.Uncacheable,
-				"bytesServed": st.BytesServed, "entries": st.Entries, "bytes": st.Bytes, "hitRate": day.HitRate(),
+				// all time (kept across restarts and purges)
+				"hits": t.Hits, "revalidated": t.Revalidated, "misses": t.Misses, "uncacheable": t.Uncacheable,
+				"bytesServed": t.BytesServed, "hitRate": t.HitRate(),
+				// in memory now
+				"entries": st.Entries, "bytes": st.Bytes,
 			}
 		}
 	}

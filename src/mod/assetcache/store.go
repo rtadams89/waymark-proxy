@@ -90,6 +90,7 @@ type Store struct {
 	lru       *list.List // front = most recently used
 	byKey     map[string][]*entry
 	stats     map[string]*RuleStats
+	totals    map[string]*Totals // custom fork: all-time counters, kept across purges (and restarts, by the caller)
 	today     DayStats
 	yesterday DayStats
 	now       func() time.Time
@@ -102,6 +103,7 @@ func NewStore(maxBytes int64) *Store {
 		lru:      list.New(),
 		byKey:    map[string][]*entry{},
 		stats:    map[string]*RuleStats{},
+		totals:   map[string]*Totals{},
 		now:      time.Now,
 	}
 }
@@ -164,6 +166,16 @@ func (s *Store) count1(rule string, f func(*RuleStats)) {
 	st := s.statsLocked(rule)
 	before := *st
 	f(st)
+	t := s.totals[rule]
+	if t == nil {
+		t = &Totals{}
+		s.totals[rule] = t
+	}
+	t.Hits += st.Hits - before.Hits
+	t.Revalidated += st.Revalidated - before.Revalidated
+	t.Misses += st.Misses - before.Misses
+	t.Uncacheable += st.Uncacheable - before.Uncacheable
+	t.BytesServed += st.BytesServed - before.BytesServed
 	s.rollDayLocked()
 	s.today.Hits += st.Hits - before.Hits
 	s.today.Revalidated += st.Revalidated - before.Revalidated
@@ -189,6 +201,59 @@ func (s *Store) rollDayLocked() {
 		s.yesterday = DayStats{Date: dateOf(s.now().AddDate(0, 0, -1))}
 	}
 	s.today = DayStats{Date: today}
+}
+
+// Totals are a rule's counters for all time: unlike RuleStats they are not
+// reset by Purge. The caller saves and restores them across restarts.
+type Totals struct {
+	Hits        int64 `json:"hits"`
+	Revalidated int64 `json:"revalidated"`
+	Misses      int64 `json:"misses"`
+	Uncacheable int64 `json:"uncacheable"`
+	BytesServed int64 `json:"bytesServed"`
+}
+
+// HitRate is the share of static file requests answered from memory (0-1),
+// or -1 when there were none.
+func (t Totals) HitRate() float64 {
+	return DayStats{Hits: t.Hits, Revalidated: t.Revalidated, Misses: t.Misses, Uncacheable: t.Uncacheable}.HitRate()
+}
+
+// AllTotals returns a copy of every rule's all-time counters.
+func (s *Store) AllTotals() map[string]Totals {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[string]Totals, len(s.totals))
+	for r, t := range s.totals {
+		out[r] = *t
+	}
+	return out
+}
+
+// RestoreTotals adds saved all-time counters (after a restart).
+func (s *Store) RestoreTotals(saved map[string]Totals) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for r, v := range saved {
+		r = normalizeRule(r)
+		t := s.totals[r]
+		if t == nil {
+			t = &Totals{}
+			s.totals[r] = t
+		}
+		t.Hits += v.Hits
+		t.Revalidated += v.Revalidated
+		t.Misses += v.Misses
+		t.Uncacheable += v.Uncacheable
+		t.BytesServed += v.BytesServed
+	}
+}
+
+// ForgetTotals drops a rule's all-time counters (the rule was removed).
+func (s *Store) ForgetTotals(rule string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.totals, normalizeRule(rule))
 }
 
 // Daily returns today's and yesterday's counters across all rules.

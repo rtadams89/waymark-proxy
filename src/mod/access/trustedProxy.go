@@ -118,7 +118,7 @@ func (c *Controller) LoadTrustedProxies() error {
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(c.Options.TrustedProxiesFile, data, 0775)
+		err = utils.WriteFileAtomic(c.Options.TrustedProxiesFile, data, 0644)
 		if err != nil {
 			return err
 		}
@@ -181,7 +181,7 @@ func (c *Controller) SaveTrustedProxies() error {
 		return err
 	}
 
-	err = os.WriteFile(c.Options.TrustedProxiesFile, data, 0775)
+	err = utils.WriteFileAtomic(c.Options.TrustedProxiesFile, data, 0644)
 	return err
 }
 

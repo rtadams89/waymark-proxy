@@ -69,7 +69,7 @@
             <div id="accessRuleList">
                 <div class="ui segment accessRule">
                     <div class="ui header">
-                        <i class="filter icon"></i>
+                        <i class="hand paper icon"></i>
                         <div class="content">
                             Account Settings
                             <div class="sub header">Manage your preferences</div>
@@ -101,18 +101,18 @@
                     if (data.error == undefined){
                         $("#accessRuleList").html("");
                         data.forEach(function(rule){
-                            let icon = `<i class="ui grey filter icon"></i>`;
+                            let icon = `<i class="ui grey hand paper icon"></i>`;
                             if (rule.ID == "default"){
                                 icon = `<i class="ui yellow star icon"></i>`;
                             }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
                                 //This is a blacklist filter
-                                icon = `<i class="ui red filter icon"></i>`;
+                                icon = `<i class="ui red hand paper icon"></i>`;
                             }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
                                 //This is a whitelist filter
-                                icon = `<i class="ui green filter icon"></i>`;
+                                icon = `<i class="ui green hand paper icon"></i>`;
                             }else if (rule.WhitelistEnabled && rule.BlacklistEnabled){
                                 //Whitelist and blacklist filter
-                                icon = `<i class="ui yellow filter icon"></i>`;
+                                icon = `<i class="ui yellow hand paper icon"></i>`;
                             }
 
                             $("#accessRuleList").append(`<div class="ui basic segment accessRule" ruleid="${htmlEscape(rule.ID)}" onclick="selectThisRule(this);">
@@ -124,8 +124,8 @@
                                     </div>
                                 </h5>
                                 <p>${htmlEscape(rule.Desc)}</p>
-                                ${rule.BlacklistEnabled?`<small><i class="ui red filter icon"></i> Blacklist Enabled</small>`:""}
-                                ${rule.WhitelistEnabled?`<small><i class="ui green filter icon"></i> Whitelist Enabled</small>`:""}
+                                ${rule.BlacklistEnabled?`<small><i class="ui red hand paper icon"></i> Blacklist Enabled</small>`:""}
+                                ${rule.WhitelistEnabled?`<small><i class="ui green hand paper icon"></i> Whitelist Enabled</small>`:""}
                                 <div class="selected"><i class="ui large green check icon"></i></div>
                             </div>`);
                         });
@@ -216,4 +216,4 @@
 
         </script>
     </body>
-</html>
+</html>

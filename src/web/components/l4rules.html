@@ -83,7 +83,7 @@
                                     <small>Send the client's address to the destination in a PROXY protocol header. Only turn this on if the destination expects it. V1 is TCP only.</small>
                                 </div>
                                 <div class="ui horizontal divider">
-                                    <i class="ui red ban icon"></i>
+                                    <i class="ui grey hand paper icon"></i>
                                     Access Rules
                                 </div>
                                 <div class="field">
@@ -313,13 +313,13 @@
             if (data.error == undefined){
                 $("#newL4AccessList").html("");
                 data.forEach(function(rule){
-                    let icon = `<i class="ui grey filter icon"></i>`;
+                    let icon = `<i class="ui grey hand paper icon"></i>`;
                     if (rule.ID == "default"){
                         icon = `<i class="ui yellow star icon"></i>`;
                     }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
-                        icon = `<i class="ui red filter icon"></i>`;
+                        icon = `<i class="ui red hand paper icon"></i>`;
                     }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
-                        icon = `<i class="ui green filter icon"></i>`;
+                        icon = `<i class="ui green hand paper icon"></i>`;
                     }
                     $("#newL4AccessList").append(`<div class="item" data-value="${htmlEscape(rule.ID)}">${icon} ${htmlEscape(rule.Name)}</div>`);
                 });

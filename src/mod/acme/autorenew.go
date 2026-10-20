@@ -65,7 +65,7 @@ func NewAutoRenewer(config string, certFolder string, renewCheckInterval int64, 
 			FilesToRenew: []string{},
 		}
 		js, _ := json.MarshalIndent(newConfig, "", " ")
-		err := os.WriteFile(config, js, 0775)
+		err := utils.WriteFileAtomic(config, js, 0644)
 		if err != nil {
 			return nil, errors.New("Failed to create acme auto renewer config: " + err.Error())
 		}
@@ -428,7 +428,7 @@ func (a *AutoRenewer) renewExpiredDomains(certs []*ExpiredCerts) ([]string, erro
 // Write the current renewer config to file
 func (a *AutoRenewer) saveRenewConfigToFile() error {
 	js, _ := json.MarshalIndent(a.RenewerConfig, "", " ")
-	return os.WriteFile(a.ConfigFilePath, js, 0775)
+	return utils.WriteFileAtomic(a.ConfigFilePath, js, 0644)
 }
 
 // Handle update auto renew EAD configuration

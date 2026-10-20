@@ -32,6 +32,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"imuslab.com/zoraxy/mod/utils"
 	"io"
 	"io/fs"
 	"math/big"
@@ -369,12 +370,7 @@ func writeSyncFile(dst string, f SyncFile) error {
 	if mode == 0 {
 		mode = 0644
 	}
-	tmp := dst + ".hasync-tmp"
-	if err := os.WriteFile(tmp, f.Data, mode); err != nil {
-		return err
-	}
-	os.Chmod(tmp, mode)
-	return os.Rename(tmp, dst)
+	return utils.WriteFileAtomic(dst, f.Data, mode)
 }
 
 /* Authentication */

@@ -60,7 +60,7 @@ func NewAccessController(options *Options) (*Controller, error) {
 	} else {
 		//Create one
 		js, _ := json.MarshalIndent(defaultAccessRule, "", " ")
-		os.WriteFile(defaultRuleSettingFile, js, 0775)
+		utils.WriteFileAtomic(defaultRuleSettingFile, js, 0644)
 
 	}
 

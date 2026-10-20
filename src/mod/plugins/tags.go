@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"imuslab.com/zoraxy/mod/utils"
 	"os"
 )
 
@@ -95,5 +96,5 @@ func (m *Manager) savePluginTagMap() error {
 	defer m.pluginGroupsMutex.RUnlock()
 
 	js, _ := json.Marshal(m.Options.PluginGroups)
-	return os.WriteFile(m.Options.PluginGroupsConfig, js, 0644)
+	return utils.WriteFileAtomic(m.Options.PluginGroupsConfig, js, 0644)
 }

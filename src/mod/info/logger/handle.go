@@ -66,15 +66,11 @@ func SaveLogConfig(configPath string, config *LogConfig) error {
 		return err
 	}
 
-	file, err := os.Create(configPath)
+	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(config)
+	return utils.WriteFileAtomic(configPath, append(data, '\n'), 0644) //Custom fork: durable and atomic
 }
 
 // ApplyLogConfig applies the log configuration to the logger

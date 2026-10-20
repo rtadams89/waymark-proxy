@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"imuslab.com/zoraxy/mod/utils"
 	"net"
 	"os"
 	"path/filepath"
@@ -200,18 +201,5 @@ func SaveLogOutputs(path string, o *LogOutputs) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0775); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(b); err != nil {
-		tmp.Close()
-		return err
-	}
-	tmp.Chmod(0640)
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), path)
+	return utils.WriteFileAtomic(path, b, 0640)
 }

@@ -231,7 +231,7 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 				options.Logger.PrintAndLog("l4-proxy", "Marshal Layer 4 rule config failed", err)
 				continue
 			}
-			err = os.WriteFile(configFile, newConfigBytes, 0775)
+			err = writeFileAtomic(configFile, newConfigBytes)
 			if err != nil {
 				options.Logger.PrintAndLog("l4-proxy", "Save Layer 4 rule config failed", err)
 				continue
@@ -501,28 +501,9 @@ func (m *Manager) SaveConfigToDatabase() {
 	}
 }
 
-// writeFileAtomic writes data to a temporary file next to path and renames
-// it over path.
+// writeFileAtomic replaces path durably (utils.WriteFileAtomic).
 func writeFileAtomic(path string, data []byte) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".tmp-*")
-	if err != nil {
-		return err
-	}
-	_, werr := tmp.Write(data)
-	cerr := tmp.Close()
-	if werr == nil {
-		werr = cerr
-	}
-	if werr == nil {
-		werr = os.Chmod(tmp.Name(), 0640)
-	}
-	if werr == nil {
-		werr = os.Rename(tmp.Name(), path)
-	}
-	if werr != nil {
-		os.Remove(tmp.Name())
-	}
-	return werr
+	return utils.WriteFileAtomic(path, data, 0640)
 }
 
 // getEffectiveAccessRule returns the access rule for this proxy instance.

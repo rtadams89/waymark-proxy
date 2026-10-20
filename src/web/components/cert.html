@@ -14,17 +14,9 @@
 </style>
 <div class="standardContainer">
     <div class="ui basic segment">
-        <h2>Certificates</h2>
-        <p>TLS certificates for the host names Waymark serves: upload them, or get and renew them automatically with ACME</p>
+        <h2>Installed Certificates</h2>
+        <p>TLS certificates Waymark serves, matched to the requested host name (SNI). Upload them here, or get and renew them automatically on Certificates &gt; ACME and Auto-Renew.</p>
     </div>
-    <!-- Certificates sub-pages: certificates, ACME and DNS credentials -->
-    <div class="ui secondary pointing menu" style="margin-top: -0.5em;">
-        <a class="item active" style="cursor: pointer;" onclick="openTabById('cert');"><i class="lock icon"></i> Installed Certificates</a>
-        <a class="item" style="cursor: pointer;" onclick="openTabById('acme');"><i class="sync alternate icon"></i> ACME and Auto-Renew</a>
-        <a class="item" style="cursor: pointer;" onclick="showSideWrapper('snippet/dnsProfiles.html');"><i class="key icon"></i> DNS Credentials</a>
-    </div>
-    <h3>Installed certificates</h3>
-    <p>Certificates Waymark serves, matched to the requested host name (SNI)</p>
     <div style="width: 100%; overflow-x: auto; padding-bottom: 1em;">
         <div style="min-width: 960px; max-width: 100%;  ">
             <table class="ui unstackable basic celled table">
@@ -373,7 +365,7 @@
     }
 
     function openDnsCredentialManager(){
-        showSideWrapper("snippet/dnsProfiles.html");
+        openTabById("dnscreds");
     }
 
     function initManagedDomainCertificateList(){

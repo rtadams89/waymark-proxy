@@ -3,7 +3,8 @@
   <head>
       <!-- Custom fork: manage shared DNS challenge credential sets.
            Open as snippet/dnsProfiles.html, or snippet/dnsProfiles.html?assign=<cert filename>
-           to pick the credential set used by one certificate. -->
+           to pick the credential set used by one certificate. ?page=1 is the
+           Certificates > DNS Credentials page (components/dnscreds.html). -->
       <meta charset="utf-8">
       <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
       <link rel="stylesheet" href="../script/semantic/semantic.min.css">
@@ -105,6 +106,22 @@
     <div class="ui divider"></div>
     <button class="ui basic button" id="closeButton" style="float: right;" onclick="parent.hideSideWrapper();"><i class="remove icon"></i> Close</button>
     <br><br><br><br>
+    <script>
+      // Custom fork: ?page=1 is the Certificates > DNS Credentials page (components/dnscreds.html),
+      // which shows this in a frame: no Close button, and the frame follows this page's height
+      if (new URLSearchParams(window.location.search).get("page") == "1"){
+        document.getElementById("closeButton").style.display = "none";
+        document.body.style.background = "transparent";
+        //Line up with the page around the frame
+        let box = document.querySelector("body > .ui.container");
+        if (box){ box.style.setProperty("width", "auto", "important"); box.style.setProperty("margin", "0", "important"); }
+        let firstBr = document.querySelector("body > br");
+        if (firstBr) firstBr.remove();
+        let sendHeight = function(){ window.parent.postMessage({wmFrame: "dnscreds", height: document.documentElement.scrollHeight}, window.location.origin); };
+        new ResizeObserver(sendHeight).observe(document.body);
+        window.addEventListener("load", sendHeight);
+      }
+    </script>
   </div>
 
   <script>

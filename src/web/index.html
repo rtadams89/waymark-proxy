@@ -7,7 +7,7 @@
         <meta name="theme-color" content="#4b75ff">
         <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
         <link rel="icon" type="image/png" href="./favicon.png" />
-        <title>Control Panel | Waymark</title>
+        <title>Waymark</title>
         <link rel="stylesheet" href="script/semantic/semantic.min.css">
         <script src="script/jquery-3.6.0.min.js"></script>
         <script src="script/semantic/semantic.min.js"></script>
@@ -15,6 +15,7 @@
         <script src="script/countryCode.js"></script>
         <script src="script/chart.js"></script>
         <script src="script/utils.js"></script>
+        <script src="script/logpage.js"></script> <!-- Custom fork: Access Logs and System Logs pages -->
         <link rel="stylesheet" href="script/jsvectormap/jsvectormap.min.css">
         <script src="script/jsvectormap/jsvectormap.min.js"></script>
         <script src="script/jsvectormap/world.js"></script>
@@ -87,7 +88,7 @@
                         </div>
                         <div class="menugroup-items" id="group-access">
                             <a class="item" tag="access" tab_group="access">
-                                <i class="simplistic ban icon"></i> Access Rules
+                                <i class="simplistic hand paper icon"></i> Access Rules
                             </a>
                             <a class="item" tag="sso" tab_group="access">
                                 <i class="simplistic user circle icon"></i> Authentication (SSO)
@@ -108,10 +109,13 @@
                         </div>
                         <div class="menugroup-items" id="group-certificates">
                             <a class="item" tag="cert" tab_group="certificates">
-                                <i class="simplistic lock icon"></i> Certificates
+                                <i class="simplistic lock icon"></i> Installed Certificates
                             </a>
-                            <a class="item" tag="acme" tab_group="certificates" highlight="cert" style="display: none;">
+                            <a class="item" tag="acme" tab_group="certificates">
                                 <i class="simplistic sync alternate icon"></i> ACME and Auto-Renew
+                            </a>
+                            <a class="item" tag="dnscreds" tab_group="certificates">
+                                <i class="simplistic key icon"></i> DNS Credentials
                             </a>
                         </div>
                     </div>
@@ -132,7 +136,7 @@
                                 <i class="simplistic chart bar icon"></i> Statistics
                             </a>
                             <a class="item" tag="logs" tab_group="monitoring">
-                                <i class="simplistic file alternate outline icon"></i> Logs
+                                <i class="simplistic file alternate outline icon"></i> Access Logs
                             </a>
                             <a class="item" tag="capture" tab_group="monitoring">
                                 <i class="simplistic dot circle outline icon"></i> Traffic Capture
@@ -157,6 +161,12 @@
                             </a>
                             <a class="item" tag="webserv" tab_group="system">
                                 <i class="simplistic globe icon"></i> Static Web Server
+                            </a>
+                            <a class="item" tag="logsettings" tab_group="system">
+                                <i class="simplistic sliders horizontal icon"></i> Logging
+                            </a>
+                            <a class="item" tag="syslogs" tab_group="system">
+                                <i class="simplistic list alternate outline icon"></i> System Logs
                             </a>
                             <a class="item" tag="utils" tab_group="system">
                                 <i class="simplistic cog icon"></i> Settings
@@ -223,6 +233,7 @@
 
                 <!-- ACME Settings -->
                 <div id="acme" class="functiontab" target="acme.html"></div>
+                <div id="dnscreds" class="functiontab" target="dnscreds.html"></div>
 
                 <!-- Redirections -->
                 <div id="redirectset" class="functiontab" target="redirection.html"></div>
@@ -252,6 +263,8 @@
 
                 <!-- Logs -->
                 <div id="logs" class="functiontab" target="logs.html"></div>
+                <div id="logsettings" class="functiontab" target="logsettings.html"></div>
+                <div id="syslogs" class="functiontab" target="syslogs.html"></div>
 
                 <!-- Custom fork: traffic capture -->
                 <div id="capture" class="functiontab" target="capture.html"></div>
@@ -558,7 +571,7 @@
 
                 // Update document title
                 var tabLabel = $(targetBtn).clone().children('i').remove().end().text().trim();
-                document.title = (tabLabel ? tabLabel + ' | ' : '') + 'Waymark';
+                document.title = 'Waymark' + (tabLabel ? ' | ' + tabLabel : '');
 
                 // Expand the group containing this tab if it is collapsed
                 expandGroupContaining(tabID, $(targetBtn).attr("tab_group"));

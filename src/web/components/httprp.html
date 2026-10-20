@@ -916,10 +916,10 @@
             $("#proxyRulesList .cacheIndicator:not(.off)").each(function(){
                 let st = stats[$(this).attr("eptuuid")];
                 if (!st) return;
-                let text = st.hitRate < 0 ? " · no requests yet" : ` · ${Math.round(st.hitRate * 100)}% hits`;
+                let text = st.hitRate < 0 ? " · no requests yet" : ` · ${Math.round(st.hitRate * 100)}% hits (all time)`;
                 if (st.bytes > 0) text += " · " + formatBytes(st.bytes);
                 $(this).find(".cacheStats").text(text);
-                $(this).attr("title", $(this).attr("title").split(". Since")[0] + `. Since Waymark started: ${st.hits} hits, ${st.revalidated} revalidated, ${st.misses} misses, ${st.entries} files stored (${formatBytes(st.bytes)}), ${formatBytes(st.bytesServed)} served from memory`);
+                $(this).attr("title", $(this).attr("title").split(". All time:")[0] + `. All time: ${st.hits.toLocaleString()} hits, ${st.revalidated.toLocaleString()} revalidated, ${st.misses.toLocaleString()} misses, ${formatBytes(st.bytesServed)} served from memory. In memory now: ${st.entries} files (${formatBytes(st.bytes)})`);
             });
         });
     }
@@ -1129,6 +1129,13 @@
     }
 
     //Resolve & Update all rule names on host PR list
+    // Custom fork: tooltip of the access rule shown under a rule's name
+    function accessRuleTitle(rule){
+        let kind = rule.WhitelistEnabled && rule.BlacklistEnabled ? "allowlist and blocklist" :
+            (rule.WhitelistEnabled ? "allowlist: only listed addresses get in" : (rule.BlacklistEnabled ? "blocklist: listed addresses are refused" : "no lists turned on"));
+        return "Access rule \"" + rule.Name + "\" (" + kind + "). Edit it on Access > Access Rules.";
+    }
+
     function resolveAccessRuleNameOnHostRPlist(){
         //Resolve the access filters
         $.get("/api/access/list", function(data){
@@ -1166,22 +1173,22 @@
                         $(this).html(`<i class="ui red exclamation triangle icon"></i> <b style="color: #db2828;">Access Rule Error</b>`);
                         return;
                     }
-                    let icon = `<i class="ui grey filter icon"></i>`;
+                    let icon = `<i class="ui grey hand paper icon"></i>`;
                     if (rule.ID == "default"){
                         icon = `<i class="ui yellow star icon"></i>`;
                     }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
                         //This is a blacklist filter
-                        icon = `<i class="ui red filter icon"></i>`;
+                        icon = `<i class="ui red hand paper icon"></i>`;
                     }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
                         //This is a whitelist filter
-                        icon = `<i class="ui green filter icon"></i>`;
+                        icon = `<i class="ui green hand paper icon"></i>`;
                     }else if (rule.WhitelistEnabled && rule.BlacklistEnabled){
                         //Whitelist and blacklist filter
-                        icon = `<i class="ui yellow filter icon"></i>`;
+                        icon = `<i class="ui yellow hand paper icon"></i>`;
                     }
 
                     if (rule != undefined){
-                        $(this).html(`${icon} ${htmlEscape(rule.Name)}`);
+                        $(this).html(`${icon} ${htmlEscape(rule.Name)}`).attr("title", accessRuleTitle(rule));
                     }
                 });
             }

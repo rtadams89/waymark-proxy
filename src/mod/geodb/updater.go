@@ -353,13 +353,7 @@ func downloadAndValidateGeoDBCsv(url string, savepath string) error {
 
 	//Write to a temporary file first so an interrupted write will not
 	//leave a partially downloaded database behind
-	tmpFilepath := savepath + ".tmp"
-	if err = os.WriteFile(tmpFilepath, fileContent, 0644); err != nil {
-		return err
-	}
-
-	if err = os.Rename(tmpFilepath, savepath); err != nil {
-		os.Remove(tmpFilepath)
+	if err = utils.WriteFileAtomic(savepath, fileContent, 0644); err != nil {
 		return err
 	}
 

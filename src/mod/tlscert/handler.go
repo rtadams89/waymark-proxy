@@ -109,7 +109,7 @@ func (m *Manager) SetCertAsDefault(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) saveFallbackConfig() {
 	fbPath := filepath.Join(m.CertStore, "fallback.json")
 	data, _ := json.Marshal(map[string]string{"fallbackCert": m.FallbackCert})
-	os.WriteFile(fbPath, data, 0o644)
+	utils.WriteFileAtomic(fbPath, data, 0o644)
 }
 
 // Handle upload of the certificate

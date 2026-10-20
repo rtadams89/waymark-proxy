@@ -53,14 +53,9 @@ func writeFileWithMode(baseDir, relativeName string, data []byte, mode os.FileMo
 		return err
 	}
 
-	if err := os.WriteFile(resolvedPath, data, mode); err != nil {
-		return err
-	}
-
-	// os.WriteFile honours the process umask, so the on-disk permissions may
-	// differ from the requested mode. os.Chmod sets the exact bits regardless
-	// of the umask — essential for private-key files (e.g. 0600).
-	return os.Chmod(resolvedPath, mode)
+	// Custom fork: durable and atomic, with the exact mode (not reduced by the
+	// umask) — essential for private-key files (e.g. 0600)
+	return utils.WriteFileAtomic(resolvedPath, data, mode)
 }
 
 // safeJoin joins name onto baseDir and verifies the resulting absolute path

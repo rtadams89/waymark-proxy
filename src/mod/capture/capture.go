@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"imuslab.com/zoraxy/mod/utils"
 	"net"
 	"os"
 	"path/filepath"
@@ -742,5 +743,5 @@ func (m *Manager) loadIndex() {
 
 func (m *Manager) saveIndexLocked() {
 	b, _ := json.Marshal(fileIndex{Notes: m.notes, Reasons: m.reasons})
-	os.WriteFile(filepath.Join(m.dir, ".index.json"), b, 0600)
+	utils.WriteFileAtomic(filepath.Join(m.dir, ".index.json"), b, 0600)
 }

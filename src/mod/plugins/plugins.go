@@ -38,7 +38,7 @@ func NewPluginManager(options *ManagerOptions) *Manager {
 	//Create the plugin config file if not exists
 	if !utils.FileExists(options.PluginGroupsConfig) {
 		js, _ := json.Marshal(map[string][]string{})
-		err := os.WriteFile(options.PluginGroupsConfig, js, 0644)
+		err := utils.WriteFileAtomic(options.PluginGroupsConfig, js, 0644)
 		if err != nil {
 			options.Logger.PrintAndLog("plugin-manager", "Failed to create plugin group config file", err)
 		}

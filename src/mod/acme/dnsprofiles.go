@@ -282,7 +282,7 @@ func (a *ACMEHandler) resolveDNSCredentials(certificateName string) (provider st
 		return profile.Provider, profile.Credentials, "credential set \"" + profile.Name + "\"", nil
 	}
 
-	return "", "", "", errors.New("no DNS credential set is assigned to certificate " + certificateName + ": pick one in its challenge settings (Certificates > DNS credentials)")
+	return "", "", "", errors.New("no DNS credential set is assigned to certificate " + certificateName + ": pick one with its challenge settings button on Certificates > Installed Certificates")
 }
 
 // setCertUseDNS flips the DNS challenge flag in a certificate's ACME info
@@ -308,7 +308,7 @@ func setCertUseDNS(certName string, useDNS bool) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(infoPath, js, st.Mode().Perm())
+	return utils.WriteFileAtomic(infoPath, js, st.Mode().Perm())
 }
 
 /*

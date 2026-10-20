@@ -133,7 +133,7 @@ func SaveReverseProxyConfig(endpoint *dynamicproxy.ProxyEndpoint) error {
 		return err
 	}
 
-	return os.WriteFile(filename, js, 0775)
+	return utils.WriteFileAtomic(filename, js, 0644) //Custom fork: a crash mid-save cannot leave a truncated rule file
 }
 
 func RemoveReverseProxyConfig(endpoint string) error {
