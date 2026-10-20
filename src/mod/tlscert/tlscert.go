@@ -236,7 +236,9 @@ func (m *Manager) ListCerts() ([]string, error) {
 // Get a certificate from disk where its certificate matches with the helloinfo
 func (m *Manager) GetCert(helloInfo *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	//Look for the certificate by hostname
-	pubKey, priKey, err := m.GetCertificateByHostname(helloInfo.ServerName)
+	//Custom fork: without SNI (a client connecting to an IP address), by the
+	//address it connected to (selfsigned_custom.go)
+	pubKey, priKey, err := m.GetCertificateByHostname(serverNameOrLocalIP(helloLocal{helloInfo.Conn}, helloInfo.ServerName))
 	if err != nil {
 		m.Logger.PrintAndLog("tls", "Failed to get certificate for "+helloInfo.ServerName, err)
 		return nil, err

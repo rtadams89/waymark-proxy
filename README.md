@@ -176,13 +176,20 @@ sudo systemctl enable --now waymark
 sudo systemctl status waymark
 ```
 
-**Reaching the admin UI.** With `-port=127.0.0.1:8000` the admin UI only listens on the machine itself. From your workstation, open an SSH tunnel and browse to `http://localhost:8000`:
+**Reaching the admin UI.** On first start Waymark creates a proxy rule for its own admin UI, so you can open it at `https://<this machine's address>/` (or its DNS name). It uses a self-signed certificate at first, so the browser warns once. With `-port=127.0.0.1:8000` the admin UI itself only listens on the machine, and this rule is the way in from the network. You can also use an SSH tunnel and browse to `http://localhost:8000`:
 
 ```bash
 ssh -L 8000:127.0.0.1:8000 you@your-waymark-host
 ```
 
-Later you can publish the admin UI under its own hostname through Waymark, with a proxy rule to `127.0.0.1:8000`. To listen on all interfaces instead, use `-port=:8000` and limit access with your firewall.
+To listen on all interfaces instead, use `-port=:8000` and limit access with your firewall.
+
+**The admin console rule.** Waymark keeps this rule working:
+- It answers on this machine's address and DNS name (guessed on first start; change them in the rule's editor). With HA on, it answers on every floating IP and node address and their DNS names (set on **System > High Availability**). Waymark adds and removes these as nodes and floating IPs come and go.
+- It sends requests to the admin UI's own listener (`-port`).
+- It cannot be disabled or deleted. Its destination, authentication, virtual directories, headers, health checks and listening addresses are fixed, and no other rule can take one of its hosts.
+- You can change its main domain, add aliases, and choose its certificate, access rule, caching, logging and tags. An access rule change that would block the computer you are using is refused.
+- If it ever stops working, run `sudo -u waymark /opt/waymark/waymark -reset-admin-rule` (with the same `-port` as the service) and restart Waymark. This rebuilds the rule with a new self-signed certificate and the default access rule. With HA, do it on the active node.
 
 **5. Create the admin account.** The first visit shows **Account Setup**: choose a username and password.
 
@@ -348,6 +355,7 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 | `conf/system.json` | Geo-IP lookups on or off, asset cache memory limit |
 | `conf/acme_prefs.json`, `conf/redirect_options.json`, `conf/webserv.json`, `conf/ui.json` | Preferred certificate authority, redirect matching options, static web server and WebDAV (readable only by Waymark's user), status page panels |
 | `conf/plugins.json` | Plugins turned on and plugin store sources (each HA node keeps its own) |
+| `conf/admin_console.json` | This machine's address and DNS name for the admin console rule when HA is off (each node keeps its own) |
 | `conf/ha.json` | HA cluster settings, including the cluster key (readable only by Waymark's user) |
 | `conf/sso/` | SSO settings: `oauth2.json` (readable only by Waymark's user), `forward.json`, and Waymark Auth's `options.json`, group policies and branding in `zorxauth/` |
 | `sys.db` | Secrets and accounts (admin accounts, Waymark Auth users and passkeys, ACME accounts, DNS credentials, the sticky session key) and per-node state (statistics, counters, sessions). It also keeps the copies of settings that moved to `conf/` for an earlier version after a roll back; Waymark itself no longer reads them |

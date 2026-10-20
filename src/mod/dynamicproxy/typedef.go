@@ -318,6 +318,12 @@ type ProxyEndpoint struct {
 
 	//Custom fork: maintenance mode, serves a maintenance page instead of proxying (nil = off)
 	Maintenance *MaintenanceConfig `json:",omitempty"`
+
+	//Custom fork: a rule Waymark manages itself (admin_rule_custom.go).
+	//"admin-console" is the rule that serves the admin console.
+	System         string   `json:",omitempty"`
+	SystemHosts    []string `json:",omitempty"` //host names and addresses Waymark added (cannot be removed)
+	SystemAutoRoot bool     `json:",omitempty"` //the main domain is chosen by Waymark (until it is changed)
 }
 
 /*

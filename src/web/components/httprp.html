@@ -329,8 +329,11 @@
                             <div class="downstream_alias_hostname">
 
                             </div>
+                            <!-- Custom fork: the admin console rule (admin_rule_custom.go) -->
+                            <div class="wmAdminRuleBox" style="display:none;"></div>
                             <div class="ui divider"></div>
                             <div class="downstream_action_list">
+                                <div class="wmNotForSystem">
                                 <div class="ui checkbox" style="margin-top: 0.4em;">
                                     <input type="checkbox" class="BypassGlobalTLS">
                                     <label>Allow plain HTTP access<br>
@@ -359,6 +362,7 @@
                                     </div>
                                 </div>
                                 <div class="ui divider"></div>
+                                </div>
                                 <div class="ui checkbox" style="margin-top: 0.4em;">
                                     <input type="checkbox" class="DisableLogging">
                                     <label>Disable Requests Logging<br>
@@ -373,6 +377,7 @@
                                 <br>
                             </div>
                             <div class="ui divider"></div>
+                            <div class="wmNotForSystem">
                             <!-- Custom fork: the address this rule answers on (listenip_custom.go) -->
                             <b>Listen On</b>
                             <p style="margin-top: 0.4em;"><small>The address of this host the rule answers on, through the main HTTP(S) listener. Requests that arrive on another address are handled as if this rule did not exist (another matching rule, or the default site). This routes requests; to limit who can reach the site, use an access rule.</small></p>
@@ -389,6 +394,7 @@
                                 <button class="ui green basic icon button addListeningPortBtn">
                                     <i class="ui plus icon"></i>
                                 </button>
+                            </div>
                             </div>
                            
                         </div>
@@ -1046,16 +1052,22 @@
                     }
                     let authDisplayEmpty = (subd.AuthenticationProvider.AuthMethod == 0x0);
                     
-                    $("#proxyRulesList").append(`<tr eptuuid="${subd.RootOrMatchingDomain}" payload="${subdData}" class="subdEntry httpRow" data-sortkey="${htmlEscape(String(subd.RootOrMatchingDomain).toLowerCase())}">
-                        <td class="collapsing ignoremw" datatype="enable">
-                            <div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Enable / Disable Rule">
+                    //Custom fork: the admin console rule cannot be disabled or deleted (admin_rule_custom.go)
+                    let isAdminRule = (subd.System == "admin-console");
+                    let enableCell = isAdminRule ? `<span title="Serves this admin console; always on" style="opacity: 0.7;"><i class="lock icon"></i></span>` :
+                        `<div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Enable / Disable Rule">
                                 <input type="checkbox" class="enableToggle" name="active" ${enableChecked} eptuuid="${subd.RootOrMatchingDomain}" onchange="handleProxyRuleToggle(this);">
                                 <label></label>
-                            </div>
+                            </div>`;
+                    let adminBadge = isAdminRule ? ` <span class="ui mini basic label" title="Waymark keeps this rule working: it answers on this node's (or cluster's) addresses and DNS names and sends requests to the admin console">Admin console</span>` : "";
+                    let deleteBtn = isAdminRule ? "" : `<button title="Remove Proxy Rule" class="ui circular mini red basic icon button inlineEditActionBtn" onclick='deleteEndpoint("${(subd.RootOrMatchingDomain).hexEncode()}")'><i class="trash icon"></i></button>`;
+                    $("#proxyRulesList").append(`<tr eptuuid="${subd.RootOrMatchingDomain}" payload="${subdData}" class="subdEntry httpRow" data-sortkey="${htmlEscape(String(subd.RootOrMatchingDomain).toLowerCase())}">
+                        <td class="collapsing ignoremw" datatype="enable">
+                            ${enableCell}
                         </td>
                         <td data-label="type" datatype="type" data-sort-value="http"><span class="ruleTypeLabel http" title="HTTP rule: picked by host name on the HTTP(S) listener">HTTP</span></td>
                         <td data-label="" editable="true" datatype="inbound">
-                            <a href="${httpProto}${subd.RootOrMatchingDomain}${hostnameRedirectPort}" target="_blank">${subd.RootOrMatchingDomain}</a> ${inboundTlsIcon}<br>
+                            <a href="${httpProto}${subd.RootOrMatchingDomain}${hostnameRedirectPort}" target="_blank">${subd.RootOrMatchingDomain}</a> ${inboundTlsIcon}${adminBadge}<br>
                             ${aliasDomains}
                             <small class="accessRuleNameUnderHost" ruleid="${subd.AccessFilterUUID}"></small>
                         </td>
@@ -1089,7 +1101,7 @@
                         </td> -->
                         <td class="center aligned ignoremw" editable="true" datatype="action" data-label="">
                             <button title="Edit Proxy Rule" class="ui circular small basic icon button editBtn inlineEditActionBtn" onclick='editEndpoint("${(subd.RootOrMatchingDomain).hexEncode()}")'><i class="ellipsis vertical icon"></i></button>
-                            <button title="Remove Proxy Rule" class="ui circular mini red basic icon button inlineEditActionBtn" onclick='deleteEndpoint("${(subd.RootOrMatchingDomain).hexEncode()}")'><i class="trash icon"></i></button>
+                            ${deleteBtn}
                         </td>
                     </tr>`);
                 });
@@ -1930,6 +1942,7 @@
     
         //Populate all the information in the proxy editor
         populateAndBindEventsToHTTPProxyEditor(subd);
+        wmAdminRuleEditor(subd); //Custom fork: limits for the admin console rule
 
         //Hide all previously opened editor side-frame wrapper
         hideEditorSideWrapper();
@@ -1945,6 +1958,73 @@
         $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
         $("#httprpEditModalWrapper").fadeIn("fast", function(){
             $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
+        });
+    }
+
+    //Custom fork: the admin console rule (admin_rule_custom.go). Waymark keeps
+    //its addresses, destination and anything that could cut off the admin
+    //console; the editor only shows what can be changed.
+    function wmAdminRuleEditor(subd){
+        let editor = $("#httprpEditModalWrapper");
+        let isAdmin = (subd.System == "admin-console");
+        ["upstream", "vdirs", "websocket", "headers", "maintenance", "security"].forEach(function(c){
+            editor.find(`.hrpedit_menu_item[cfgpage='${c}']`).toggle(!isAdmin);
+        });
+        editor.find(".wmNotForSystem").toggle(!isAdmin);
+        let box = editor.find(".wmAdminRuleBox");
+        if (!isAdmin){
+            box.hide().empty();
+            return;
+        }
+        box.html(`<div class="ui divider"></div>
+            <b><i class="lock icon"></i> Admin console</b>
+            <p style="margin-top: 0.4em;"><small>This rule serves this admin console, so Waymark keeps it working: it cannot be disabled or deleted, it always sends requests to <code class="wmAdminDest"></code>, and its destinations, authentication, virtual directories, headers, health checks and listening addresses are fixed. You can change its main domain, add aliases, and choose its certificate, access rule, caching, logging and tags. If it ever stops working, run Waymark once with <code>-reset-admin-rule</code>.</small></p>
+            <div class="wmAdminHosts"></div>
+            <div class="wmAdminNode ui small form" style="display:none; margin-top: 0.6em;">
+                <div class="two fields">
+                    <div class="field"><label>This node's address</label><input type="text" class="wmAdminAddr" placeholder="10.0.0.5"></div>
+                    <div class="field"><label>Its DNS name <small>(optional)</small></label><input type="text" class="wmAdminHost" placeholder="waymark.example.com"></div>
+                </div>
+                <button class="ui basic small button wmAdminSave"><i class="green save icon"></i> Save</button>
+                <small class="wmAdminGuessNote" style="margin-left: 0.6em; opacity: 0.8;"></small>
+            </div>
+            <div class="wmAdminCert" style="margin-top: 0.6em;"></div>`).show();
+        $.get("/api/proxy/adminrule?guess=1", function(d){
+            if (!d || d.error != undefined) return;
+            box.find(".wmAdminDest").text(d.destination);
+            let hosts = (d.requiredHosts || []).map(h => `<span class="ui mini basic label" style="margin: 0.15em;">${htmlEscape(h)}</span>`).join("");
+            if (d.haEnabled){
+                box.find(".wmAdminHosts").html(`<small>Waymark keeps these on the rule: the cluster's floating IPs, node addresses and their DNS names (set on <a href="#ha" onclick="closeHttpRuleEditor(); openTabById('ha'); return false;">System &gt; High Availability</a>):</small><br>${hosts}`);
+            }else{
+                box.find(".wmAdminHosts").html(`<small>Waymark keeps these on the rule: this node's address and DNS name:</small><br>${hosts}`);
+                let s = d.settings || {}, g = d.guess || {};
+                box.find(".wmAdminAddr").val(s.address || g.address || "");
+                box.find(".wmAdminHost").val(s.hostname || g.hostname || "");
+                let notes = [];
+                if (g.address && g.address != s.address) notes.push("detected address " + g.address);
+                if (g.hostname && g.hostname != s.hostname) notes.push("DNS name " + g.hostname);
+                box.find(".wmAdminGuessNote").text(notes.length ? "Best guess: " + notes.join(", ") : "");
+                box.find(".wmAdminNode").show();
+                box.find(".wmAdminSave").off("click").on("click", function(){
+                    $.cjax({
+                        url: "/api/proxy/adminrule",
+                        method: "POST",
+                        data: {address: box.find(".wmAdminAddr").val().trim(), hostname: box.find(".wmAdminHost").val().trim()},
+                        success: function(r){
+                            if (r.error != undefined){
+                                msgbox(r.error, false, 6000);
+                                return;
+                            }
+                            msgbox("Admin console addresses saved");
+                            closeHttpRuleEditor();
+                            listProxyEndpoints();
+                        }
+                    });
+                });
+            }
+            if (d.autoCert){
+                box.find(".wmAdminCert").html(`<small><i class="yellow lock icon"></i>TLS uses the self-signed certificate <code>${htmlEscape(d.certName)}</code>, which Waymark rewrites when the rule's hosts change. Browsers warn about it; choose another certificate on the TLS / SSL page.</small>`);
+            }
         });
     }
 

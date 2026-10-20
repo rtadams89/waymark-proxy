@@ -28,14 +28,16 @@ type Node struct {
 	Address   string `json:"address"`   // the node's own IPv4 address on the shared VLAN
 	Interface string `json:"interface"` // network interface carrying that address, e.g. ens18
 	Priority  int    `json:"priority"`  // 1-254; the highest healthy node holds the floating IP
+	Hostname  string `json:"hostname"`  // optional DNS name of the node (the admin console rule answers on it)
 }
 
 // FloatingIP is one additional floating address. All floating IPs belong
 // to one VRRP group: the active node holds every one of them.
 type FloatingIP struct {
-	Address string `json:"address"` // IPv4 address
-	Prefix  int    `json:"prefix"`  // its prefix length, e.g. 24
-	Label   string `json:"label"`   // optional note, shown in Waymark only
+	Address  string `json:"address"`  // IPv4 address
+	Prefix   int    `json:"prefix"`   // its prefix length, e.g. 24
+	Label    string `json:"label"`    // optional note, shown in Waymark only
+	Hostname string `json:"hostname"` // optional DNS name of this floating IP (the admin console rule answers on it)
 }
 
 // MaxFloatingIPs is the most floating IPs a cluster can have (VIP + extras).
@@ -43,10 +45,11 @@ const MaxFloatingIPs = 16
 
 // Config is the cluster definition, shared by all nodes.
 type Config struct {
-	Enabled  bool   `json:"enabled"`
-	VIP      string `json:"vip"`      // primary floating IPv4 address; node addresses are in its subnet
-	Prefix   int    `json:"prefix"`   // its prefix length, e.g. 24
-	VIPLabel string `json:"vipLabel"` // optional note for the primary floating IP
+	Enabled     bool   `json:"enabled"`
+	VIP         string `json:"vip"`         // primary floating IPv4 address; node addresses are in its subnet
+	Prefix      int    `json:"prefix"`      // its prefix length, e.g. 24
+	VIPLabel    string `json:"vipLabel"`    // optional note for the primary floating IP
+	VIPHostname string `json:"vipHostname"` // optional DNS name of the primary floating IP
 
 	// ExtraVIPs are more floating IPs on the same interface, moved together
 	// with VIP
@@ -77,6 +80,8 @@ var (
 	ifacePattern    = regexp.MustCompile(`^[A-Za-z0-9._-]{1,15}$`)
 	passwordPattern = regexp.MustCompile(`^[A-Za-z0-9]{0,8}$`)
 	labelPattern    = regexp.MustCompile(`^[A-Za-z0-9 ._()/+-]{0,32}$`)
+	// DNS names: letters, digits and dashes in dot-separated labels
+	hostnamePattern = regexp.MustCompile(`^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$`)
 )
 
 func parseIPv4(s string) (net.IP, bool) {
@@ -97,6 +102,7 @@ func (c *Config) Validate() (*Config, error) {
 	v := *c
 	v.VIP = strings.TrimSpace(v.VIP)
 	v.VIPLabel = strings.TrimSpace(v.VIPLabel)
+	v.VIPHostname = NormalizeHostname(v.VIPHostname)
 	v.Nodes = append([]Node{}, c.Nodes...)
 	v.ExtraVIPs = append([]FloatingIP{}, c.ExtraVIPs...)
 	if !v.Enabled && v.VIP == "" && len(v.Nodes) == 0 && len(v.ExtraVIPs) == 0 {
@@ -112,13 +118,16 @@ func (c *Config) Validate() (*Config, error) {
 	if !labelPattern.MatchString(v.VIPLabel) {
 		return nil, errors.New("floating IP label: up to 32 letters, digits, spaces and . _ ( ) / + -")
 	}
+	if !ValidHostname(v.VIPHostname) {
+		return nil, errors.New("floating IP DNS name is not a valid host name")
+	}
 	if 1+len(v.ExtraVIPs) > MaxFloatingIPs {
 		return nil, fmt.Errorf("at most %d floating IPs", MaxFloatingIPs)
 	}
 	floating := map[string]bool{vip.String(): true}
 	for i := range v.ExtraVIPs {
 		f := &v.ExtraVIPs[i]
-		f.Address, f.Label = strings.TrimSpace(f.Address), strings.TrimSpace(f.Label)
+		f.Address, f.Label, f.Hostname = strings.TrimSpace(f.Address), strings.TrimSpace(f.Label), NormalizeHostname(f.Hostname)
 		label := fmt.Sprintf("floating IP %d", i+2)
 		ip, ok := parseIPv4(f.Address)
 		if !ok {
@@ -130,6 +139,9 @@ func (c *Config) Validate() (*Config, error) {
 		}
 		if !labelPattern.MatchString(f.Label) {
 			return nil, fmt.Errorf("%s: label can have up to 32 letters, digits, spaces and . _ ( ) / + -", label)
+		}
+		if !ValidHostname(f.Hostname) {
+			return nil, fmt.Errorf("%s: DNS name is not a valid host name", label)
 		}
 		if floating[ip.String()] {
 			return nil, fmt.Errorf("%s is listed twice", label)
@@ -166,6 +178,7 @@ func (c *Config) Validate() (*Config, error) {
 		n.Name = strings.ToLower(strings.TrimSpace(n.Name))
 		n.Address = strings.TrimSpace(n.Address)
 		n.Interface = strings.TrimSpace(n.Interface)
+		n.Hostname = NormalizeHostname(n.Hostname)
 		label := fmt.Sprintf("node %d", i+1)
 		if !namePattern.MatchString(n.Name) {
 			return nil, fmt.Errorf("%s: name must be lowercase letters, digits and dashes (up to 32)", label)
@@ -180,6 +193,9 @@ func (c *Config) Validate() (*Config, error) {
 		}
 		if !subnet.Contains(ip) {
 			return nil, fmt.Errorf("%s: address %s is not in the floating IP's subnet %s", label, n.Address, subnet)
+		}
+		if !ValidHostname(n.Hostname) {
+			return nil, fmt.Errorf("%s: DNS name is not a valid host name", label)
 		}
 		if !ifacePattern.MatchString(n.Interface) {
 			return nil, fmt.Errorf("%s: interface name is invalid", label)
@@ -197,11 +213,28 @@ func (c *Config) Validate() (*Config, error) {
 	return &v, nil
 }
 
+// NormalizeHostname trims a DNS name, lowercases it and drops a trailing dot.
+func NormalizeHostname(h string) string {
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(h)), ".")
+}
+
+// ValidHostname reports whether h is empty or a valid DNS name (not an IP
+// address).
+func ValidHostname(h string) bool {
+	if h == "" {
+		return true
+	}
+	if len(h) > 253 || net.ParseIP(h) != nil {
+		return false
+	}
+	return hostnamePattern.MatchString(h)
+}
+
 // FloatingIPs returns every floating IP, the primary one first.
 func (c *Config) FloatingIPs() []FloatingIP {
 	out := []FloatingIP{}
 	if c.VIP != "" {
-		out = append(out, FloatingIP{Address: c.VIP, Prefix: c.Prefix, Label: c.VIPLabel})
+		out = append(out, FloatingIP{Address: c.VIP, Prefix: c.Prefix, Label: c.VIPLabel, Hostname: c.VIPHostname})
 	}
 	return append(out, c.ExtraVIPs...)
 }

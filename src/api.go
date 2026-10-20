@@ -47,6 +47,8 @@ func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/proxy/useHttpsRedirect", HandleUpdateHttpsRedirect)
 	authRouter.HandleFunc("/api/proxy/listenPort80", HandleUpdatePort80Listener)
 	authRouter.HandleFunc("/api/proxy/requestIsProxied", HandleManagementProxyCheck)
+	authRouter.HandleFunc("/api/proxy/adminrule", HandleAdminRule) // Custom fork: admin console rule (admin_rule_custom.go)
+	authRouter.HandleFunc("/api/ha/dnsguess", HandleDNSGuess)      // Custom fork: reverse DNS for the DNS name fields
 	authRouter.HandleFunc("/api/proxy/developmentMode", HandleDevelopmentModeChange)
 	authRouter.HandleFunc("/api/proxy/proxyProtocol", HandleProxyProtocolChange)
 	authRouter.HandleFunc("/api/proxy/quic", HandleQuicToggle)

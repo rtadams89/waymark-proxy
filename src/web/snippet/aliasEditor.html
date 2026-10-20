@@ -25,6 +25,7 @@
             <div class="scrolling content ui form">
                 <div id="inlineEditBasicAuthCredentials" class="field">
                     <p>Enter alias hostname or wildcard matching keywords for <code class="epname"></code></p>
+                    <p id="requiredHostsNote" style="display:none;"><small>This rule serves the admin console. Hosts marked <b>Required</b> are this node's or cluster's addresses and DNS names; Waymark keeps them (change them on System &gt; High Availability, or on this rule's Host page when HA is off). You can add and remove other aliases.</small></p>
                     <table class="ui basic very compact unstackable celled table">
                         <thead>
                         <tr>
@@ -58,6 +59,7 @@
         </div>
         <script>
             let aliasList = [];
+            let requiredHosts = []; // custom fork: hosts Waymark keeps on the admin console rule
             let editingEndpoint = {};
 
             if (window.location.hash.length > 1){
@@ -86,6 +88,8 @@
                             return;
                         }else{
                             $("#inlineEditTable").html("");
+                            requiredHosts = (data.System == "admin-console" && data.SystemHosts) ? data.SystemHosts : [];
+                            $("#requiredHostsNote").toggle(requiredHosts.length > 0);
                             if (data.MatchingDomainAlias != undefined){
                                 aliasList = data.MatchingDomainAlias;
                                 renderAliasList();
@@ -159,9 +163,13 @@
                         //This is a wildcard hostname
                         domainLink = aliasDomain;
                     }
+                    let removeCell = `<button class="ui basic mini circular icon button" onclick="removeAliasDomain('${aliasDomain}');"><i class="red trash icon"></i></button>`;
+                    if (requiredHosts.includes(aliasDomain.toLowerCase())){
+                        removeCell = `<span class="ui mini basic label" title="An address or DNS name of this node or cluster: Waymark keeps it so the admin console stays reachable"><i class="lock icon"></i> Required</span>`;
+                    }
                     $("#inlineEditTable").append(`<tr>
                         <td>${domainLink}</td>
-                        <td><button class="ui basic mini circular icon button" onclick="removeAliasDomain('${aliasDomain}');"><i class="red trash icon"></i></button></td>
+                        <td>${removeCell}</td>
                     </tr>`);
                 });
 
@@ -177,4 +185,4 @@
             }
         </script>
     </body>
-</html>
+</html>

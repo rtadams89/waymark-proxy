@@ -91,6 +91,9 @@ func main() {
 		os.Exit(0)
 	}
 	updateStartupCheck() //Custom fork: roll back an update that does not stay up (selfupdate_custom.go)
+	if *resetAdminRuleFlag {
+		adminRuleResetAndExit() //Custom fork: rebuild the admin console proxy rule (admin_rule_custom.go)
+	}
 	if *reset_account {
 		//Reset admin account by removing all users from the system
 		auth.ResetAccount(databaseBackend, path_database)
@@ -134,6 +137,7 @@ func main() {
 		csrf.SameSite(csrf.SameSiteLaxMode),
 	)
 	csrfMiddleware = haWithReadOnly(csrfMiddleware) //Custom fork: settings are read-only on an HA standby
+	csrfMiddleware = adminGuardWrap(csrfMiddleware) //Custom fork: keep the admin console rule working (admin_guard_custom.go)
 
 	//Startup all modules, see start.go
 	startupSequence()

@@ -117,19 +117,19 @@
     <p>The ports Waymark listens on for proxied traffic, HTTP to HTTPS redirection, and other inbound connection settings</p>
     <div class="ui divider"></div>
     <p>Main Listening Port</p>
-    <div class="ui action fluid notloopbackOnly input">
+    <div class="ui action fluid input">
         <small id="applyButtonReminder">Click "Apply" button to confirm listening port changes</small>
         <input type="text" id="incomingPort" placeholder="Main listening port" value="443">
-        <button class="ui green notloopbackOnly button" style="background: var(--theme_green);" onclick="handlePortChange();"><i class="ui checkmark icon"></i> Apply</button>
+        <button class="ui green button" style="background: var(--theme_green);" onclick="handlePortChange();"><i class="ui checkmark icon"></i> Apply</button>
     </div>
     <br>
-    <div id="tls" class="ui toggle notloopbackOnly checkbox">
+    <div id="tls" class="ui toggle checkbox">
         <input type="checkbox">
         <label>Use TLS to serve proxy request<br>
         <small>Also known as HTTPS mode</small></label>
     </div>
     <br>
-    <div id="listenP80" class="ui toggle notloopbackOnly tlsEnabledOnly checkbox" style="margin-top: 0.4em;" >
+    <div id="listenP80" class="ui toggle tlsEnabledOnly checkbox" style="margin-top: 0.4em;" >
         <input type="checkbox">
         <label>Enable HTTP server on port 80<br>
         <small>Accept HTTP requests even if you are using HTTPS mode</small></label>
@@ -140,7 +140,7 @@
     </div>
     <br>
     <div style="display: inline-block;">
-        <div id="redirect" class="ui toggle notloopbackOnly tlsEnabledOnly checkbox" style="margin-top: 0.4em;">
+        <div id="redirect" class="ui toggle tlsEnabledOnly checkbox" style="margin-top: 0.4em;">
             <input type="checkbox">
             <label>Force redirect HTTP request to HTTPS<br>
             <small>Redirect web traffic from port 80 to 443, require enabling HTTP server on port 80</small></label>
@@ -155,7 +155,7 @@
             <div class="content">
                 <!-- TLS -->
                 <div class="ingressSettingGroup">
-                    <div id="tlsMinVer" class="notloopbackOnly tlsEnabledOnly">
+                    <div id="tlsMinVer" class="tlsEnabledOnly">
                         <span class="ingressFieldLabel">Minimum TLS Version</span>
                         <small class="ingressFieldHint">Clients that only support older versions will be rejected</small>
                         <div id="tlsVersionSlider" class="tlsVersionSlider" role="radiogroup" aria-label="Minimum TLS Version">
@@ -173,13 +173,13 @@
                 <div class="ingressSettingGroup">
                     <div class="ingressGroupTitle">Protocols</div>
                     <small class="ingressGroupNote">PROXY protocol and HTTP/3 are mutually exclusive. Enabling one turns off the other.</small>
-                    <div id="proxyProtocol" class="ui toggle notloopbackOnly tlsEnabledOnly checkbox">
+                    <div id="proxyProtocol" class="ui toggle tlsEnabledOnly checkbox">
                         <input type="checkbox">
                         <label>PROXY Protocol<br>
                         <small>Accept PROXY protocol v1/v2 headers on the TLS listener</small></label>
                     </div>
                     <br>
-                    <div id="enableQuic" class="ui toggle notloopbackOnly tlsEnabledOnly checkbox" style="margin-top: 0.8em;">
+                    <div id="enableQuic" class="ui toggle tlsEnabledOnly checkbox" style="margin-top: 0.8em;">
                         <input type="checkbox">
                         <label>HTTP/3 (QUIC)<br>
                         <small>Serve HTTP/3 over UDP on the same port</small></label>
@@ -187,7 +187,7 @@
                 </div>
 
                 <!-- Timeouts -->
-                <div class="ingressSettingGroup notloopbackOnly">
+                <div class="ingressSettingGroup">
                     <div class="ingressGroupTitle">Timeouts</div>
                     <small class="ingressGroupNote">In seconds, 0 disables the timeout. Applying restarts the proxy if it is running.</small>
                     <div class="ui middle aligned stackable grid ingressTimeoutGrid">
@@ -244,10 +244,6 @@
         </div>
     </div>
 
-    <div id="gsloopbackWarning" class="ui segment" style="display:none;">
-        <b><i class="yellow warning icon"></i> Loopback Routing Warning</b><br>
-        <small>This management interface is a loopback proxied service. <br>Some ingress settings are disabled to prevent accidentally cutting off access to this management interface.</small>
-    </div>
     <div class="ui divider"></div>
     <h4>Additional Listening Addresses</h4>
     <p>Addresses that proxy rules also listen on, set in each rule's editor (Host &rarr; Additional Listening Addresses)</p>
@@ -278,14 +274,10 @@
     // other webmin components loaded dynamically via ajax.
     $("#statusAdvanceSettings").accordion();
 
-    //Disable modification of critical settings if the management interface
-    //is accessed through a loopback proxied route
-    $.get("/api/proxy/requestIsProxied", function(data){
-        if (data == true){
-            $("#globalsettings .notloopbackOnly").addClass("disabled");
-            $("#gsloopbackWarning").show();
-        }
-    });
+    //Custom fork: whether this page is reached through Waymark's own proxy
+    //(the admin console rule), to warn before PROXY protocol cuts it off
+    let gsViaProxy = false;
+    $.get("/api/proxy/requestIsProxied", function(data){ gsViaProxy = (data == true); });
 
     //Load the current listening port state into the input field
     function initIncomingPortSetting(){
@@ -532,6 +524,10 @@
             $("#proxyProtocol").off("change").on("change", function(data){
                 let enableProxyProtocol = ($(this).find("input[type='checkbox']")[0].checked);
                 let quicWasEnabled = $("#enableQuic").find("input[type='checkbox']")[0].checked;
+                if (enableProxyProtocol && gsViaProxy && !confirm("You are using this page through Waymark's proxy. With PROXY protocol on, Waymark only accepts connections that start with a PROXY header (from a load balancer in front of it), so this page stops loading unless your traffic comes through such a load balancer.\n\nTurn PROXY protocol on?")){
+                    setToggleStateSilently("#proxyProtocol", false);
+                    return;
+                }
                 $.get("/api/proxy/proxyProtocol?enable=" + enableProxyProtocol, function(data){
                     if (data.error != undefined){
                         msgbox(data.error, false, 5000);

@@ -307,6 +307,7 @@ func ReverseProxyInit() {
 	initHealthChecks()
 	initAssetCache() //Custom fork: static file cache memory limit
 	initHA()         //Custom fork: keepalived heartbeat and role
+	initAdminRule()  //Custom fork: the admin console rule (admin_rule_custom.go)
 	UpdateUptimeMonitorTargets()
 
 }
@@ -330,7 +331,7 @@ func ReverseProxyHandleOnOff(w http.ResponseWriter, r *http.Request) {
 		if dynamicProxyRouter.IsProxiedSubdomain(r) {
 			//Loopback routing. Turning it off will make the user lost control
 			//of the whole system. Do not allow shutdown
-			utils.SendErrorResponse(w, "Unable to shutdown in loopback rp mode. Remove proxy rules for management interface and retry.")
+			utils.SendErrorResponse(w, "You are using this page through Waymark's proxy, so stopping it would cut off this page. Stop it from the admin console's own address (port "+adminConsolePort()+") or restart Waymark.")
 			return
 		}
 

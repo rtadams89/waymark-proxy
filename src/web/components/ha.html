@@ -78,7 +78,7 @@
             </div>
             <h4>Floating IPs</h4>
             <table class="ui very basic compact unstackable table" id="haVipTable">
-                <thead><tr><th>Address</th><th style="width: 9em;">Prefix length</th><th>Label <span class="haHint">(optional)</span></th><th></th></tr></thead>
+                <thead><tr><th>Address</th><th style="width: 9em;">Prefix length</th><th>DNS name <span class="haHint">(optional)</span></th><th>Label <span class="haHint">(optional)</span></th><th></th></tr></thead>
                 <tbody></tbody>
             </table>
             <button class="ui basic small button" id="haAddVipBtn" onclick="haAddVip(); return false;"><i class="add icon"></i> Add floating IP</button>
@@ -132,12 +132,13 @@ sudo sysctl --system</pre></div>
 
             <h4>Nodes</h4>
             <table class="ui very basic compact unstackable table" id="haNodesTable">
-                <thead><tr><th>Name</th><th>Address on this VLAN</th><th>Interface</th><th>Priority</th><th></th></tr></thead>
+                <thead><tr><th>Name</th><th>Address on this VLAN</th><th>DNS name <span class="haHint">(optional)</span></th><th>Interface</th><th>Priority</th><th></th></tr></thead>
                 <tbody></tbody>
             </table>
             <button class="ui basic small button" onclick="haAddNode(); return false;"><i class="add icon"></i> Add node</button>
             <button class="ui basic small button" id="haAddSelfBtn" onclick="haAddSelf(); return false;"><i class="server icon"></i> Add this node</button>
             <div class="haHint" style="margin-top: 0.5em;">This machine's addresses: <span class="haMono" id="haLocalAddrs">-</span>. The node with the highest priority is active when all are healthy.</div>
+            <div class="haHint" style="margin-top: 0.4em;">The admin console's proxy rule answers on every floating IP and node address and the DNS names given here (empty DNS names are filled in with a reverse DNS guess; check them before saving). Waymark adds and removes them on the rule itself.</div>
 
             <div class="ui divider"></div>
             <button class="ui basic button" id="haSaveBtn" onclick="haSave(); return false;"><i class="green save icon"></i> Save and apply</button>
@@ -197,10 +198,11 @@ sudo sysctl --system</pre></div>
         }
 
         function nodeRow(n){
-            n = n || {name: "", address: "", interface: "", priority: ""};
+            n = n || {name: "", address: "", interface: "", priority: "", hostname: ""};
             return `<tr>
                 <td><input type="text" class="haNodeName" value="${esc(n.name)}" placeholder="waymark1"></td>
-                <td><input type="text" class="haNodeAddr" value="${esc(n.address)}" placeholder="10.10.20.10"></td>
+                <td><input type="text" class="haNodeAddr haGuessFrom" value="${esc(n.address)}" placeholder="10.10.20.10"></td>
+                <td><input type="text" class="haNodeHost haGuessInto" value="${esc(n.hostname || "")}" placeholder="waymark1.example.com" autocomplete="off"></td>
                 <td><input type="text" class="haNodeIface" value="${esc(n.interface)}" placeholder="ens18"></td>
                 <td><input type="number" class="haNodePrio" min="1" max="254" value="${esc(n.priority)}" placeholder="150"></td>
                 <td class="haSelfCell"><span class="haSelfMark"></span> <button class="ui basic mini icon button" title="Remove" onclick="$(this).closest('tr').remove(); haMarkSelf(); return false;"><i class="red trash icon"></i></button></td>
@@ -209,10 +211,11 @@ sudo sysctl --system</pre></div>
 
         const MAX_FLOATING_IPS = 16;
         function vipRow(f){
-            f = f || {address: "", prefix: "", label: ""};
+            f = f || {address: "", prefix: "", label: "", hostname: ""};
             return `<tr>
-                <td><input type="text" class="haVipAddr" value="${esc(f.address)}" placeholder="10.10.20.5" autocomplete="off"></td>
+                <td><input type="text" class="haVipAddr haGuessFrom" value="${esc(f.address)}" placeholder="10.10.20.5" autocomplete="off"></td>
                 <td><input type="number" class="haVipPrefix" min="1" max="32" value="${esc(f.prefix)}" placeholder="24"></td>
+                <td><input type="text" class="haVipHost haGuessInto" value="${esc(f.hostname || "")}" placeholder="waymark.example.com" autocomplete="off"></td>
                 <td><input type="text" class="haVipLabel" maxlength="32" value="${esc(f.label)}" placeholder="e.g. Public sites"></td>
                 <td style="white-space: nowrap;"><span class="haVipPrimary"></span> <button class="ui basic mini icon button" title="Remove" onclick="$(this).closest('tr').remove(); haMarkVips(); return false;"><i class="red trash icon"></i></button></td>
             </tr>`;
@@ -245,6 +248,7 @@ sudo sysctl --system</pre></div>
         window.haAddNode = function(n){
             $("#haNodesTable tbody").append(nodeRow(n));
             haMarkSelf();
+            haGuessHostnames();
         };
 
         window.haAddSelf = function(){
@@ -259,15 +263,17 @@ sudo sysctl --system</pre></div>
                 return {
                     address: $(this).find(".haVipAddr").val().trim(),
                     prefix: parseInt($(this).find(".haVipPrefix").val()) || 0,
-                    label: $(this).find(".haVipLabel").val().trim()
+                    label: $(this).find(".haVipLabel").val().trim(),
+                    hostname: $(this).find(".haVipHost").val().trim()
                 };
             }).get().filter(f => f.address != "" || f.label != "");
-            let primary = vips.shift() || {address: "", prefix: 0, label: ""};
+            let primary = vips.shift() || {address: "", prefix: 0, label: "", hostname: ""};
             return {
                 enabled: $("#haEnabled")[0].checked,
                 vip: primary.address,
                 prefix: primary.prefix,
                 vipLabel: primary.label,
+                vipHostname: primary.hostname,
                 extraVips: vips,
                 routerId: parseInt($("#haRouterId").val()) || 0,
                 password: $("#haPassword").val().trim(),
@@ -280,7 +286,8 @@ sudo sysctl --system</pre></div>
                         name: $(this).find(".haNodeName").val().trim(),
                         address: $(this).find(".haNodeAddr").val().trim(),
                         interface: $(this).find(".haNodeIface").val().trim(),
-                        priority: parseInt($(this).find(".haNodePrio").val()) || 0
+                        priority: parseInt($(this).find(".haNodePrio").val()) || 0,
+                        hostname: $(this).find(".haNodeHost").val().trim()
                     };
                 }).get()
             };
@@ -289,7 +296,7 @@ sudo sysctl --system</pre></div>
         function fillForm(c){
             $("#haEnabled").prop("checked", !!c.enabled);
             $("#haVipTable tbody").empty();
-            let vips = (c.vip ? [{address: c.vip, prefix: c.prefix, label: c.vipLabel || ""}] : []).concat(c.extraVips || []);
+            let vips = (c.vip ? [{address: c.vip, prefix: c.prefix, label: c.vipLabel || "", hostname: c.vipHostname || ""}] : []).concat(c.extraVips || []);
             if (vips.length == 0) vips = [{address: "", prefix: c.prefix || 24, label: ""}];
             vips.forEach(f => $("#haVipTable tbody").append(vipRow(f)));
             haMarkVips();
@@ -302,7 +309,22 @@ sudo sysctl --system</pre></div>
             $("#haNodesTable tbody").empty();
             (c.nodes || []).forEach(n => $("#haNodesTable tbody").append(nodeRow(n)));
             haMarkSelf();
+            haGuessHostnames();
         }
+
+        // Empty DNS name fields get a best guess (reverse DNS of the address)
+        window.haGuessHostnames = function(){
+            $("#haForm tr").each(function(){
+                let row = $(this), into = row.find(".haGuessInto"), addr = row.find(".haGuessFrom").val();
+                if (into.length == 0 || into.val().trim() != "" || !/^\d{1,3}(\.\d{1,3}){3}$/.test((addr || "").trim())) return;
+                $.get("/api/ha/dnsguess?ip=" + encodeURIComponent(addr.trim()), function(d){
+                    if (d && d.hostname && into.val().trim() == "" && row.find(".haGuessFrom").val().trim() == addr.trim()){
+                        into.val(d.hostname).attr("title", "Best guess from reverse DNS; change it if it is wrong");
+                    }
+                });
+            });
+        };
+        $(document).off("change.haGuess").on("change.haGuess", "#haForm .haGuessFrom", function(){ haGuessHostnames(); });
 
         function renderStatus(d){
             haStatus = d;

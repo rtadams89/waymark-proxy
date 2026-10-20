@@ -10,6 +10,23 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.17.0
+
+**New: the admin console rule**
+- Waymark now creates and maintains the proxy rule for its own admin console. On first start it answers on this machine's address and DNS name (best guesses; editable), sends requests to the admin console's listener (`-port`), uses TLS with a self-signed certificate covering every host of the rule, has caching on and health checks off.
+- With HA on, the rule answers on every floating IP and node address and their DNS names. The HA settings have a new **DNS name** field for each floating IP and node, pre-filled with a reverse DNS guess. The rule's main domain is the primary floating IP's DNS name (or address) until you change it. Adding or removing a node or floating IP adds or removes its hosts; hosts you added yourself stay. The rule is synced to the standbys like the other rules.
+- A node that is not in a cluster yet has its own rule; when it joins, the cluster's rule (which by then includes it) replaces it.
+- An existing rule whose only destination is the admin console is adopted: it keeps its main domain, aliases, certificate choice, access rule, caching, logging and tags, and gets the required hosts. Settings that could cut off the admin console are reset: it is enabled, listens on every address, and its authentication, virtual directories, custom headers, health checks and maintenance mode are removed. Preferred certificates for hosts the rule doesn't have are dropped.
+- The rule cannot be disabled or deleted, and its destination, authentication, virtual directories, headers, health checks, maintenance mode, listening address and extra listening ports cannot be changed. The required hosts cannot be removed, and no other rule can take one of its hosts. Its main domain, extra aliases, certificate, access rule, caching, logging and tags can be changed. The Proxy Rules list marks it **Admin console**, and its editor shows only what can be changed.
+- When you use the admin console through Waymark's proxy, an access rule change that would block your own address from the admin console rule is refused: attaching such a rule, or turning on or editing the allowlist or blocklist of the rule it uses.
+- `-reset-admin-rule` rebuilds the rule (required hosts, destination, a new self-signed certificate, the default access rule) and exits; restart Waymark to load it.
+- A client that connects to an IP address without SNI now gets the certificate for that address when one covers it (the self-signed certificate does), instead of the fallback certificate.
+
+**Changed: no more "loopback" warnings**
+- The global settings (listening port, TLS, port 80, HTTPS redirect, minimum TLS version, QUIC) are no longer locked when you use the admin console through Waymark's proxy. The admin console rule keeps working through these changes; a new port or plain HTTP just changes the address you use.
+- Turning on PROXY protocol asks for confirmation when you use the admin console through Waymark's proxy, because connections without a PROXY header (yours) are then refused.
+- Stopping the proxy from the Status page is still refused through Waymark's proxy, with a clearer message pointing to the admin console's own port.
+
 ## 2.16.0
 
 **Fixed: an updated node could roll itself back after a rolling update**

@@ -461,6 +461,7 @@ func HandleHAConfig(w http.ResponseWriter, r *http.Request) {
 	ha.cfg = cfg
 	ha.mu.Unlock()
 	SystemWideLogger.PrintAndLog("ha", "HA settings saved", nil)
+	go adminRuleReconcile() // the admin console rule answers on the cluster's addresses
 	haSyncReconcileListener()
 
 	resp := map[string]any{"saved": true}

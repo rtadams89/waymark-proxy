@@ -391,7 +391,7 @@
     <div id="serverstatus" class="ui statustab inverted segment" style="margin: 0;">
         <div class="poweroptions">
             <button id="startbtn" class="ui small basic inverted disabled button" onclick="startService();"><i class="ui arrow alternate circle up icon"></i> Start</button>
-            <button id="stopbtn" class="ui small basic inverted notloopbackOnly disabled button" onclick="stopService();"><i class="ui minus circle icon"></i> Stop</button>
+            <button id="stopbtn" class="ui small basic inverted disabled button" onclick="stopService();"><i class="ui minus circle icon"></i> Stop</button>
         </div>
         <h1 class="ui header" style="margin: 0;">
             <i id="rpStatusIcon" class="loading spinner icon"></i>
@@ -419,10 +419,6 @@
                 <span class="heroMetricValue" id="heroConnections">-</span>
             </div>
         </div>
-    </div>
-    <div id="rploopbackWarning" class="ui segment" style="display:none;">
-        <b><i class="yellow warning icon"></i> Loopback Routing Warning</b><br>
-        <small>This management interface is a loopback proxied service. <br>If you want to shutdown the reverse proxy server, please remove the proxy rule for the management interface and refresh.</small>
     </div>
 </div>
 
@@ -728,27 +724,13 @@
 </div>
 
 <script>
-    let loopbackProxiedInterface = false;
-
-    //Initial the start stop button if this is reverse proxied
-    $.get("/api/proxy/requestIsProxied", function(data){
-        if (data == true){
-            //This management interface is reverse proxied by itself
-            //do not allow turning off the proxy
-            $(".notloopbackOnly").addClass("disabled");
-            loopbackProxiedInterface = true;
-            $("#rploopbackWarning").show();
-        }
-    });
 
     //Get the latest server status from proxy server
     function initRPStaste(){
         $.get("/api/proxy/status", function(data){
             if (data.Running == true){
                 $("#startbtn").addClass("disabled");
-                if (!loopbackProxiedInterface){
-                    $("#stopbtn").removeClass("disabled");
-                }
+                $("#stopbtn").removeClass("disabled");
                 $("#serverstatus").addClass("green");
                 $("#statusTitle").text("Online");
                 $("#rpStatusIcon").attr("class", "white circle check icon");
