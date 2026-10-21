@@ -1,12 +1,8 @@
 package main
 
 import (
-	"errors"
 	"testing"
 	"time"
-
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/info/logger"
 
 	"imuslab.com/zoraxy/mod/healthcheck"
 	"imuslab.com/zoraxy/mod/uptime"
@@ -128,38 +124,5 @@ func TestDefaultActiveHealthCheck(t *testing.T) {
 	}
 	if c := newRuleHealthCheck(true, "/healthz"); c == nil || c.Path != "/healthz" {
 		t.Errorf("checked option should create a health check: %+v", c)
-	}
-}
-
-func TestApplyUptimeMigration(t *testing.T) {
-	if SystemWideLogger == nil {
-		SystemWideLogger, _ = logger.NewFmtLogger()
-	}
-	custom := healthcheck.DefaultConfig() // user already configured (inactive) health checks
-	eps := []*dynamicproxy.ProxyEndpoint{
-		{RootOrMatchingDomain: "monitored.test", UptimeMonitorURI: "/identity"},
-		{RootOrMatchingDomain: "unmonitored.test", DisableUptimeMonitor: true},
-		{RootOrMatchingDomain: "configured.test", HealthCheck: custom},
-		{RootOrMatchingDomain: "savefails.test"},
-	}
-	saved := map[string]bool{}
-	n := applyUptimeMigration(eps, func(ep *dynamicproxy.ProxyEndpoint) error {
-		if ep.RootOrMatchingDomain == "savefails.test" {
-			return errors.New("disk full")
-		}
-		saved[ep.RootOrMatchingDomain] = true
-		return nil
-	})
-	if n != 1 || !saved["monitored.test"] || len(saved) != 1 {
-		t.Fatalf("converted=%d saved=%v", n, saved)
-	}
-	if hc := eps[0].HealthCheck; hc == nil || !hc.ActiveEnabled || hc.Path != "/identity" {
-		t.Errorf("monitored rule not converted: %+v", hc)
-	}
-	if eps[1].HealthCheck != nil {
-		t.Error("rule with uptime monitor off must not get health checks")
-	}
-	if eps[2].HealthCheck != custom {
-		t.Error("existing health check settings must be left alone")
 	}
 }

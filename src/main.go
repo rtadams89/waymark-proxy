@@ -44,7 +44,6 @@ import (
 	"imuslab.com/zoraxy/mod/auth"
 	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
 	"imuslab.com/zoraxy/mod/geodb"
-	"imuslab.com/zoraxy/mod/update"
 	"imuslab.com/zoraxy/mod/utils"
 )
 
@@ -104,11 +103,6 @@ func main() {
 	if !utils.ValidateListeningAddress(*webUIPort) {
 		fmt.Println("Malformed -port (listening address) paramter. Do you mean -port=:" + *webUIPort + "?")
 		os.Exit(0)
-	}
-
-	if *enableAutoUpdate {
-		fmt.Println("Checking required config update")
-		update.RunConfigUpdate(0, update.GetVersionIntFromVersionNumber(SYSTEM_VERSION))
 	}
 
 	SetupCloseHandler()

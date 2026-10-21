@@ -236,18 +236,13 @@ func TestL4StickyAndLeastConn(t *testing.T) {
 	}
 }
 
-func TestL4ConvertOlderRules(t *testing.T) {
-	failover := &ProxyRelayInstance{Upstreams: []string{"10.0.0.1:1", "10.0.0.2:1"}, LoadBalancing: legacyFailover}
-	if !failover.normalizePool() {
+func TestL4AddressListToDestinations(t *testing.T) {
+	plain := &ProxyRelayInstance{Upstreams: []string{"10.0.0.1:1", "10.0.0.2:1"}}
+	if !plain.normalizePool() {
 		t.Fatal("not converted")
 	}
-	if failover.LoadBalancing != LBWeighted || failover.Destinations[0].Weight != 1 || failover.Destinations[1].Weight != 0 {
-		t.Fatalf("failover: %+v", failover)
-	}
-	hash := &ProxyRelayInstance{Upstreams: []string{"10.0.0.1:1", "10.0.0.2:1"}, LoadBalancing: legacySourceHash}
-	hash.normalizePool()
-	if !hash.StickySessions || hash.Destinations[1].Weight != 1 {
-		t.Fatalf("source hash: %+v", hash)
+	if plain.LoadBalancing != LBWeighted || plain.Destinations[0].Weight != 1 || plain.Destinations[1].Weight != 1 {
+		t.Fatalf("address list: %+v", plain)
 	}
 	lc := &ProxyRelayInstance{ProxyTargetAddr: "10.0.0.1:1", LoadBalancing: LBLeastConn}
 	lc.normalizePool()

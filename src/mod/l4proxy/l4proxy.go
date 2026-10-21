@@ -76,8 +76,8 @@ type ProxyRelayInstance struct {
 
 	/* Custom fork: upstream pool (pool_custom.go) */
 	Destinations        []Destination       //Destination servers with weights; Upstreams and ProxyTargetAddr mirror them
-	Upstreams           []string            //Every destination address (for older versions)
-	LoadBalancing       string              //weighted (default) or leastconn; older modes are converted by normalizePool
+	Upstreams           []string            //Every destination address (kept in step with Destinations)
+	LoadBalancing       string              //weighted (default) or leastconn
 	StickySessions      bool                //Keep a client IP address on the same destination
 	HealthCheck         *healthcheck.Config //Active checks and passive monitoring; nil for none
 	CloseOnUpstreamDown bool                //Close open connections to an upstream when health checks take it out
@@ -247,7 +247,7 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 			options.Logger.PrintAndLog("l4-proxy", "Updated Layer 4 rule config with new UUID: "+thisRelayConfig.UUID, nil)
 		}
 
-		//Custom fork: rules from 2.9.1 and earlier get destinations with weights (pool_custom.go)
+		//Custom fork: a rule with only an address list gets destinations (pool_custom.go)
 		if thisRelayConfig.normalizePool() {
 			convertedRules = true
 		}

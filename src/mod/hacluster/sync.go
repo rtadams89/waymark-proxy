@@ -63,7 +63,7 @@ var SyncConfEntries = []string{
 	"trusted_proxies.json", // trusted proxy addresses
 	"log_conf.json",        // log rotation settings
 	"log_outputs.json",     // log file and syslog outputs
-	// Settings that were in sys.db until 2.15.0 (plugins.json stays per node)
+	// Settings files (plugins.json stays per node)
 	"listener.json",         // listening port, TLS and HTTP options
 	"system.json",           // Geo-IP lookups, asset cache memory limit
 	"acme_prefs.json",       // preferred certificate authority
@@ -77,14 +77,12 @@ var SyncConfEntries = []string{
 // Statistics, dashboard counters, the Geo-IP updater state, plugin state
 // and live SSO sessions stay per node.
 var SyncTables = []string{
-	"auth", "acme", "acme_dns_profiles",
-	"authelia", "authentik", // from old Zoraxy versions; no longer used
-	"zorxauth_users", "custom_fork",
+	"auth", "acme", "acme_dns_profiles", "zorxauth_users", "custom_fork",
 }
 
 // SyncSkipKeys are per-node keys inside synced tables.
 var SyncSkipKeys = map[string]map[string]bool{
-	"custom_fork": {"asset_cache_daily": true, "conf_copied": true},
+	"custom_fork": {"asset_cache_daily": true},
 }
 
 const (

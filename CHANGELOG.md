@@ -10,6 +10,17 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.17.1
+
+**Fixed: ACME account keys are back in sys.db**
+- ACME account keys were stored with the ACME preferences, so when 2.15.0 moved those to `conf/acme_prefs.json`, the keys went with them, into a file readable by Waymark's group. They are now kept in sys.db (with the EAB credentials), readable only by Waymark's user, and `acme_prefs.json` holds only the preferred certificate authority. Existing account keys are moved on first start.
+
+**Removed: leftovers and code for upgrading from older versions**
+- On first start, sys.db loses the copies of the settings moved to `conf/` in 2.15.0 and 2.16.0 (kept until now for a roll back), the `authelia` and `authentik` tables of old Zoraxy versions, and the values only used to move settings. `conf/version` and an empty `conf/streamproxy` folder are deleted.
+- The code that converted older configurations is gone: Zoraxy's config migrations (`mod/update`, which also wrote `conf/version`), copying settings from sys.db to `conf/`, adopting a hand-made admin console rule, converting the uptime monitor setting to health checks, moving `conf/streamproxy` to `conf/l4proxy`, and the Layer 4 load balancing modes of 2.9.1 and earlier. The `-cfgupgrade` flag is accepted but does nothing.
+- **Upgrading:** from 2.17.0 only. Rolling back to a version before 2.17.0, or restoring a backup made before 2.17.0, is no longer supported: those versions read settings that are now only in `conf/`.
+- Kept on purpose: checking passwords stored with the unsalted SHA-512 digest used before 2.2.2. Admin and Waymark Auth passwords are upgraded when you sign in, but basic auth credentials on proxy rules and the WebDAV password are only upgraded when you set them again, and a stored digest cannot be converted without the password.
+
 ## 2.17.0
 
 **New: the admin console rule**

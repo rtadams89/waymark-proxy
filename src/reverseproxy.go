@@ -288,8 +288,6 @@ func ReverseProxyInit() {
 		SystemWideLogger.Println("Dynamic Reverse Proxy service started")
 	}
 
-	//Custom fork: active/passive health checks (healthcheck_custom.go)
-	migrateUptimeMonitorToHealthChecks()
 	//Create a uptime monitor service
 	//Custom fork: created here, empty, before the health checks that feed it
 	//start (it used to be set from a goroutine, racing with them and the API

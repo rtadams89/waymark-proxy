@@ -118,7 +118,7 @@ func startupSequence() {
 		log.Fatal(err)
 	}
 	sysdb = db
-	moveTablesToFiles()  //Custom fork: settings kept as files in the config folder
+	useConfFileTables()  //Custom fork: settings kept as files in the config folder (conftables_custom.go)
 	haApplyPendingSync() //Custom fork: apply configuration copied from the HA active node
 	//Create tables for the database
 	sysdb.NewTable("settings")
@@ -311,7 +311,6 @@ func startupSequence() {
 	}
 
 	//Create the Layer 4 (TCP / UDP) Proxy Manager
-	migrateL4ProxyConfigFolder() //Custom fork: l4pool_custom.go
 	l4ProxyManager, err = l4proxy.NewL4Proxy(&l4proxy.Options{
 		AccessControlHandler: accessController.DefaultAccessRule.AllowConnectionAccess,
 		AccessController:     accessController,

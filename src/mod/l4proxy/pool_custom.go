@@ -31,10 +31,9 @@ package l4proxy
 	With CloseOnUpstreamDown, connections and sessions to a destination are
 	closed when health checks take it out of load balancing.
 
-	Rules saved by Waymark 2.9.1 and earlier have a plain address list and
-	one of four modes; normalizePool converts them (round robin: equal
-	weights; failover: the first destination, the others as backups; source
-	IP hash: equal weights with sticky sessions).
+	A rule given only an address list (Upstreams or ProxyTargetAddr, as the
+	edit API and hand-written files may) gets one destination per address
+	with weight 1 (normalizePool).
 */
 
 import (
@@ -60,13 +59,6 @@ import (
 const (
 	LBWeighted  = "weighted"
 	LBLeastConn = "leastconn"
-)
-
-// Modes of Waymark 2.9.1 and earlier, converted by normalizePool.
-const (
-	legacyRoundRobin = "roundrobin"
-	legacySourceHash = "sourcehash"
-	legacyFailover   = "failover"
 )
 
 // MaxUpstreams is the most destination servers one Layer 4 rule can have.
@@ -133,8 +125,8 @@ func (c *ProxyRelayInstance) HealthRuleID() string {
 	return "l4:" + strings.ToLower(c.UUID)
 }
 
-// normalizePool fills Destinations from the address list of older rules,
-// converts their load balancing mode, and keeps Upstreams and
+// normalizePool fills Destinations from a plain address list, sets an
+// unknown load balancing method to weighted, and keeps Upstreams and
 // ProxyTargetAddr in step with Destinations. Call with poolMu held for
 // writing (or before the rule is shared). Reports whether anything changed.
 func (c *ProxyRelayInstance) normalizePool() bool {
@@ -144,15 +136,8 @@ func (c *ProxyRelayInstance) normalizePool() bool {
 		if len(addrs) == 0 && strings.TrimSpace(c.ProxyTargetAddr) != "" {
 			addrs = []string{strings.TrimSpace(c.ProxyTargetAddr)}
 		}
-		for i, a := range addrs {
-			w := 1
-			if c.LoadBalancing == legacyFailover && i > 0 {
-				w = 0
-			}
-			c.Destinations = append(c.Destinations, Destination{Address: a, Weight: w, Enabled: true})
-		}
-		if c.LoadBalancing == legacySourceHash {
-			c.StickySessions = true
+		for _, a := range addrs {
+			c.Destinations = append(c.Destinations, Destination{Address: a, Weight: 1, Enabled: true})
 		}
 		changed = len(addrs) > 0
 	}
@@ -167,7 +152,7 @@ func (c *ProxyRelayInstance) normalizePool() bool {
 }
 
 // syncAddresses mirrors Destinations into Upstreams (every address, for
-// older versions and the list view) and ProxyTargetAddr (the first enabled
+// the list view) and ProxyTargetAddr (the first enabled
 // destination).
 func (c *ProxyRelayInstance) syncAddresses() {
 	if len(c.Destinations) == 0 {
@@ -619,7 +604,7 @@ func (m *Manager) ApplyPoolSettings(uuid string, p *PoolSettings) error {
 	}
 	c.poolMu.Lock()
 	c.Destinations = append([]Destination{}, p.Destinations...)
-	c.syncAddresses() // Upstreams and ProxyTargetAddr, for older versions and the list view
+	c.syncAddresses() // Upstreams and ProxyTargetAddr, for the list view
 	c.LoadBalancing = p.LoadBalancing
 	c.StickySessions = p.StickySessions
 	c.HealthCheck = p.HealthCheck

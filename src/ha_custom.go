@@ -42,11 +42,8 @@ var (
 	haStateDirFlag    = flag.String("ha-state-dir", hacluster.DefaultStateDir, "Custom fork: folder where the HA helper reports results (created by the HA installer)")
 )
 
-// HA settings: conf/ha.json (in sys.db as custom_fork/ha_cluster until 2.16.0)
-const (
-	haConfigKey  = "ha_cluster"
-	haConfigFile = "ha.json"
-)
+// HA settings: conf/ha.json
+const haConfigFile = "ha.json"
 
 func haConfigPath() string { return filepath.Join(CONF_FOLDER, haConfigFile) }
 
@@ -72,23 +69,6 @@ func writeHAConfigFile(cfg *hacluster.Config) error {
 		return err
 	}
 	return utils.WriteFileAtomic(haConfigPath(), append(b, '\n'), 0600) // holds the cluster key
-}
-
-// moveHAConfigToFile copies the HA settings from sys.db to conf/ha.json
-// when copyFromDB (on the first start of 2.16.0, or after restoring an
-// older backup) and checks that the file can be read. The copy in sys.db is
-// kept for an earlier version put back by a roll back. Run at start-up
-// before anything uses haConfig.
-func moveHAConfigToFile(copyFromDB bool) error {
-	if copyFromDB && sysdb.TableExists(migrationTable) && sysdb.KeyExists(migrationTable, haConfigKey) {
-		cfg := hacluster.DefaultConfig()
-		if err := sysdb.Read(migrationTable, haConfigKey, cfg); err != nil {
-			return err
-		}
-		return writeHAConfigFile(cfg)
-	}
-	_, err := readHAConfigFile()
-	return err
 }
 
 type haHeartbeat struct {

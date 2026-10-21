@@ -32,12 +32,12 @@ func loadOrCreateStickyKey(db *database.Database) string {
 	if db == nil {
 		return ""
 	}
-	if !db.TableExists(migrationTable) {
-		db.NewTable(migrationTable)
+	if !db.TableExists(customForkTable) {
+		db.NewTable(customForkTable)
 	}
 	var key string
-	if db.KeyExists(migrationTable, stickySessionKeyName) {
-		if err := db.Read(migrationTable, stickySessionKeyName, &key); err == nil && stickySessionKeyPattern.MatchString(key) {
+	if db.KeyExists(customForkTable, stickySessionKeyName) {
+		if err := db.Read(customForkTable, stickySessionKeyName, &key); err == nil && stickySessionKeyPattern.MatchString(key) {
 			return key
 		}
 	}
@@ -46,7 +46,7 @@ func loadOrCreateStickyKey(db *database.Database) string {
 		return "" // the load balancer then uses a random key for this run
 	}
 	key = hex.EncodeToString(b)
-	if err := db.Write(migrationTable, stickySessionKeyName, key); err != nil && SystemWideLogger != nil {
+	if err := db.Write(customForkTable, stickySessionKeyName, key); err != nil && SystemWideLogger != nil {
 		SystemWideLogger.PrintAndLog("load-balancer", "Could not save the sticky session key; sticky sessions reset when Waymark restarts", err)
 	}
 	return key

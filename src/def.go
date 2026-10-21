@@ -66,7 +66,7 @@ var (
 	allowMdnsScanning          = flag.Bool("mdns", true, "Enable mDNS scanner and transponder")
 	mdnsName                   = flag.String("mdnsname", "", "mDNS name, leave empty to use default (waymark_{node-uuid}.local)")
 	enableHighSpeedGeoIPLookup = flag.Bool("fastgeoip", true, "Enable high speed geoip lookup, disable this if you are using a very small memory footprint device")
-	enableAutoUpdate           = flag.Bool("cfgupgrade", true, "Enable auto config upgrade if breaking change is detected")
+	_                          = flag.Bool("cfgupgrade", true, "No longer used (Zoraxy's config migrations were removed in Waymark 2.17.1); accepted so existing service files still start")
 
 	/* Acme Configuration Flags */
 	acmeAutoRenewInterval = flag.Int("autorenew", 86400, "ACME auto TLS/SSL certificate renew check interval (seconds)")

@@ -71,22 +71,19 @@ func TestAdminRuleBecomesClusterRule(t *testing.T) {
 	}
 }
 
-func TestAdminRuleAdoptsExisting(t *testing.T) {
+func TestAdminRuleKeepsEditableSettings(t *testing.T) {
 	var old dynamicproxy.ProxyEndpoint
-	json.Unmarshal([]byte(`{"ProxyType":1,"RootOrMatchingDomain":"waymark.home.example",
+	json.Unmarshal([]byte(`{"ProxyType":1,"System":"admin-console","RootOrMatchingDomain":"waymark.home.example",
 		"MatchingDomainAlias":["10.10.20.4","10.10.20.5","10.10.20.6","waymark01.home.example","waymark02.home.example"],
 		"ActiveOrigins":[{"OriginIpOrDomain":"127.0.0.1:8000","Weight":1}],"Disabled":true,"ListenIP":"10.10.20.4",
 		"TlsOptions":{"DisableSNI":false,"PreferredCertificate":{"zoraxy01.home.example":"zoraxy","waymark.home.example":"wild"}},
 		"AuthenticationProvider":{"AuthMethod":1},"AccessFilterUUID":"728ce19b","Tags":["infra"],
 		"AssetCache":{"enabled":true,"extensions":["css"],"defaultTTLSeconds":60,"maxFileMB":1}}`), &old)
-	if !adminPointsAtConsole(&old) {
-		t.Fatal("not recognised as the admin console rule")
-	}
 	c := testCluster()
 	c.VIPHostname, c.Nodes[0].Hostname, c.Nodes[1].Hostname = "", "", "" // names not entered yet
 	ep := adminBuildRule(&old, adminRequiredHosts(c, adminConsoleSettings{}), adminDefaultRoot(c, adminConsoleSettings{}), "127.0.0.1:8000")
 	if ep.RootOrMatchingDomain != "waymark.home.example" || ep.SystemAutoRoot {
-		t.Fatal("adopted rule keeps its main domain")
+		t.Fatal("a main domain set by the user is kept")
 	}
 	if strings.Join(ep.MatchingDomainAlias, ",") != "10.10.20.4,10.10.20.5,10.10.20.6,waymark01.home.example,waymark02.home.example" {
 		t.Fatalf("aliases %v", ep.MatchingDomainAlias)

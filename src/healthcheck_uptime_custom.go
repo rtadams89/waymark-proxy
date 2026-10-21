@@ -18,8 +18,7 @@ package main
 	Rules without active health checks (including passive-only rules and
 	virtual directories) do not appear on the page.
 
-	Also here: the default health check for new rules, and the one-time
-	migration of upstream's "Monitor Uptime" setting to health checks.
+	Also here: the default health check for new rules.
 */
 
 import (
@@ -200,16 +199,14 @@ func (f *uptimeFeed) record(info uptimeFeedTarget, t healthcheck.Target, last he
 	return rec
 }
 
-/* Defaults for new rules, and migration from upstream's uptime monitor */
+/* Defaults for new rules */
 
-const (
-	migrationTable              = "custom_fork"
-	uptimeToHealthCheckMigrated = "uptime_to_healthcheck_migrated"
-)
+// customForkTable is the sys.db table for this fork's own values (the
+// sticky-session key, the asset cache's daily counters).
+const customForkTable = "custom_fork"
 
-// defaultActiveHealthCheck is used for new rules and for migrated ones:
-// HTTP GET every 10s, disabled after 3 failures, re-enabled after 2 passes.
-// path is the rule's old uptime monitor health-check URI, if any.
+// defaultActiveHealthCheck is used for new rules: HTTP GET every 10s,
+// disabled after 3 failures, re-enabled after 2 passes, on path.
 func defaultActiveHealthCheck(path string) *healthcheck.Config {
 	cfg := healthcheck.DefaultConfig()
 	cfg.ActiveEnabled = true
@@ -220,7 +217,7 @@ func defaultActiveHealthCheck(path string) *healthcheck.Config {
 	if v, err := cfg.Validate(); err == nil {
 		return v
 	}
-	cfg.Path = "/" // unusable old path: fall back to the root
+	cfg.Path = "/" // unusable path: fall back to the root
 	v, _ := cfg.Validate()
 	return v
 }
@@ -233,43 +230,4 @@ func newRuleHealthCheck(enabled bool, path string) *healthcheck.Config {
 		return nil
 	}
 	return defaultActiveHealthCheck(path)
-}
-
-// migrateUptimeMonitorToHealthChecks gives every rule that had upstream's
-// "Monitor Uptime" enabled (and no health check settings yet) an equivalent
-// active health check, so failover and uptime history continue. It runs once
-// per installation.
-func migrateUptimeMonitorToHealthChecks() {
-	if sysdb == nil || dynamicProxyRouter == nil {
-		return
-	}
-	if !sysdb.TableExists(migrationTable) {
-		sysdb.NewTable(migrationTable)
-	}
-	if sysdb.KeyExists(migrationTable, uptimeToHealthCheckMigrated) {
-		return
-	}
-	endpoints := []*dynamicproxy.ProxyEndpoint{}
-	for _, ep := range dynamicProxyRouter.GetProxyEndpointsAsMap() {
-		endpoints = append(endpoints, ep)
-	}
-	converted := applyUptimeMigration(endpoints, SaveReverseProxyConfig)
-	SystemWideLogger.PrintAndLog("healthcheck", fmt.Sprintf("Converted the uptime monitor setting of %d proxy rule(s) to health checks", converted), nil)
-	sysdb.Write(migrationTable, uptimeToHealthCheckMigrated, time.Now().Unix())
-}
-
-func applyUptimeMigration(endpoints []*dynamicproxy.ProxyEndpoint, save func(*dynamicproxy.ProxyEndpoint) error) int {
-	converted := 0
-	for _, ep := range endpoints {
-		if ep.HealthCheck != nil || ep.DisableUptimeMonitor {
-			continue
-		}
-		ep.HealthCheck = defaultActiveHealthCheck(ep.UptimeMonitorURI)
-		if err := save(ep); err != nil {
-			SystemWideLogger.PrintAndLog("healthcheck", "Could not save converted health check for rule "+ep.RootOrMatchingDomain, err)
-			continue
-		}
-		converted++
-	}
-	return converted
 }

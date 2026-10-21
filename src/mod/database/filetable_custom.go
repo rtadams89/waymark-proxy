@@ -53,12 +53,9 @@ func (d *Database) fileTable(table string) *fileTable {
 	return fileTables[d][table]
 }
 
-// UseFileTable keeps table in the JSON file at path (created with perm)
-// from now on. With copyRows, rows already in the database are copied into
-// the file, where they replace rows with the same key. The database table
-// itself is left as it is (no longer read or written), so an earlier
-// version put back after an update still finds its settings.
-func (d *Database) UseFileTable(table, path string, perm os.FileMode, copyRows bool) error {
+// UseFileTable keeps table in the JSON file at path (created with perm on
+// the first write) from now on.
+func (d *Database) UseFileTable(table, path string, perm os.FileMode) error {
 	if d.fileTable(table) != nil {
 		return fmt.Errorf("table %s is already kept in a file", table)
 	}
@@ -67,29 +64,10 @@ func (d *Database) UseFileTable(table, path string, perm os.FileMode, copyRows b
 		return err
 	}
 	ft.mu.Lock()
-	defer ft.mu.Unlock()
-	if err := ft.refresh(); err != nil {
+	err := ft.refresh()
+	ft.mu.Unlock()
+	if err != nil {
 		return err
-	}
-
-	if copyRows && d.Backend != nil && d.Backend.TableExists(table) {
-		entries, err := d.Backend.ListTable(table)
-		if err != nil {
-			return fmt.Errorf("reading table %s to copy it to %s: %w", table, path, err)
-		}
-		moved := 0
-		for _, kv := range entries {
-			if len(kv) != 2 || !json.Valid(kv[1]) {
-				continue
-			}
-			ft.rows[string(kv[0])] = json.RawMessage(append([]byte{}, kv[1]...))
-			moved++
-		}
-		if moved > 0 || !ft.exists() {
-			if err := ft.save(); err != nil {
-				return fmt.Errorf("copying table %s to %s: %w", table, path, err)
-			}
-		}
 	}
 
 	fileTablesMu.Lock()
@@ -108,11 +86,6 @@ func (d *Database) FileTablePath(table string) string {
 		return ft.path
 	}
 	return ""
-}
-
-func (ft *fileTable) exists() bool {
-	_, err := os.Stat(ft.path)
-	return err == nil
 }
 
 // refresh loads the file if it changed since it was last read. Call with

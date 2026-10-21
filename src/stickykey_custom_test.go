@@ -25,12 +25,12 @@ func TestStickySessionKey(t *testing.T) {
 	}
 	// A key copied from the active node (HA sync) is used as is
 	shared := "ab" + k1[2:]
-	db.Write(migrationTable, stickySessionKeyName, shared)
+	db.Write(customForkTable, stickySessionKeyName, shared)
 	if got := loadOrCreateStickyKey(db); got != shared {
 		t.Fatalf("synced key not used: %q", got)
 	}
 	// A damaged value is replaced
-	db.Write(migrationTable, stickySessionKeyName, "short")
+	db.Write(customForkTable, stickySessionKeyName, "short")
 	if got := loadOrCreateStickyKey(db); !stickySessionKeyPattern.MatchString(got) || got == shared {
 		t.Fatalf("damaged key not replaced: %q", got)
 	}

@@ -21,32 +21,23 @@ func TestFileTable(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Rows written before the move
-	db.NewTable("settings")
-	db.Write("settings", "inbound", 8443)
-	db.Write("settings", "usetls", true)
 	db.Write("other", "x", "stays")
 
 	conf := filepath.Join(dir, "conf", "listener.json")
 	if err := os.MkdirAll(filepath.Dir(conf), 0775); err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(conf, []byte(`{"inbound": 443, "devMode": true}`), 0640)
-	if err := db.UseFileTable("settings", conf, 0640, true); err != nil {
+	os.WriteFile(conf, []byte(`{"inbound": 8443, "usetls": true, "devMode": true}`), 0640)
+	if err := db.UseFileTable("settings", conf, 0640); err != nil {
 		t.Fatal(err)
 	}
-	if !db.Backend.KeyExists("settings", "inbound") {
-		t.Fatal("database copy should be kept for an earlier version")
+	if db.Backend.TableExists("settings") {
+		t.Fatal("a file table must not create a database table")
 	}
 	var port int
 	db.Read("settings", "inbound", &port)
 	if port != 8443 {
-		t.Fatalf("database row should replace the file's: got %d", port)
-	}
-	var dev bool
-	db.Read("settings", "devMode", &dev)
-	if !dev {
-		t.Fatal("row only in the file lost")
+		t.Fatalf("read from the file: got %d", port)
 	}
 
 	// Missing key: no error, destination unchanged (as with bolt)
@@ -113,14 +104,7 @@ func TestFileTable(t *testing.T) {
 
 	// A new install: the file is created on first write
 	ui := filepath.Join(dir, "conf", "webserv.json")
-	db.Write("other2", "port", 1)
-	if err := db.UseFileTable("other2", filepath.Join(dir, "conf", "o2.json"), 0640, false); err != nil {
-		t.Fatal(err)
-	}
-	if db.KeyExists("other2", "port") {
-		t.Fatal("rows copied although copyRows was false")
-	}
-	if err := db.UseFileTable("webserv", ui, 0600, true); err != nil {
+	if err := db.UseFileTable("webserv", ui, 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(ui); err == nil {

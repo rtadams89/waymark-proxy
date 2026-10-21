@@ -18,8 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"imuslab.com/zoraxy/mod/healthcheck"
@@ -150,36 +148,6 @@ func l4UptimeTargets(fed map[uptimeFeedKey]uptimeFeedTarget) []*uptime.Target {
 		}
 	}
 	return targets
-}
-
-// migrateL4ProxyConfigFolder moves the rule files from conf/streamproxy (the
-// folder's name before stream proxies were renamed Layer 4 proxies) to
-// conf/l4proxy, once. A restored older backup is moved the same way.
-func migrateL4ProxyConfigFolder() {
-	old := filepath.Join(CONF_FOLDER, "streamproxy")
-	if _, err := os.Stat(old); err != nil {
-		return
-	}
-	if _, err := os.Stat(CONF_L4_PROXY); err == nil {
-		//Both exist (e.g. a backup restored over a newer setup): move rule
-		//files that are not in the new folder yet, keep the rest
-		entries, _ := os.ReadDir(old)
-		for _, e := range entries {
-			dst := filepath.Join(CONF_L4_PROXY, e.Name())
-			if _, err := os.Stat(dst); os.IsNotExist(err) {
-				os.Rename(filepath.Join(old, e.Name()), dst)
-			}
-		}
-		if rest, _ := os.ReadDir(old); len(rest) == 0 {
-			os.Remove(old)
-		}
-		return
-	}
-	if err := os.Rename(old, CONF_L4_PROXY); err != nil {
-		SystemWideLogger.PrintAndLog("l4-proxy", "Could not move "+old+" to "+CONF_L4_PROXY, err)
-		return
-	}
-	SystemWideLogger.PrintAndLog("l4-proxy", "Moved Layer 4 proxy rules from "+old+" to "+CONF_L4_PROXY, nil)
 }
 
 /* API: the health check side panel (snippet/healthChecks.html) for a Layer 4 rule */

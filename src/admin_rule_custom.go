@@ -4,8 +4,8 @@ package main
 	admin_rule_custom.go (custom fork): the admin console rule.
 
 	Waymark keeps one HTTP proxy rule that serves its own admin console
-	(System "admin-console"). It is created on first start, or an existing
-	rule that points at the admin console is adopted, and kept up to date:
+	(System "admin-console"). It is created on first start and kept up to
+	date:
 
 	- It answers on the required hosts: with HA on, every floating IP and
 	  node address and their DNS names (HA settings); with HA off, this
@@ -229,26 +229,6 @@ func adminDestination() string {
 	return net.JoinHostPort(host, port)
 }
 
-// adminPointsAtConsole reports whether ep's only destination is the admin
-// console (a rule set up by hand before Waymark managed it).
-func adminPointsAtConsole(ep *dynamicproxy.ProxyEndpoint) bool {
-	if ep == nil || ep.ProxyType != dynamicproxy.ProxyTypeHost || len(ep.ActiveOrigins) != 1 {
-		return false
-	}
-	_, port, err := net.SplitHostPort(adminDestination())
-	if err != nil {
-		return false
-	}
-	o := strings.ToLower(strings.TrimSpace(ep.ActiveOrigins[0].OriginIpOrDomain))
-	o = strings.TrimPrefix(strings.TrimPrefix(o, "http://"), "https://")
-	for _, h := range []string{"127.0.0.1", "localhost", "[::1]"} {
-		if o == h+":"+port {
-			return true
-		}
-	}
-	return o == strings.ToLower(adminDestination())
-}
-
 func adminTLSAuto(t *tlscert.HostSpecificTlsBehavior) bool {
 	if t == nil || !t.DisableSNI || len(t.PreferredCertificate) == 0 {
 		return false
@@ -417,7 +397,7 @@ func adminEndpointJSON(ep *dynamicproxy.ProxyEndpoint) string {
 	return string(b)
 }
 
-// adminRuleReconcile creates, adopts or corrects the admin console rule.
+// adminRuleReconcile creates or corrects the admin console rule.
 // Safe to call at any time; it changes nothing when the rule is as it
 // must be, and nothing on an HA standby.
 func adminRuleReconcile() {
@@ -434,14 +414,6 @@ func adminRuleReconcile() {
 		return
 	}
 	existing, action := adminRule(), "updated"
-	if existing == nil {
-		for _, ep := range adminAllRules() {
-			if adminPointsAtConsole(ep) {
-				existing, action = ep, "adopted"
-				break
-			}
-		}
-	}
 	if existing == nil {
 		action = "created"
 	}
@@ -547,7 +519,7 @@ func adminRuleResetAndExit() {
 		if json.Unmarshal(b, &ep) != nil {
 			continue
 		}
-		if ep.System == adminRuleSystem || adminPointsAtConsole(&ep) {
+		if ep.System == adminRuleSystem {
 			if err := os.Remove(f); err == nil {
 				fmt.Println("Removed " + f)
 			}

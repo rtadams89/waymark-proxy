@@ -39,9 +39,9 @@ const (
 func initAssetCache() {
 	dynamicproxy.AssetCache.SetMaxBytes(int64(assetCacheLimitMB()) << 20)
 	assetCacheDailyOnce.Do(func() {
-		if sysdb != nil && sysdb.TableExists(migrationTable) && sysdb.KeyExists(migrationTable, assetCacheDailyKey) {
+		if sysdb != nil && sysdb.TableExists(customForkTable) && sysdb.KeyExists(customForkTable, assetCacheDailyKey) {
 			saved := []assetcache.DayStats{}
-			if err := sysdb.Read(migrationTable, assetCacheDailyKey, &saved); err == nil {
+			if err := sysdb.Read(customForkTable, assetCacheDailyKey, &saved); err == nil {
 				dynamicproxy.AssetCache.RestoreDaily(saved)
 			}
 		}
@@ -67,11 +67,11 @@ func saveAssetCacheDaily() {
 	if sysdb == nil {
 		return
 	}
-	if !sysdb.TableExists(migrationTable) {
-		sysdb.NewTable(migrationTable)
+	if !sysdb.TableExists(customForkTable) {
+		sysdb.NewTable(customForkTable)
 	}
 	today, yesterday := dynamicproxy.AssetCache.Daily()
-	sysdb.Write(migrationTable, assetCacheDailyKey, []assetcache.DayStats{today, yesterday})
+	sysdb.Write(customForkTable, assetCacheDailyKey, []assetcache.DayStats{today, yesterday})
 	saveAssetCacheTotals()
 }
 
