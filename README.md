@@ -6,13 +6,14 @@
 </p>
 
 <p align="center">
-  A self-hosted reverse proxy with active/standby high availability, real health checks and static file caching, managed from a web UI.
+  A self-hosted reverse proxy with active/standby high availability, real health checks, firewall-style access control and static file caching, managed from a web UI.
 </p>
 
-Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more destination servers, and can run as an active/standby pair that shares floating IP addresses. Everything is managed from a web UI; there are no configuration files to edit. It is built on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors.
+Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more destination servers, proxies TCP and UDP services, and can run as an active/standby cluster that shares floating IP addresses. Everything is managed from a web UI; there are no configuration files to edit.
 
 - [Why Waymark](#why-waymark)
-- [What's different from Zoraxy](#whats-different-from-zoraxy)
+- [How it compares](#how-it-compares)
+- [Features](#features)
 - [Requirements](#requirements)
 - [Install](#install)
 - [Quick start: your first proxy](#quick-start-your-first-proxy)
@@ -22,37 +23,42 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 - [Upgrading](#upgrading)
 - [Building from source](#building-from-source)
 - [Where your data lives](#where-your-data-lives)
-- [Relationship to Zoraxy, license and credits](#relationship-to-zoraxy-license-and-credits)
+- [License and credits](#license-and-credits)
 
 ## Why Waymark
 
-- **No single point of failure.** Two to four nodes share up to 16 floating IPs through keepalived, and the standby nodes keep an exact copy of the active node's configuration, certificates and admin accounts. If the active node fails, another takes over within about 10 seconds, already configured. All of it is set up from the web UI.
-- **Real health checks.** Each proxy rule can check its destinations actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed destinations leave load balancing at once, and visitors get a clear "down" page instead of a timeout. Layer 4 (TCP/UDP) proxies get the same destination pools and checks.
+- **No single point of failure.** Two to four nodes share up to 16 floating IPs through keepalived, and the standby nodes keep an exact copy of the active node's configuration, certificates and admin accounts. If the active node fails, another takes over within about 10 seconds, already configured. All of it is set up from the web UI, and updates roll through the cluster one node at a time.
+- **Real health checks.** Each proxy rule checks its destinations actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed destinations leave load balancing at once, and visitors get a clear "down" page instead of a timeout. TCP and UDP proxies get the same destination pools and checks.
+- **Access control that works like a firewall.** Ordered ACLs of allow, deny and drop rules, matched top down with a default deny, by address, range, wildcard or country, with "not" and with reusable objects that can contain other objects. A test box shows which rule decides for any address, and Waymark refuses a change that would lock you out of its own admin console.
 - **See what passed through.** Capture traffic from the web UI, on the client side, the destination side or both, with HTTPS shown decrypted, and open it in Wireshark.
 - **Faster sites with static file caching**, per rule, in memory, honouring the destination's cache headers.
-- **Everything in one web UI:** proxy rules, load balancing, TLS certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), firewall-style ACLs (ordered allow, deny and drop rules by address, range or country, with reusable, nestable objects), SSO, redirects, Layer 4 (TCP/UDP) proxies, maintenance mode, a live status dashboard, sending logs to syslog servers, and installing updates.
-- **Hardened and focused.** Waymark runs as an unprivileged user; the only root component is a small helper that checks every HA setting before writing keepalived's config. Passwords are stored with bcrypt, code scanning (CodeQL) and `govulncheck` run on every change, and features that don't belong in a reverse proxy (network scanners, a web SSH client, a forward proxy) were removed.
+- **Everything else in the same web UI:** certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), load balancing, SSO, redirects, maintenance mode, a live status dashboard, sending logs to syslog servers, and installing updates with automatic roll back.
+- **Hardened and focused.** Waymark runs as an unprivileged user; the only root component is a small helper that checks every HA setting before writing keepalived's config. Passwords are stored with bcrypt, and code scanning (CodeQL) and `govulncheck` run on every change. There are no network scanners, web terminals or forward proxies built in: it is a reverse proxy and nothing else.
 - **One binary, no dependencies** beyond keepalived for HA: no database server, no containers required.
 
-How it compares, out of the box, at the time of writing:
+## How it compares
 
-| | Waymark | Zoraxy | Nginx Proxy Manager | Traefik | Caddy |
+Out of the box, in each project's free, open-source edition, at the time of writing:
+
+| | Waymark | Nginx Proxy Manager | Zoraxy | Traefik | Caddy |
 |---|---|---|---|---|---|
-| Manage everything from a web UI | Yes | Yes | Yes | Dashboard is read-only | No (config file or API) |
+| Configured from | Web UI | Web UI | Web UI | Files, labels or API (read-only dashboard) | Config file or API |
 | Automatic certificates (HTTP and DNS challenges) | Yes | Yes | Yes | Yes | Yes |
 | Built-in active/standby failover with config sync | Yes | No | No | No | No |
-| Active and passive destination health checks | Yes | Fixed 5-minute uptime check | No | Yes | Yes |
-| Static file caching | Built in | No | Custom nginx config | Plugin | Plugin |
-| Layer 4 (TCP/UDP) proxying | Yes | Yes | Yes | Yes | Plugin |
+| Load balancing across several destinations | Weighted, least connections, sticky sessions | No | Yes | Yes | Yes |
+| Destination health checks | Active and passive | No | Uptime monitor | Active and passive | Active and passive |
+| IP and country access control | Ordered allow/deny/drop ACLs with nested objects | Allow/deny access lists (IP) | Allowlist and blocklist (IP, country) | IP allowlist (countries via plugins) | IP matchers in config (countries via plugins) |
+| TCP/UDP proxying | Yes, with load balancing and health checks | Yes | Yes | Yes | Plugin |
+| Static file caching | Built in, honours cache headers | Per-host toggle | No | Plugin | Plugin |
+| Decrypted traffic capture (pcapng) | Built in | No | No | No | No |
+| Updates | From the web UI, with automatic roll back | New container image | New binary or image | New binary or image | New binary or image |
 
-Traefik and Caddy are excellent when your configuration lives in files or container labels. Waymark is for people who want a web UI and high availability without assembling them themselves.
+Traefik and Caddy are excellent when your configuration lives in files or container labels, and Nginx Proxy Manager and Zoraxy are friendly single-node web UIs. Waymark is for people who want a web UI and high availability, health checks and fine-grained access control without assembling them themselves.
 
-## What's different from Zoraxy
-
-Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing, ACME certificates, access control, SSO, the static web server and the plugin system (Zoraxy plugins and its plugin store work unchanged). It adds and changes the following.
+## Features
 
 **High availability**
-- **Active/standby pairs** (2 to 4 nodes) sharing up to 16 floating IPs managed by keepalived. The floating IP moves to a healthy node within about 10 seconds when Waymark stops answering, keepalived stops or the machine goes down.
+- **Active/standby clusters** (2 to 4 nodes) sharing up to 16 floating IPs managed by keepalived. The floating IP moves to a healthy node within about 10 seconds when Waymark stops answering, keepalived stops or the machine goes down.
 - **Configured from the web UI.** Waymark itself runs unprivileged. A small root-owned helper validates the settings, writes keepalived's config from a fixed template, tests it and reloads keepalived.
 - **Configuration sync.** Standby nodes copy the active node's configuration (proxy rules, certificates and keys, ACLs, admin accounts, settings) over TLS, authenticated with a shared cluster key. Standby nodes are read-only, so changes are made in one place.
 - **Cluster overview** on the HA page and the Status page: each node's role, health, sync state and version.
@@ -64,13 +70,28 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 - Active checks: HTTP GET or HEAD (with expected status codes and optional "response must contain" text), TCP connect or ICMP ping, with interval, timeout and failure and recovery thresholds.
 - Passive monitoring of real traffic (5xx responses, timeouts, connection failures).
 - Destinations that fail are taken out of load balancing. When all destinations of a rule are down, visitors get a "Web server is down" page at once instead of waiting for a timeout. Virtual directories can be checked too.
-- Replaces Zoraxy's fixed 5-minute uptime monitor; the **Health & Uptime** page is fed by the health checks.
+- The **Health & Uptime** page and the Status page's **Destination Health** panel show every destination's state and history.
 
-**Layer 4 proxy rules** (TCP and UDP; called stream proxies in Zoraxy)
-- Layer 4 rules are on the same **Proxy Rules** page as HTTP rules (Type: TCP, UDP or TCP + UDP), with a start/stop slider, quick search and their own editor, where each setting is saved as you change it. **Add Proxy Rule** asks for the type first.
-- **Destination pools:** several destination servers per rule, load balanced like HTTP proxy rules: a weight per destination (0 makes it a backup), each one can be turned off, weighted or least connections balancing, and sticky sessions by client IP address. A TCP connection that can't reach its destination is retried on the next one, and with no healthy destination new connections are closed at once.
-- **Health checks:** TCP connect, TCP send-and-expect (e.g. a banner or a PING/PONG), UDP send-and-expect, or ping, plus passive monitoring of failed connections, in the same Health Checks panel as HTTP proxy rules. Optionally close open connections to a destination when it goes down.
-- Destination health in the Proxy Rules list, on **Health & Uptime** and in the Status page's **Destination Health** panel.
+**Load balancing and Layer 4 (TCP/UDP) proxying**
+- **Load balancing** works the same for HTTP and Layer 4 proxy rules: a weight per destination (0 makes it a backup), each one can be turned off, weighted or least connections balancing, and sticky sessions (a cookie for HTTP, the client IP address for Layer 4).
+- **Layer 4 rules** (TCP, UDP or both) are on the same **Proxy Rules** page as HTTP rules, with a start/stop slider, quick search and their own editor. A TCP connection that can't reach its destination is retried on the next one, and with no healthy destination new connections are closed at once.
+- **Layer 4 health checks:** TCP connect, TCP send-and-expect (e.g. a banner or a PING/PONG), UDP send-and-expect, or ping, plus passive monitoring of failed connections. Optionally close open connections to a destination when it goes down.
+- **One list for every proxy rule:** **Proxy > Proxy Rules** shows HTTP and Layer 4 rules together, with a Type column, All / HTTP / TCP / UDP buttons, tag filter and quick search. Every destination shows its health, and Details shows whether caching is on and its hit rate.
+- **An HTTP rule can answer on one floating IP only** (rule editor, **Listen On**), for example to keep internal sites off the public floating IP.
+
+**Access control**
+- **ACLs** (**Access > ACLs**): ordered lists of rules, checked top down for the client's address; the first match decides and an address no rule matches is denied. Rules can be added, dragged into a new order and turned on or off one at a time. Each rule's source is any address, an address, CIDR, range or IPv4 wildcard, a country, or an object, optionally inverted with **Not**.
+- **Allow, deny or drop:** deny answers HTTP with a 403 page and closes TCP connections; drop closes HTTP connections without an answer (HTTP/2 and HTTP/3 streams are reset) and resets TCP connections. Refused requests are logged with the ACL and rule that refused them.
+- **Objects** (**Access > Objects**): named lists of addresses, ranges, countries and other objects, used as rule sources. The built-in **Private networks** object covers private, loopback and link-local addresses and the server's public address.
+- Each HTTP or Layer 4 proxy rule uses one ACL; one ACL can serve many proxy rules. Hit counts, a test box and warnings about rules that may not do what they look like are in the ACL editor.
+- **Lock-out protection:** when you use the admin console through Waymark's proxy, a change that would deny your own address on it is refused.
+- **Trusted proxies:** per proxy rule, use the client address forwarded by a CDN or load balancer in front of Waymark for ACLs, rate limiting and logs.
+- **SSO and authentication:** OAuth2/OpenID Connect, forward auth (Authelia, Authentik and similar) and the built-in Waymark Auth with users, groups and passkeys, plus basic auth per rule.
+
+**Certificates**
+- ACME certificates from Let's Encrypt or another CA, with HTTP or DNS challenges and automatic renewal.
+- **DNS credential sets** for DNS challenges: save a provider token once and use it for any number of certificates.
+- After adding a proxy rule, Waymark offers to get its certificate through the same ACME tool.
 
 **Static file caching**
 - Per-rule in-memory caching of static files (CSS, JS, images, fonts, media). Honours the destination's `Cache-Control` and `Expires`, revalidates expired files, supports `Vary`, shares one memory limit, and has per-rule statistics and a purge button.
@@ -80,28 +101,17 @@ Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing
 - **Traffic capture** (**Monitoring > Traffic Capture**): record HTTP and Layer 4 proxy traffic as a pcapng file for Wireshark, filtered by rule, host or client, on the client side, the destination side or both. HTTPS is shown decrypted, with an option to hide credentials.
 - **Logs where you want them.** System logs and traffic (request) logs can each go to the log file, to up to 8 syslog servers (UDP, TCP or TLS; RFC 5424, RFC 3164 or JSON), to both, or to neither.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
-- **Status page panels** can be shown or hidden. New panels show destination health, cache hit rate and memory, and the HA cluster.
-- **One list for every proxy rule:** **Proxy > Proxy Rules** shows HTTP and Layer 4 (TCP/UDP) rules together, with a Type column, All / HTTP / TCP / UDP buttons, tag filter and quick search. Every destination shows its health the same way for both kinds (green heart healthy, red heartbeat down), the Health column sums it up, and Details shows whether caching is on and its hit rate.
-- **An HTTP rule can answer on one floating IP only** (rule editor, **Listen On**), for example to keep internal sites off the public floating IP. Requests that arrive on another address are handled as if the rule did not exist. The Proxy Rules list shows the address under Listens On.
-- **Load balancing** works the same for HTTP and Layer 4 proxy rules: a weight per destination (0 makes it a backup), weighted or least connections balancing, and sticky sessions (a cookie for HTTP, the client IP address for Layer 4).
-- **DNS credential sets** for ACME DNS challenges: save a provider token once and use it for any number of certificates.
-- **Geo-IP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
+- **A status dashboard** with panels you can show or hide, including destination health, cache hit rate and memory, and the HA cluster.
+- **GeoIP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
+- **Also included:** redirects, virtual directories, custom headers, a static web server with WebDAV, and plugins with a plugin store.
 
 **Security**
-- Passwords (admin accounts, Waymark Auth users, basic auth and WebDAV) are stored with bcrypt instead of unsalted SHA-512; existing passwords are upgraded automatically.
+- Passwords (admin accounts, Waymark Auth users, basic auth and WebDAV) are stored with bcrypt.
 - Redirects after SSO login stay on the protected host, error pages load no third-party scripts, and the web UI escapes the values it shows.
-- Cross-site request protection uses Go's standard `CrossOriginProtection` instead of the unmaintained gorilla/csrf.
+- Cross-site request protection uses Go's standard `CrossOriginProtection`.
 - CI runs vet, tests, `govulncheck` and CodeQL on every change and builds with the latest Go 1.26 patch release.
 
-**Removed from Zoraxy**
-- Network tools (IP and port scanners, mDNS browser, traceroute, ping, WHOIS, Wake-on-LAN), the web SSH client and the HTTP forward proxy. The SSH client's embedded terminal binaries alone added about 10 MB to the binary.
-- The Quick Start page, the Utilities toolbox, and per-certificate DNS credentials (credential sets replace them).
-
-**Look and feel**
-- New name and logo, and a navy and teal colour scheme in light and dark mode.
-- A reorganised side menu (Proxy, Access, Certificates, Monitoring, System, Plugins) with fewer, merged pages and no "Recent" section.
-
-See [CHANGELOG.md](CHANGELOG.md) for details.
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Requirements
 
@@ -371,12 +381,8 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 
 Back up `conf/` and `sys.db`, or use **System Backup & Restore** under **System > Settings**. HA nodes also have `/var/lib/waymark/ha` (the keepalived settings, role and sync state); it is recreated from the configuration if lost.
 
-## Relationship to Zoraxy, license and credits
+## License and credits
 
-Waymark Proxy is a modified version of [Zoraxy](https://github.com/tobychui/zoraxy), created by [tobychui](https://github.com/tobychui) for [imuslab](https://imuslab.com) and developed with many contributors. It started as a set of changes to Zoraxy 3.3.5 and is now a separate project that no longer follows Zoraxy releases. It isn't affiliated with or endorsed by the Zoraxy project. Please report Waymark issues [here](https://github.com/rtadams89/waymark-proxy/issues), not to Zoraxy.
-
-Waymark Proxy is free software under the [GNU Affero General Public License v3.0](LICENSE), the same license as Zoraxy. Copyright © 2021-2026 tobychui and the Zoraxy contributors; changes and additions © 2026 Ryan Adams. It comes with no warranty. If you run a modified version that other people use over a network, the AGPL requires you to offer them its source code.
-
-Zoraxy plugins work with Waymark, and Waymark's **Plugin Store** (**Plugins > Plugin Store**) lists the plugins published for Zoraxy.
+Waymark Proxy is free software under the [GNU Affero General Public License v3.0](LICENSE). It is based on [Zoraxy](https://github.com/tobychui/zoraxy) by [tobychui](https://github.com/tobychui) and contributors, but is a separate project: it isn't affiliated with or endorsed by Zoraxy, and Waymark issues belong [here](https://github.com/rtadams89/waymark-proxy/issues). Copyright © 2021-2026 tobychui and the Zoraxy contributors; changes and additions © 2026 Ryan Adams. It comes with no warranty. If you run a modified version that other people use over a network, the AGPL requires you to offer them its source code.
 
 The wordmark uses [Inter](https://rsms.me/inter/) (SIL Open Font License).

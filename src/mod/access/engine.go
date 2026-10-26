@@ -36,20 +36,6 @@ type matcher struct {
 
 func (m *matcher) needsCountry() bool { return len(m.countries) > 0 }
 
-// merge adds everything another matcher matches (a nested object).
-func (m *matcher) merge(o *matcher) {
-	m.prefixes = append(m.prefixes, o.prefixes...)
-	m.ranges = append(m.ranges, o.ranges...)
-	m.wildcards = append(m.wildcards, o.wildcards...)
-	for cc := range o.countries {
-		if m.countries == nil {
-			m.countries = map[string]bool{}
-		}
-		m.countries[cc] = true
-	}
-	m.publicIP = m.publicIP || o.publicIP
-}
-
 func (m *matcher) add(typ, value string) {
 	switch typ {
 	case SourceIP:
@@ -198,24 +184,20 @@ func itoa(n int) string {
 func (c *Controller) compileLocked() {
 	objs := c.objectsWithBuiltIns()
 	objMatchers := map[string]*matcher{}
-	building := map[string]bool{}
-	// build flattens an object and the objects nested in it into one
-	// matcher. Saving refuses loops; one that got in anyway (a hand-edited
-	// file) is cut where it closes, and a missing object matches nothing.
-	var build func(id string) *matcher
-	build = func(id string) *matcher {
-		if m, ok := objMatchers[id]; ok {
-			return m
-		}
-		m := &matcher{}
+	// Each object is flattened on its own, with the objects nested in it,
+	// however deep, into one matcher. Saving refuses loops; one that got in
+	// anyway (a hand-edited file) just means every object on the loop
+	// matches everything on it. A missing object matches nothing.
+	var walk func(id string, m *matcher, seen map[string]bool)
+	walk = func(id string, m *matcher, seen map[string]bool) {
 		o := objs[id]
-		if o == nil || building[id] {
-			return m
+		if o == nil || seen[id] {
+			return
 		}
-		building[id] = true
+		seen[id] = true
 		for _, e := range o.Entries {
 			if e.Type == SourceObject {
-				m.merge(build(e.Value))
+				walk(e.Value, m, seen)
 			} else {
 				m.add(e.Type, e.Value)
 			}
@@ -223,12 +205,11 @@ func (c *Controller) compileLocked() {
 		if id == PrivateNetworksID {
 			m.publicIP = true
 		}
-		delete(building, id)
-		objMatchers[id] = m
-		return m
 	}
 	for id := range objs {
-		build(id)
+		m := &matcher{}
+		walk(id, m, map[string]bool{})
+		objMatchers[id] = m
 	}
 	compiled := map[string]*compiledACL{}
 	all := map[string]*ACL{AllowAllID: builtInAllowAll()}

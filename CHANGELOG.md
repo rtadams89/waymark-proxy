@@ -10,6 +10,17 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.1
+
+**Fixed: streamed responses to POST requests could be cut short**
+- When a request with a body (a POST, for example) got a response that the destination streamed (no `Content-Length`, such as a download built on the fly), the response could end after its first part. Once the response started, Go's HTTP server closed the request body, and the proxy's last check of that body, after it had already been sent in full, then failed and closed the connection to the destination. That check is now answered as "finished". This was the cause of the occasional `TestChunkedResponseReachesClientBeforeUpstreamFinishes` failure in CI.
+
+**Fixed: nested objects with a loop**
+- If a loop of objects inside each other got into `conf/acl/objects.json` by hand (saving refuses one), what the objects on the loop matched depended on the order they were read in. Each object is now worked out on its own, so every object on such a loop matches everything on it. This made the v2.19.0 CI build fail.
+
+**Changed: README**
+- The README now describes Waymark on its own terms: a summary of what stands out, a comparison with Nginx Proxy Manager, Zoraxy, Traefik and Caddy, and a feature list by area (high availability, health checks, load balancing and Layer 4, access control, certificates, caching, operations, security). The list of differences from Zoraxy is gone; Zoraxy is credited in the license section.
+
 ## 2.19.0
 
 **New: objects inside objects**

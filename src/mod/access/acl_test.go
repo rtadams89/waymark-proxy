@@ -404,10 +404,15 @@ func TestNestedObjects(t *testing.T) {
 	// A loop that got in anyway (hand-edited file) does not hang compiling
 	c.mu.Lock()
 	c.objects[inner.ID].Entries = append(c.objects[inner.ID].Entries, Entry{Type: SourceObject, Value: outer.ID})
-	c.compileLocked()
 	c.mu.Unlock()
-	if d := c.Evaluate(a.ID, "100.80.1.1"); d.Action != ActionAllow {
-		t.Errorf("with loop: %+v", d)
+	// Map order changes from one compile to the next; the result must not
+	for i := 0; i < 50; i++ {
+		c.mu.Lock()
+		c.compileLocked()
+		c.mu.Unlock()
+		if d := c.Evaluate(a.ID, "100.80.1.1"); d.Action != ActionAllow {
+			t.Fatalf("with loop (compile %d): %+v", i, d)
+		}
 	}
 
 	// TestWith sees a nested change

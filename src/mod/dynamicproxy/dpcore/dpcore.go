@@ -409,6 +409,7 @@ func (p *ReverseProxy) ProxyHTTP(rw http.ResponseWriter, req *http.Request, rrr 
 	ctx, cancel := context.WithCancel(req.Context())
 	defer cancel()
 	outreq = outreq.WithContext(ctx)
+	outreq.Body = stickyEOFBody(outreq.Body) //Custom fork: see stickyEOF
 
 	p.Director(outreq)
 	outreq.Close = false
