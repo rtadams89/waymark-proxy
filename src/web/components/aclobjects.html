@@ -6,7 +6,7 @@
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Objects</h2>
-        <p>An object is a named list of IP addresses, CIDRs, ranges, IPv4 wildcards and countries. A rule of an <a href="#access" onclick="openTabById('access'); return false;">ACL</a> can use an object as its source; changing the object changes every rule that uses it.</p>
+        <p>An object is a named list of IP addresses, CIDRs, ranges, IPv4 wildcards, countries and other objects. A rule of an <a href="#access" onclick="openTabById('access'); return false;">ACL</a> can use an object as its source; changing the object changes every rule that uses it, including through objects it is inside.</p>
     </div>
 
     <!-- List -->
@@ -42,15 +42,19 @@
             <h4>Add entries</h4>
             <div class="ui form">
                 <div class="fields" style="flex-wrap: wrap; row-gap: 0.6em;">
-                    <div class="seven wide field">
+                    <div class="five wide field">
                         <label>Address, CIDR, range or wildcard</label>
                         <input type="text" id="objAddValue" placeholder="10.0.0.5, 10.0.0.0/8, 10.0.0.10-10.0.0.50, 192.168.*.*">
                     </div>
-                    <div class="five wide field">
+                    <div class="four wide field">
                         <label>or a country</label>
                         <select id="objAddCountry" class="ui search dropdown"><option value="">Country</option></select>
                     </div>
                     <div class="four wide field">
+                        <label>or another object</label>
+                        <select id="objAddObject" class="ui search dropdown"><option value="">Object</option></select>
+                    </div>
+                    <div class="three wide field">
                         <label>Comment <small>(optional)</small></label>
                         <input type="text" id="objAddComment" maxlength="200">
                     </div>
@@ -86,7 +90,7 @@
         try { return getCountryName(cc); } catch (e) { return cc; }
     }
     function typeLabel(t){
-        return {ip: "address", cidr: "CIDR", range: "range", wildcard: "wildcard", country: "country"}[t] || t;
+        return {ip: "address", cidr: "CIDR", range: "range", wildcard: "wildcard", country: "country", object: "object"}[t] || t;
     }
     function detectType(v){
         v = v.trim();
@@ -106,7 +110,9 @@
             all = {};
             let rows = d.objects.map(function(o){
                 all[o.id] = o;
-                let users = o.users.length == 0 ? `<small style="opacity: 0.5;">none</small>` : o.users.map(u => `<span class="ui mini basic label">${esc(u)}</span>`).join(" ");
+                let users = o.users.map(u => `<span class="ui mini basic label" title="ACL">${esc(u)}</span>`)
+                    .concat((o.parents || []).map(u => `<span class="ui mini basic label" title="Inside this object"><i class="cube icon"></i>${esc(u)}</span>`)).join(" ");
+                if (users == "") users = `<small style="opacity: 0.5;">none</small>`;
                 return `<tr>
                     <td><i class="cube icon"></i> <b>${esc(o.name)}</b> ${o.builtIn ? `<span class="ui mini basic label">built in</span>` : ""}<br><small style="opacity: 0.75;">${esc(o.description)}</small></td>
                     <td>${(o.entries || []).length}</td>
@@ -199,9 +205,19 @@
         $("#objBuiltIn").toggle(ro);
         $("#objAddBox, #objSaveBox").toggle(!ro);
         let users = (all[editing.id] && all[editing.id].users) || [];
-        $("#objUsers").html(users.length ? `<small>Used by the ACLs:</small> ` + users.map(u => `<span class="ui mini basic label">${esc(u)}</span>`).join(" ") : "");
+        let parents = (all[editing.id] && all[editing.id].parents) || [];
+        $("#objUsers").html((users.length ? `<small>Used by the ACLs:</small> ` + users.map(u => `<span class="ui mini basic label">${esc(u)}</span>`).join(" ") + " " : "") +
+            (parents.length ? `<small>Inside the objects:</small> ` + parents.map(u => `<span class="ui mini basic label"><i class="cube icon"></i>${esc(u)}</span>`).join(" ") : ""));
+        fillObjectChoices();
         let rows = (editing.entries || []).map(function(e, i){
-            let v = e.type == "country" ? `<i class="${esc(e.value.toLowerCase())} flag"></i>${esc(countryName(e.value))} <small>${esc(e.value)}</small>` : `<code>${esc(e.value)}</code>`;
+            let v = `<code>${esc(e.value)}</code>`;
+            if (e.type == "country"){
+                v = `<i class="${esc(e.value.toLowerCase())} flag"></i>${esc(countryName(e.value))} <small>${esc(e.value)}</small>`;
+            }else if (e.type == "object"){
+                let o = all[e.value];
+                v = o ? `<i class="cube icon"></i><a href="#" onclick="objOpenNested('${esc(o.id)}'); return false;">${esc(o.name)}</a> <small>(${(o.entries || []).length})</small>` :
+                    `<i class="orange exclamation triangle icon"></i>Missing object <code>${esc(e.value)}</code>`;
+            }
             return `<tr><td>${v}</td><td class="objType">${typeLabel(e.type)}</td><td>${esc(e.comment)}</td>
                 <td style="text-align: right;">${ro ? "" : `<button class="ui basic mini icon button" title="Remove" onclick="objRemoveEntry(${i});"><i class="red trash icon"></i></button>`}</td></tr>`;
         });
@@ -211,13 +227,44 @@
 
     function dirty(){ $("#objDirty").show(); }
 
+    // Objects that can go inside the one being edited: not itself, not one
+    // already in it, and not one that contains it (that would be a loop)
+    function containsObject(fromID, targetID, seen){
+        seen = seen || {};
+        if (seen[fromID]) return false;
+        seen[fromID] = true;
+        let o = all[fromID];
+        if (!o) return false;
+        return (o.entries || []).some(e => e.type == "object" && (e.value == targetID || containsObject(e.value, targetID, seen)));
+    }
+
+    function fillObjectChoices(){
+        let inside = {};
+        (editing.entries || []).forEach(e => { if (e.type == "object") inside[e.value] = true; });
+        let opts = `<option value="">Object</option>`;
+        Object.values(all).sort((x, y) => (x.builtIn ? -1 : y.builtIn ? 1 : x.name.localeCompare(y.name))).forEach(function(o){
+            if (o.id == editing.id || inside[o.id] || (editing.id && containsObject(o.id, editing.id))) return;
+            opts += `<option value="${esc(o.id)}">${esc(o.name)}</option>`;
+        });
+        $("#objAddObject").html(opts);
+        $("#objAddObject").dropdown({fullTextSearch: true, clearable: true});
+        $("#objAddObject").dropdown("clear");
+    }
+
+    window.objOpenNested = function(id){
+        if ($("#objDirty").is(":visible") && !confirm("This object has changes that are not saved. Open the other object anyway?")) return;
+        wmOpenObject(id);
+    };
+
     window.objAddEntry = function(){
         let v = $("#objAddValue").val().trim();
         let cc = $("#objAddCountry").val();
+        let obj = $("#objAddObject").val();
         let comment = $("#objAddComment").val().trim();
-        if (v == "" && !cc){ msgbox("Enter an address or choose a country", false); return; }
+        if (v == "" && !cc && !obj){ msgbox("Enter an address, or choose a country or an object", false); return; }
         if (v != "") editing.entries.push({type: detectType(v), value: v, comment: comment});
         if (cc) editing.entries.push({type: "country", value: cc, comment: comment});
+        if (obj) editing.entries.push({type: "object", value: obj, comment: comment});
         $("#objAddValue").val("");
         $("#objAddComment").val("");
         $("#objAddCountry").dropdown("clear");

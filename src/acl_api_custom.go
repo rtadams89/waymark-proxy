@@ -110,24 +110,9 @@ func HandleACLList(w http.ResponseWriter, r *http.Request) {
 // aclWarnings explains rules that may not do what they look like.
 func aclWarnings(a *access.ACL) map[string]string {
 	out := map[string]string{}
-	objs := map[string]*access.Object{}
-	for _, o := range accessController.ListObjects() {
-		objs[o.ID] = o
-	}
 	usesCountry := func(s access.Source) bool {
-		if s.Type == access.SourceCountry {
-			return true
-		}
-		if s.Type == access.SourceObject {
-			if o := objs[s.Value]; o != nil {
-				for _, e := range o.Entries {
-					if e.Type == access.SourceCountry {
-						return true
-					}
-				}
-			}
-		}
-		return false
+		return s.Type == access.SourceCountry ||
+			(s.Type == access.SourceObject && accessController.ObjectUsesCountries(s.Value))
 	}
 	geo := geodbStore != nil && geodbStore.Enabled()
 	privateAbove := false
@@ -351,11 +336,12 @@ func HandleACLAttach(w http.ResponseWriter, r *http.Request) {
 func HandleACLObjects(w http.ResponseWriter, r *http.Request) {
 	type row struct {
 		*access.Object
-		Users []string `json:"users"`
+		Users   []string `json:"users"`
+		Parents []string `json:"parents"` // objects this one is inside
 	}
 	out := []row{}
 	for _, o := range accessController.ListObjects() {
-		out = append(out, row{o, accessController.ObjectUsers(o.ID)})
+		out = append(out, row{o, accessController.ObjectUsers(o.ID), accessController.ObjectParents(o.ID)})
 	}
 	sendJSON(w, map[string]any{"objects": out, "geoip": geodbStore != nil && geodbStore.Enabled()})
 }

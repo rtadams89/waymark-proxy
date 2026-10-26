@@ -328,3 +328,96 @@ func TestConversionMatchesOldAccessRules(t *testing.T) {
 		}
 	}
 }
+
+func saveObject(t *testing.T, c *Controller, o *Object) *Object {
+	t.Helper()
+	p, err := c.PrepareObject(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SaveObject(p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestNestedObjects(t *testing.T) {
+	c := newACLController(t)
+	inner := saveObject(t, c, &Object{Name: "Inner", Entries: []Entry{{Value: "100.70.0.0/16"}, {Value: "DE"}}})
+	middle := saveObject(t, c, &Object{Name: "Middle", Entries: []Entry{{Value: "192.0.2.9"}, {Type: SourceObject, Value: inner.ID}}})
+	outer := saveObject(t, c, &Object{Name: "Outer", Entries: []Entry{{Type: SourceObject, Value: middle.ID}, {Type: SourceObject, Value: PrivateNetworksID}}})
+	a, _ := c.CreateACL("Nested", "")
+	saveRules(t, c, a, r(ActionAllow, SourceObject, outer.ID, false))
+	for ip, want := range map[string]string{
+		"100.70.2.3":  ActionAllow, // two levels down
+		"192.0.2.9":   ActionAllow, // one level down
+		"5.5.5.5":     ActionAllow, // country, two levels down
+		"192.168.1.1": ActionAllow, // nested built-in Private networks
+		"203.0.113.7": ActionAllow, // server's public address through Private networks
+		"8.8.8.8":     ActionDeny,
+	} {
+		if d := c.Evaluate(a.ID, ip); d.Action != want {
+			t.Errorf("%s: %+v, want %s", ip, d, want)
+		}
+	}
+	if got := c.ACLsUsingCountries(); len(got) != 1 || got[0] != "Nested" {
+		t.Errorf("ACLsUsingCountries = %v", got)
+	}
+	if !c.ObjectUsesCountries(outer.ID) || c.ObjectUsesCountries(PrivateNetworksID) {
+		t.Error("ObjectUsesCountries does not follow nesting")
+	}
+	if p := c.ObjectParents(inner.ID); len(p) != 1 || p[0] != "Middle" {
+		t.Errorf("ObjectParents = %v", p)
+	}
+
+	// Loops, self and missing objects are refused
+	loop := *inner
+	loop.Entries = append(append([]Entry{}, inner.Entries...), Entry{Type: SourceObject, Value: outer.ID})
+	if _, err := c.PrepareObject(&loop); err == nil || !strings.Contains(err.Error(), "already contains") {
+		t.Errorf("loop: %v", err)
+	}
+	self := *inner
+	self.Entries = []Entry{{Type: SourceObject, Value: inner.ID}}
+	if _, err := c.PrepareObject(&self); err == nil {
+		t.Error("self reference accepted")
+	}
+	if _, err := c.PrepareObject(&Object{Name: "Bad", Entries: []Entry{{Type: SourceObject, Value: "nope"}}}); err == nil {
+		t.Error("missing nested object accepted")
+	}
+
+	// An object inside another cannot be deleted
+	if err := c.DeleteObject(inner.ID); err == nil || !strings.Contains(err.Error(), "inside Middle") {
+		t.Errorf("delete nested: %v", err)
+	}
+
+	// Changing the inner object changes the ACL
+	in2, _ := c.GetObject(inner.ID)
+	in2.Entries = []Entry{{Value: "100.80.0.0/16"}}
+	saveObject(t, c, in2)
+	if d := c.Evaluate(a.ID, "100.70.2.3"); d.Action != ActionDeny {
+		t.Errorf("after inner change: %+v", d)
+	}
+	if d := c.Evaluate(a.ID, "100.80.1.1"); d.Action != ActionAllow {
+		t.Errorf("after inner change: %+v", d)
+	}
+
+	// A loop that got in anyway (hand-edited file) does not hang compiling
+	c.mu.Lock()
+	c.objects[inner.ID].Entries = append(c.objects[inner.ID].Entries, Entry{Type: SourceObject, Value: outer.ID})
+	c.compileLocked()
+	c.mu.Unlock()
+	if d := c.Evaluate(a.ID, "100.80.1.1"); d.Action != ActionAllow {
+		t.Errorf("with loop: %+v", d)
+	}
+
+	// TestWith sees a nested change
+	cand, _ := c.GetObject(inner.ID)
+	cand.Entries = nil
+	if d := c.TestWith(nil, map[string]*Object{inner.ID: cand}, "100.80.1.1"); d.Action == ActionAllow && d.ACLID != AllowAllID {
+		t.Errorf("TestWith: %+v", d)
+	}
+	acl, _ := c.GetACL(a.ID)
+	if d := c.TestWith(acl, map[string]*Object{inner.ID: cand}, "100.80.1.1"); d.Action != ActionDeny {
+		t.Errorf("TestWith with nested change: %+v", d)
+	}
+}

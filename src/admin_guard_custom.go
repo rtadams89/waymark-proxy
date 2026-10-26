@@ -146,15 +146,7 @@ func adminACLChangeBlocks(r *http.Request, acl *access.ACL, obj *access.Object) 
 	}
 	var objs map[string]*access.Object
 	if obj != nil {
-		used := false
-		for _, rule := range cand.Rules {
-			if rule.Source.Type == access.SourceObject && rule.Source.Value == obj.ID {
-				used = true
-			}
-		}
-		if !used {
-			return ""
-		}
+		// The ACL may use the object directly or through other objects
 		objs = map[string]*access.Object{obj.ID: obj}
 	}
 	if d := accessController.TestWith(cand, objs, ip); d.Action != access.ActionAllow {

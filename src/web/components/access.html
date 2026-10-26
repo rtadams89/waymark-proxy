@@ -525,7 +525,10 @@
     };
 
     /* Init */
-    $("#aclSrcType").dropdown({onChange: showSourceField});
+    // The page may re-initialize dropdowns without our settings, so listen
+    // on the select itself (the dropdown triggers "change" on it)
+    $("#aclSrcType").dropdown();
+    $("#aclSrcType").on("change", showSourceField);
     $("#aclSrcObject").dropdown({fullTextSearch: true});
     $("#aclSrcCountry").dropdown({fullTextSearch: true});
     $("#aclAction").dropdown();

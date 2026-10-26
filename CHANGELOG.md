@@ -10,6 +10,16 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.0
+
+**New: objects inside objects**
+- An object can now contain other objects, as well as addresses and countries: on **Access > Objects**, choose one under **or another object** when adding entries. An ACL rule that uses the outer object matches everything in it, however deeply nested, including the built-in **Private networks**. Changing an inner object changes every rule that uses an object containing it.
+- An object cannot contain itself, directly or through others: the editor only offers objects that would not make a loop, and saving refuses one. An object that is inside another cannot be deleted until it is removed from there; the Objects list shows the objects each one is inside next to the ACLs that use it.
+- The admin console protection follows nesting too: through Waymark's proxy, a change to an object that would deny your own address on the admin console is refused, whether the ACL uses the object directly or through another object.
+
+**Fixed**
+- When adding or editing an ACL rule, changing **Source** did not change the field next to it, so it always showed the address field. It now shows the object or country list, or nothing for **Any address**.
+
 ## 2.18.0
 
 **New: ACLs and objects replace access rules**

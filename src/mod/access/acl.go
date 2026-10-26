@@ -177,6 +177,11 @@ func NormalizeValue(typ, value string) (string, error) {
 			}
 		}
 		return v, nil
+	case SourceObject:
+		if !ValidID(v) {
+			return "", fmt.Errorf("%q is not an object", v)
+		}
+		return v, nil
 	case SourceCountry:
 		c := strings.ToUpper(v)
 		if !countryPattern.MatchString(c) {

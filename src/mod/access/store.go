@@ -342,12 +342,95 @@ func (c *Controller) PrepareObject(in *Object) (*Object, error) {
 		}
 		out.Revision = cur.Revision + 1
 	}
-	for _, o := range c.objectsWithBuiltIns() {
+	objs := c.objectsWithBuiltIns()
+	for _, o := range objs {
 		if o.ID != out.ID && strings.EqualFold(o.Name, name) {
 			return nil, fmt.Errorf("an object named %q already exists", name)
 		}
 	}
+	// Nested objects: they must exist, and must not contain this object
+	for _, e := range out.Entries {
+		if e.Type != SourceObject {
+			continue
+		}
+		if e.Value == out.ID {
+			return nil, errors.New("an object cannot contain itself")
+		}
+		sub := objs[e.Value]
+		if sub == nil {
+			return nil, fmt.Errorf("the object %q does not exist", e.Value)
+		}
+		if objectReaches(objs, e.Value, out.ID, map[string]bool{}) {
+			return nil, fmt.Errorf("%s already contains %s, so it cannot also be inside it", sub.Name, name)
+		}
+	}
 	return out, nil
+}
+
+// objectReaches reports whether the object from contains target, directly
+// or through other objects.
+func objectReaches(objs map[string]*Object, from, target string, seen map[string]bool) bool {
+	if seen[from] {
+		return false
+	}
+	seen[from] = true
+	o := objs[from]
+	if o == nil {
+		return false
+	}
+	for _, e := range o.Entries {
+		if e.Type != SourceObject {
+			continue
+		}
+		if e.Value == target || objectReaches(objs, e.Value, target, seen) {
+			return true
+		}
+	}
+	return false
+}
+
+// objectHasCountry reports whether an object, or one nested in it, has a
+// country entry.
+func objectHasCountry(objs map[string]*Object, id string, seen map[string]bool) bool {
+	if seen[id] {
+		return false
+	}
+	seen[id] = true
+	o := objs[id]
+	if o == nil {
+		return false
+	}
+	for _, e := range o.Entries {
+		if e.Type == SourceCountry || (e.Type == SourceObject && objectHasCountry(objs, e.Value, seen)) {
+			return true
+		}
+	}
+	return false
+}
+
+// ObjectUsesCountries reports whether an object needs Geo-IP: it has a
+// country entry, or an object nested in it does.
+func (c *Controller) ObjectUsesCountries(id string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return objectHasCountry(c.objectsWithBuiltIns(), id, map[string]bool{})
+}
+
+// ObjectParents lists the objects (by name) that contain an object.
+func (c *Controller) ObjectParents(id string) []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	out := []string{}
+	for _, o := range c.objects {
+		for _, e := range o.Entries {
+			if e.Type == SourceObject && e.Value == id {
+				out = append(out, o.Name)
+				break
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // SaveObject saves an object prepared by PrepareObject.
@@ -400,6 +483,9 @@ func (c *Controller) DeleteObject(id string) error {
 	if users := c.ObjectUsers(id); len(users) > 0 {
 		return fmt.Errorf("this object is used by %s; remove it from those rules first", strings.Join(users, ", "))
 	}
+	if parents := c.ObjectParents(id); len(parents) > 0 {
+		return fmt.Errorf("this object is inside %s; remove it from there first", strings.Join(parents, ", "))
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	prev, ok := c.objects[id]
@@ -428,15 +514,8 @@ func (c *Controller) ACLsUsingCountries() []string {
 				continue
 			}
 			uses := r.Source.Type == SourceCountry
-			if r.Source.Type == SourceObject {
-				if o := objs[r.Source.Value]; o != nil {
-					for _, e := range o.Entries {
-						if e.Type == SourceCountry {
-							uses = true
-							break
-						}
-					}
-				}
+			if r.Source.Type == SourceObject && objectHasCountry(objs, r.Source.Value, map[string]bool{}) {
+				uses = true
 			}
 			if uses {
 				out = append(out, a.Name)
