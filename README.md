@@ -379,3 +379,4 @@ Waymark Proxy is free software under the [GNU Affero General Public License v3.0
 Zoraxy plugins work with Waymark, and Waymark's **Plugin Store** (**Plugins > Plugin Store**) lists the plugins published for Zoraxy.
 
 The wordmark uses [Inter](https://rsms.me/inter/) (SIL Open Font License).
+
