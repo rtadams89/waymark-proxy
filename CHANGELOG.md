@@ -10,6 +10,13 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.17.2
+
+**Changed: getting a certificate for a new proxy rule**
+- After adding an HTTP rule with TLS, the prompt now reads "Proxy rule added. Get a TLS certificate for …?". Clicking the check opens **Certificates > ACME and Auto-Renew** with the ACME tool filled in for the rule's names, so you choose the CA, HTTP or DNS challenge and DNS credential set there. Until now it requested a certificate straight away with the HTTP challenge, which failed for names that need the DNS challenge or a particular credential set.
+- **Get Certificate** on the TLS / SSL page of the rule editor does the same (it closes the editor). It now also works for rules with wildcard names, which it used to disable.
+- When the names include a wildcard, the ACME tool starts with **Use a DNS Challenge** ticked. With several names, the matching rule (certificate file name) starts as the first name; **Auto Detect Matching Rule** still suggests a common suffix.
+
 ## 2.17.1
 
 **Fixed: ACME account keys are back in sys.db**

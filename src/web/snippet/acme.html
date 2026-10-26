@@ -281,6 +281,7 @@
     }
     initRenewerConfigFromFile();
 
+
     function saveEmailToConfig(btn){
       $.cjax({
         url: "/api/acme/autoRenew/email",
@@ -907,6 +908,25 @@
 
     //Clear up the input field when page load
     $("#filenameInput").val("");
+
+    // Custom fork: domains passed by the page that opened the tool
+    // (#domains=a,b): a new proxy rule or the rule editor's Get Certificate
+    (function(){
+      let m = window.location.hash.match(/^#domains=(.*)$/);
+      if (!m) return;
+      let domains = decodeURIComponent(m[1]).split(",").map(d => d.trim()).filter(d => d != "").join(",");
+      if (domains == "") return;
+      $("#domainsInput").val(domains);
+      handlePostInputAutomation();
+      if (domains.includes(",")){
+        $("#filenameInput").val(domains.split(",")[0].replace(/^\*\./, "")); // the rule's main name; Auto Detect suggests a common suffix
+      }
+      if (domains.includes("*") && !$("#useDnsChallenge")[0].checked){
+        $("#useDnsChallenge").prop("checked", true); // wildcards need the DNS challenge
+        toggleDnsChallenge();
+      }
+      setTimeout(function(){ $("#domainsInput").focus(); }, 300);
+    })();
   </script>
 </body>
 </html>

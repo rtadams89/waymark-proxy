@@ -465,8 +465,22 @@
         msgbox("Settings updated");
     };
 
-    window.openACMEManager = function(){
-        showSideWrapper('snippet/acme.html');
+    // domains (optional, comma separated) pre-fills the ACME tool's domain field
+    window.openACMEManager = function(domains){
+        let src = 'snippet/acme.html?t=' + Date.now();
+        if (domains){
+            src += '#domains=' + encodeURIComponent(domains);
+        }
+        showSideWrapper(src);
+    };
+
+    // Custom fork: "get a certificate for these names" from other pages (a new
+    // proxy rule, the rule editor) goes to Certificates > ACME and Auto-Renew
+    // and opens the ACME tool for them, so the challenge type, DNS credentials
+    // and CA can be chosen there.
+    window.wmGetCertificate = function(domains){
+        openTabById("acme");
+        setTimeout(function(){ openACMEManager(domains); }, 300);
     };
 
     window.acmeSetAutoRenewMode  = acmeSetAutoRenewMode;

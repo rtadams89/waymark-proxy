@@ -468,22 +468,11 @@
                     reloadUptimeList();
                     //Check if it is a new subdomain and TLS enabled
                     if ($("#tls").checkbox("is checked")){
-                        confirmBox("Request new SSL Cert for this subdomain?", function(choice){
+                        confirmBox("Proxy rule added. Get a TLS certificate for " + rootname.split(",").map(d => d.trim()).join(", ") + "?", function(choice){
                             if (choice == true){
-                                //Load the prefer CA from TLS page
-                                let defaultCA = $("#defaultCA").dropdown("get value");
-                                if (defaultCA.trim() == ""){
-                                    defaultCA = "Let's Encrypt";
-                                }
-                                //Get a new cert using ACME
-                                msgbox("Requesting certificate via " + defaultCA  +"...");
-                                console.log("Trying to get a new certificate via ACME");
-
-                                //Request ACME for certificate, see cert.html component
-                                obtainCertificate(rootname, false, defaultCA.trim(), function(){
-                                     // Renew the parent certificate list
-                                    initManagedDomainCertificateList();
-                                });
+                                //Custom fork: the ACME tool on Certificates > ACME and Auto-Renew,
+                                //where the challenge type, DNS credentials and CA are chosen
+                                wmGetCertificate(rootname);
                             }else{
                                 msgbox("Proxy rule added");
                             }

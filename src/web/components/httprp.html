@@ -1683,31 +1683,6 @@
         Certificate Shortcut
     */
 
-    function requestCertificateForExistingHost(hostUUID, RootAndAliasDomains, btn=undefined){
-        RootAndAliasDomains = JSON.parse(decodeURIComponent(RootAndAliasDomains))
-        let renewDomainKey = RootAndAliasDomains.join(",");
-        let preferedACMEEmail = $("#prefACMEEmail").val();
-        if (preferedACMEEmail == ""){
-            msgbox("Preferred email for ACME registration not set", false);
-            return;
-        }
-        let defaultCA = $("#defaultCA").dropdown("get value");
-        if (defaultCA == ""){
-            defaultCA = "Let's Encrypt";
-        }
-
-        //Check if the root or the alias domain contain wildcard character, if yes, return error
-        for (var i = 0; i < RootAndAliasDomains.length; i++){
-            if (RootAndAliasDomains[i].indexOf("*") != -1){
-                msgbox("Wildcard domain can only be setup via ACME tool", false);
-                return;
-            }
-        }
-        
-        //Renew the certificate
-        renewCertificate(renewDomainKey, false, btn);
-    }
-
     function generateSelfSignedCertificate(uuid, domains, btn=undefined){
         let payload = JSON.stringify(domains);
         $.cjax({
@@ -2554,35 +2529,18 @@
         });
 
         /* Quick access to get certificate for the current host */
-        let enableQuickRequestButton = true;
         let domains = [subd.RootOrMatchingDomain]; //Domain for getting certificate if needed
         for (var i = 0; i < subd.MatchingDomainAlias.length; i++){
-            let thisAliasName = subd.MatchingDomainAlias[i];
-            domains.push(thisAliasName);
+            domains.push(subd.MatchingDomainAlias[i]);
         }
 
-        //Check if the domain or alias contains wildcard, if yes, disabled the get certificate button
-        if (subd.RootOrMatchingDomain.indexOf("*") > -1){
-            enableQuickRequestButton = false;
-        }
-        
-        if (subd.MatchingDomainAlias != undefined){
-            for (var i = 0; i < subd.MatchingDomainAlias.length; i++){
-                if (subd.MatchingDomainAlias[i].indexOf("*") > -1){
-                    enableQuickRequestButton = false;
-                    break;
-                }
-            }
-        }
-        if (enableQuickRequestButton){
-            editor.find(".getCertificateBtn").removeClass("disabled");
-        }else{
-            editor.find(".getCertificateBtn").addClass("disabled");
-        }
-
+        //Custom fork: open the ACME tool on Certificates > ACME and Auto-Renew for
+        //these names, where the challenge type (DNS for wildcards), DNS
+        //credentials and CA are chosen
+        editor.find(".getCertificateBtn").removeClass("disabled");
         editor.find(".getCertificateBtn").off("click").on("click", function(){
-            let certificateDomains = encodeURIComponent(JSON.stringify(domains));
-            requestCertificateForExistingHost(uuid, certificateDomains, this);
+            closeHttpRuleEditor();
+            wmGetCertificate(domains.join(","));
         });
 
         // Bind event to self-signed certificate button
