@@ -7,7 +7,7 @@
     <div class="ui segment">
         <!-- Custom fork: GeoIP lookups on/off (geoip_custom.go) -->
         <h3>Geo-IP Lookups</h3>
-        <p>Resolves visitor IP addresses into countries for country-based access rules, visitor statistics and the status page's visitor map. On a proxy that only serves your own network, turning this off saves the memory the database uses and a lookup on every request.</p>
+        <p>Resolves visitor IP addresses into countries for country rules in ACLs, visitor statistics and the status page's visitor map. On a proxy that only serves your own network, turning this off saves the memory the database uses and a lookup on every request.</p>
         <div class="ui basic segment">
             <div class="ui form">
                 <div class="field">
@@ -16,7 +16,7 @@
                         <label>Enable Geo-IP lookups</label>
                     </div>
                     <br>
-                    <small id="geoipLookupsHint">While off, the database is not loaded, statistics record no visitor countries, and access rules can't use country lists. IP and CIDR entries keep working.</small>
+                    <small id="geoipLookupsHint">While off, the database is not loaded, statistics record no visitor countries, and ACLs can't use countries. Address rules keep working.</small>
                 </div>
             </div>
             <div id="geoipLookupsMsg" class="ui message" style="display:none;"></div>
@@ -247,9 +247,9 @@
             $("#geoipLookupsEnabled").prop("checked", data.enabled);
             $("#geodbUpdateSection").css({opacity: data.enabled ? "" : "0.45", "pointer-events": data.enabled ? "" : "none"});
             if (data.enabled && data.rulesUsingCountries.length > 0){
-                $("#geoipLookupsHint").text("Can't be turned off while these access rules use country lists: " + data.rulesUsingCountries.join(", ") + ". Remove their countries first.");
+                $("#geoipLookupsHint").text("Can't be turned off while these ACLs use countries: " + data.rulesUsingCountries.join(", ") + ". Remove their country rules first.");
             }else{
-                $("#geoipLookupsHint").text("While off, the database is not loaded, statistics record no visitor countries, and access rules can't use country lists. IP and CIDR entries keep working.");
+                $("#geoipLookupsHint").text("While off, the database is not loaded, statistics record no visitor countries, and ACLs can't use countries. Address rules keep working.");
             }
         });
     }

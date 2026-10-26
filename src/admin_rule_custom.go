@@ -18,7 +18,7 @@ package main
 	  disabled or deleted, and its destination, authentication, virtual
 	  directories, headers, health checks, maintenance mode and listening
 	  address are Waymark's. The main domain, extra aliases, certificate,
-	  access rule, caching, logging and tags can be changed
+	  ACL, client address trust, caching, logging and tags can be changed
 	  (admin_guard_custom.go enforces this in the API).
 
 	On an HA standby the rule comes from the active node with the rest of
@@ -43,6 +43,7 @@ import (
 	"sync"
 	"time"
 
+	"imuslab.com/zoraxy/mod/access"
 	"imuslab.com/zoraxy/mod/assetcache"
 	"imuslab.com/zoraxy/mod/dynamicproxy"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
@@ -59,7 +60,7 @@ const (
 	adminCertValidity = 10 * 365 * 24 * time.Hour
 )
 
-var resetAdminRuleFlag = flag.Bool("reset-admin-rule", false, "Custom fork: rebuild the admin console proxy rule (addresses, destination, self-signed certificate, no access rule) and exit")
+var resetAdminRuleFlag = flag.Bool("reset-admin-rule", false, "Custom fork: rebuild the admin console proxy rule (addresses, destination, self-signed certificate, the Allow all ACL) and exit")
 
 var adminMu sync.Mutex
 
@@ -344,6 +345,7 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 		if existing.Tags != nil {
 			ep.Tags = append([]string{}, existing.Tags...)
 		}
+		ep.TrustProxyHeaders = existing.TrustProxyHeaders
 		ep.DisableLogging = existing.DisableLogging
 		ep.DisableStatisticCollection = existing.DisableStatisticCollection
 		if existing.AssetCache != nil {
@@ -418,8 +420,8 @@ func adminRuleReconcile() {
 		action = "created"
 	}
 	want := adminBuildRule(existing, required, root, adminDestination())
-	if accessController != nil && want.AccessFilterUUID != "default" && !accessController.AccessRuleExists(want.AccessFilterUUID) {
-		want.AccessFilterUUID = "default" // a missing access rule would answer every request with an error
+	if accessController != nil && !accessController.ACLExists(want.AccessFilterUUID) {
+		want.AccessFilterUUID = access.AllowAllID // an ACL that no longer exists
 	}
 	if existing != nil && adminEndpointJSON(existing) == adminEndpointJSON(want) {
 		adminCertSync(want)
@@ -536,7 +538,7 @@ func adminRuleResetAndExit() {
 		os.Exit(1)
 	}
 	fmt.Println("Admin console rule reset: " + want.RootOrMatchingDomain + " (also " + strings.Join(want.MatchingDomainAlias, ", ") + ") -> " + adminDestination())
-	fmt.Println("It uses a new self-signed certificate and the default access rule. Restart Waymark to load it (sudo systemctl restart waymark).")
+	fmt.Println("It uses a new self-signed certificate and the Allow all ACL. Restart Waymark to load it (sudo systemctl restart waymark).")
 	if cfg.Enabled && cfg.SyncEnabled {
 		fmt.Println("With HA configuration sync on, do this on the active node: a standby copies the active node's rule.")
 	}

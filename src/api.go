@@ -181,28 +181,19 @@ func RegisterRedirectionAPIs(authRouter *auth.RouterDef) {
 // Register the APIs for access rules management functions
 func RegisterAccessRuleAPIs(authRouter *auth.RouterDef) {
 	/* Access Rules Settings & Status */
-	authRouter.HandleFunc("/api/access/list", handleListAccessRules)
-	authRouter.HandleFunc("/api/access/attach", handleAttachRuleToHost)
-	authRouter.HandleFunc("/api/access/create", handleCreateAccessRule)
-	authRouter.HandleFunc("/api/access/remove", handleRemoveAccessRule)
-	authRouter.HandleFunc("/api/access/update", handleUpadateAccessRule)
-	/* Blacklist */
-	authRouter.HandleFunc("/api/blacklist/list", handleListBlacklisted)
-	authRouter.HandleFunc("/api/blacklist/country/add", requireGeoIP(handleCountryBlacklistAdd))
-	authRouter.HandleFunc("/api/blacklist/country/remove", handleCountryBlacklistRemove)
-	authRouter.HandleFunc("/api/blacklist/ip/add", handleIpBlacklistAdd)
-	authRouter.HandleFunc("/api/blacklist/ip/remove", handleIpBlacklistRemove)
-	authRouter.HandleFunc("/api/blacklist/enable", handleBlacklistEnable)
-	/* Whitelist */
-	authRouter.HandleFunc("/api/whitelist/list", handleListWhitelisted)
-	authRouter.HandleFunc("/api/whitelist/country/add", requireGeoIP(handleCountryWhitelistAdd))
-	authRouter.HandleFunc("/api/whitelist/country/remove", handleCountryWhitelistRemove)
-	authRouter.HandleFunc("/api/whitelist/ip/add", handleIpWhitelistAdd)
-	authRouter.HandleFunc("/api/whitelist/ip/remove", handleIpWhitelistRemove)
-	authRouter.HandleFunc("/api/whitelist/enable", handleWhitelistEnable)
-	authRouter.HandleFunc("/api/whitelist/allowLocal", handleWhitelistAllowLoopback)
-	authRouter.HandleFunc("/api/whitelist/trustProxy", handleWhitelistTrustProxy)
-	/* Quick Ban List */
+	//Custom fork: ACLs and objects (acl_api_custom.go)
+	authRouter.HandleFunc("/api/acl/list", HandleACLList)
+	authRouter.HandleFunc("/api/acl/get", HandleACLGet)
+	authRouter.HandleFunc("/api/acl/create", HandleACLCreate)
+	authRouter.HandleFunc("/api/acl/duplicate", HandleACLDuplicate)
+	authRouter.HandleFunc("/api/acl/save", HandleACLSave)
+	authRouter.HandleFunc("/api/acl/delete", HandleACLDelete)
+	authRouter.HandleFunc("/api/acl/test", HandleACLTest)
+	authRouter.HandleFunc("/api/acl/attach", HandleACLAttach)
+	authRouter.HandleFunc("/api/acl/objects", HandleACLObjects)
+	authRouter.HandleFunc("/api/acl/object/save", HandleACLObjectSave)
+	authRouter.HandleFunc("/api/acl/object/delete", HandleACLObjectDelete)
+
 	authRouter.HandleFunc("/api/quickban/list", handleListQuickBan)
 	/* Trusted Proxies */
 	authRouter.HandleFunc("/api/trustedproxy/list", handleListTrustedProxies)

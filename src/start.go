@@ -179,9 +179,11 @@ func startupSequence() {
 
 	//Create the access controller
 	accessController, err = access.NewAccessController(&access.Options{
+		Logger:             *SystemWideLogger,
 		Database:           sysdb,
 		GeoDB:              geodbStore,
-		ConfigFolder:       CONF_ACCESS_RULE,
+		ConfigFolder:       CONF_ACL,         //Custom fork: ACLs and objects (conf/acl)
+		LegacyFolder:       CONF_ACCESS_RULE, //Custom fork: access rules of 2.17 and earlier, converted once
 		TrustedProxiesFile: CONF_TRUSTED_PROXIES,
 	})
 	if err != nil {
@@ -312,12 +314,11 @@ func startupSequence() {
 
 	//Create the Layer 4 (TCP / UDP) Proxy Manager
 	l4ProxyManager, err = l4proxy.NewL4Proxy(&l4proxy.Options{
-		AccessControlHandler: accessController.DefaultAccessRule.AllowConnectionAccess,
-		AccessController:     accessController,
-		ConfigStore:          CONF_L4_PROXY,
-		Logger:               SystemWideLogger,
-		ObserveConnect:       observeL4Connect,           //Custom fork: passive health monitoring (l4pool_custom.go)
-		OnChange:             UpdateUptimeMonitorTargets, //Custom fork: health checks follow Layer 4 rule changes
+		AccessController: accessController,
+		ConfigStore:      CONF_L4_PROXY,
+		Logger:           SystemWideLogger,
+		ObserveConnect:   observeL4Connect,           //Custom fork: passive health monitoring (l4pool_custom.go)
+		OnChange:         UpdateUptimeMonitorTargets, //Custom fork: health checks follow Layer 4 rule changes
 	})
 	if err != nil {
 		panic(err)

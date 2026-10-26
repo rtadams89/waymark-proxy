@@ -9,53 +9,39 @@
         <script src="../script/semantic/semantic.min.js"></script>
         <script src="../script/utils.js"></script>
         <style>
-            .accessRule{
+            /* Custom fork: the ACL of a proxy rule (mod/access) */
+            .aclCard{
                 cursor: pointer;
                 border-radius: 0.4em !important;
                 border: 1px solid rgb(233, 233, 233) !important;
+                margin: 0 0 0.5em 0 !important;
+                position: relative;
             }
-
-            .accessRule:hover{
+            .aclCard:hover, .aclCard.active{
                 background-color: rgb(241, 241, 241) !important;
             }
-
-            .accessRule.active{
-                background-color: rgb(241, 241, 241) !important;
-            }
-
-            .accessRule .selected{
+            .aclCard .selected{
                 position: absolute;
                 top: 1em;
                 right: 0.6em;
             }
-
-            .accessRule:not(.active) .selected{
-                display:none;
+            .aclCard:not(.active) .selected{
+                display: none;
             }
-
-            #accessRuleList{
-                padding: 0.6em;
-                /* border: 1px solid rgb(228, 228, 228); */
-                border-radius: 0.4em !important;
-                max-height: calc(100vh - 15em);
-                min-height: 300px;
+            .aclCard .aclMeta{
+                opacity: 0.75;
+                font-size: 0.9em;
+            }
+            #aclList{
+                max-height: calc(100vh - 20em);
+                min-height: 200px;
                 overflow-y: auto;
+                padding: 0.2em;
             }
-
-            body.darkTheme #accessRuleList{
-                border: 1px solid rgb(50, 50, 50) !important;
-
-            }
-
-            body.darkTheme .ui.segment.accessRule {
+            body.darkTheme .ui.segment.aclCard{
                 border: 1px solid var(--theme_bg_secondary) !important;
             }
-
-            body.darkTheme .ui.segment.accessRule:hover {
-                background-color: var(--theme_bg_secondary) !important;
-            }
-
-            body.darkTheme .ui.segment.accessRule.active {
+            body.darkTheme .ui.segment.aclCard:hover, body.darkTheme .ui.segment.aclCard.active{
                 background-color: var(--theme_bg_secondary) !important;
             }
         </style>
@@ -65,155 +51,154 @@
         <script src="../script/darktheme.js"></script>
         <br>
         <div class="ui container">
-            <p>Select an access rule to apply blacklist / whitelist filtering</p>
-            <div id="accessRuleList">
-                <div class="ui segment accessRule">
-                    <div class="ui header">
-                        <i class="hand paper icon"></i>
-                        <div class="content">
-                            Account Settings
-                            <div class="sub header">Manage your preferences</div>
-                        </div>
-                    </div>
+            <p>Choose the ACL for this rule. Its rules are checked top down for the client's address; an address no rule matches is denied.
+                <a href="#" onclick="openACLPage(); return false;">Manage ACLs</a></p>
+            <div id="aclList"><small>Loading</small></div>
+            <div id="trustBox" style="display:none; margin-top: 1em;">
+                <div class="ui divider"></div>
+                <div class="ui checkbox">
+                    <input type="checkbox" id="trustProxyHeaders">
+                    <label>Trust the client address forwarded by trusted proxies<br>
+                        <small>When a request comes from an address on <a href="#" onclick="openTrustedProxies(); return false;">Access &gt; Trusted Proxies</a> (a CDN or load balancer in front of Waymark), the ACL, rate limiting and logs use the client address it forwards (X-Forwarded-For and similar). Leave this off when clients connect to Waymark directly.</small></label>
                 </div>
             </div>
-            <br>
-            <!-- <button class="ui basic button" onclick="applyChange()"><i class="ui green check icon"></i> Apply Change</button> -->
             <br><br><br>
-
         </div>
         <script>
             let editingEndpoint = {};
             if (window.location.hash.length > 1){
-                let payloadHash = window.location.hash.substr(1);
                 try{
-                    payloadHash = JSON.parse(decodeURIComponent(payloadHash));
-                    $("#epname").text(payloadHash.ep);
-                    editingEndpoint = payloadHash;
+                    editingEndpoint = JSON.parse(decodeURIComponent(window.location.hash.substr(1)));
                 }catch(ex){
-                    console.log("Unable to load endpoint data from hash")
+                    console.log("Unable to load endpoint data from hash");
+                }
+            }
+            let isL4 = (editingEndpoint.ept == "l4");
+            let currentACL = "allow-all";
+            let currentTrust = false;
+
+            function normalizeID(id){
+                return (id == "" || id == undefined) ? "allow-all" : id;
+            }
+
+            function openACLPage(id){
+                if (parent.wmOpenACL){
+                    parent.wmOpenACL(id);
                 }
             }
 
-            function initAccessRuleList(callback = undefined){
-                $("#accessRuleList").html("<small>Loading</small>");
-                $.get("/api/access/list", function(data){
-                    if (data.error == undefined){
-                        $("#accessRuleList").html("");
-                        data.forEach(function(rule){
-                            let icon = `<i class="ui grey hand paper icon"></i>`;
-                            if (rule.ID == "default"){
-                                icon = `<i class="ui yellow star icon"></i>`;
-                            }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
-                                //This is a blacklist filter
-                                icon = `<i class="ui red hand paper icon"></i>`;
-                            }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
-                                //This is a whitelist filter
-                                icon = `<i class="ui green hand paper icon"></i>`;
-                            }else if (rule.WhitelistEnabled && rule.BlacklistEnabled){
-                                //Whitelist and blacklist filter
-                                icon = `<i class="ui yellow hand paper icon"></i>`;
-                            }
+            function openTrustedProxies(){
+                if (parent.openTabById){
+                    if (parent.closeHttpRuleEditor) parent.closeHttpRuleEditor();
+                    parent.openTabById("trustproxy");
+                }
+            }
 
-                            $("#accessRuleList").append(`<div class="ui basic segment accessRule" ruleid="${htmlEscape(rule.ID)}" onclick="selectThisRule(this);">
-                                <h5 class="ui header">
-                                    ${icon}
-                                    <div class="content">
-                                        ${htmlEscape(rule.Name)}
-                                        <div class="sub header">${htmlEscape(rule.ID)}</div>
-                                    </div>
-                                </h5>
-                                <p>${htmlEscape(rule.Desc)}</p>
-                                ${rule.BlacklistEnabled?`<small><i class="ui red hand paper icon"></i> Blacklist Enabled</small>`:""}
-                                ${rule.WhitelistEnabled?`<small><i class="ui green hand paper icon"></i> Whitelist Enabled</small>`:""}
-                                <div class="selected"><i class="ui large green check icon"></i></div>
-                            </div>`);
-                        });
-                        accessRuleList = data;
-                        $(".dropdown").dropdown();
-                        if (callback != undefined){
-                            callback();
-                        }
+            function renderACLs(list){
+                let box = $("#aclList").empty();
+                let known = {};
+                list.forEach(function(a){
+                    known[a.id] = true;
+                    let users = a.users.length == 1 ? "1 proxy rule" : a.users.length + " proxy rules";
+                    let rules = a.rules == 1 ? "1 rule" : a.rules + " rules";
+                    box.append(`<div class="ui basic segment aclCard" aclid="${htmlEscape(a.id)}" onclick="selectACL(this);">
+                        <h5 class="ui header" style="margin-bottom: 0.3em;">
+                            <i class="ui ${a.builtIn ? "grey" : "green"} hand paper icon"></i>
+                            <div class="content">${htmlEscape(a.name)} ${a.builtIn ? `<span class="ui mini basic label">built in</span>` : ""}</div>
+                        </h5>
+                        <div class="aclMeta">${htmlEscape(a.description || "")}</div>
+                        <div class="aclMeta" style="margin-top: 0.3em;">${rules} · used by ${users}${a.builtIn ? "" : ` · <a href="#" onclick="event.stopPropagation(); openACLPage('${htmlEscape(a.id)}'); return false;">Edit</a>`}</div>
+                        <div class="selected"><i class="ui large green check icon"></i></div>
+                    </div>`);
+                });
+                if (!known[currentACL]){
+                    // An ACL that no longer exists is treated as Allow all
+                    currentACL = "allow-all";
+                }
+                markActive();
+            }
+
+            function markActive(){
+                $(".aclCard").removeClass("active");
+                $(".aclCard").filter(function(){ return $(this).attr("aclid") == currentACL; }).addClass("active");
+            }
+
+            function loadList(){
+                $.get("/api/acl/list", function(data){
+                    if (data.error != undefined){
+                        $("#aclList").text(data.error);
+                        return;
                     }
+                    renderACLs(data);
                 });
             }
 
-            //Custom fork: Layer 4 proxies ({"ept":"l4"}) use the open Layer 4 proxy editor (components/l4proxy.html)
-            function markActiveRule(id){
-                $(".accessRule").removeClass("active");
-                $(".accessRule").filter(function(){ return $(this).attr("ruleid") == (id || "default"); }).addClass("active");
-            }
-
-            initAccessRuleList(function(){
-                if (editingEndpoint.ept == "l4"){
+            function load(){
+                if (isL4){
                     let c = parent.l4CurrentConfig ? parent.l4CurrentConfig() : null;
-                    markActiveRule(c ? c.AccessRuleUUID : "default");
+                    currentACL = normalizeID(c ? c.AccessRuleUUID : "");
+                    loadList();
                     return;
                 }
                 $.cjax({
                     url: "/api/proxy/detail",
                     method: "POST",
-                    data: {"type":"host", "epname": editingEndpoint.ep },
-                    success: function(data){
-                        console.log(data);
-                        if (data.error != undefined){
-                            alert(data.error);
-                        }else{
-                            let currentAccessFilter = data.AccessFilterUUID;
-                            if (currentAccessFilter == ""){
-                                //Use default
-                                currentAccessFilter = "default";
-                            }
-
-                            markActiveRule(currentAccessFilter);
+                    data: {"type": "host", "epname": editingEndpoint.ep},
+                    success: function(d){
+                        if (d.error != undefined){
+                            $("#aclList").text(d.error);
+                            return;
                         }
+                        currentACL = normalizeID(d.AccessFilterUUID);
+                        currentTrust = !!d.TrustProxyHeaders;
+                        $("#trustProxyHeaders").prop("checked", currentTrust);
+                        $("#trustBox").show();
+                        loadList();
                     }
-                })
-            });
+                });
+            }
+            load();
 
-
-            function selectThisRule(accessRuleObject){
-                let accessRuleID = $(accessRuleObject).attr("ruleid");
-                $(".accessRule").removeClass('active');
-                $(accessRuleObject).addClass('active');
-
-                //Updates 2025-06-10: Added auto save on change feature
-                applyChange();
+            function selectACL(card){
+                let id = $(card).attr("aclid");
+                if (id == currentACL) return;
+                save(id, currentTrust);
             }
 
-            
-            function applyChange(){
-                let newAccessRuleID = $(".accessRule.active").attr("ruleid");
-                let targetEndpoint = editingEndpoint.ep;
-                if (editingEndpoint.ept == "l4"){
-                    parent.saveL4Config({accessRuleUUID: newAccessRuleID}, function(err){
+            $("#trustProxyHeaders").on("change", function(){
+                save(currentACL, this.checked);
+            });
+
+            function save(aclID, trust){
+                if (isL4){
+                    parent.saveL4Config({accessRuleUUID: aclID}, function(err){
                         let c = parent.l4CurrentConfig();
-                        markActiveRule(c ? c.AccessRuleUUID : "default");
+                        currentACL = normalizeID(c ? c.AccessRuleUUID : "");
+                        markActive();
                     });
                     return;
                 }
                 $.cjax({
-                    url: "/api/access/attach",
+                    url: "/api/acl/attach",
                     method: "POST",
-                    data: {
-                        id: newAccessRuleID,
-                        host: targetEndpoint
-                    },
+                    data: {id: aclID, host: editingEndpoint.ep, trust: trust},
                     success: function(data){
                         if (data.error != undefined){
-                            parent.msgbox(data.error, false);
-                        }else{
-                            parent.msgbox("Access rule updated");
-
-                            //Modify the parent list if exists
-                            if (parent != undefined && parent.updateAccessRuleNameUnderHost){
-                                parent.updateAccessRuleNameUnderHost(targetEndpoint, newAccessRuleID);
-                            }
+                            parent.msgbox(data.error, false, 6000);
+                            $("#trustProxyHeaders").prop("checked", currentTrust);
+                            markActive();
+                            return;
+                        }
+                        currentACL = aclID;
+                        currentTrust = trust;
+                        markActive();
+                        parent.msgbox("Access settings updated");
+                        if (parent.updateAccessRuleNameUnderHost){
+                            parent.updateAccessRuleNameUnderHost(editingEndpoint.ep, aclID);
                         }
                     }
                 });
             }
-
         </script>
     </body>
 </html>

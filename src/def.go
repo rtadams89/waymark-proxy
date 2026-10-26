@@ -129,7 +129,8 @@ var (
 	CONF_L4_PROXY              string //Layer 4 proxy configuration path
 	CONF_CERT_STORE            string //Certificate store path
 	CONF_REDIRECTION           string //Redirection configuration path
-	CONF_ACCESS_RULE           string //Access rule configuration path
+	CONF_ACCESS_RULE           string //Access rule configuration path (Custom fork: 2.17 and earlier, converted to ACLs)
+	CONF_ACL                   string //Custom fork: ACLs and objects
 	CONF_PATH_RULE             string //Path rule configuration path
 	CONF_PLUGIN_GROUPS         string //Plugin groups configuration path
 	CONF_GEODB_PATH            string //GeoIP database path

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -42,7 +41,7 @@ type ProxyRelayOptions struct {
 	UseUDP               bool
 	ProxyProtocolVersion ProxyProtocolVersion
 	EnableLogging        bool
-	AccessRuleUUID       string //The UUID of the access control rule, empty for default rule
+	AccessRuleUUID       string //Custom fork: the ACL, empty for Allow all
 }
 
 // ProxyRuleUpdateConfig is used to update the proxy rule config
@@ -56,7 +55,7 @@ type ProxyRuleUpdateConfig struct {
 	ProxyProtocolVersion int    //Enable Proxy Protocol v1/v2, default to disabled
 	EnableLogging        bool   //Enable Logging TCP/UDP Message, default to true
 	NewTimeout           int    //New timeout for the connection, leave -1 for no change
-	NewAccessRuleUUID    string //New access rule UUID, leave empty for no change
+	NewAccessRuleUUID    string //New ACL, leave empty for no change
 }
 
 type ProxyRelayInstance struct {
@@ -70,7 +69,7 @@ type ProxyRelayInstance struct {
 	UseTCP               bool                 //Enable TCP proxy
 	UseUDP               bool                 //Enable UDP proxy
 	ProxyProtocolVersion ProxyProtocolVersion //Proxy Protocol v1/v2
-	AccessRuleUUID       string               //The UUID of the access control rule, empty for default rule
+	AccessRuleUUID       string               //Custom fork: the ACL, empty for Allow all
 	EnableLogging        bool                 //Enable logging for ProxyInstance
 	Timeout              int                  //Timeout for connection in sec
 
@@ -164,11 +163,10 @@ func (c *ProxyRelayInstance) MarshalJSON() ([]byte, error) {
 }
 
 type Options struct {
-	DefaultTimeout       int
-	AccessControlHandler func(net.Conn) bool
-	AccessController     *access.Controller //Access controller for per-instance access rules
-	ConfigStore          string             //Folder to store the config files, will be created if not exists
-	Logger               *logger.Logger     //Logger for the Layer 4 proxy
+	DefaultTimeout   int
+	AccessController *access.Controller //Access controller for per-instance access rules
+	ConfigStore      string             //Folder to store the config files, will be created if not exists
+	Logger           *logger.Logger     //Logger for the Layer 4 proxy
 
 	//Custom fork (pool_custom.go): passive health monitoring of upstream
 	//connection failures, and a callback after rules change
@@ -254,14 +252,6 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 
 		//Append the config to the list
 		previousRules = append(previousRules, thisRelayConfig)
-	}
-
-	//Check if the AccessControlHandler is empty. If yes, set it to always allow access
-	if options.AccessControlHandler == nil {
-		options.AccessControlHandler = func(conn net.Conn) bool {
-			//Always allow access
-			return true
-		}
 	}
 
 	//Create a new proxy manager for TCP
@@ -389,9 +379,9 @@ func (m *Manager) EditConfig(newConfig *ProxyRuleUpdateConfig) error {
 	}
 
 	if newConfig.NewAccessRuleUUID != "" {
-		// Validate that the access rule exists; if not, fall back to default
-		if m.Options.AccessController != nil && !m.Options.AccessController.AccessRuleExists(newConfig.NewAccessRuleUUID) {
-			return errors.New("access rule not found: " + newConfig.NewAccessRuleUUID)
+		// Custom fork: the ACL must exist
+		if m.Options.AccessController != nil && !m.Options.AccessController.ACLExists(newConfig.NewAccessRuleUUID) {
+			return errors.New("ACL not found: " + newConfig.NewAccessRuleUUID)
 		}
 	}
 	if newConfig.NewTimeout != -1 && newConfig.NewTimeout < 0 {
@@ -506,24 +496,61 @@ func writeFileAtomic(path string, data []byte) error {
 	return utils.WriteFileAtomic(path, data, 0640)
 }
 
-// getEffectiveAccessRule returns the access rule for this proxy instance.
-// If the configured rule UUID is empty or no longer exists, it falls back to
-// the default access rule. Returns nil if no AccessController is available.
-func (c *ProxyRelayInstance) getEffectiveAccessRule() *access.AccessRule {
-	if c.parent.Options.AccessController == nil {
-		return nil
+// checkAccess applies the rule's ACL to a client address (Custom fork:
+// ACLs, mod/access). It returns the action (allow, deny or drop) and logs
+// refusals, summarised.
+func (c *ProxyRelayInstance) checkAccess(ip, proto string) string {
+	ac := c.parent.Options.AccessController
+	if ac == nil {
+		return access.ActionAllow
 	}
 	c.poolMu.RLock()
-	ruleID, name := c.AccessRuleUUID, c.Name
+	aclID, name := c.AccessRuleUUID, c.Name
 	c.poolMu.RUnlock()
-	rule, err := c.parent.Options.AccessController.GetAccessRuleByID(ruleID)
-	if err != nil {
-		// Rule not found (deleted or empty UUID); fall back to default
-		c.parent.logf("Access rule \""+ruleID+"\" not found for Layer 4 rule "+name+", falling back to default", nil)
-		rule, err = c.parent.Options.AccessController.GetAccessRuleByID("default")
-		if err != nil {
-			return nil
+	d := ac.Evaluate(aclID, ip)
+	if d.Action != access.ActionAllow {
+		ac.LogL4Denied(name, proto, ip, d)
+	}
+	return d.Action
+}
+
+// RemapACLs changes the ACL of every rule whose ACL is in idMap (old ID ->
+// new ID; "" stands for rules without one) and saves them. Custom fork:
+// used once, when access rules are converted to ACLs.
+func (m *Manager) RemapACLs(idMap map[string]string) int {
+	changed := 0
+	for _, c := range m.List() {
+		c.poolMu.Lock()
+		old := c.AccessRuleUUID
+		if old == "" {
+			old = access.LegacyDefaultID
+		}
+		if n, ok := idMap[old]; ok && n != c.AccessRuleUUID {
+			c.AccessRuleUUID = n
+			changed++
+		}
+		c.poolMu.Unlock()
+	}
+	if changed > 0 {
+		m.SaveConfigToDatabase()
+	}
+	return changed
+}
+
+// ACLUsers lists the names of the rules using an ACL (rules without one,
+// or with one that no longer exists, use Allow all). Custom fork.
+func (m *Manager) ACLUsers(aclID string) []string {
+	out := []string{}
+	for _, c := range m.List() {
+		c.poolMu.RLock()
+		id, name := c.AccessRuleUUID, c.Name
+		c.poolMu.RUnlock()
+		if m.Options.AccessController != nil {
+			id = m.Options.AccessController.Resolve(id)
+		}
+		if id == aclID {
+			out = append(out, name)
 		}
 	}
-	return rule
+	return out
 }

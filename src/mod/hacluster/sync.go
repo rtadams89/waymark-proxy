@@ -55,7 +55,7 @@ var SyncConfEntries = []string{
 	"l4proxy",              // TCP/UDP Layer 4 proxy rules
 	"certs",                // TLS certificates and keys
 	"redirect",             // redirection rules
-	"access",               // access rules
+	"acl",                  // ACLs and objects (access rules)
 	"rules",                // path rules
 	"sso",                  // SSO provider settings
 	"acme_conf.json",       // certificate auto renewal settings

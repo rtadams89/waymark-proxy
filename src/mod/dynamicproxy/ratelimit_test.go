@@ -14,6 +14,9 @@ import (
 // newTestRateLimitRouter builds a minimal Router wired with a real access
 // controller, so the rate limiter resolves client IPs the same way it does
 // in production.
+// rlTrust: whether each test's proxy rule trusts forwarded addresses
+var rlTrust = map[string]bool{}
+
 func newTestRateLimitRouter(t *testing.T, trustProxyHeaders bool, trustedProxies ...string) *Router {
 	t.Helper()
 	tmpDir := t.TempDir()
@@ -31,7 +34,7 @@ func newTestRateLimitRouter(t *testing.T, trustProxyHeaders bool, trustedProxies
 
 	accessController, err := access.NewAccessController(&access.Options{
 		Logger:             *testLogger,
-		ConfigFolder:       filepath.Join(tmpDir, "access"),
+		ConfigFolder:       filepath.Join(tmpDir, "acl"),
 		TrustedProxiesFile: filepath.Join(tmpDir, "trusted_proxies.json"),
 		Database:           sysdb,
 	})
@@ -39,11 +42,7 @@ func newTestRateLimitRouter(t *testing.T, trustProxyHeaders bool, trustedProxies
 		t.Fatalf("unable to create access controller: %v", err)
 	}
 
-	defaultRule, err := accessController.GetAccessRuleByID("default")
-	if err != nil {
-		t.Fatalf("unable to load default access rule: %v", err)
-	}
-	defaultRule.TrustProxyHeadersOnly = trustProxyHeaders
+	rlTrust[t.Name()] = trustProxyHeaders // the proxy rule's "trust forwarded addresses" (Custom fork: per rule)
 	for _, proxy := range trustedProxies {
 		accessController.AddTrustedProxy(proxy, "test")
 	}
@@ -70,7 +69,7 @@ func TestHandleRateLimit_BareHeaderIPStillCounts(t *testing.T) {
 	for _, headerName := range []string{"CF-Connecting-IP", "Fastly-Client-IP", "X-Real-Ip", "X-Forwarded-For"} {
 		t.Run(headerName, func(t *testing.T) {
 			router := newTestRateLimitRouter(t, true, "104.16.0.0/13")
-			pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3}
+			pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3, TrustProxyHeaders: rlTrust[t.Name()]}
 
 			blocked := 0
 			for i := 0; i < 10; i++ {
@@ -98,7 +97,7 @@ func TestHandleRateLimit_BareHeaderIPStillCounts(t *testing.T) {
 // the edge address, otherwise one busy client 429s everyone else.
 func TestHandleRateLimit_CountsPerRealClient(t *testing.T) {
 	router := newTestRateLimitRouter(t, true, "104.16.0.0/13")
-	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3}
+	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3, TrustProxyHeaders: rlTrust[t.Name()]}
 
 	//Exceeded() blocks once the counter reaches the limit, so a limit of 3
 	//lets 2 requests through before the third is rejected
@@ -122,7 +121,7 @@ func TestHandleRateLimit_CountsPerRealClient(t *testing.T) {
 // let a client escape the limiter by rotating the header value.
 func TestHandleRateLimit_SpoofedHeaderFromUntrustedPeerIgnored(t *testing.T) {
 	router := newTestRateLimitRouter(t, true) //no trusted proxies configured
-	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3}
+	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3, TrustProxyHeaders: rlTrust[t.Name()]}
 
 	blocked := 0
 	for i := 0; i < 10; i++ {
@@ -148,7 +147,7 @@ func TestHandleRateLimit_SpoofedHeaderFromUntrustedPeerIgnored(t *testing.T) {
 // is involved must be unchanged.
 func TestHandleRateLimit_DirectConnection(t *testing.T) {
 	router := newTestRateLimitRouter(t, false)
-	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3}
+	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3, TrustProxyHeaders: rlTrust[t.Name()]}
 
 	blocked := 0
 	for i := 0; i < 10; i++ {

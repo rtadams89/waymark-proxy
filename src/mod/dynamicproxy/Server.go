@@ -69,13 +69,8 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sep := h.Parent.GetProxyEndpointForRequest(r) //Custom fork: skips rules bound to another address (listenip_custom.go)
 	if sep != nil && !sep.Disabled {
 		//Matching proxy rule found
-		//Access Check (blacklist / whitelist)
-		ruleID := sep.AccessFilterUUID
-		if sep.AccessFilterUUID == "" {
-			//Use default rule
-			ruleID = "default"
-		}
-		if h.handleAccessRouting(ruleID, w, r, sep) {
+		//Access check (Custom fork: the rule's ACL, access.go)
+		if h.handleAccessRouting(w, r, sep) {
 			//Request handled by subroute
 			return
 		}
@@ -154,8 +149,8 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Root Router Handling
 	*/
 
-	//Root access control based on default rule
-	blocked := h.handleAccessRouting("default", w, r, h.Parent.Root)
+	//Root access control (Custom fork: the default site's ACL)
+	blocked := h.handleAccessRouting(w, r, h.Parent.Root)
 	if blocked {
 		return
 	}

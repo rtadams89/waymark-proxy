@@ -2,6 +2,7 @@ package dynamicproxy
 
 import (
 	"github.com/google/uuid"
+	"imuslab.com/zoraxy/mod/access"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
 )
@@ -63,7 +64,7 @@ func GetDefaultProxyEndpoint() ProxyEndpoint {
 		RateLimit:                    0,
 		DisableUptimeMonitor:         false,
 		DisableAutoFallback:          false,
-		AccessFilterUUID:             "default",
+		AccessFilterUUID:             access.AllowAllID, //Custom fork: ACLs
 		DefaultSiteOption:            DefaultSite_InternalStaticWebServer,
 		DefaultSiteValue:             "",
 	}

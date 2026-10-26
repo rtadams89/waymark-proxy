@@ -388,18 +388,9 @@ func (router *Router) StartProxyService() error {
 // handleNonTLSRequest handles HTTP requests for endpoints that allow plain HTTP access
 // This is the common handler logic used by both port 80 listener and secondary listeners
 func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request, sep *ProxyEndpoint) {
-	//Access Check (blacklist / whitelist)
-	ruleID := sep.AccessFilterUUID
-	if sep.AccessFilterUUID == "" {
-		//Use default rule
-		ruleID = "default"
-	}
-	accessRule, err := router.Option.AccessController.GetAccessRuleByID(ruleID)
-	if err == nil {
-		isBlocked, _ := accessRequestBlocked(accessRule, router.Option.WebDirectory, w, r)
-		if isBlocked {
-			return
-		}
+	//Access check (Custom fork: the rule's ACL, access.go)
+	if router.accessRefused(w, r, sep) {
+		return
 	}
 
 	// Rate Limit

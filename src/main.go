@@ -70,6 +70,7 @@ func main() {
 	CONF_CERT_STORE = CONF_FOLDER + "/certs"
 	CONF_REDIRECTION = CONF_FOLDER + "/redirect"
 	CONF_ACCESS_RULE = CONF_FOLDER + "/access"
+	CONF_ACL = CONF_FOLDER + "/acl"
 	CONF_PATH_RULE = CONF_FOLDER + "/rules/pathrules"
 	CONF_PLUGIN_GROUPS = CONF_FOLDER + "/plugin_groups.json"
 	CONF_GEODB_PATH = CONF_FOLDER + "/geodb"

@@ -3,6 +3,7 @@ package l4proxy
 import (
 	"errors"
 	"fmt"
+	"imuslab.com/zoraxy/mod/access"
 	"io"
 	"log"
 	"net"
@@ -71,27 +72,28 @@ func (c *ProxyRelayInstance) forward(conn1 net.Conn, conn2 net.Conn, aTob *int64
 	wg.Wait()
 }
 
+// errAccessRefused: the connection was refused by the rule's ACL.
+var errAccessRefused = errors.New("connection refused by the ACL")
+
 func (c *ProxyRelayInstance) accept(listener net.Listener) (net.Conn, error) {
 	conn, err := listener.Accept()
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if connection is allowed by access control policy
+	// Check the connection against the rule's ACL (Custom fork: ACLs)
 	if addr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
-		accessRule := c.getEffectiveAccessRule()
-		if accessRule != nil {
-			if !accessRule.AllowConnectionAccess(conn) {
-				time.Sleep(300 * time.Millisecond)
-				conn.Close()
-				c.LogMsg("[x] Connection from "+addr.IP.String()+" rejected by access control policy", nil)
-				return nil, errors.New("Connection from " + addr.IP.String() + " rejected by access control policy")
+		switch c.checkAccess(addr.IP.String(), "tcp") {
+		case access.ActionAllow:
+		case access.ActionDrop:
+			if tc, ok := conn.(*net.TCPConn); ok {
+				tc.SetLinger(0) // reset instead of a normal close
 			}
-		} else if !c.parent.Options.AccessControlHandler(conn) {
-			time.Sleep(300 * time.Millisecond)
 			conn.Close()
-			c.LogMsg("[x] Connection from "+addr.IP.String()+" rejected by access control policy", nil)
-			return nil, errors.New("Connection from " + addr.IP.String() + " rejected by access control policy")
+			return nil, errAccessRefused
+		default:
+			conn.Close()
+			return nil, errAccessRefused
 		}
 	}
 

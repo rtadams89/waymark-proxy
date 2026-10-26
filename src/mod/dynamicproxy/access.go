@@ -1,9 +1,22 @@
 package dynamicproxy
 
+/*
+	access.go: access control for HTTP proxy rules.
+
+	Custom fork: each proxy rule has one ACL (AccessFilterUUID; empty means
+	Allow all), evaluated top down for the client's address
+	(mod/access/engine.go). Deny answers with the forbidden page (403),
+	drop closes the connection without an answer (HTTP/1.1) or resets the
+	stream (HTTP/2, HTTP/3). Refused requests are logged with the ACL and
+	the rule that matched.
+
+	The client's address is the connection's own, or with the rule's
+	TrustProxyHeaders the forwarded one when the connection comes from a
+	trusted proxy (Access > Trusted Proxies).
+*/
+
 import (
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"imuslab.com/zoraxy/mod/access"
 	"imuslab.com/zoraxy/mod/eventsystem"
@@ -11,96 +24,67 @@ import (
 	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin/events"
 )
 
-// Handle access check (blacklist / whitelist), return true if request is handled (aka blocked)
-// if the return value is false, you can continue process the response writer
-func (h *ProxyHandler) handleAccessRouting(ruleID string, w http.ResponseWriter, r *http.Request, sep *ProxyEndpoint) bool {
-	accessRule, err := h.Parent.Option.AccessController.GetAccessRuleByID(ruleID)
-	if err != nil {
-		//Unable to load access rule. Target rule not found?
-		h.Parent.Option.Logger.PrintAndLog("access", "Unable to load access rule: "+ruleID, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("500 - Internal Server Error"))
+// StatusDropped is the status logged for a request an ACL dropped (no
+// response was sent; the number nginx uses for the same).
+const StatusDropped = 444
+
+// handleAccessRouting applies the rule's ACL; true means the request was
+// refused and handled.
+func (h *ProxyHandler) handleAccessRouting(w http.ResponseWriter, r *http.Request, sep *ProxyEndpoint) bool {
+	return h.Parent.accessRefused(w, r, sep)
+}
+
+func (router *Router) accessRefused(w http.ResponseWriter, r *http.Request, sep *ProxyEndpoint) bool {
+	if router.Option == nil || router.Option.AccessController == nil || sep == nil {
+		return false
+	}
+	clientIP := router.GetClientIPForEndpoint(r, sep)
+	d := router.Option.AccessController.Evaluate(sep.AccessFilterUUID, clientIP)
+	if d.Action == access.ActionAllow {
+		return false
+	}
+
+	eventsystem.Publisher.Emit(&events.BlacklistedIPBlockedEvent{
+		IP:           clientIP,
+		Comment:      "ACL " + d.RuleLabel() + " (" + d.Action + ")",
+		RequestedURL: r.URL.String(),
+		Hostname:     r.Host,
+		UserAgent:    r.Header.Get("User-Agent"),
+		Method:       r.Method,
+	})
+
+	if d.Action == access.ActionDrop {
+		router.logRequest(r, false, StatusDropped, "acl-drop "+d.RuleLabel(), r.Host, "", sep)
+		dropConnection(w)
 		return true
 	}
-
-	isBlocked, blockedReason := accessRequestBlocked(accessRule, h.Parent.Option.WebDirectory, w, r)
-	if isBlocked {
-		h.Parent.logRequest(r, false, 403, blockedReason, r.Host, "", sep)
-	}
-	return isBlocked
+	router.logRequest(r, false, http.StatusForbidden, "acl-deny "+d.RuleLabel(), r.Host, "", sep)
+	serveProxyRequestError(w, http.StatusForbidden, router, ErrorTemplateForbidden)
+	return true
 }
 
-// Return boolean, return true if access is blocked
-// For string, it will return the blocked reason (if any)
-func accessRequestBlocked(accessRule *access.AccessRule, templateDirectory string, w http.ResponseWriter, r *http.Request) (bool, string) {
-	//Check if this ip is in blacklist
-	clientIpAddr := accessRule.GetClientIP(r)
-	if accessRule.IsBlacklisted(clientIpAddr) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusForbidden)
-		template, err := os.ReadFile(filepath.Join(templateDirectory, "templates/blacklist.html"))
-		if err != nil {
-			w.Write(page_forbidden)
-		} else {
-			w.Write(template)
+// dropConnection ends a request without a response.
+func dropConnection(w http.ResponseWriter) {
+	if hj, ok := w.(http.Hijacker); ok {
+		if conn, _, err := hj.Hijack(); err == nil {
+			conn.Close()
+			return
 		}
-
-		// Emit blacklisted IP blocked event
-		// Get the comment for this IP
-		comment, err := accessRule.GetBlacklistedIPComment(clientIpAddr)
-		if err != nil {
-			comment = "blacklisted"
-		}
-		eventsystem.Publisher.Emit(
-			&events.BlacklistedIPBlockedEvent{
-				IP:           clientIpAddr,
-				Comment:      comment,
-				RequestedURL: r.URL.String(),
-				Hostname:     r.Host,
-				UserAgent:    r.Header.Get("User-Agent"),
-				Method:       r.Method,
-			},
-		)
-
-		return true, "blacklist"
 	}
-
-	//Check if this ip is in whitelist
-	if !accessRule.IsWhitelisted(clientIpAddr) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusForbidden)
-		template, err := os.ReadFile(filepath.Join(templateDirectory, "templates/whitelist.html"))
-		if err != nil {
-			w.Write(page_forbidden)
-		} else {
-			w.Write(template)
-		}
-		return true, "whitelist"
-	}
-
-	//Not blocked.
-	return false, ""
+	// HTTP/2 and HTTP/3: abort the handler, which resets the stream
+	panic(http.ErrAbortHandler)
 }
 
-// GetClientIPForEndpoint resolves the real client IP of a request using the
-// access rule bounded to the given proxy endpoint. Header supplied addresses
-// (X-Real-IP, CF-Connecting-IP, Fastly-Client-IP, X-Forwarded-For) are only
-// honored when the access rule opted in to trusting proxy headers
+// GetClientIPForEndpoint resolves the real client IP of a request for a
+// proxy rule. Header supplied addresses (X-Real-IP, CF-Connecting-IP,
+// Fastly-Client-IP, X-Forwarded-For) are only honored when the rule trusts
+// them and the connection comes from a trusted proxy.
 func (router *Router) GetClientIPForEndpoint(r *http.Request, pe *ProxyEndpoint) string {
-	ruleID := "default"
-	if pe != nil && pe.AccessFilterUUID != "" {
-		ruleID = pe.AccessFilterUUID
-	}
-
+	trust := pe != nil && pe.TrustProxyHeaders
 	if router.Option != nil && router.Option.AccessController != nil {
-		accessRule, err := router.Option.AccessController.GetAccessRuleByID(ruleID)
-		if err == nil {
-			if clientIP := accessRule.GetClientIP(r); clientIP != "" {
-				return clientIP
-			}
+		if ip := router.Option.AccessController.ClientIP(r, trust); ip != "" {
+			return ip
 		}
 	}
-
-	//Access rule not available. Fallback to the connection address only
 	return netutils.GetRequesterIPUntrusted(r)
 }

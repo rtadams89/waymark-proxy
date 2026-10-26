@@ -130,7 +130,7 @@
                         <i class="server icon"></i> <span class="editorSideMenuText">Destinations</span>
                     </a>
                     <a class="item l4edit_menu_item" cfgpage="accessrule">
-                        <i class="star icon"></i> <span class="editorSideMenuText">Access Rules</span>
+                        <i class="star icon"></i> <span class="editorSideMenuText">Access (ACL)</span>
                     </a>
                 </div>
                 <button class="ui basic fluid button l4EditClosePC" onclick="closeL4ProxyEditor();">Close</button>
@@ -446,29 +446,18 @@
         if (window.proxyRulesAfterRender) proxyRulesAfterRender(); else filterL4ProxyList();
     }
 
-    // Access rule name under each rule's name (nothing for the default rule)
+    // ACL name under each rule's name (nothing for Allow all)
     function renderL4AccessRuleNames(){
         $("#proxyRulesList .l4AccessRuleName").each(function(){
-            let id = $(this).attr("ruleid") || "default";
-            if (id == "default"){ $(this).html(""); return; }
-            let rule = l4AccessRules[id];
-            if (rule == undefined){
-                $(this).html(`<i class="ui red exclamation triangle icon"></i> <b style="color: #db2828;">Access Rule Error</b>`);
-                return;
-            }
-            let icon = `<i class="ui grey hand paper icon"></i>`;
-            if (rule.BlacklistEnabled && !rule.WhitelistEnabled) icon = `<i class="ui red hand paper icon"></i>`;
-            else if (rule.WhitelistEnabled && !rule.BlacklistEnabled) icon = `<i class="ui green hand paper icon"></i>`;
-            else if (rule.WhitelistEnabled && rule.BlacklistEnabled) icon = `<i class="ui yellow hand paper icon"></i>`;
-            $(this).html(`${icon} ${htmlEscape(rule.Name)}`).attr("title", window.accessRuleTitle ? accessRuleTitle(rule) : "Access rule");
+            $(this).html(aclNameLabel(l4AccessRules, $(this).attr("ruleid"), false));
         });
     }
 
     function loadL4AccessRules(){
-        $.get("/api/access/list", function(data){
+        $.get("/api/acl/list", function(data){
             if (data.error != undefined || !Array.isArray(data)) return;
             l4AccessRules = {};
-            data.forEach(function(rule){ l4AccessRules[rule.ID] = rule; });
+            data.forEach(function(rule){ l4AccessRules[rule.id] = rule; });
             renderL4AccessRuleNames();
         });
     }
@@ -686,7 +675,7 @@
             proxyProtocolVersion: c.ProxyProtocolVersion || 0,
             enableLogging: !!c.EnableLogging,
             timeout: parseInt(c.Timeout) || 0,
-            accessRuleUUID: c.AccessRuleUUID || "default",
+            accessRuleUUID: c.AccessRuleUUID || "allow-all",
         };
         Object.assign(data, changes);
         $.cjax({

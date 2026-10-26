@@ -51,7 +51,7 @@ func TestHandleCaptchaGating_SpoofedHeaderDoesNotMatchCIDRException(t *testing.T
 			w := httptest.NewRecorder()
 			r := newTestRequest("203.0.113.5:44321", map[string]string{headerName: "10.1.2.3"})
 
-			handled, challenged := router.handleCaptchaGating(w, r, newTestCaptchaEndpoint("10.0.0.0/8"))
+			handled, challenged := router.handleCaptchaGating(w, r, trustEP(t, newTestCaptchaEndpoint("10.0.0.0/8")))
 			if !handled || !challenged {
 				t.Fatalf("spoofed %s header skipped the CAPTCHA challenge (handled=%v, challenged=%v)", headerName, handled, challenged)
 			}
@@ -70,7 +70,7 @@ func TestHandleCaptchaGating_UntrustedPeerHeaderDoesNotMatchCIDRException(t *tes
 			router := newTestCaptchaRouter(t, true, "104.16.0.0/13")
 			r := newTestRequest("203.0.113.5:44321", map[string]string{headerName: "10.1.2.3"})
 
-			if _, challenged := router.handleCaptchaGating(httptest.NewRecorder(), r, newTestCaptchaEndpoint("10.0.0.0/8")); !challenged {
+			if _, challenged := router.handleCaptchaGating(httptest.NewRecorder(), r, trustEP(t, newTestCaptchaEndpoint("10.0.0.0/8"))); !challenged {
 				t.Fatalf("%s header from an untrusted peer skipped the CAPTCHA challenge", headerName)
 			}
 		})
@@ -83,7 +83,7 @@ func TestHandleCaptchaGating_TrustedProxyHeaderMatchesCIDRException(t *testing.T
 	router := newTestCaptchaRouter(t, true, "104.16.0.0/13")
 	r := newTestRequest("104.16.5.1:443", map[string]string{"CF-Connecting-IP": "10.1.2.3"})
 
-	handled, challenged := router.handleCaptchaGating(httptest.NewRecorder(), r, newTestCaptchaEndpoint("10.0.0.0/8"))
+	handled, challenged := router.handleCaptchaGating(httptest.NewRecorder(), r, trustEP(t, newTestCaptchaEndpoint("10.0.0.0/8")))
 	if handled || challenged {
 		t.Fatalf("client behind a trusted proxy in an exempted range was challenged (handled=%v, challenged=%v)", handled, challenged)
 	}
@@ -93,7 +93,7 @@ func TestHandleCaptchaGating_DirectPeerMatchesCIDRException(t *testing.T) {
 	router := newTestCaptchaRouter(t, false)
 	r := newTestRequest("10.1.2.3:44321", nil)
 
-	handled, challenged := router.handleCaptchaGating(httptest.NewRecorder(), r, newTestCaptchaEndpoint("10.0.0.0/8"))
+	handled, challenged := router.handleCaptchaGating(httptest.NewRecorder(), r, trustEP(t, newTestCaptchaEndpoint("10.0.0.0/8")))
 	if handled || challenged {
 		t.Fatalf("direct peer in an exempted range was challenged (handled=%v, challenged=%v)", handled, challenged)
 	}
@@ -145,7 +145,7 @@ func TestHandleCaptchaGating_VerificationSendsResolvedRemoteIP(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := newTestCaptchaVerifyRequest("203.0.113.5:44321", map[string]string{headerName: "10.1.2.3"})
 
-			if handled, _ := router.handleCaptchaGating(w, r, newTestCaptchaEndpoint("")); !handled {
+			if handled, _ := router.handleCaptchaGating(w, r, trustEP(t, newTestCaptchaEndpoint(""))); !handled {
 				t.Fatal("verification request was not handled")
 			}
 			if w.Code != http.StatusOK {
@@ -163,10 +163,17 @@ func TestHandleCaptchaGating_VerificationSendsTrustedProxyClientIP(t *testing.T)
 	router := newTestCaptchaRouter(t, true, "104.16.0.0/13")
 	r := newTestCaptchaVerifyRequest("104.16.5.1:443", map[string]string{"CF-Connecting-IP": "198.51.100.7"})
 
-	if handled, _ := router.handleCaptchaGating(httptest.NewRecorder(), r, newTestCaptchaEndpoint("")); !handled {
+	if handled, _ := router.handleCaptchaGating(httptest.NewRecorder(), r, trustEP(t, newTestCaptchaEndpoint(""))); !handled {
 		t.Fatal("verification request was not handled")
 	}
 	if got := sent.Get("remoteip"); got != "198.51.100.7" {
 		t.Errorf("remoteip sent to provider = %q, expected the trusted proxy client IP 198.51.100.7", got)
 	}
+}
+
+// trustEP sets the proxy rule's "trust forwarded addresses" as the test's
+// router was built (Custom fork: per proxy rule).
+func trustEP(t *testing.T, ep *ProxyEndpoint) *ProxyEndpoint {
+	ep.TrustProxyHeaders = rlTrust[t.Name()]
+	return ep
 }

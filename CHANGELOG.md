@@ -10,6 +10,27 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.18.0
+
+**New: ACLs and objects replace access rules**
+- **Access > ACLs.** An ACL is an ordered list of rules, checked top down for the client's address. The first matching rule decides; an address no rule matches is denied. Rules can be added, deleted, dragged into a new order, and turned on or off one at a time. Each rule has one source and an action:
+  - **Source:** any address, an object, an address, CIDR, range (`10.0.0.10-10.0.0.50`) or IPv4 wildcard (`192.168.*.*`), or a country. **Not** inverts the source ("not US" matches every address that is not in the US).
+  - **Action:** **Allow**; **Deny** (HTTP: the 403 page; TCP: the connection is closed; UDP: the packet is ignored); or **Drop** (HTTP/1.1: the connection is closed without a reply; HTTP/2 and HTTP/3: the request stream is reset; TCP: the connection is reset; UDP: the packet is ignored).
+- Each proxy rule (HTTP or Layer 4) uses one ACL, chosen in its editor under **Access (ACL)** or when adding the rule. One ACL can be used by many proxy rules. The built-in **Allow all** ACL cannot be edited and is the default for new rules.
+- The ACL editor shows how many times each rule matched since Waymark started (per node, not synced), which proxy rules use the ACL, and a test box: enter an address (or leave it empty for your own) to see which rule decides and highlight it. It warns about rules that may not do what they look like, for example a country rule while GeoIP lookups are off (such rules are skipped), or a "not <country>" rule without a rule above it allowing **Private networks** (addresses on your own network have no country, so they match "not <country>").
+- **Access > Objects.** An object is a named list of addresses, CIDRs, ranges, wildcards and countries that ACL rules can use as their source; changing it changes every rule that uses it. Entries can be pasted many at a time. The built-in **Private networks** object (RFC 1918, link-local, loopback, IPv6 unique local and link-local, and this server's public address) is read only. The Objects page also lists today's busiest client addresses, with a button to add one to an object.
+- Denied and dropped HTTP requests are in the access log with the ACL and rule that refused them (`acl-deny` with status 403, `acl-drop` with 444). Refused Layer 4 connections are written to the system log, summarized: one line per address and rule per minute, with a count. Allowed Layer 4 connections are not logged.
+- **Trusting forwarded client addresses is now set per proxy rule**, not per access rule: **Trust the client address forwarded by trusted proxies** in the rule's access settings (and when adding it). When on, and the request comes from an address on **Access > Trusted Proxies**, the ACL, rate limiting and logs use the address it forwards.
+- The admin console protection still applies: through Waymark's proxy, a change to an ACL or object, or attaching an ACL to the admin console rule, that would refuse your own address is refused. `-reset-admin-rule` now sets the admin console rule's ACL to Allow all.
+- ACLs are stored in `conf/acl/` (one file per ACL, and `objects.json`) and synced to HA standbys. Edits made by two people at once are caught: the second save is refused and asks you to reload.
+- Plugins can read ACLs and objects (`/api/acl/list`, `/api/acl/get`, `/api/acl/objects`); the old access rule APIs are gone.
+
+**Upgrading: access rules are converted on first start**
+- Each access rule becomes an ACL with the same name, so proxy rules keep using it: its blocklist and allowlist become objects (`<rule> blocklist`, `<rule> allowlist`), and its rules are, in order: deny the blocklist; allow Private networks (if it allowed LAN addresses); allow the allowlist, or allow any address if it had no allowlist. A rule that allowed everything becomes Allow all. The conversion never refuses an address the old rule allowed.
+- Proxy rules whose access rule trusted forwarded addresses get the new per-rule setting turned on.
+- `conf/access/` is deleted after the conversion. Rolling back to 2.17.x would lose the access rules; restore a backup made before the update instead.
+- With HA, update every node: a standby running 2.17.x does not have the new ACLs.
+
 ## 2.17.2
 
 **Changed: getting a certificate for a new proxy rule**

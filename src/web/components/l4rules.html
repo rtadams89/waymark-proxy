@@ -84,19 +84,19 @@
                                 </div>
                                 <div class="ui horizontal divider">
                                     <i class="ui grey hand paper icon"></i>
-                                    Access Rules
+                                    Access
                                 </div>
                                 <div class="field">
-                                    <label>Access Rule</label>
+                                    <label>ACL</label>
                                     <div class="ui selection dropdown">
-                                        <input type="hidden" id="newL4AccessFilter" value="default">
+                                        <input type="hidden" id="newL4AccessFilter" value="allow-all">
                                         <i class="dropdown icon"></i>
-                                        <div class="default text">Default</div>
+                                        <div class="default text">Allow all</div>
                                         <div class="menu" id="newL4AccessList">
-                                            <div class="item" data-value="default"><i class="ui yellow star icon"></i> Default</div>
+                                            <div class="item" data-value="allow-all"><i class="ui grey star icon"></i> Allow all</div>
                                         </div>
                                     </div>
-                                    <small>Allow regional access control using blacklist or whitelist. Use "default" for "allow all".</small>
+                                    <small>Which client addresses may connect. Manage ACLs on <a href="#access" onclick="openTabById('access'); return false;">Access &gt; ACLs</a>.</small>
                                 </div>
                                 <div class="ui horizontal divider">
                                     <i class="ui text file icon"></i>
@@ -216,7 +216,7 @@
                 timeout: timeout,
                 proxyProtocolVersion: parseInt($("#newL4ProxyProtocol").val(), 10) || 0,
                 enableLogging: $("#newL4EnableLogging")[0].checked,
-                accessRuleUUID: $("#newL4AccessFilter").val() || "default",
+                accessRuleUUID: $("#newL4AccessFilter").val() || "allow-all",
             },
             success: function(newUUID){
                 if (newUUID.error != undefined){
@@ -302,26 +302,19 @@
         $("#newL4StickySessions").prop("checked", false);
         $("#newL4EnableLogging").prop("checked", false);
         $("#newL4ProxyProtocol").parent().dropdown("set selected", "0");
-        $("#newL4AccessFilter").parent().dropdown("set selected", "default");
+        $("#newL4AccessFilter").parent().dropdown("set selected", "allow-all");
     }
 
     /*
         Access Rule dropdown
     */
     function initNewL4AccessDropdownList(callback=undefined){
-        $.get("/api/access/list", function(data){
+        $.get("/api/acl/list", function(data){
             if (data.error == undefined){
                 $("#newL4AccessList").html("");
                 data.forEach(function(rule){
-                    let icon = `<i class="ui grey hand paper icon"></i>`;
-                    if (rule.ID == "default"){
-                        icon = `<i class="ui yellow star icon"></i>`;
-                    }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
-                        icon = `<i class="ui red hand paper icon"></i>`;
-                    }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
-                        icon = `<i class="ui green hand paper icon"></i>`;
-                    }
-                    $("#newL4AccessList").append(`<div class="item" data-value="${htmlEscape(rule.ID)}">${icon} ${htmlEscape(rule.Name)}</div>`);
+                    let icon = rule.builtIn ? `<i class="ui grey star icon"></i>` : `<i class="ui green hand paper icon"></i>`;
+                    $("#newL4AccessList").append(`<div class="item" data-value="${htmlEscape(rule.id)}">${icon} ${htmlEscape(rule.name)}</div>`);
                 });
                 $("#newL4AccessFilter").parent().dropdown();
                 if (callback != undefined){
@@ -331,13 +324,13 @@
         });
     }
     initNewL4AccessDropdownList(function(){
-        $("#newL4AccessFilter").parent().dropdown("set selected", "default");
+        $("#newL4AccessFilter").parent().dropdown("set selected", "allow-all");
     });
 
     //Called when Add Proxy Rule (rules.html) is opened: access rules may have
     //changed on the Access Control page
     window.refreshNewL4AccessList = function(){
-        let current = $("#newL4AccessFilter").val() || "default";
+        let current = $("#newL4AccessFilter").val() || "allow-all";
         initNewL4AccessDropdownList(function(){
             $("#newL4AccessFilter").parent().dropdown("set selected", current);
         });

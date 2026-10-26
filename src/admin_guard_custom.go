@@ -9,17 +9,17 @@ package main
 	  deleted, and its destinations, virtual directories, headers,
 	  authentication, health checks, maintenance mode, listening address and
 	  extra listening ports cannot be changed. Its required hosts cannot be
-	  removed. Its main domain, extra aliases, certificate, access rule,
+	  removed. Its main domain, extra aliases, certificate, ACL,
 	  caching, logging and tags can be changed; after every change the
 	  fixed settings are put back (adminRuleReconcile).
 	- No other rule can take one of its hosts.
-	- When the request came through Waymark's proxy, an access rule change
-	  that would block the requester from the admin console rule is refused
-	  (and undone if it was made).
+	- When the request came through Waymark's proxy, a change to the ACL of
+	  the admin console rule (its rules, an object they use, or attaching
+	  another ACL) that would deny the requester is refused
+	  (acl_api_custom.go calls adminACLChangeBlocks / adminACLAttachBlocks).
 */
 
 import (
-	"bytes"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -52,7 +52,7 @@ var adminLockedPaths = map[string]string{
 	"/api/proxy/auth/zorxauth/exceptions/delete": "given authentication exceptions",
 }
 
-const adminLockedSuffix = ": it serves this admin console, and Waymark keeps it working. You can change its main domain, extra aliases, certificate, access rule, caching, logging and tags."
+const adminLockedSuffix = ": it serves this admin console, and Waymark keeps it working. You can change its main domain, extra aliases, certificate, ACL, caching, logging and tags."
 
 func adminGuardWrap(mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler { return mw(adminGuard(h)) }
@@ -120,71 +120,60 @@ func adminProxiedClientIP(r *http.Request) string {
 	return ip
 }
 
-// adminAccessRule is the access rule protecting the admin console rule.
-func adminAccessRule(ep *dynamicproxy.ProxyEndpoint) *access.AccessRule {
-	if ep == nil || accessController == nil {
-		return nil
-	}
-	id := ep.AccessFilterUUID
-	if id == "" {
-		id = "default"
-	}
-	rule, err := accessController.GetAccessRuleByID(id)
-	if err != nil {
-		return nil
-	}
-	return rule
-}
-
 func adminBlockedMessage(ip string) string {
-	return "This would block your own address (" + ip + ") from the admin console: its proxy rule uses this access rule. Allow " + ip + " first, or make the change from a computer the rule still allows."
+	return "This would deny your own address (" + ip + ") on the admin console: its proxy rule uses this ACL. Allow " + ip + " first, or make the change from a computer the ACL still allows."
 }
 
-type accessSnapshot struct {
-	blacklist, whitelist, allowLocal, trustProxy bool
-	wlCC, wlIP, blCC, blIP                       map[string]string
-}
-
-func copyMap(m *map[string]string) map[string]string {
-	out := map[string]string{}
-	if m != nil {
-		for k, v := range *m {
-			out[k] = v
+// adminACLChangeBlocks says why a change to an ACL or an object would deny
+// the requester on the admin console rule, or "" (also when the request
+// did not come through Waymark's proxy).
+func adminACLChangeBlocks(r *http.Request, acl *access.ACL, obj *access.Object) string {
+	ip := adminProxiedClientIP(r)
+	sys := adminRule()
+	if ip == "" || sys == nil || accessController == nil {
+		return ""
+	}
+	id := accessController.Resolve(sys.AccessFilterUUID)
+	if acl != nil && acl.ID != id {
+		return ""
+	}
+	cand := acl
+	if cand == nil {
+		var err error
+		if cand, err = accessController.GetACL(id); err != nil {
+			return ""
 		}
 	}
-	return out
-}
-
-func snapshotAccess(a *access.AccessRule) accessSnapshot {
-	return accessSnapshot{a.BlacklistEnabled, a.WhitelistEnabled, a.WhitelistAllowLocalAndLoopback, a.TrustProxyHeadersOnly,
-		copyMap(a.WhiteListCountryCode), copyMap(a.WhiteListIP), copyMap(a.BlackListContryCode), copyMap(a.BlackListIP)}
-}
-
-func (s accessSnapshot) restore(a *access.AccessRule) {
-	a.BlacklistEnabled, a.WhitelistEnabled, a.WhitelistAllowLocalAndLoopback, a.TrustProxyHeadersOnly = s.blacklist, s.whitelist, s.allowLocal, s.trustProxy
-	wlCC, wlIP, blCC, blIP := s.wlCC, s.wlIP, s.blCC, s.blIP
-	a.WhiteListCountryCode, a.WhiteListIP, a.BlackListContryCode, a.BlackListIP = &wlCC, &wlIP, &blCC, &blIP
-	a.SaveChanges()
-}
-
-// bufferedResponse holds a handler's response until it is known to stand.
-type bufferedResponse struct {
-	header http.Header
-	status int
-	body   bytes.Buffer
-}
-
-func (b *bufferedResponse) Header() http.Header         { return b.header }
-func (b *bufferedResponse) Write(p []byte) (int, error) { return b.body.Write(p) }
-func (b *bufferedResponse) WriteHeader(code int)        { b.status = code }
-func (b *bufferedResponse) flush(w http.ResponseWriter) {
-	for k, v := range b.header {
-		w.Header()[k] = v
+	var objs map[string]*access.Object
+	if obj != nil {
+		used := false
+		for _, rule := range cand.Rules {
+			if rule.Source.Type == access.SourceObject && rule.Source.Value == obj.ID {
+				used = true
+			}
+		}
+		if !used {
+			return ""
+		}
+		objs = map[string]*access.Object{obj.ID: obj}
 	}
-	if b.status != 0 {
-		w.WriteHeader(b.status)
+	if d := accessController.TestWith(cand, objs, ip); d.Action != access.ActionAllow {
+		return adminBlockedMessage(ip)
 	}
-	w.Write(b.body.Bytes())
+	return ""
+}
+
+// adminACLAttachBlocks says why giving the admin console rule the ACL id
+// would deny the requester, or "".
+func adminACLAttachBlocks(r *http.Request, id string) string {
+	ip := adminProxiedClientIP(r)
+	if ip == "" || accessController == nil {
+		return ""
+	}
+	if d := accessController.Test(id, ip); d.Action != access.ActionAllow {
+		return adminBlockedMessage(ip)
+	}
+	return ""
 }
 
 func adminGuard(next http.Handler) http.Handler {
@@ -242,14 +231,6 @@ func adminGuard(next http.Handler) http.Handler {
 					return
 				}
 			}
-			if p == "/api/access/attach" {
-				if ip := adminProxiedClientIP(r); ip != "" && accessController != nil {
-					if rule, err := accessController.GetAccessRuleByID(r.Form.Get("id")); err == nil && !rule.AllowIpAccess(ip) {
-						adminGuardRefuse(w, adminBlockedMessage(ip))
-						return
-					}
-				}
-			}
 		} else if write {
 			// Another rule taking one of the admin console rule's hosts
 			taken := adminRuleHosts(sys)
@@ -267,28 +248,6 @@ func adminGuard(next http.Handler) http.Handler {
 			for _, h := range claimed {
 				if taken[strings.ToLower(strings.TrimSpace(h))] {
 					adminGuardRefuse(w, strings.TrimSpace(h)+" is used by the admin console rule "+root+", so another rule cannot have it")
-					return
-				}
-			}
-		}
-
-		// Access rule changes that could lock out the requester
-		if write && (strings.HasPrefix(p, "/api/blacklist/") || strings.HasPrefix(p, "/api/whitelist/") || p == "/api/access/remove") {
-			if ip := adminProxiedClientIP(r); ip != "" {
-				if rule := adminAccessRule(sys); rule != nil && strings.EqualFold(r.Form.Get("id"), rule.ID) {
-					if p == "/api/access/remove" {
-						adminGuardRefuse(w, "This access rule protects the admin console rule "+root+". Choose another access rule for it first.")
-						return
-					}
-					snap := snapshotAccess(rule)
-					buf := &bufferedResponse{header: http.Header{}}
-					next.ServeHTTP(buf, r)
-					if !rule.AllowIpAccess(ip) {
-						snap.restore(rule)
-						adminGuardRefuse(w, adminBlockedMessage(ip))
-						return
-					}
-					buf.flush(w)
 					return
 				}
 			}

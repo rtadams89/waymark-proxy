@@ -299,7 +299,8 @@ type ProxyEndpoint struct {
 	ForceHTTP11                    bool //Force use HTTP/1.1 for upstream connection
 
 	//Access Control
-	AccessFilterUUID string //Access filter ID
+	AccessFilterUUID  string //Access filter ID (Custom fork: the ACL; empty means Allow all)
+	TrustProxyHeaders bool   //Custom fork: the client address forwarded by a trusted proxy is the client's (Access > Trusted Proxies)
 
 	//Fallback routing logic (Special Rule Sets Only)
 	DefaultSiteOption int    //Fallback routing logic options

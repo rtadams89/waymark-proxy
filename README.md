@@ -30,7 +30,7 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 - **Real health checks.** Each proxy rule can check its destinations actively (HTTP, TCP or ping, with your own interval and thresholds) and passively (watching real traffic for errors and timeouts). Failed destinations leave load balancing at once, and visitors get a clear "down" page instead of a timeout. Layer 4 (TCP/UDP) proxies get the same destination pools and checks.
 - **See what passed through.** Capture traffic from the web UI, on the client side, the destination side or both, with HTTPS shown decrypted, and open it in Wireshark.
 - **Faster sites with static file caching**, per rule, in memory, honouring the destination's cache headers.
-- **Everything in one web UI:** proxy rules, load balancing, TLS certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), access rules by IP or country, SSO, redirects, Layer 4 (TCP/UDP) proxies, maintenance mode, a live status dashboard, sending logs to syslog servers, and installing updates.
+- **Everything in one web UI:** proxy rules, load balancing, TLS certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), firewall-style ACLs (ordered allow, deny and drop rules by address, range or country, with reusable objects), SSO, redirects, Layer 4 (TCP/UDP) proxies, maintenance mode, a live status dashboard, sending logs to syslog servers, and installing updates.
 - **Hardened and focused.** Waymark runs as an unprivileged user; the only root component is a small helper that checks every HA setting before writing keepalived's config. Passwords are stored with bcrypt, code scanning (CodeQL) and `govulncheck` run on every change, and features that don't belong in a reverse proxy (network scanners, a web SSH client, a forward proxy) were removed.
 - **One binary, no dependencies** beyond keepalived for HA: no database server, no containers required.
 
@@ -49,12 +49,12 @@ Traefik and Caddy are excellent when your configuration lives in files or contai
 
 ## What's different from Zoraxy
 
-Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing, ACME certificates, access rules, SSO, the static web server and the plugin system (Zoraxy plugins and its plugin store work unchanged). It adds and changes the following.
+Waymark keeps Zoraxy's core: HTTP and Layer 4 (TCP/UDP) proxying, load balancing, ACME certificates, access control, SSO, the static web server and the plugin system (Zoraxy plugins and its plugin store work unchanged). It adds and changes the following.
 
 **High availability**
 - **Active/standby pairs** (2 to 4 nodes) sharing up to 16 floating IPs managed by keepalived. The floating IP moves to a healthy node within about 10 seconds when Waymark stops answering, keepalived stops or the machine goes down.
 - **Configured from the web UI.** Waymark itself runs unprivileged. A small root-owned helper validates the settings, writes keepalived's config from a fixed template, tests it and reloads keepalived.
-- **Configuration sync.** Standby nodes copy the active node's configuration (proxy rules, certificates and keys, access rules, admin accounts, settings) over TLS, authenticated with a shared cluster key. Standby nodes are read-only, so changes are made in one place.
+- **Configuration sync.** Standby nodes copy the active node's configuration (proxy rules, certificates and keys, ACLs, admin accounts, settings) over TLS, authenticated with a shared cluster key. Standby nodes are read-only, so changes are made in one place.
 - **Cluster overview** on the HA page and the Status page: each node's role, health, sync state and version.
 - **Manual switch-over** from the HA page: **Make active** moves the floating IPs to a healthy standby in a few seconds, without restarting anything.
 - Failovers are reported plainly ("Failed over to waymark02 · waymark01 unreachable"), and the HA page checks that the installed root helper matches the Waymark version.
@@ -188,8 +188,8 @@ To listen on all interfaces instead, use `-port=:8000` and limit access with you
 - It answers on this machine's address and DNS name (guessed on first start; change them in the rule's editor). With HA on, it answers on every floating IP and node address and their DNS names (set on **System > High Availability**). Waymark adds and removes these as nodes and floating IPs come and go.
 - It sends requests to the admin UI's own listener (`-port`).
 - It cannot be disabled or deleted. Its destination, authentication, virtual directories, headers, health checks and listening addresses are fixed, and no other rule can take one of its hosts.
-- You can change its main domain, add aliases, and choose its certificate, access rule, caching, logging and tags. An access rule change that would block the computer you are using is refused.
-- If it ever stops working, run `sudo -u waymark /opt/waymark/waymark -reset-admin-rule` (with the same `-port` as the service) and restart Waymark. This rebuilds the rule with a new self-signed certificate and the default access rule. With HA, do it on the active node.
+- You can change its main domain, add aliases, and choose its certificate, ACL, caching, logging and tags. An ACL change that would block the computer you are using is refused.
+- If it ever stops working, run `sudo -u waymark /opt/waymark/waymark -reset-admin-rule` (with the same `-port` as the service) and restart Waymark. This rebuilds the rule with a new self-signed certificate and the Allow all ACL. With HA, do it on the active node.
 
 **5. Create the admin account.** The first visit shows **Account Setup**: choose a username and password.
 
@@ -208,7 +208,7 @@ This example publishes an app running at `http://10.0.0.20:8080` as `https://app
    - **Destination requires TLS**: off (the app speaks plain HTTP)
    - **Enable health checks**: on (the default)
    - Click **Create HTTP Rule**.
-5. **Open `https://app.example.com`.** The rule now appears under **Proxy > Proxy Rules**. Edit it there to add more destinations for load balancing, adjust health checks, turn on static file caching, add access rules or SSO, or put it into maintenance mode.
+5. **Open `https://app.example.com`.** The rule now appears under **Proxy > Proxy Rules**. Edit it there to add more destinations for load balancing, adjust health checks, turn on static file caching, choose an ACL or SSO, or put it into maintenance mode.
 
 Tips:
 - For an app that uses HTTPS itself, turn on **Proxy Target require TLS Connection** (and **Ignore TLS/SSL Verification Error** if it has a self-signed certificate).
@@ -350,7 +350,8 @@ Waymark keeps everything in its working directory (`/opt/waymark` above):
 
 | Path | Contents |
 |---|---|
-| `conf/` | Proxy rules, certificates and keys, access rules, log settings (`log_conf.json`, `log_outputs.json`) and other configuration files, including the settings files below |
+| `conf/` | Proxy rules, certificates and keys, log settings (`log_conf.json`, `log_outputs.json`) and other configuration files, including the settings files below |
+| `conf/acl/` | ACLs (one file each) and their objects (`objects.json`) |
 | `conf/listener.json` | Listening port, TLS, HTTP/2, QUIC, timeouts, port 80 and development mode |
 | `conf/system.json` | Geo-IP lookups on or off, asset cache memory limit |
 | `conf/acme_prefs.json`, `conf/redirect_options.json`, `conf/webserv.json`, `conf/ui.json` | Preferred certificate authority, redirect matching options, static web server and WebDAV (readable only by Waymark's user), status page panels |
@@ -379,4 +380,3 @@ Waymark Proxy is free software under the [GNU Affero General Public License v3.0
 Zoraxy plugins work with Waymark, and Waymark's **Plugin Store** (**Plugins > Plugin Store**) lists the plugins published for Zoraxy.
 
 The wordmark uses [Inter](https://rsms.me/inter/) (SIL Open Font License).
-

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"imuslab.com/zoraxy/mod/access"
 	"imuslab.com/zoraxy/mod/auth"
 	"imuslab.com/zoraxy/mod/dynamicproxy"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
@@ -303,9 +304,10 @@ func ReverseProxyInit() {
 	})
 	SystemWideLogger.Println("Uptime Monitor background service started")
 	initHealthChecks()
-	initAssetCache() //Custom fork: static file cache memory limit
-	initHA()         //Custom fork: keepalived heartbeat and role
-	initAdminRule()  //Custom fork: the admin console rule (admin_rule_custom.go)
+	initAssetCache()     //Custom fork: static file cache memory limit
+	initHA()             //Custom fork: keepalived heartbeat and role
+	applyACLConversion() //Custom fork: proxy rules follow access rules converted to ACLs (acl_api_custom.go)
+	initAdminRule()      //Custom fork: the admin console rule (admin_rule_custom.go)
 	UpdateUptimeMonitorTargets()
 
 }
@@ -387,12 +389,14 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 	//Get access rule ID
 	accessRuleID, _ := utils.PostPara(r, "access")
 	if accessRuleID == "" {
-		accessRuleID = "default"
+		accessRuleID = access.AllowAllID //Custom fork: ACLs
 	}
-	if !accessController.AccessRuleExists(accessRuleID) {
-		utils.SendErrorResponse(w, "invalid access rule ID selected")
+	if !accessController.ACLExists(accessRuleID) {
+		utils.SendErrorResponse(w, "the selected ACL does not exist")
 		return
 	}
+	//Custom fork: trust the client address forwarded by trusted proxies
+	trustProxyHeaders, _ := utils.PostBool(r, "trustProxyHeaders")
 
 	// Require basic auth?
 	requireBasicAuth, _ := utils.PostBool(r, "bauth")
@@ -581,8 +585,9 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 			//Generic HTTP protocol upgrade
 			EnableUpgradeForwarding: enableUpgradeForwarding,
 
-			AccessFilterUUID: accessRuleID,
-			TlsOptions:       tlscert.GetDefaultHostSpecificTlsBehavior(),
+			AccessFilterUUID:  accessRuleID,
+			TrustProxyHeaders: trustProxyHeaders,
+			TlsOptions:        tlscert.GetDefaultHostSpecificTlsBehavior(),
 
 			//VDir
 			VirtualDirectories: []*dynamicproxy.VirtualDirectoryEndpoint{},
@@ -883,6 +888,10 @@ func ReverseProxyHandleEditEndpoint(w http.ResponseWriter, r *http.Request) {
 	newProxyEndpoint.BlockAICrawlers = blockAICrawlers
 	newProxyEndpoint.MitigationAction = mitigationAction
 	newProxyEndpoint.Tags = tags
+	//Custom fork: trust the client address forwarded by trusted proxies (sent by the editor)
+	if _, err := utils.PostPara(r, "trustProxyHeaders"); err == nil {
+		newProxyEndpoint.TrustProxyHeaders, _ = utils.PostBool(r, "trustProxyHeaders")
+	}
 
 	//Prepare to replace the current routing rule
 	readyRoutingRule, err := dynamicProxyRouter.PrepareProxyRoute(newProxyEndpoint)

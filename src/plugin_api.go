@@ -47,27 +47,10 @@ func RegisterRedirectionRestAPI(authRouter *auth.PluginAuthMiddleware) {
 
 // Register the APIs for access rules management functions
 func RegisterAccessRuleRestAPI(authRouter *auth.PluginAuthMiddleware) {
-	/* Access Rules Settings & Status */
-	authRouter.HandleFunc("/api/access/list", handleListAccessRules)
-	// authRouter.HandleFunc("/api/access/attach", handleAttachRuleToHost)
-	// authRouter.HandleFunc("/api/access/create", handleCreateAccessRule)
-	// authRouter.HandleFunc("/api/access/remove", handleRemoveAccessRule)
-	// authRouter.HandleFunc("/api/access/update", handleUpadateAccessRule)
-	/* Blacklist */
-	authRouter.HandleFunc("/api/blacklist/list", handleListBlacklisted)
-	authRouter.HandleFunc("/api/blacklist/country/add", handleCountryBlacklistAdd)
-	authRouter.HandleFunc("/api/blacklist/country/remove", handleCountryBlacklistRemove)
-	authRouter.HandleFunc("/api/blacklist/ip/add", handleIpBlacklistAdd)
-	authRouter.HandleFunc("/api/blacklist/ip/remove", handleIpBlacklistRemove)
-	authRouter.HandleFunc("/api/blacklist/enable", handleBlacklistEnable)
-	/* Whitelist */
-	authRouter.HandleFunc("/api/whitelist/list", handleListWhitelisted)
-	authRouter.HandleFunc("/api/whitelist/country/add", handleCountryWhitelistAdd)
-	authRouter.HandleFunc("/api/whitelist/country/remove", handleCountryWhitelistRemove)
-	authRouter.HandleFunc("/api/whitelist/ip/add", handleIpWhitelistAdd)
-	authRouter.HandleFunc("/api/whitelist/ip/remove", handleIpWhitelistRemove)
-	authRouter.HandleFunc("/api/whitelist/enable", handleWhitelistEnable)
-	authRouter.HandleFunc("/api/whitelist/allowLocal", handleWhitelistAllowLoopback)
+	/* ACLs (Custom fork: read only for plugins) */
+	authRouter.HandleFunc("/api/acl/list", HandleACLList)
+	authRouter.HandleFunc("/api/acl/get", HandleACLGet)
+	authRouter.HandleFunc("/api/acl/objects", HandleACLObjects)
 	/* Quick Ban List */
 	authRouter.HandleFunc("/api/quickban/list", handleListQuickBan)
 }

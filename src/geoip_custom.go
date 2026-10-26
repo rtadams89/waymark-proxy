@@ -16,7 +16,6 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"sort"
 	"strings"
 
 	"imuslab.com/zoraxy/mod/utils"
@@ -33,26 +32,13 @@ func geoIPEnabledSetting() bool {
 	return enabled
 }
 
-// accessRulesUsingCountries lists access rules whose enabled blacklist or
-// whitelist contains country codes.
+// accessRulesUsingCountries lists the ACLs with an enabled rule that needs
+// a country (Custom fork: ACLs).
 func accessRulesUsingCountries() []string {
-	names := []string{}
 	if accessController == nil {
-		return names
+		return []string{}
 	}
-	for _, rule := range accessController.ListAllAccessRules() {
-		uses := (rule.BlacklistEnabled && rule.BlackListContryCode != nil && len(*rule.BlackListContryCode) > 0) ||
-			(rule.WhitelistEnabled && rule.WhiteListCountryCode != nil && len(*rule.WhiteListCountryCode) > 0)
-		if uses {
-			name := rule.Name
-			if name == "" {
-				name = rule.ID
-			}
-			names = append(names, name)
-		}
-	}
-	sort.Strings(names)
-	return names
+	return accessController.ACLsUsingCountries()
 }
 
 // HandleGeoIPEnabled reads (GET) or sets (POST enable=true/false) whether
@@ -73,7 +59,7 @@ func HandleGeoIPEnabled(w http.ResponseWriter, r *http.Request) {
 	}
 	if !enable {
 		if rules := accessRulesUsingCountries(); len(rules) > 0 {
-			utils.SendErrorResponse(w, "Remove the countries from these access rules first (they need GeoIP to work): "+strings.Join(rules, ", "))
+			utils.SendErrorResponse(w, "Remove the country rules from these ACLs first (they need GeoIP to work): "+strings.Join(rules, ", "))
 			return
 		}
 	}
@@ -91,16 +77,4 @@ func HandleGeoIPEnabled(w http.ResponseWriter, r *http.Request) {
 		SystemWideLogger.PrintAndLog("geodb", "GeoIP lookups turned off; GeoIP database unloaded", nil)
 	}
 	utils.SendOK(w)
-}
-
-// requireGeoIP wraps the country list endpoints: countries cannot be added
-// while GeoIP lookups are off.
-func requireGeoIP(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if geodbStore != nil && !geodbStore.Enabled() {
-			utils.SendErrorResponse(w, "GeoIP lookups are turned off (Utilities, System tab). Turn them on to use country lists.")
-			return
-		}
-		next(w, r)
-	}
 }

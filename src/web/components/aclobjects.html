@@ -1,0 +1,283 @@
+<!-- Custom fork: ACL objects (mod/access, acl_api_custom.go) -->
+<style>
+    #objEditor .objEntries td{ vertical-align: middle; }
+    #objEditor .objType{ font-size: 0.85em; opacity: 0.75; text-transform: uppercase; }
+</style>
+<div class="standardContainer">
+    <div class="ui basic segment">
+        <h2>Objects</h2>
+        <p>An object is a named list of IP addresses, CIDRs, ranges, IPv4 wildcards and countries. A rule of an <a href="#access" onclick="openTabById('access'); return false;">ACL</a> can use an object as its source; changing the object changes every rule that uses it.</p>
+    </div>
+
+    <!-- List -->
+    <div id="objListView" class="ui basic segment">
+        <button class="ui basic button" onclick="wmOpenObject('');"><i class="green add icon"></i> New object</button>
+        <button class="ui basic icon button" title="Refresh" onclick="objLoadList();"><i class="green refresh icon"></i></button>
+        <table class="ui very basic unstackable celled table" style="margin-top: 1em;">
+            <thead><tr><th>Name</th><th>Entries</th><th>Used by</th><th></th></tr></thead>
+            <tbody id="objListTable"><tr><td colspan="4"><small>Loading</small></td></tr></tbody>
+        </table>
+
+        <h3 style="margin-top: 2em;">Busy client addresses today</h3>
+        <p>Addresses with 100 or more requests today (this node). Add one to an object to allow or block it with an ACL rule that uses that object.</p>
+        <table class="ui very basic unstackable compact celled table">
+            <thead><tr><th>Address</th><th>Requests</th><th>Country</th><th>Add to object</th></tr></thead>
+            <tbody id="objBusyTable"><tr><td colspan="4"><small>Loading</small></td></tr></tbody>
+        </table>
+    </div>
+
+    <!-- Editor -->
+    <div id="objEditor" class="ui basic segment" style="display:none;">
+        <a href="#" onclick="objCloseEditor(); return false;"><i class="angle left icon"></i> All objects</a>
+        <div class="ui form" style="margin-top: 0.8em;">
+            <div class="two fields">
+                <div class="field"><label>Name</label><input type="text" id="objName" maxlength="64"></div>
+                <div class="field"><label>Description <small>(optional)</small></label><input type="text" id="objDesc" maxlength="200"></div>
+            </div>
+        </div>
+        <span id="objBuiltIn" class="ui mini basic label" style="display:none;">built in, read only</span>
+        <div id="objUsers" style="margin: 0.6em 0;"></div>
+
+        <div id="objAddBox">
+            <h4>Add entries</h4>
+            <div class="ui form">
+                <div class="fields" style="flex-wrap: wrap; row-gap: 0.6em;">
+                    <div class="seven wide field">
+                        <label>Address, CIDR, range or wildcard</label>
+                        <input type="text" id="objAddValue" placeholder="10.0.0.5, 10.0.0.0/8, 10.0.0.10-10.0.0.50, 192.168.*.*">
+                    </div>
+                    <div class="five wide field">
+                        <label>or a country</label>
+                        <select id="objAddCountry" class="ui search dropdown"><option value="">Country</option></select>
+                    </div>
+                    <div class="four wide field">
+                        <label>Comment <small>(optional)</small></label>
+                        <input type="text" id="objAddComment" maxlength="200">
+                    </div>
+                </div>
+                <button class="ui basic small button" onclick="objAddEntry();"><i class="green add icon"></i> Add</button>
+                <a href="#" style="margin-left: 0.8em;" onclick="$('#objBulkBox').toggle(); return false;">Add many at once</a>
+                <div id="objBulkBox" class="field" style="display:none; margin-top: 0.8em;">
+                    <label>One entry per line; a comment can follow a "#"</label>
+                    <textarea id="objBulk" rows="6" placeholder="203.0.113.0/24 # office&#10;198.51.100.7&#10;DE"></textarea>
+                    <button class="ui basic small button" style="margin-top: 0.4em;" onclick="objAddBulk();"><i class="green add icon"></i> Add these</button>
+                </div>
+            </div>
+        </div>
+
+        <table class="ui very basic unstackable compact celled table objEntries" style="margin-top: 1em;">
+            <thead><tr><th>Entry</th><th>Type</th><th>Comment</th><th></th></tr></thead>
+            <tbody id="objEntriesTable"></tbody>
+        </table>
+        <div id="objSaveBox">
+            <button class="ui basic button" onclick="objSave();"><i class="green save icon"></i> Save object</button>
+            <button class="ui basic button" onclick="objCloseEditor();">Cancel</button>
+            <span id="objDirty" style="margin-left: 0.6em; color: #c78e00; display:none;"><i class="exclamation circle icon"></i>Not saved yet</span>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    let editing = null; // object being edited (a copy; saved with objSave)
+    let all = {};
+
+    function esc(s){ return htmlEscape(s == undefined ? "" : String(s)); }
+    function countryName(cc){
+        try { return getCountryName(cc); } catch (e) { return cc; }
+    }
+    function typeLabel(t){
+        return {ip: "address", cidr: "CIDR", range: "range", wildcard: "wildcard", country: "country"}[t] || t;
+    }
+    function detectType(v){
+        v = v.trim();
+        if (/^[A-Za-z]{2}$/.test(v)) return "country";
+        if (v.includes("/")) return "cidr";
+        if (v.includes("*")) return "wildcard";
+        if (/^[^:]*-/.test(v) || (v.includes("-") && v.includes(":"))) return "range";
+        return "ip";
+    }
+
+    window.objLoadList = function(callback){
+        $.get("/api/acl/objects", function(d){
+            if (d.error != undefined){
+                $("#objListTable").html(`<tr><td colspan="4">${esc(d.error)}</td></tr>`);
+                return;
+            }
+            all = {};
+            let rows = d.objects.map(function(o){
+                all[o.id] = o;
+                let users = o.users.length == 0 ? `<small style="opacity: 0.5;">none</small>` : o.users.map(u => `<span class="ui mini basic label">${esc(u)}</span>`).join(" ");
+                return `<tr>
+                    <td><i class="cube icon"></i> <b>${esc(o.name)}</b> ${o.builtIn ? `<span class="ui mini basic label">built in</span>` : ""}<br><small style="opacity: 0.75;">${esc(o.description)}</small></td>
+                    <td>${(o.entries || []).length}</td>
+                    <td>${users}</td>
+                    <td style="white-space: nowrap; text-align: right;">
+                        <button class="ui basic mini button" onclick="wmOpenObject('${esc(o.id)}');"><i class="${o.builtIn ? "eye" : "edit"} icon"></i> ${o.builtIn ? "View" : "Edit"}</button>
+                        ${o.builtIn ? "" : `<button class="ui basic mini icon button" title="Delete" onclick="objDelete('${esc(o.id)}');"><i class="red trash icon"></i></button>`}
+                    </td>
+                </tr>`;
+            });
+            $("#objListTable").html(rows.join(""));
+            loadBusy();
+            if (callback) callback();
+        });
+    };
+
+    function loadBusy(){
+        $.get("/api/quickban/list", function(data){
+            if (!Array.isArray(data)){
+                $("#objBusyTable").html(`<tr><td colspan="4"><small>Not available</small></td></tr>`);
+                return;
+            }
+            let busy = data.filter(e => e.Count >= 100).slice(0, 50);
+            if (busy.length == 0){
+                $("#objBusyTable").html(`<tr><td colspan="4"><small style="opacity: 0.7;">None yet today</small></td></tr>`);
+                return;
+            }
+            let opts = Object.values(all).filter(o => !o.builtIn).map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join("");
+            $("#objBusyTable").html(busy.map(function(e){
+                let cc = /^[A-Za-z]{2}$/.test(e.CountryCode || "") ? `<i class="${esc(e.CountryCode.toLowerCase())} flag"></i>${esc(countryName(e.CountryCode))}` : `<small style="opacity: 0.7;">No country (private or reserved)</small>`;
+                let add = opts == "" ? `<small style="opacity: 0.7;">Create an object first</small>` :
+                    `<select class="objBusySel">${opts}</select> <button class="ui basic mini button" onclick="objQuickAdd('${esc(e.IpAddr)}', $(this).prev().val());"><i class="green add icon"></i> Add</button>`;
+                return `<tr><td><code>${esc(e.IpAddr)}</code></td><td>${e.Count.toLocaleString()}</td><td>${cc}</td><td>${add}</td></tr>`;
+            }).join(""));
+        });
+    }
+
+    window.objQuickAdd = function(ip, objectID){
+        let o = all[objectID];
+        if (!o) return;
+        let copy = JSON.parse(JSON.stringify(o));
+        copy.entries = (copy.entries || []).concat([{type: "ip", value: ip, comment: "Added from busy client addresses"}]);
+        saveObject(copy, function(){ msgbox(ip + " added to " + o.name); objLoadList(); });
+    };
+
+    window.objDelete = function(id){
+        let o = all[id];
+        if (!o || !confirm("Delete the object " + o.name + "?")) return;
+        $.cjax({
+            url: "/api/acl/object/delete", method: "POST", data: {id: id},
+            success: function(d){
+                if (d.error != undefined){ msgbox(d.error, false, 6000); return; }
+                msgbox("Object deleted");
+                objLoadList();
+            }
+        });
+    };
+
+    // Opens an object in the editor ("" for a new one), from anywhere
+    window.wmOpenObject = function(id){
+        openTabById("aclobjects");
+        objLoadList(function(){
+            if (id && !all[id]){ msgbox("Object not found", false); return; }
+            editing = id ? JSON.parse(JSON.stringify(all[id])) : {id: "", name: "", description: "", entries: [], revision: 0};
+            fillEditorFields();
+            renderEditor();
+            $("#objListView").hide();
+            $("#objEditor").show();
+            $("#objDirty").hide();
+            if (!id) $("#objName").focus();
+        });
+    };
+
+    window.objCloseEditor = function(){
+        editing = null;
+        $("#objEditor").hide();
+        $("#objListView").show();
+        objLoadList();
+    };
+
+    // Fills the name and description fields (when opening or after saving)
+    function fillEditorFields(){
+        let ro = !!editing.builtIn;
+        $("#objName").val(editing.name).prop("disabled", ro);
+        $("#objDesc").val(editing.description || "").prop("disabled", ro);
+    }
+
+    function renderEditor(){
+        let ro = !!editing.builtIn;
+        $("#objBuiltIn").toggle(ro);
+        $("#objAddBox, #objSaveBox").toggle(!ro);
+        let users = (all[editing.id] && all[editing.id].users) || [];
+        $("#objUsers").html(users.length ? `<small>Used by the ACLs:</small> ` + users.map(u => `<span class="ui mini basic label">${esc(u)}</span>`).join(" ") : "");
+        let rows = (editing.entries || []).map(function(e, i){
+            let v = e.type == "country" ? `<i class="${esc(e.value.toLowerCase())} flag"></i>${esc(countryName(e.value))} <small>${esc(e.value)}</small>` : `<code>${esc(e.value)}</code>`;
+            return `<tr><td>${v}</td><td class="objType">${typeLabel(e.type)}</td><td>${esc(e.comment)}</td>
+                <td style="text-align: right;">${ro ? "" : `<button class="ui basic mini icon button" title="Remove" onclick="objRemoveEntry(${i});"><i class="red trash icon"></i></button>`}</td></tr>`;
+        });
+        if (rows.length == 0) rows.push(`<tr><td colspan="4"><small style="opacity: 0.7;">No entries</small></td></tr>`);
+        $("#objEntriesTable").html(rows.join(""));
+    }
+
+    function dirty(){ $("#objDirty").show(); }
+
+    window.objAddEntry = function(){
+        let v = $("#objAddValue").val().trim();
+        let cc = $("#objAddCountry").val();
+        let comment = $("#objAddComment").val().trim();
+        if (v == "" && !cc){ msgbox("Enter an address or choose a country", false); return; }
+        if (v != "") editing.entries.push({type: detectType(v), value: v, comment: comment});
+        if (cc) editing.entries.push({type: "country", value: cc, comment: comment});
+        $("#objAddValue").val("");
+        $("#objAddComment").val("");
+        $("#objAddCountry").dropdown("clear");
+        renderEditor();
+        dirty();
+    };
+
+    window.objAddBulk = function(){
+        let lines = $("#objBulk").val().split("\n");
+        let n = 0;
+        lines.forEach(function(l){
+            let comment = "";
+            let i = l.indexOf("#");
+            if (i >= 0){ comment = l.substr(i + 1).trim(); l = l.substr(0, i); }
+            l = l.trim().replace(/,$/, "");
+            if (l == "") return;
+            editing.entries.push({type: detectType(l), value: l, comment: comment});
+            n++;
+        });
+        $("#objBulk").val("");
+        renderEditor();
+        if (n) dirty();
+        msgbox(n + " entries added; save the object to keep them");
+    };
+
+    window.objRemoveEntry = function(i){
+        editing.entries.splice(i, 1);
+        renderEditor();
+        dirty();
+    };
+
+    function saveObject(o, done){
+        $.cjax({
+            url: "/api/acl/object/save", method: "POST", data: {object: JSON.stringify(o)},
+            success: function(d){
+                if (d.error != undefined){ msgbox(d.error, false, 7000); return; }
+                done(d);
+            }
+        });
+    }
+
+    window.objSave = function(){
+        editing.name = $("#objName").val().trim();
+        editing.description = $("#objDesc").val().trim();
+        saveObject(editing, function(d){
+            msgbox("Object saved");
+            editing = d;
+            $("#objDirty").hide();
+            objLoadList(function(){ fillEditorFields(); renderEditor(); });
+        });
+    };
+
+    /* Init */
+    (window.WM_COUNTRY_LIST || []).forEach(function(c){
+        $("#objAddCountry").append(`<option value="${esc(c[0])}">${esc(c[1])} (${esc(c[0])})</option>`);
+    });
+    $("#objAddCountry").dropdown({fullTextSearch: true, clearable: true});
+    tabSwitchEventBind["aclobjects"] = function(){
+        if (!editing) objLoadList();
+    };
+    objLoadList();
+})();
+</script>

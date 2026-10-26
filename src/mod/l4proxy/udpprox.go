@@ -3,6 +3,7 @@ package l4proxy
 import (
 	"bytes"
 	"errors"
+	"imuslab.com/zoraxy/mod/access"
 	"log"
 	"net"
 	"os"
@@ -209,10 +210,8 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 		var conn *udpClientServerConn
 		if !found {
 			// Check if this new client is allowed by access control policy
-			accessRule := c.getEffectiveAccessRule()
-			if accessRule != nil && !accessRule.AllowIpAccess(cliaddr.IP.String()) {
-				c.LogMsg("[UDP] Connection from "+cliaddr.IP.String()+" rejected by access control policy", nil)
-				continue
+			if c.checkAccess(cliaddr.IP.String(), "udp") != access.ActionAllow {
+				continue // deny and drop: UDP has nothing to answer with
 			}
 
 			//Custom fork: pick an upstream from the pool (pool_custom.go)

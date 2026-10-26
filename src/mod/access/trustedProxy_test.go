@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 )
 
@@ -15,7 +14,6 @@ func newTestController(t *testing.T) (*Controller, string) {
 	t.Helper()
 	tmpDir := t.TempDir()
 	c := &Controller{
-		ProxyAccessRule: &sync.Map{},
 		Options: &Options{
 			ConfigFolder:       tmpDir,
 			TrustedProxiesFile: filepath.Join(tmpDir, "trusted_proxies.json"),
@@ -218,8 +216,7 @@ func TestSaveAndLoadTrustedProxies(t *testing.T) {
 
 	// Create a new controller loading from the same file
 	c2 := &Controller{
-		ProxyAccessRule: &sync.Map{},
-		Options:         c.Options,
+		Options: c.Options,
 	}
 	if err := c2.LoadTrustedProxies(); err != nil {
 		t.Fatalf("LoadTrustedProxies failed: %v", err)
@@ -287,22 +284,19 @@ func TestLoadDefaultTrustedProxiesFromCSV(t *testing.T) {
 	}
 }
 
-// --- GetClientIP ---
+// --- ClientIP ---
 
 func TestGetClientIP_TrustedProxy_TrustsHeaders(t *testing.T) {
 	c, _ := newTestController(t)
 	c.AddTrustedProxy("10.0.0.1", "load balancer")
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                c,
-	}
+	trust, owner := true, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
 	req.Header.Set("X-Forwarded-For", "203.0.113.50")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "203.0.113.50" {
 		t.Errorf("expected client IP from X-Forwarded-For (203.0.113.50), got %q", ip)
 	}
@@ -312,16 +306,13 @@ func TestGetClientIP_UntrustedProxy_IgnoresHeaders(t *testing.T) {
 	c, _ := newTestController(t)
 	// 10.0.0.1 is NOT in the trusted proxy list
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                c,
-	}
+	trust, owner := true, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
 	req.Header.Set("X-Forwarded-For", "203.0.113.50")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "10.0.0.1" {
 		t.Errorf("expected RemoteAddr IP (10.0.0.1) when proxy not trusted, got %q", ip)
 	}
@@ -331,32 +322,26 @@ func TestGetClientIP_TrustDisabled_UsesRemoteAddr(t *testing.T) {
 	c, _ := newTestController(t)
 	c.AddTrustedProxy("10.0.0.1", "proxy")
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: false,
-		parent:                c,
-	}
+	trust, owner := false, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
 	req.Header.Set("X-Forwarded-For", "203.0.113.50")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "10.0.0.1" {
 		t.Errorf("expected RemoteAddr IP (10.0.0.1) when trust disabled, got %q", ip)
 	}
 }
 
 func TestGetClientIP_NilParent_Fallback(t *testing.T) {
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                nil,
-	}
+	trust, owner := true, (*Controller)(nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
 	req.Header.Set("X-Forwarded-For", "203.0.113.50")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "10.0.0.1" {
 		t.Errorf("expected RemoteAddr IP (10.0.0.1) when parent is nil, got %q", ip)
 	}
@@ -366,16 +351,13 @@ func TestGetClientIP_TrustedCIDR_TrustsHeaders(t *testing.T) {
 	c, _ := newTestController(t)
 	c.AddTrustedProxy("10.0.0.0/8", "internal network")
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                c,
-	}
+	trust, owner := true, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.50.25.3:9999"
 	req.Header.Set("X-Real-Ip", "198.51.100.20")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "198.51.100.20" {
 		t.Errorf("expected X-Real-Ip (198.51.100.20) when CIDR matches, got %q", ip)
 	}
@@ -385,16 +367,13 @@ func TestGetClientIP_CFConnectingIP(t *testing.T) {
 	c, _ := newTestController(t)
 	c.AddTrustedProxy("104.16.0.0/13", "cloudflare")
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                c,
-	}
+	trust, owner := true, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "104.16.5.1:443"
 	req.Header.Set("CF-Connecting-IP", "1.2.3.4")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "1.2.3.4" {
 		t.Errorf("expected CF-Connecting-IP (1.2.3.4), got %q", ip)
 	}
@@ -404,10 +383,7 @@ func TestGetClientIP_TrustedProxy_SkipsInvalidCandidates(t *testing.T) {
 	c, _ := newTestController(t)
 	c.AddTrustedProxy("10.0.0.1", "test proxy")
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                c,
-	}
+	trust, owner := true, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
@@ -415,7 +391,7 @@ func TestGetClientIP_TrustedProxy_SkipsInvalidCandidates(t *testing.T) {
 	req.Header.Set("CF-Connecting-IP", "<img src=x>")
 	req.Header.Set("X-Forwarded-For", " 203.0.113.9 , 10.0.0.1")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "203.0.113.9" {
 		t.Errorf("expected first valid candidate (203.0.113.9), got %q", ip)
 	}
@@ -425,10 +401,7 @@ func TestGetClientIP_TrustedProxy_AllCandidatesInvalid(t *testing.T) {
 	c, _ := newTestController(t)
 	c.AddTrustedProxy("10.0.0.1", "test proxy")
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                c,
-	}
+	trust, owner := true, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
@@ -436,7 +409,7 @@ func TestGetClientIP_TrustedProxy_AllCandidatesInvalid(t *testing.T) {
 	req.Header.Set("Fastly-Client-IP", "")
 	req.Header.Set("X-Forwarded-For", "garbage, 5.6.7.8")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "10.0.0.1" {
 		t.Errorf("expected fallback to RemoteAddr (10.0.0.1), got %q", ip)
 	}
@@ -446,16 +419,13 @@ func TestGetClientIP_TrustedProxy_IPv6WithPort(t *testing.T) {
 	c, _ := newTestController(t)
 	c.AddTrustedProxy("10.0.0.1", "test proxy")
 
-	rule := &AccessRule{
-		TrustProxyHeadersOnly: true,
-		parent:                c,
-	}
+	trust, owner := true, c
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:12345"
 	req.Header.Set("X-Forwarded-For", "[2001:db8::1]:8080, 10.0.0.1")
 
-	ip := rule.GetClientIP(req)
+	ip := owner.ClientIP(req, trust)
 	if ip != "2001:db8::1" {
 		t.Errorf("expected 2001:db8::1, got %q", ip)
 	}

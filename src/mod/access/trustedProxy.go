@@ -185,13 +185,17 @@ func (c *Controller) SaveTrustedProxies() error {
 	return err
 }
 
-// GetClientIP returns the client IP based on the access rule's trusted proxy config.
-// When TrustProxyHeadersOnly is enabled, proxy headers (X-Forwarded-For, X-Real-IP, etc.)
-// are only trusted if the direct connection comes from an IP in the trusted proxy list.
-func (s *AccessRule) GetClientIP(r *http.Request) string {
+// ClientIP returns the client's address for a request. With trustHeaders
+// (the proxy rule's "trust the client address from trusted proxies"), the
+// forwarded address (X-Real-IP, X-Forwarded-For and the like) is used when
+// the connection comes from a trusted proxy; otherwise the connection's
+// own address.
+func (c *Controller) ClientIP(r *http.Request, trustHeaders bool) string {
 	remoteIP := netutils.GetRequesterIPUntrusted(r)
-	if s.TrustProxyHeadersOnly && s.parent != nil && s.parent.IsTrustedProxy(remoteIP) {
-		return netutils.GetRequesterIP(r)
+	if trustHeaders && c != nil && c.IsTrustedProxy(remoteIP) {
+		if ip := netutils.GetRequesterIP(r); ip != "" {
+			return ip
+		}
 	}
 	return remoteIP
 }

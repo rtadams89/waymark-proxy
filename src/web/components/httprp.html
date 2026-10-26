@@ -293,7 +293,7 @@
                         <i class="wrench icon"></i> <span class="editorSideMenuText">Maintenance</span>
                     </a>
                     <a class="item hrpedit_menu_item" cfgpage="accessrule">
-                        <i class="star icon"></i> <span class="editorSideMenuText">Access Rules</span>
+                        <i class="star icon"></i> <span class="editorSideMenuText">Access (ACL)</span>
                     </a>
                     <a class="item hrpedit_menu_item" cfgpage="security">
                         <i class="key icon"></i> <span class="editorSideMenuText">Security</span>
@@ -380,7 +380,7 @@
                             <div class="wmNotForSystem">
                             <!-- Custom fork: the address this rule answers on (listenip_custom.go) -->
                             <b>Listen On</b>
-                            <p style="margin-top: 0.4em;"><small>The address of this host the rule answers on, through the main HTTP(S) listener. Requests that arrive on another address are handled as if this rule did not exist (another matching rule, or the default site). This routes requests; to limit who can reach the site, use an access rule.</small></p>
+                            <p style="margin-top: 0.4em;"><small>The address of this host the rule answers on, through the main HTTP(S) listener. Requests that arrive on another address are handled as if this rule did not exist (another matching rule, or the default site). This routes requests; to limit who can reach the site, use an ACL.</small></p>
                             <select class="ruleListenIP" style="margin-top: 0.4em; width: 100%; padding: 0.55em 0.6em; border-radius: 0.3em; border: 1px solid var(--button_border_color); background: var(--theme_bg_primary); color: var(--text_color);"></select>
                             <small class="ruleListenIPNote" style="display: block; margin-top: 0.4em; opacity: 0.8;"></small>
                             <div class="ui divider"></div>
@@ -932,8 +932,8 @@
 
     function renderAccessRuleName(subd){
         // Return a placeholder that will be filled by resolveAccessRuleNameOnHostRPlist
-        let accessRuleID = subd.AccessFilterUUID || "default";
-        return `<span class="accessRuleNameInTable" ruleid="${accessRuleID}"></span>`;
+        let accessRuleID = subd.AccessFilterUUID || "allow-all";
+        return `<span class="accessRuleNameInTable" ruleid="${htmlEscape(accessRuleID)}"></span>`;
     }
 
     /* List all proxy endpoints */
@@ -1069,7 +1069,7 @@
                         <td data-label="" editable="true" datatype="inbound">
                             <a href="${httpProto}${subd.RootOrMatchingDomain}${hostnameRedirectPort}" target="_blank">${subd.RootOrMatchingDomain}</a> ${inboundTlsIcon}${adminBadge}<br>
                             ${aliasDomains}
-                            <small class="accessRuleNameUnderHost" ruleid="${subd.AccessFilterUUID}"></small>
+                            <small class="accessRuleNameUnderHost" ruleid="${htmlEscape(subd.AccessFilterUUID || "allow-all")}"></small>
                         </td>
                         <td data-label="listening-ports" datatype="ports" data-sort-value="${htmlEscape(subd.ListenIP || "")}:${currentListeningPort}">${renderListenCell(subd)}</td>
                         <td data-label="" editable="true" datatype="domain" data-sort-value="${destSortValue}" style="word-break: break-all;">
@@ -1140,71 +1140,16 @@
         }
     }
 
-    //Resolve & Update all rule names on host PR list
-    // Custom fork: tooltip of the access rule shown under a rule's name
-    function accessRuleTitle(rule){
-        let kind = rule.WhitelistEnabled && rule.BlacklistEnabled ? "allowlist and blocklist" :
-            (rule.WhitelistEnabled ? "allowlist: only listed addresses get in" : (rule.BlacklistEnabled ? "blocklist: listed addresses are refused" : "no lists turned on"));
-        return "Access rule \"" + rule.Name + "\" (" + kind + "). Edit it on Access > Access Rules.";
-    }
-
+    //Resolve & Update all ACL names on host PR list
     function resolveAccessRuleNameOnHostRPlist(){
-        //Resolve the access filters
-        $.get("/api/access/list", function(data){
-            console.log(data);
-            if (data.error == undefined){
-                //Build a map base on the data
-                let accessRuleMap = {};
-                for (var i = 0; i < data.length; i++){
-                    accessRuleMap[data[i].ID] = data[i];
-                }
-                
-                // Update both the under-host display and the details-view column
-                $(".accessRuleNameUnderHost, .accessRuleNameInTable").each(function(){
-                    let thisAccessRuleID = $(this).attr("ruleid");
-                    if (thisAccessRuleID== ""){
-                        thisAccessRuleID = "default"
-                    }
-
-                    // Check if this is in the details-view column
-                    let isDetailsColumn = $(this).hasClass("accessRuleNameInTable");
-
-                    if (thisAccessRuleID == "default"){
-                        // Show "default" in details-view column, hide in under-host display
-                        if (isDetailsColumn) {
-                            $(this).html("default");
-                        } else {
-                            $(this).html("");
-                        }
-                        return;
-                    }
-
-                    let rule = accessRuleMap[thisAccessRuleID];
-                    if (rule == undefined){
-                        //Missing config or config too old
-                        $(this).html(`<i class="ui red exclamation triangle icon"></i> <b style="color: #db2828;">Access Rule Error</b>`);
-                        return;
-                    }
-                    let icon = `<i class="ui grey hand paper icon"></i>`;
-                    if (rule.ID == "default"){
-                        icon = `<i class="ui yellow star icon"></i>`;
-                    }else if (rule.BlacklistEnabled && !rule.WhitelistEnabled){
-                        //This is a blacklist filter
-                        icon = `<i class="ui red hand paper icon"></i>`;
-                    }else if (rule.WhitelistEnabled && !rule.BlacklistEnabled){
-                        //This is a whitelist filter
-                        icon = `<i class="ui green hand paper icon"></i>`;
-                    }else if (rule.WhitelistEnabled && rule.BlacklistEnabled){
-                        //Whitelist and blacklist filter
-                        icon = `<i class="ui yellow hand paper icon"></i>`;
-                    }
-
-                    if (rule != undefined){
-                        $(this).html(`${icon} ${htmlEscape(rule.Name)}`).attr("title", accessRuleTitle(rule));
-                    }
-                });
-            }
-        })
+        $.get("/api/acl/list", function(data){
+            if (data.error != undefined || !Array.isArray(data)) return;
+            let aclMap = {};
+            data.forEach(function(a){ aclMap[a.id] = a; });
+            $(".accessRuleNameUnderHost, .accessRuleNameInTable").each(function(){
+                $(this).html(aclNameLabel(aclMap, $(this).attr("ruleid"), $(this).hasClass("accessRuleNameInTable")));
+            });
+        });
     }
 
     //Update the access rule name on given epuuid, call by hostAccessEditor.html
@@ -1953,7 +1898,7 @@
         }
         box.html(`<div class="ui divider"></div>
             <b><i class="lock icon"></i> Admin console</b>
-            <p style="margin-top: 0.4em;"><small>This rule serves this admin console, so Waymark keeps it working: it cannot be disabled or deleted, it always sends requests to <code class="wmAdminDest"></code>, and its destinations, authentication, virtual directories, headers, health checks and listening addresses are fixed. You can change its main domain, add aliases, and choose its certificate, access rule, caching, logging and tags. If it ever stops working, run Waymark once with <code>-reset-admin-rule</code>.</small></p>
+            <p style="margin-top: 0.4em;"><small>This rule serves this admin console, so Waymark keeps it working: it cannot be disabled or deleted, it always sends requests to <code class="wmAdminDest"></code>, and its destinations, authentication, virtual directories, headers, health checks and listening addresses are fixed. You can change its main domain, add aliases, and choose its certificate, ACL, caching, logging and tags. If it ever stops working, run Waymark once with <code>-reset-admin-rule</code>.</small></p>
             <div class="wmAdminHosts"></div>
             <div class="wmAdminNode ui small form" style="display:none; margin-top: 0.6em;">
                 <div class="two fields">
