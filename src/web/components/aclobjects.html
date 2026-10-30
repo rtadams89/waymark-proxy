@@ -1,4 +1,4 @@
-<!-- Custom fork: ACL objects (mod/access, acl_api_custom.go) -->
+<!-- ACL objects -->
 <style>
     #objEditor .objEntries td{ vertical-align: middle; }
     #objEditor .objType{ font-size: 0.85em; opacity: 0.75; text-transform: uppercase; }
@@ -227,8 +227,8 @@
 
     function dirty(){ $("#objDirty").show(); }
 
-    // Objects that can go inside the one being edited: not itself, not one
-    // already in it, and not one that contains it (that would be a loop)
+    // Objects that can go inside the one being edited: not itself, not one already
+    // in it, and not one that contains it
     function containsObject(fromID, targetID, seen){
         seen = seen || {};
         if (seen[fromID]) return false;

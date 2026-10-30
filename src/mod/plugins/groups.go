@@ -41,7 +41,6 @@ func (m *Manager) AddPluginToGroup(tag, pluginID string) error {
 		return nil
 	}
 
-	//Add the plugin to the group
 	m.Options.PluginGroups[tag] = append(m.Options.PluginGroups[tag], pluginID)
 
 	m.pluginGroupsMutex.Unlock()
@@ -82,7 +81,7 @@ func (m *Manager) RemovePluginGroup(tag string) error {
 	return nil
 }
 
-// SavePluginGroupsFromFile loads plugin groups from a file
+// SavePluginGroupsToFile saves plugin groups to a file
 func (m *Manager) SavePluginGroupsToFile() error {
 	m.pluginGroupsMutex.RLock()
 	pluginGroupsCopy := make(map[string][]string)
@@ -91,7 +90,6 @@ func (m *Manager) SavePluginGroupsToFile() error {
 	}
 	m.pluginGroupsMutex.RUnlock()
 
-	//Write to file
 	js, _ := json.Marshal(pluginGroupsCopy)
 	err := utils.WriteFileAtomic(m.Options.PluginGroupsConfig, js, 0644)
 	if err != nil {

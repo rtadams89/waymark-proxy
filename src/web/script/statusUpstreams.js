@@ -1,6 +1,4 @@
 /*
-    statusUpstreams.js (custom fork)
-
     Fills the status page's "Upstream Health" panel from
     /api/proxy/healthcheck/summary: counts of healthy and down health-checked
     upstreams, a list of those that are down (with the reason and for how

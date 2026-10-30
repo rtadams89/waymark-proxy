@@ -101,7 +101,7 @@ func TestBuildSSOAuthRedirect(t *testing.T) {
 		t.Fatalf("redirect query = %q", u.Query().Get("redirect"))
 	}
 
-	// Relative / host-only must fail so callers normalize first.
+	// A host-only SSO base fails
 	if _, err := buildSSOAuthRedirect("za.lan", "https://docs.local/"); err == nil {
 		t.Fatal("expected error for non-absolute SSO base")
 	}
@@ -220,7 +220,7 @@ func TestBuildLoginRedirectURL_HostOnlyUsesRequestHTTP(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodGet, "http://docs.local/readme", nil)
 	req.Host = "docs.local"
-	// No X-Forwarded-Proto and no TLS -> http fallback must not force https.
+	// Without X-Forwarded-Proto or TLS the scheme is http
 
 	got, err := ar.buildLoginRedirectURL(req)
 	if err != nil {

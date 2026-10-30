@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <!-- Custom fork: destination servers of a Layer 4 rule, laid out like the HTTP
-             proxy rule's destination editor (upstreams.html). Opened from the Layer 4 rule
-             editor as snippet/l4destinations.html#{"ept":"l4","ep":"<uuid>"} and saved
-             through it (components/l4proxy.html). -->
+        <!-- Destination servers of a Layer 4 rule, opened from the Layer 4 rule editor as
+             snippet/l4destinations.html#{"ept":"l4","ep":"<uuid>"} and saved through it
+             (components/l4proxy.html). -->
         <meta charset="utf-8">
         <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
         <link rel="stylesheet" href="../script/semantic/semantic.min.css">
@@ -121,7 +120,6 @@
                 return c ? parent.l4Destinations(c).map(d => ({address: d.address, weight: d.weight, enabled: d.enabled})) : [];
             }
 
-            // Laid out like the HTTP destination entries (upstreams.html)
             function initOriginList(){
                 let c = currentConfig();
                 let table = $("#upstreamTable");

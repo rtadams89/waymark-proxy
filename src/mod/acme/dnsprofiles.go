@@ -1,20 +1,10 @@
 package acme
 
 /*
-	dnsprofiles.go
-
-	Reusable DNS challenge credential sets ("DNS profiles").
-
-	DNS-01 credentials are kept only in named credential sets, which any
-	number of certificates can share. A certificate that uses the DNS
-	challenge has a binding key <certName>_dns_profile in the "acme" table
-	that holds a profile ID. (Upstream Zoraxy stores credentials per
-	certificate instead; Waymark does not read those.)
-
-	Secrets are write-only from the web UI's point of view: the list API
-	reports which fields have a value set, but never returns the values.
-	When a profile is edited, a string field submitted empty keeps its
-	stored value.
+	DNS challenge credential sets, shared by any number of certificates. A
+	certificate's binding key <certName>_dns_profile in the "acme" table
+	holds a set's ID. The list API returns which fields are set but not
+	their values; an empty string field in an edit keeps the stored value.
 */
 
 import (
@@ -57,8 +47,8 @@ type dnsProfileSummary struct {
 	ID        string            `json:"id"`
 	Name      string            `json:"name"`
 	Provider  string            `json:"provider"`
-	FieldsSet []string          `json:"fieldsSet"` // string fields that have a stored (hidden) value
-	Settings  map[string]any    `json:"settings"`  // non-secret values (bool / number fields) for pre-filling the edit form
+	FieldsSet []string          `json:"fieldsSet"` // string fields that have a stored value
+	Settings  map[string]any    `json:"settings"`  // non-string values
 	UsedBy    []string          `json:"usedBy"`    // certificate names bound to this profile
 	Meta      map[string]string `json:"meta,omitempty"`
 	CreatedAt int64             `json:"createdAt"`
@@ -70,13 +60,9 @@ type dnsBindingInfo struct {
 	ProfileID   string `json:"profileId,omitempty"`
 	ProfileName string `json:"profileName,omitempty"`
 	Missing     bool   `json:"missing,omitempty"` // bound to a profile that no longer exists
-	UseDNS      bool   `json:"useDNS"`            // from the certificate's ACME info file
-	AcmeManaged bool   `json:"acmeManaged"`       // has an ACME info file, so Zoraxy can renew it
+	UseDNS      bool   `json:"useDNS"`
+	AcmeManaged bool   `json:"acmeManaged"` // has an ACME info file
 }
-
-/*
-	Storage helpers
-*/
 
 func (a *ACMEHandler) ensureDNSProfileTables() {
 	if !a.Database.TableExists(dnsProfileTable) {
@@ -103,8 +89,8 @@ func isValidDNSProfileID(id string) bool {
 	return err == nil
 }
 
-// isValidCertName blocks path traversal and key-collision tricks in names
-// that are used both as database key prefixes and as filenames.
+// isValidCertName reports whether name is safe as a database key prefix and
+// file name.
 func isValidCertName(name string) bool {
 	if name == "" || len(name) > 255 {
 		return false
@@ -158,8 +144,8 @@ func certFileExists(certName string) bool {
 		utils.FileExists(filepath.Join(acmeCertStoreDir, certName+".key"))
 }
 
-// listDNSProfileBindings returns certName -> profileID for installed certificates.
-// Bindings left behind by deleted certificates are skipped.
+// listDNSProfileBindings returns certName -> profileID for installed
+// certificates.
 func (a *ACMEHandler) listDNSProfileBindings() (map[string]string, error) {
 	a.ensureDNSProfileTables()
 	entries, err := a.Database.ListTable("acme")
@@ -188,13 +174,8 @@ func (a *ACMEHandler) listDNSProfileBindings() (map[string]string, error) {
 	return bindings, nil
 }
 
-/*
-	Credential validation and merging
-*/
-
 // normalizeDNSCredentials checks a credential JSON object against the
-// provider's schema and returns it re-encoded. Unknown keys are rejected so
-// a typo in a field name doesn't silently produce a broken credential set.
+// provider's schema, rejecting unknown keys.
 func normalizeDNSCredentials(provider string, credentials string) (map[string]any, error) {
 	schema, err := acmedns.GetProviderConfigStructure(provider)
 	if err != nil {
@@ -214,9 +195,8 @@ func normalizeDNSCredentials(provider string, credentials string) (map[string]an
 	return creds, nil
 }
 
-// mergeDNSCredentials applies an edit on top of stored credentials. Empty
-// string values in the update mean "keep the stored value", which is how
-// the UI edits a profile without ever seeing its secrets.
+// mergeDNSCredentials applies update to stored; empty string values keep
+// the stored value.
 func mergeDNSCredentials(stored map[string]any, update map[string]any) map[string]any {
 	merged := map[string]any{}
 	for k, v := range stored {
@@ -233,11 +213,8 @@ func mergeDNSCredentials(stored map[string]any, update map[string]any) map[strin
 	return merged
 }
 
-// summarizeDNSCredentials splits stored credentials into the names of
-// string-typed fields that hold a value (treated as secret, never returned)
-// and values of non-string fields (bools, numbers, durations) that are safe
-// to show so the edit form can be pre-filled. The provider schema decides
-// the type; anything not in the schema is treated as secret.
+// summarizeDNSCredentials returns the names of string fields with a value
+// (and fields not in the schema), and the values of non-string fields.
 func summarizeDNSCredentials(provider string, credentials string) ([]string, map[string]any) {
 	fieldsSet := []string{}
 	settings := map[string]any{}
@@ -260,12 +237,8 @@ func summarizeDNSCredentials(provider string, credentials string) ([]string, map
 	return fieldsSet, settings
 }
 
-/*
-	Credential resolution used by ObtainCert (issue and renew)
-*/
-
-// resolveDNSCredentials returns the provider and credential JSON to use for
-// a certificate's DNS-01 challenge, from the credential set bound to it.
+// resolveDNSCredentials returns the provider and credential JSON of the
+// credential set bound to a certificate.
 func (a *ACMEHandler) resolveDNSCredentials(certificateName string) (provider string, credentials string, source string, err error) {
 	a.ensureDNSProfileTables()
 
@@ -285,8 +258,8 @@ func (a *ACMEHandler) resolveDNSCredentials(certificateName string) (provider st
 	return "", "", "", errors.New("no DNS credential set is assigned to certificate " + certificateName + ": pick one with its challenge settings button on Certificates > Installed Certificates")
 }
 
-// setCertUseDNS flips the DNS challenge flag in a certificate's ACME info
-// file, if it has one, so renewals use the challenge type that was picked.
+// setCertUseDNS sets the DNS challenge flag in a certificate's ACME info
+// file, if it has one.
 func setCertUseDNS(certName string, useDNS bool) error {
 	infoPath := filepath.Join(acmeCertStoreDir, certName+".json")
 	if !utils.FileExists(infoPath) {
@@ -311,9 +284,7 @@ func setCertUseDNS(certName string, useDNS bool) error {
 	return utils.WriteFileAtomic(infoPath, js, st.Mode().Perm())
 }
 
-/*
-	HTTP handlers, all under /api/acme/dnsProfiles/
-*/
+/* HTTP handlers under /api/acme/dnsProfiles/ */
 
 // HandleListDNSProfiles returns all credential sets, without secret values.
 func (a *ACMEHandler) HandleListDNSProfiles(w http.ResponseWriter, r *http.Request) {
@@ -396,7 +367,6 @@ func (a *ACMEHandler) HandleSaveDNSProfile(w http.ResponseWriter, r *http.Reques
 		if profile.Provider == provider {
 			json.Unmarshal([]byte(profile.Credentials), &stored)
 		}
-		// Switching provider discards the old fields entirely
 		update = mergeDNSCredentials(stored, update)
 	} else {
 		id, err = newDNSProfileID()
@@ -407,7 +377,6 @@ func (a *ACMEHandler) HandleSaveDNSProfile(w http.ResponseWriter, r *http.Reques
 		profile = &DNSProfile{ID: id, CreatedAt: now}
 	}
 
-	// Reject names that would make the dropdown ambiguous
 	existing, _ := a.listDNSProfiles()
 	for _, p := range existing {
 		if p.ID != profile.ID && strings.EqualFold(p.Name, name) {
@@ -422,8 +391,7 @@ func (a *ACMEHandler) HandleSaveDNSProfile(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Build the provider once so obviously broken input fails here rather
-	// than at the next renewal. This does not contact the DNS provider.
+	// Builds the provider to validate the credentials
 	if _, err := GetDnsChallengeProviderByName(provider, string(credsJSON), 300); err != nil {
 		utils.SendErrorResponse(w, "credentials rejected by provider: "+err.Error())
 		return

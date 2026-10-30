@@ -1,13 +1,7 @@
 package main
 
-/*
-	listenip_custom.go (custom fork)
-
-	The address an HTTP rule answers on (mod/dynamicproxy/listenip_custom.go):
-	every address (the default), or one floating IP of the HA cluster. With
-	HA off, this host's own addresses can be chosen instead (with HA on they
-	would be wrong on the other nodes, which copy the rule).
-*/
+// The address an HTTP rule answers on: every address, a floating IP, or
+// with HA off one of this host's addresses.
 
 import (
 	"encoding/json"
@@ -49,9 +43,8 @@ func listenIPOptions() []listenIPOption {
 	return out
 }
 
-// normalizeListenIP checks an address for an HTTP rule: "" (every address)
-// or one of listenIPOptions. keep is the rule's current address, which
-// stays allowed (a floating IP removed from the HA settings since).
+// normalizeListenIP checks an address for an HTTP rule: "" or one of
+// listenIPOptions; keep (the rule's current address) is also accepted.
 func normalizeListenIP(v, keep string) (string, error) {
 	if v == "" {
 		return "", nil

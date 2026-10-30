@@ -2,8 +2,7 @@ package dynamicproxy
 
 import "testing"
 
-// TestVirtualDirectoryEndpointHasSameTarget verifies the target-equality check used to decide
-// whether a bulk apply/remove may treat an existing virtual directory as one it owns.
+// TestVirtualDirectoryEndpointHasSameTarget tests the target comparison.
 func TestVirtualDirectoryEndpointHasSameTarget(t *testing.T) {
 	vdir := &VirtualDirectoryEndpoint{
 		MatchingPath:        "/outpost.goauthentik.io",
@@ -26,9 +25,8 @@ func TestVirtualDirectoryEndpointHasSameTarget(t *testing.T) {
 	}
 }
 
-// TestClassifyBulkVdir verifies the per-host decision for both apply (ensure present) and remove
-// (ensure absent), including that a differently-configured directory is always a conflict so it
-// is never silently overwritten or deleted.
+// TestClassifyBulkVdir tests the per-host action for apply and remove,
+// including conflicts.
 func TestClassifyBulkVdir(t *testing.T) {
 	const domain = "10.0.0.6:9000/outpost.goauthentik.io"
 	identical := &VirtualDirectoryEndpoint{MatchingPath: "/outpost.goauthentik.io", Domain: domain}

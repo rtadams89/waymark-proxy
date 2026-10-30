@@ -1,15 +1,9 @@
 package main
 
 /*
-	healthcheck_custom.go (custom fork)
-
-	Wires mod/healthcheck into Zoraxy:
-	- builds health check targets from proxy rules that enable it
-	- feeds proxied request outcomes to passive monitoring
-	- stops the legacy uptime monitor from toggling upstreams that these
-	  health checks manage; rules with active checks also feed the Uptime
-	  Monitor page from them (see healthcheck_uptime_custom.go)
-	- serves the API used by snippet/healthChecks.html
+	Health checks of proxy rules: targets from rules that enable them,
+	passive monitoring of proxied requests, and the API of the health check
+	editor.
 */
 
 import (
@@ -27,22 +21,20 @@ import (
 
 var healthCheckManager *healthcheck.Manager
 
-// initHealthChecks must run after loadBalancer is created and before the
-// uptime monitor starts.
+// initHealthChecks starts the health check manager.
 func initHealthChecks() {
 	if healthCheckManager != nil {
 		healthCheckManager.Stop()
 	}
 	healthCheckManager = healthcheck.NewManager(
-		notifyUpstreamOnline, // HTTP load balancer and Layer 4 proxies (l4pool_custom.go)
+		notifyUpstreamOnline,
 		func(msg string) { SystemWideLogger.PrintAndLog("healthcheck", msg, nil) },
 	)
 	healthCheckManager.OnCheck = healthUptimeFeed.onCheck
 }
 
-// refreshHealthCheckTargets rebuilds the managed set from the current proxy
-// rules. Called from UpdateUptimeMonitorTargets, which runs after every rule
-// change, and once at startup.
+// refreshHealthCheckTargets rebuilds the targets from the current proxy
+// rules.
 func refreshHealthCheckTargets() {
 	if healthCheckManager == nil || dynamicProxyRouter == nil {
 		return
@@ -72,7 +64,6 @@ func refreshHealthCheckTargets() {
 				Config: *cfg,
 			})
 		}
-		// Virtual directory backends, checked with the same settings
 		if cfg.IncludeVirtualDirs {
 			for _, vdir := range ep.VirtualDirectories {
 				if vdir.Disabled || seen[vdir.Domain] {
@@ -92,7 +83,7 @@ func refreshHealthCheckTargets() {
 			}
 		}
 	}
-	targets = append(targets, l4HealthTargets()...) // l4pool_custom.go
+	targets = append(targets, l4HealthTargets()...)
 	healthCheckManager.SetTargets(targets)
 }
 
@@ -103,18 +94,14 @@ func observeUpstreamResult(ruleID string, upstreamAddr string, statusCode int, e
 	}
 }
 
-// uptimeNotifyRespectingHealthChecks is the uptime monitor's
-// OnlineStateNotify. Upstreams managed by health checks are left to them,
-// so the two never fight. (The name length matches the upstream value it
-// replaces in reverseproxy.go, which keeps gofmt alignment unchanged.)
+// uptimeNotifyRespectingHealthChecks updates an upstream's online state
+// unless health checks manage it.
 func uptimeNotifyRespectingHealthChecks(upstreamURL string, online bool) {
 	if healthCheckManager != nil && healthCheckManager.Manages(upstreamURL) {
 		return
 	}
 	loadBalancer.NotifyHostOnlineState(upstreamURL, online)
 }
-
-/* API */
 
 // HandleHealthCheckGet returns a rule's settings, live status and recent events.
 // GET /api/proxy/healthcheck/get?ep=<rule>
@@ -212,7 +199,7 @@ func HandleHealthCheckSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	SystemWideLogger.PrintAndLog("healthcheck", "Health check settings updated for rule "+newEndpoint.RootOrMatchingDomain, nil)
-	UpdateUptimeMonitorTargets() // also refreshes health check targets
+	UpdateUptimeMonitorTargets()
 	utils.SendOK(w)
 }
 
@@ -227,10 +214,9 @@ func HandleHealthCheckOverview(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-// healthCheckTLSName is the certificate name health checks use for an
-// upstream (custom fork), following its "check certificate name against"
-// setting: the rule's host name for "proxyhost" (unless it is a wildcard),
-// the address's host for "upstream", otherwise the default.
+// healthCheckTLSName returns the certificate name health checks verify for
+// an upstream: the rule's host for "proxyhost" (unless a wildcard), the
+// upstream's host for "upstream", otherwise "".
 func healthCheckTLSName(ruleHost string, origin *loadbalance.Upstream) string {
 	switch origin.TLSVerifyName {
 	case dpcore.TLSNameProxyHost:

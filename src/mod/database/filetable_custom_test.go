@@ -40,7 +40,7 @@ func TestFileTable(t *testing.T) {
 		t.Fatalf("read from the file: got %d", port)
 	}
 
-	// Missing key: no error, destination unchanged (as with bolt)
+	// Missing key: no error, destination unchanged
 	timeout := 120
 	if err := db.Read("settings", "idleTimeout", &timeout); err != nil || timeout != 120 {
 		t.Fatalf("missing key: err=%v value=%d", err, timeout)
@@ -49,7 +49,7 @@ func TestFileTable(t *testing.T) {
 		t.Fatal("KeyExists / TableExists wrong")
 	}
 
-	// Raw JSON values (HA sync, key moves) are stored as they are
+	// Raw JSON values are stored as they are
 	db.Write("settings", "raw", json.RawMessage(`{"a":1}`))
 	var m map[string]int
 	db.Read("settings", "raw", &m)
@@ -66,7 +66,7 @@ func TestFileTable(t *testing.T) {
 		t.Fatalf("ListTable keys %v", keys)
 	}
 
-	// Changed on disk (HA sync, hand edit): picked up
+	// Changed on disk: picked up
 	time.Sleep(10 * time.Millisecond)
 	os.WriteFile(conf, []byte(`{"inbound": 9000}`), 0640)
 	db.Read("settings", "inbound", &port)

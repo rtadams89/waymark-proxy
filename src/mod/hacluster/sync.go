@@ -1,20 +1,11 @@
 package hacluster
 
-/*
-	sync.go (custom fork): configuration sync between HA nodes (phase 2).
-
-	The standby pulls a snapshot of the active node's configuration: the
-	config folder entries in SyncConfEntries and the database tables in
-	SyncTables. The snapshot is staged and applied when Waymark next starts,
-	before any module loads its configuration, so nothing has to be
-	reloaded while running.
-
-	Nodes authenticate each other with the cluster key over TLS 1.3. The TLS
-	certificates are throwaway self-signed ones; instead both sides send an
-	HMAC of the cluster key over the connection's exported keying material
-	(RFC 5705/8446), so a proof is only valid on the TLS session it was made
-	on and cannot be relayed by a man in the middle.
-*/
+// Configuration sync between HA nodes. The standby pulls a snapshot of the
+// active node's config folder entries (SyncConfEntries) and database tables
+// (SyncTables), stages it and applies it on the next start, before any module
+// loads its configuration. Nodes authenticate over TLS 1.3 by exchanging an
+// HMAC of the cluster key over the connection's exported keying material
+// (RFC 5705/8446).
 
 import (
 	"bufio"
@@ -70,7 +61,7 @@ var SyncConfEntries = []string{
 	"redirect_options.json", // redirection matching options
 	"webserv.json",          // static web server and WebDAV
 	"ui.json",               // status page panels
-	"ha.json",               // HA cluster settings (2.16.0; the SSO settings are in sso/)
+	"ha.json",               // HA cluster settings
 }
 
 // SyncTables are the database tables copied from the active node.
@@ -501,7 +492,7 @@ func (h *SyncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		result, err := action(host, in)
 		if err != nil {
-			// Errors are reported in the body, so the caller can show them
+			// Errors are reported in the body
 			result = map[string]string{"error": err.Error()}
 		}
 		body = result

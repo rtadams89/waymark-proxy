@@ -1,21 +1,13 @@
 package main
 
 /*
-	hasync_custom.go (custom fork)
-
-	HA phase 2: configuration sync from the active node to standby nodes
-	(see mod/hacluster/sync.go for the snapshot format and authentication).
-
-	- every node with sync on runs a TLS listener on its own address
-	  (cluster settings: sync port) serving its state and a snapshot of its
-	  configuration to the other cluster nodes
-	- a standby polls the other nodes every 10 seconds; when the active node's
-	  configuration changed and has stayed the same for one poll, it
-	  downloads and checks a snapshot, stages it, and restarts Waymark in
-	  place. The staged snapshot is applied at startup, before any module
-	  loads its configuration (haApplyPendingSync, called from start.go)
-	- while sync is on, a standby refuses configuration changes in the admin
-	  UI (haReadOnly); its HA settings stay editable so sync can be paused
+	Configuration sync from the active node to standby nodes. Every node
+	with sync on serves its state and configuration snapshot over TLS. A
+	standby polls the other nodes every 10 seconds; when the active node's
+	configuration changed and stayed the same for one poll, it downloads,
+	checks and stages a snapshot and restarts in place to apply it at
+	startup. A standby refuses configuration changes except to its HA
+	settings.
 */
 
 import (
@@ -44,7 +36,7 @@ const (
 	haSyncPendingFile = "sync-pending.json"
 	haSyncAppliedFile = "sync-applied.json"
 	haSyncInterval    = 10 * time.Second
-	haSyncMinGap      = 30 * time.Second // between two applies
+	haSyncMinGap      = 30 * time.Second
 )
 
 type haSyncApplied struct {
@@ -55,8 +47,7 @@ type haSyncApplied struct {
 	Error      string `json:"error"`
 }
 
-// haSyncPeerInfo is what a node reports about itself to the other nodes
-// (/waymark-ha/v1/state): used for syncing and for the cluster overview.
+// haSyncPeerInfo is a node's state as reported to the other nodes.
 type haSyncPeerInfo struct {
 	Node            string     `json:"node"`
 	Role            string     `json:"role"`
@@ -69,10 +60,10 @@ type haSyncPeerInfo struct {
 	Keepalived      string     `json:"keepalived"` // systemd state
 	SyncStatus      string     `json:"syncStatus"`
 	SyncDetail      string     `json:"syncDetail"`
-	Started         int64      `json:"started"`           // when Waymark started
-	UpdatePhase     string     `json:"updatePhase"`       // selfupdate_custom.go: downloading, verifying, restarting, error
-	UpdateMessage   string     `json:"updateMessage"`     // its message
-	Rolling         *rollState `json:"rolling,omitempty"` // rollingupdate_custom.go: the rolling update it runs or ran last
+	Started         int64      `json:"started"`     // when Waymark started
+	UpdatePhase     string     `json:"updatePhase"` // downloading, verifying, restarting, error
+	UpdateMessage   string     `json:"updateMessage"`
+	Rolling         *rollState `json:"rolling,omitempty"` // the rolling update it runs or ran last
 }
 
 // haPeerStatus is the last poll of another node.
@@ -94,11 +85,11 @@ var haSync struct {
 	activeNode string
 	activeAddr string
 	lastCheck  int64
-	seenHash   string                   // settle check: last hash seen on the active node
+	seenHash   string                   // last hash seen on the active node
 	servedSnap map[string]int64         // peer address -> last snapshot served
 	servedPoll map[string]int64         // peer address -> last state request
 	peers      map[string]*haPeerStatus // peer address -> last poll
-	ticking    sync.Mutex               // one tick at a time
+	ticking    sync.Mutex
 	restarting bool
 }
 
@@ -117,7 +108,7 @@ func writeSyncFileAtomic(name string, v any) error {
 	if err != nil {
 		return err
 	}
-	return utils.WriteFileAtomic(haSyncPath(name), b, 0600) // contains keys and password hashes
+	return utils.WriteFileAtomic(haSyncPath(name), b, 0600)
 }
 
 func haSyncSetStatus(status, detail string) {
@@ -127,10 +118,7 @@ func haSyncSetStatus(status, detail string) {
 	haSync.mu.Unlock()
 }
 
-/* Startup: apply a staged snapshot before modules load their configuration */
-
-// haApplyPendingSync is called from startupSequence right after the
-// database is opened.
+// haApplyPendingSync applies a staged snapshot.
 func haApplyPendingSync() {
 	p := haSyncPath(haSyncPendingFile)
 	b, err := os.ReadFile(p)
@@ -153,7 +141,7 @@ func haApplyPendingSync() {
 		return
 	}
 	snap := &pending.Snapshot
-	if snap.Version != DISPLAY_VERSION { // checked first: another version's snapshot may hold other entries
+	if snap.Version != DISPLAY_VERSION {
 		fail(snap.Hash, fmt.Errorf("staged configuration is from Waymark %s, this is %s", snap.Version, DISPLAY_VERSION))
 		return
 	}
@@ -176,14 +164,10 @@ func shortHash(h string) string {
 	return h
 }
 
-// haRestartForSync restarts Waymark in place (same process ID, so systemd
-// keeps tracking it) to load a staged configuration.
-// haSyncRestarting is set once a restart to load the active node's
-// configuration has begun; update requests are refused from then on.
+// haSyncRestarting is set once a restart to apply a snapshot has begun.
 var haSyncRestarting atomic.Bool
 
-// errSyncRestarting is returned to an update request that arrives while
-// this node is restarting for sync; the rolling update asks again.
+// errSyncRestarting is returned to update requests while restarting for sync.
 const errSyncRestarting = "restarting to load the configuration from the active node; ask again in a few seconds"
 
 func haRestartForSync() {
@@ -194,15 +178,13 @@ func haRestartForSync() {
 		SystemWideLogger.PrintAndLog("ha-sync", "Cannot restart: executable path unknown", err)
 		return
 	}
-	mdnsTickerStop = nil // the mDNS ticker may be mid-scan; exec ends it anyway
+	mdnsTickerStop = nil
 	ShutdownSeq()
 	err = syscall.Exec(exe, os.Args, plannedRestartEnv())
-	// Only reached if exec failed; exit so systemd can restart Waymark
+	// Exits when exec failed
 	fmt.Println("HA sync: restart failed: " + err.Error())
 	os.Exit(1)
 }
-
-/* Listener */
 
 func haSyncKey() []byte {
 	cfg := haConfig()
@@ -320,9 +302,9 @@ func haSyncReconcileListener() {
 			haSync.mu.Unlock()
 		},
 		Actions: map[string]func(string, []byte) (any, error){
-			"switchover":    haSwitchAction, // haswitch_custom.go
-			"update":        haUpdateAction, // selfupdate_custom.go
-			"rollingupdate": haRollAction,   // rollingupdate_custom.go
+			"switchover":    haSwitchAction,
+			"update":        haUpdateAction,
+			"rollingupdate": haRollAction,
 		},
 	}
 	srv := &http.Server{Handler: handler, TLSConfig: hacluster.SyncServerTLSConfig(cert), ReadHeaderTimeout: 10 * time.Second, ErrorLog: log.New(io.Discard, "", 0)}
@@ -331,8 +313,6 @@ func haSyncReconcileListener() {
 	SystemWideLogger.PrintAndLog("ha-sync", "Configuration sync listening on "+want, nil)
 }
 
-/* Standby: poll the active node */
-
 func haSyncLoop() {
 	for {
 		haSyncTick(false)
@@ -340,9 +320,9 @@ func haSyncLoop() {
 	}
 }
 
-// haSyncTick checks the other nodes and pulls the active node's
-// configuration when it changed. force skips the settle and rate checks
-// (Sync now). Returns a message for the UI.
+// haSyncTick polls the other nodes and pulls the active node's
+// configuration when it changed; force skips the settle and rate checks.
+// Returns a message for the UI.
 func haSyncTick(force bool) (string, bool) {
 	haSync.ticking.Lock()
 	defer haSync.ticking.Unlock()
@@ -491,8 +471,7 @@ func haSyncTick(force bool) (string, bool) {
 		}
 	}
 
-	// Restarting now would cut short an update being downloaded (for example
-	// during a rolling update); copy once it is installed or has failed
+	// Waits while an update is being installed
 	upd.mu.Lock()
 	installing := upd.busy
 	upd.mu.Unlock()
@@ -525,7 +504,7 @@ func haSyncTick(force bool) (string, bool) {
 	msg := "Copied the configuration from " + m.node.Name + "; restarting Waymark to load it"
 	haSyncSetStatus("restarting", msg)
 	go func() {
-		time.Sleep(time.Second) // let the Sync now response go out
+		time.Sleep(time.Second)
 		haRestartForSync()
 	}()
 	return msg, true
@@ -534,7 +513,7 @@ func haSyncTick(force bool) (string, bool) {
 // haSyncCheckSnapshot validates a downloaded snapshot and makes sure it
 // would keep this node in a syncing cluster.
 func haSyncCheckSnapshot(snap *hacluster.Snapshot) error {
-	if snap.Version != DISPLAY_VERSION { // checked first: another version's snapshot may hold other entries
+	if snap.Version != DISPLAY_VERSION {
 		return fmt.Errorf("it is from Waymark %s, this node runs %s", snap.Version, DISPLAY_VERSION)
 	}
 	if err := snap.Validate(); err != nil {
@@ -556,8 +535,6 @@ func haSyncCheckSnapshot(snap *hacluster.Snapshot) error {
 	}
 	return nil
 }
-
-/* Read-only standby */
 
 // haIsReadOnly reports whether configuration changes are refused on this
 // node: HA and sync are on and this node is not the active one.
@@ -581,10 +558,8 @@ func haReadOnlyMessage() string {
 	return msg + "."
 }
 
-// haReadOnly wraps the admin UI: on a read-only standby, requests that
-// change settings are refused. Signing in and out, the HA settings and
-// actions (to pause sync on this node, switch over), updating this node and
-// traffic captures (per node, not configuration) still work.
+// haReadOnly refuses configuration changes on a read-only standby, except
+// signing in and out, HA settings and actions, updates and captures.
 func haReadOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -612,14 +587,9 @@ func haWithReadOnly(mw func(http.Handler) http.Handler) func(http.Handler) http.
 	return func(h http.Handler) http.Handler { return mw(haReadOnly(h)) }
 }
 
-/* Cluster overview */
-
-// haClusterView lists every node with its state, for the HA page and the
-// status page panel. Other nodes are known only while configuration sync is
-// on (their state comes over the sync connection). A node's role, health,
-// floating IP and sync fields are reported only when its latest poll
-// answered; for an unreachable node only "lastRole" and "lastSeen" are
-// given, so a stale "active" is never mistaken for the current state.
+// haClusterView lists every node with its state. Role, health, floating IP
+// and sync fields are given only for nodes whose latest poll answered;
+// unreachable nodes get only "lastRole" and "lastSeen".
 func haClusterView() []map[string]any {
 	cfg := haConfig()
 	self := haSelf(cfg)
@@ -661,7 +631,7 @@ func haClusterView() []map[string]any {
 }
 
 // haPeerRow fills the reachability fields of another node's row and returns
-// its state when that state is current (the latest poll answered), else nil.
+// its state if the latest poll answered, else nil.
 func haPeerRow(row map[string]any, ps *haPeerStatus) *haSyncPeerInfo {
 	if ps == nil {
 		row["reachable"], row["error"] = false, "Not checked yet"
@@ -680,7 +650,7 @@ func haPeerRow(row map[string]any, ps *haPeerStatus) *haSyncPeerInfo {
 	return &info
 }
 
-// HandleHACluster returns the cluster overview (status page panel).
+// HandleHACluster returns the cluster overview.
 // GET /api/ha/cluster
 func HandleHACluster(w http.ResponseWriter, r *http.Request) {
 	cfg := haConfig()
@@ -693,8 +663,6 @@ func HandleHACluster(w http.ResponseWriter, r *http.Request) {
 	})
 	utils.SendJSONResponse(w, string(js))
 }
-
-/* API */
 
 func haSyncStatus() map[string]any {
 	cfg := haConfig()

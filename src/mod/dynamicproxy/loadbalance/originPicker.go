@@ -6,41 +6,28 @@ import (
 	"net/http"
 )
 
-/*
-	Origin Picker
-
-	This script contains the code to pick the best origin
-	by this request.
-*/
-
 const (
 	STICKY_SESSION_NAME = "zr_sticky_session"
 )
 
-// GetRequestUpstreamTarget return the upstream target where this
-// request should be routed
-//
-// Custom fork: mode is the load balancing method (leastconn_custom.go); with
-// sticky sessions it picks the destination of a new session.
+// GetRequestUpstreamTarget returns the upstream this request should be
+// routed to, picked with the load balancing method mode.
 func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.Request, origins []*Upstream, useStickySession bool, disableAutoFallback bool, mode string) (*Upstream, error) {
 	if len(origins) == 0 {
 		return nil, errors.New("no destination is defined for this host")
 	}
 
-	//Pick the origin
 	if useStickySession {
 		//Use stick session, check which origins this request previously used
 		targetOriginId, err := m.getSessionHandler(r, origins)
 		if err != nil {
-			// No valid session found or origin is offline
-			// Filter the offline origins (but only if there's more than 1 upstream and auto-fallback is not disabled)
+			// No valid session, or its origin is offline
 			originalUpstreamCount := len(origins)
 			origins = m.FilterOfflineOrigins(origins, originalUpstreamCount, disableAutoFallback)
 			if len(origins) == 0 {
 				return nil, errors.New("no online destination is available for origin: " + r.Host)
 			}
 
-			//Pick an origin with the rule's load balancing method
 			targetOrigin, index, err := m.pickUpstream(origins, mode)
 			if err != nil {
 				m.println("Unable to get random destination", err)
@@ -48,32 +35,27 @@ func (m *RouteManager) GetRequestUpstreamTarget(w http.ResponseWriter, r *http.R
 				index = 0
 			}
 
-			//fmt.Println("DEBUG: (Sticky Session) Registering session origin " + origins[index].OriginIpOrDomain)
 			m.setSessionHandler(w, r, targetOrigin.OriginIpOrDomain, index)
 			return targetOrigin, nil
 		}
 
-		//Valid session found and origin is online
-		//fmt.Println("DEBUG: (Sticky Session) Picking origin " + origins[targetOriginId].OriginIpOrDomain)
+		// Valid session and its origin is online
 		return origins[targetOriginId], nil
 	}
 
-	//No sticky session, get a random origin
-	//Filter the offline origins (but only if there's more than 1 upstream and auto-fallback is not disabled)
+	// No sticky session
 	originalUpstreamCount := len(origins)
 	origins = m.FilterOfflineOrigins(origins, originalUpstreamCount, disableAutoFallback)
 	if len(origins) == 0 {
 		return nil, errors.New("no online destination is available for origin: " + r.Host)
 	}
 
-	//Pick an origin with the rule's load balancing method
 	targetOrigin, _, err := m.pickUpstream(origins, mode)
 	if err != nil {
 		m.println("Failed to get next origin", err)
 		targetOrigin = origins[0]
 	}
 
-	//fmt.Println("DEBUG: Picking origin " + targetOrigin.OriginIpOrDomain)
 	return targetOrigin, nil
 }
 
@@ -84,8 +66,7 @@ func (m *RouteManager) GetUsableUpstreamCounts(origins []*Upstream, disableAutoF
 	return len(origins)
 }
 
-/* Features related to session access */
-//Set a new origin for this connection by session
+// setSessionHandler stores the origin for this session.
 func (m *RouteManager) setSessionHandler(w http.ResponseWriter, r *http.Request, originIpOrDomain string, index int) error {
 	session, err := m.SessionStore.Get(r, STICKY_SESSION_NAME)
 	if err != nil {
@@ -104,7 +85,6 @@ func (m *RouteManager) setSessionHandler(w http.ResponseWriter, r *http.Request,
 
 // Get the previous connected origin from session
 func (m *RouteManager) getSessionHandler(r *http.Request, upstreams []*Upstream) (int, error) {
-	// Get existing session
 	session, err := m.SessionStore.Get(r, STICKY_SESSION_NAME)
 	if err != nil {
 		return -1, err
@@ -118,17 +98,14 @@ func (m *RouteManager) getSessionHandler(r *http.Request, upstreams []*Upstream)
 		return -1, errors.New("no session has been set")
 	}
 	originDomain := originDomainRaw.(string)
-	//originID := originIDRaw.(int)
 
 	//Check if the upstream still exists
 	for i, upstream := range upstreams {
 		if upstream.OriginIpOrDomain == originDomain {
 			if !m.IsTargetOnline(originDomain) {
-				//Origin is offline
 				return -1, errors.New("origin is offline")
 			}
 
-			//Ok, the origin is still online
 			return i, nil
 		}
 	}
@@ -136,10 +113,8 @@ func (m *RouteManager) getSessionHandler(r *http.Request, upstreams []*Upstream)
 	return -1, errors.New("origin is no longer exists")
 }
 
-/* Functions related to random upstream picking */
-// Get a random upstream by the weights defined in Upstream struct, return the upstream, index value and any error
+// getRandomUpstreamByWeight returns a random upstream by weight, with its index.
 func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
-	// If there is only one upstream, return it
 	if len(upstreams) == 1 {
 		return upstreams[0], 0, nil
 	}
@@ -158,7 +133,6 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 		if upstream.Weight > 0 {
 			totalWeight += upstream.Weight
 		} else {
-			// Collect fallback upstreams
 			fallbackUpstreams = append(fallbackUpstreams, upstreamWithIndex{upstream, index})
 		}
 	}
@@ -166,11 +140,9 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 	// If there are no upstreams with weight > 0, return a fallback upstream if available
 	if totalWeight == 0 {
 		if len(fallbackUpstreams) > 0 {
-			// Randomly select one of the fallback upstreams
 			randIndex := rand.Intn(len(fallbackUpstreams))
 			return fallbackUpstreams[randIndex].Upstream, fallbackUpstreams[randIndex].Index, nil
 		}
-		// No upstreams available at all
 		return nil, -1, errors.New("no valid destination servers available")
 	}
 
@@ -179,9 +151,8 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 
 	// Select an upstream based on the random weight
 	for index, upstream := range upstreams {
-		if upstream.Weight > 0 { // Only consider upstreams with weight > 0
+		if upstream.Weight > 0 {
 			if randomWeight < upstream.Weight {
-				// Return the selected upstream and its index
 				return upstream, index, nil
 			}
 			randomWeight -= upstream.Weight

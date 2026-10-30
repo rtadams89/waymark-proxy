@@ -48,7 +48,7 @@ func (d *DataLoader) GetAllStatisticSummaryInRange(start, end string) ([]*statis
 }
 
 func (d *DataLoader) GetStartAndEndDatesFromRequest(r *http.Request) (string, string, error) {
-	// Get the start date from POST para
+	// Get the start date
 	start, err := utils.GetPara(r, "start")
 	if err != nil {
 		return "", "", errors.New("start date cannot be empty")
@@ -57,7 +57,7 @@ func (d *DataLoader) GetStartAndEndDatesFromRequest(r *http.Request) (string, st
 		//Must be underscore
 		start = strings.ReplaceAll(start, "-", "_")
 	}
-	// Get end date from POST para
+	// Get the end date
 	end, err := utils.GetPara(r, "end")
 	if err != nil {
 		return "", "", errors.New("end date cannot be empty")

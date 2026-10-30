@@ -1,18 +1,9 @@
 package dynamicproxy
 
 /*
-	access.go: access control for HTTP proxy rules.
-
-	Custom fork: each proxy rule has one ACL (AccessFilterUUID; empty means
-	Allow all), evaluated top down for the client's address
-	(mod/access/engine.go). Deny answers with the forbidden page (403),
-	drop closes the connection without an answer (HTTP/1.1) or resets the
-	stream (HTTP/2, HTTP/3). Refused requests are logged with the ACL and
-	the rule that matched.
-
-	The client's address is the connection's own, or with the rule's
-	TrustProxyHeaders the forwarded one when the connection comes from a
-	trusted proxy (Access > Trusted Proxies).
+	ACLs of HTTP proxy rules: deny answers with the forbidden page (403),
+	drop closes the connection (HTTP/1.1) or resets the stream (HTTP/2,
+	HTTP/3). Refused requests are logged with the ACL and rule.
 */
 
 import (
@@ -24,8 +15,7 @@ import (
 	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin/events"
 )
 
-// StatusDropped is the status logged for a request an ACL dropped (no
-// response was sent; the number nginx uses for the same).
+// StatusDropped is the status logged for a dropped request.
 const StatusDropped = 444
 
 // handleAccessRouting applies the rule's ACL; true means the request was
@@ -71,14 +61,13 @@ func dropConnection(w http.ResponseWriter) {
 			return
 		}
 	}
-	// HTTP/2 and HTTP/3: abort the handler, which resets the stream
+	// HTTP/2 and HTTP/3: resets the stream
 	panic(http.ErrAbortHandler)
 }
 
-// GetClientIPForEndpoint resolves the real client IP of a request for a
-// proxy rule. Header supplied addresses (X-Real-IP, CF-Connecting-IP,
-// Fastly-Client-IP, X-Forwarded-For) are only honored when the rule trusts
-// them and the connection comes from a trusted proxy.
+// GetClientIPForEndpoint returns the client IP of a request for a proxy
+// rule, using forwarded headers only when the rule trusts them and the
+// connection comes from a trusted proxy.
 func (router *Router) GetClientIPForEndpoint(r *http.Request, pe *ProxyEndpoint) string {
 	trust := pe != nil && pe.TrustProxyHeaders
 	if router.Option != nil && router.Option.AccessController != nil {

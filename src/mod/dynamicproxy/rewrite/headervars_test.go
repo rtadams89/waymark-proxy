@@ -14,7 +14,6 @@ func TestGetHeaderVariableValuesFromRequest(t *testing.T) {
 	req.Header.Set("User-Agent", "TestAgent")
 	req.Header.Set("Referer", "https://referer.com")
 
-	// Call the function
 	vars := GetHeaderVariableValuesFromRequest(req)
 
 	// Expected results
@@ -139,7 +138,6 @@ func TestPopulateRequestHeaderVariables(t *testing.T) {
 		},
 	}
 
-	// Call the function with the test data
 	resultHeaders := PopulateRequestHeaderVariables(req, userDefinedHeaders)
 
 	// Expected results after variable substitution
@@ -161,7 +159,6 @@ func TestPopulateRequestHeaderVariables(t *testing.T) {
 		},
 	}
 
-	// Validate results
 	for i, expected := range expectedHeaders {
 		if resultHeaders[i].Direction != expected.Direction ||
 			resultHeaders[i].Key != expected.Key ||

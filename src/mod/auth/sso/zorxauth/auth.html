@@ -380,7 +380,6 @@
         .watermark img {
             width: 62%;
             max-width: 320px;
-            /* filter: drop-shadow(0 0 26px rgba(139, 92, 246, 0.75)); */
             opacity: 0.96;
         }
 
@@ -771,7 +770,7 @@
         document.getElementById('username').addEventListener('input', hideError);
         document.getElementById('password').addEventListener('input', hideError);
 
-        // Password resets are handled by the Waymark administrator, not self-service
+        // Forgot password: point to the Waymark administrator
         document.getElementById('forgotLink').addEventListener('click', function() {
             showError('Password resets are handled by your administrator. Please contact them to regain access.');
         });

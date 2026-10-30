@@ -11,9 +11,6 @@ import (
 	"imuslab.com/zoraxy/mod/info/logger"
 )
 
-// newTestRateLimitRouter builds a minimal Router wired with a real access
-// controller, so the rate limiter resolves client IPs the same way it does
-// in production.
 // rlTrust: whether each test's proxy rule trusts forwarded addresses
 var rlTrust = map[string]bool{}
 
@@ -42,7 +39,7 @@ func newTestRateLimitRouter(t *testing.T, trustProxyHeaders bool, trustedProxies
 		t.Fatalf("unable to create access controller: %v", err)
 	}
 
-	rlTrust[t.Name()] = trustProxyHeaders // the proxy rule's "trust forwarded addresses" (Custom fork: per rule)
+	rlTrust[t.Name()] = trustProxyHeaders // the proxy rule's "trust forwarded addresses"
 	for _, proxy := range trustedProxies {
 		accessController.AddTrustedProxy(proxy, "test")
 	}
@@ -62,9 +59,7 @@ func newTestRequest(remoteAddr string, headers map[string]string) *http.Request 
 	return r
 }
 
-// A header supplied client IP carries no port. The limiter must still count it
-// instead of silently failing open. Regression test for the CDN bypass where
-// net.SplitHostPort() on a bare address aborted the whole check.
+// A header-supplied client IP without a port is still counted.
 func TestHandleRateLimit_BareHeaderIPStillCounts(t *testing.T) {
 	for _, headerName := range []string{"CF-Connecting-IP", "Fastly-Client-IP", "X-Real-Ip", "X-Forwarded-For"} {
 		t.Run(headerName, func(t *testing.T) {
@@ -93,14 +88,12 @@ func TestHandleRateLimit_BareHeaderIPStillCounts(t *testing.T) {
 	}
 }
 
-// Every visitor behind the CDN must get their own counter rather than sharing
-// the edge address, otherwise one busy client 429s everyone else.
+// Each visitor behind the CDN gets their own counter.
 func TestHandleRateLimit_CountsPerRealClient(t *testing.T) {
 	router := newTestRateLimitRouter(t, true, "104.16.0.0/13")
 	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3, TrustProxyHeaders: rlTrust[t.Name()]}
 
-	//Exceeded() blocks once the counter reaches the limit, so a limit of 3
-	//lets 2 requests through before the third is rejected
+	// A limit of 3 lets 2 requests through before the third is rejected
 	for i := 0; i < 2; i++ {
 		w := httptest.NewRecorder()
 		r := newTestRequest("104.16.5.1:443", map[string]string{"CF-Connecting-IP": "203.0.113.1"})
@@ -117,8 +110,7 @@ func TestHandleRateLimit_CountsPerRealClient(t *testing.T) {
 	}
 }
 
-// A spoofed header from a peer that is not on the trusted proxy list must not
-// let a client escape the limiter by rotating the header value.
+// A spoofed header from an untrusted peer is ignored by the limiter.
 func TestHandleRateLimit_SpoofedHeaderFromUntrustedPeerIgnored(t *testing.T) {
 	router := newTestRateLimitRouter(t, true) //no trusted proxies configured
 	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3, TrustProxyHeaders: rlTrust[t.Name()]}
@@ -143,8 +135,7 @@ func TestHandleRateLimit_SpoofedHeaderFromUntrustedPeerIgnored(t *testing.T) {
 	}
 }
 
-// The pre-existing behaviour of counting the direct peer when no proxy header
-// is involved must be unchanged.
+// The direct peer is counted when no proxy header is involved.
 func TestHandleRateLimit_DirectConnection(t *testing.T) {
 	router := newTestRateLimitRouter(t, false)
 	pe := &ProxyEndpoint{RequireRateLimit: true, RateLimit: 3, TrustProxyHeaders: rlTrust[t.Name()]}

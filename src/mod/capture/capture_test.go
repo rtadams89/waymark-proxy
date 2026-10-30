@@ -266,7 +266,7 @@ func TestCaptureLimitsAndFilters(t *testing.T) {
 	}
 }
 
-// Custom fork: oversized inputs are cut so every length field stays valid.
+// Oversized inputs are cut so length fields stay valid.
 func TestOversizedPacketsAreCut(t *testing.T) {
 	a := Endpoint{IP: net.ParseIP("10.0.0.1"), Port: 1}
 	b := Endpoint{IP: net.ParseIP("10.0.0.2"), Port: 2}

@@ -1,7 +1,5 @@
 /*
-    updateNotice.js (custom fork)
-
-    Waymark updates (selfupdate_custom.go):
+    Waymark updates:
     - a pill next to the logo when a newer release is available on GitHub
       (click opens System > About)
     - the Updates box on System > About: current and latest version,
@@ -10,8 +8,8 @@
       back and reloads the page on the new version
 
     In an HA cluster, Rolling update (updRollingStart) updates every node
-    one at a time (rollingupdate_custom.go); its progress is shown on the
-    High Availability page. Other nodes can also be updated one by one there.
+    one at a time; its progress is shown on the High Availability page.
+    Other nodes can also be updated one by one there.
 */
 (function(){
     let st = null;          // last /api/update/status

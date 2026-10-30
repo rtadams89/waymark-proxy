@@ -7,16 +7,13 @@ import (
 	"unicode/utf8"
 )
 
-/*
-MaxStatKeyLength is the maximum length of a request supplied string (URL,
-Referer or User-Agent) used as a key in the daily summary maps. Anything
-longer is truncated so that a single client cannot inflate the size of the
-summary, and so the serialized summary stays a predictable size on disk.
-*/
+// MaxStatKeyLength is the maximum length of a request supplied string (URL,
+// Referer or User-Agent) used as a key in the daily summary maps; longer
+// strings are truncated.
 const MaxStatKeyLength = 256
 
-// Truncate a request supplied string down to MaxStatKeyLength bytes, cutting
-// on a rune boundary so the result stays valid UTF-8 for the JSON encoder
+// truncateStatKey truncates a request supplied string to MaxStatKeyLength
+// bytes on a rune boundary.
 func truncateStatKey(key string) string {
 	if len(key) <= MaxStatKeyLength {
 		return key
@@ -63,6 +60,5 @@ func IsValidIPAddress(ip string) bool {
 		return true
 	}
 
-	// If the string is neither a valid IPv4 nor IPv6 address, return false
 	return false
 }

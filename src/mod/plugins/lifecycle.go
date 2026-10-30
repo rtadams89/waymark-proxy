@@ -28,11 +28,10 @@ func (m *Manager) StartPlugin(pluginID string) error {
 	//Get the plugin Entry point
 	pluginEntryPoint, err := m.GetPluginEntryPoint(thisPlugin.RootDir)
 	if err != nil {
-		//Plugin removed after introspect?
 		return err
 	}
 
-	//Get the absolute path of the plugin entry point to prevent messing up with the cwd
+	// Absolute path of the plugin entry point
 	absolutePath, err := filepath.Abs(pluginEntryPoint)
 	if err != nil {
 		return err
@@ -74,9 +73,7 @@ func (m *Manager) StartPlugin(pluginID string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	// The output readers below belong to exactly this process. Pass its PID to
-	// them instead of reading thisPlugin.process, which is assigned later and
-	// may already belong to a newer process after a restart.
+	// PID passed to the output readers below
 	pid := cmd.Process.Pid
 
 	//Create a goroutine to handle the STDOUT of the plugin
@@ -135,7 +132,6 @@ func (m *Manager) StartPlugin(pluginID string) error {
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			//In theory this should not happen except for a crash
 			m.Log("plugin "+thisPlugin.Spec.ID+" encounted a fatal error. Disabling plugin...", err)
 
 			//Set the plugin state to disabled
@@ -153,7 +149,7 @@ func (m *Manager) StartPlugin(pluginID string) error {
 		return err
 	}
 
-	// Store the cmd object so it can be accessed later for stopping the plugin
+	// Store the cmd object for stopping the plugin
 	thisPlugin.process = cmd
 	thisPlugin.Enabled = true
 
@@ -214,9 +210,7 @@ func (m *Manager) StartUIHandlerForPlugin(targetPlugin *Plugin, pluginListeningP
 	return nil
 }
 
-// handlePluginSTDOUT logs one stdout line of the plugin process with the given
-// PID. The PID is passed in by the reader goroutine that owns the process, so
-// no shared plugin state is read concurrently with StartPlugin.
+// handlePluginSTDOUT logs one stdout line of the plugin process with the given PID.
 func (m *Manager) handlePluginSTDOUT(pluginID string, processID int, line string) {
 	thisPlugin, err := m.GetPluginByID(pluginID)
 	if err != nil {
@@ -255,7 +249,7 @@ func (m *Manager) StopPlugin(pluginID string) error {
 		}
 		resp, err := client.Get(requestURI)
 		if err != nil {
-			// Plugin does not support termination request, do it the hard way
+			// Termination request failed: force shutdown
 			m.Log("Plugin "+thisPlugin.Spec.ID+" termination request failed. Force shutting down", nil)
 		} else {
 			defer resp.Body.Close()
@@ -270,7 +264,7 @@ func (m *Manager) StopPlugin(pluginID string) error {
 	}
 
 	if runtime.GOOS == "windows" && thisPlugin.process != nil {
-		//There is no SIGTERM in windows, kill the process directly
+		// Kill the process directly on Windows
 		time.Sleep(300 * time.Millisecond)
 		thisPlugin.process.Process.Kill()
 	} else {

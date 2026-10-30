@@ -44,7 +44,7 @@ type ManagerOptions struct {
 
 	/* Runtime */
 	SystemConst  *zoraxyPlugin.RuntimeConstantValue //The system constant value
-	ZoraxyPort   int                                //The port of the Zoraxy instance, used for API calls
+	ZoraxyPort   int                                //The port of this instance, used for API calls
 	CSRFTokenGen func(*http.Request) string         `json:"-"` //The CSRF token generator function
 	Database     *database.Database                 `json:"-"`
 	Logger       *logger.Logger                     `json:"-"`

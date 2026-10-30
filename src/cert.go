@@ -9,9 +9,9 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// Handle front-end toggling TLS mode
+// Gets (GET) or sets (POST set) whether the proxy uses TLS.
 func handleToggleTLSProxy(w http.ResponseWriter, r *http.Request) {
-	currentTlsSetting := true //Default to true
+	currentTlsSetting := true
 	if dynamicProxyRouter.Option != nil {
 		currentTlsSetting = dynamicProxyRouter.Option.UseTls
 	}
@@ -21,7 +21,6 @@ func handleToggleTLSProxy(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		//Get the current status
 		js, _ := json.Marshal(currentTlsSetting)
 		utils.SendJSONResponse(w, string(js))
 	case http.MethodPost:
@@ -46,7 +45,6 @@ func handleToggleTLSProxy(w http.ResponseWriter, r *http.Request) {
 }
 
 func minTlsVersionStringToUint16(version string) uint16 {
-	// Update the setting
 	var tlsVersionUint16 uint16
 	switch version {
 	case "1.0":
@@ -61,12 +59,11 @@ func minTlsVersionStringToUint16(version string) uint16 {
 	return tlsVersionUint16
 }
 
-// Handle the GET and SET of reverse proxy minimum TLS version
+// Gets (GET) or sets (POST set) the minimum TLS version.
 func handleSetTlsMinVersion(w http.ResponseWriter, r *http.Request) {
 	newVersion, err := utils.PostPara(r, "set")
 	if err != nil {
-		// GET
-		var minTLSVersion string = "1.2" // Default to 1.2
+		var minTLSVersion string = "1.2"
 		if sysdb.KeyExists("settings", "minTLSVersion") {
 			sysdb.Read("settings", "minTLSVersion", &minTLSVersion)
 		}
@@ -75,7 +72,6 @@ func handleSetTlsMinVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate input
 	allowed := map[string]bool{"1.0": true, "1.1": true, "1.2": true, "1.3": true}
 	if !allowed[newVersion] {
 		utils.SendErrorResponse(w, "invalid TLS version")
@@ -84,33 +80,27 @@ func handleSetTlsMinVersion(w http.ResponseWriter, r *http.Request) {
 
 	sysdb.Write("settings", "minTLSVersion", newVersion)
 	tlsVersionUint16 := minTlsVersionStringToUint16(newVersion)
-	// Update the setting
 	SystemWideLogger.PrintAndLog("tls", "Updating minimum TLS version to v"+newVersion+" or above", nil)
 	dynamicProxyRouter.SetTlsMinVersion(tlsVersionUint16)
 	utils.SendOK(w)
 }
 
 func handleCertTryResolve(w http.ResponseWriter, r *http.Request) {
-	// get the domain
 	domain, err := utils.GetPara(r, "domain")
 	if err != nil {
 		utils.SendErrorResponse(w, "invalid domain given")
 		return
 	}
 
-	// get the proxy rule, the pass in domain value must be root or matching domain
 	proxyRule, err := dynamicProxyRouter.GetProxyEndpointById(domain, false)
 	if err != nil {
-		//Try to resolve the domain via alias
 		proxyRule, err = dynamicProxyRouter.GetProxyEndpointByAlias(domain)
 		if err != nil {
-			//No matching rule found
 			utils.SendErrorResponse(w, "proxy rule not found for domain: "+domain)
 			return
 		}
 	}
 
-	// list all the alias domains for this rule
 	allDomains := []string{proxyRule.RootOrMatchingDomain}
 	aliasDomains := []string{}
 	for _, alias := range proxyRule.MatchingDomainAlias {
@@ -120,7 +110,6 @@ func handleCertTryResolve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Try to resolve the domain
 	domainKeyPairs := map[string]string{}
 	for _, thisDomain := range allDomains {
 		pubkey, prikey, err := tlsCertManager.GetCertificateByHostname(thisDomain)
@@ -129,15 +118,12 @@ func handleCertTryResolve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//Make sure pubkey and private key are not empty
 		if pubkey == "" || prikey == "" {
 			domainKeyPairs[thisDomain] = ""
 		} else {
-			//Store the key pair
 			keyname := strings.TrimSuffix(filepath.Base(pubkey), filepath.Ext(pubkey))
 			if keyname == "localhost" {
-				//Internal certs like localhost should not be used
-				//report as "fallback" key
+				// Internal certificates are reported as the fallback certificate
 				keyname = "fallback certificate"
 			}
 			domainKeyPairs[thisDomain] = keyname
@@ -145,7 +131,7 @@ func handleCertTryResolve(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	//A domain must be UseDNSValidation if it is a wildcard domain or its alias is a wildcard domain
+	// Wildcard root or alias requires DNS validation
 	useDNSValidation := strings.HasPrefix(proxyRule.RootOrMatchingDomain, "*")
 	for _, alias := range aliasDomains {
 		if strings.HasPrefix(alias, "*") || strings.HasPrefix(domain, "*") {
@@ -172,28 +158,24 @@ func handleCertTryResolve(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSetDomainPreferredCertificate(w http.ResponseWriter, r *http.Request) {
-	//Get the domain
 	domain, err := utils.PostPara(r, "domain")
 	if err != nil {
 		utils.SendErrorResponse(w, "invalid domain given")
 		return
 	}
 
-	//Get the certificate name
 	certName, err := utils.PostPara(r, "certname")
 	if err != nil {
 		utils.SendErrorResponse(w, "invalid certificate name given")
 		return
 	}
 
-	//Load the target endpoint
 	ept, err := dynamicProxyRouter.GetProxyEndpointById(domain, true)
 	if err != nil {
 		utils.SendErrorResponse(w, "proxy rule not found for domain: "+domain)
 		return
 	}
 
-	//Set the preferred certificate for the domain
 	err = dynamicProxyRouter.SetPreferredCertificateForDomain(ept, domain, certName)
 	if err != nil {
 		utils.SendErrorResponse(w, "failed to set preferred certificate: "+err.Error())

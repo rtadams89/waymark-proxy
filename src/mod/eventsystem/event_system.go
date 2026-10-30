@@ -30,7 +30,7 @@ var (
 	once      sync.Once
 )
 
-// InitEventSystem initializes the event manager with the plugin manager
+// InitEventSystem initializes the event manager.
 func InitEventSystem(logger *logger.Logger) {
 	once.Do(func() {
 		Publisher = &eventManager{
@@ -61,14 +61,12 @@ func (em *eventManager) RegisterSubscriberToEvent(subscriber Listener, eventType
 		}
 	}
 
-	// Register the listener to the event
 	em.subscriptions[eventType] = append(em.subscriptions[eventType], listenerID)
 
 	return nil
 }
 
-// Deregister removes a listener from all event subscriptions, and
-// also removes the listener from the list of subscribers.
+// UnregisterSubscriber removes a listener from all event subscriptions and the subscriber list.
 func (em *eventManager) UnregisterSubscriber(listenerID ListenerID) error {
 	em.mutex.Lock()
 	defer em.mutex.Unlock()
@@ -86,9 +84,7 @@ func (em *eventManager) UnregisterSubscriber(listenerID ListenerID) error {
 	return nil
 }
 
-// EmitToSubscribersAnd dispatches an event to the specific listeners in addition to the events subscribers.
-//
-// The primary use-case of this function is for plugin-to-plugin communication
+// EmitToSubscribersAnd dispatches an event to the given listeners and to the event's subscribers.
 func (em *eventManager) EmitToSubscribersAnd(listenerIDs []ListenerID, payload events.EventPayload) {
 	eventName := payload.GetName()
 
@@ -96,7 +92,6 @@ func (em *eventManager) EmitToSubscribersAnd(listenerIDs []ListenerID, payload e
 		return // No listeners specified
 	}
 
-	// Create the event
 	event := events.Event{
 		Name:      eventName,
 		Timestamp: time.Now().Unix(),
@@ -129,7 +124,6 @@ func (em *eventManager) Emit(payload events.EventPayload) {
 		return // No subscribers
 	}
 
-	// Create the event
 	event := events.Event{
 		Name:      eventName,
 		Timestamp: time.Now().Unix(),
@@ -147,7 +141,6 @@ func (em *eventManager) emitTo(listenerIDs []ListenerID, event events.Event) {
 		return
 	}
 
-	// Dispatch to all specified listeners asynchronously
 	em.mutex.RLock()
 	defer em.mutex.RUnlock()
 	listenersToUnregister := []ListenerID{}

@@ -32,9 +32,7 @@ const (
 	externalIpv6Filename = "geoipv6.csv"
 )
 
-// geoDataSet is an immutable snapshot of the parsed geoip dataset. The whole
-// dataset is swapped at once on database reload so an ongoing lookup will
-// never see a partially updated dataset, see Store.dataset
+// geoDataSet is an immutable snapshot of the parsed geoip dataset, swapped as a whole on reload.
 type geoDataSet struct {
 	geodb           [][]string //Parsed geodb list
 	geodbIpv6       [][]string //Parsed geodb list for ipv6
@@ -45,7 +43,7 @@ type geoDataSet struct {
 
 type Store struct {
 	dataset                  atomic.Pointer[geoDataSet] //Current geoip dataset in use
-	updater                  *Updater                   //Geoip database updater, see updater.go
+	updater                  *Updater                   // Geoip database updater
 	sysdb                    *database.Database
 	slowLookupCacheIpv4      sync.Map     //Cache for slow lookup, ip -> cc
 	slowLookupCacheIpv6      sync.Map     //Cache for slow lookup ipv6, ip -> cc
@@ -53,7 +51,7 @@ type Store struct {
 	cacheClearTickerStopChan chan bool    //Stop channel for cache clear ticker
 	option                   *StoreOptions
 
-	disabled atomic.Bool //Custom fork: lookups turned off and dataset unloaded, see enable_custom.go
+	disabled atomic.Bool // Lookups turned off and dataset unloaded
 }
 
 type StoreOptions struct {
@@ -63,7 +61,7 @@ type StoreOptions struct {
 	SlowLookupCacheClearInterval time.Duration //Clear slow lookup cache interval
 	ExternalGeoDBFolder          string        //Folder for storing the downloaded geodb dataset
 
-	Disabled bool //Custom fork: start with lookups turned off (dataset not loaded)
+	Disabled bool // Start with lookups turned off (dataset not loaded)
 }
 
 type CountryInfo struct {
@@ -84,7 +82,6 @@ func NewGeoDb(sysdb *database.Database, option *StoreOptions) (*Store, error) {
 		option.ExternalGeoDBFolder = DefaultExternalGeoDBFolder
 	}
 
-	//Create a new store
 	thisGeoDBStore := &Store{
 		sysdb:                    sysdb,
 		slowLookupCacheIpv4:      sync.Map{},
@@ -95,7 +92,7 @@ func NewGeoDb(sysdb *database.Database, option *StoreOptions) (*Store, error) {
 	}
 
 	//Load the geoip dataset into the store
-	thisGeoDBStore.disabled.Store(option.Disabled) //Custom fork
+	thisGeoDBStore.disabled.Store(option.Disabled)
 	if !option.Disabled {
 		dataset, err := thisGeoDBStore.loadDataSet()
 		if err != nil {
@@ -174,12 +171,10 @@ func (s *Store) loadDataSet() (*geoDataSet, error) {
 	}, nil
 }
 
-// ReloadGeoDB reload the geoip dataset from the external geodb folder and hot
-// swap it into the store. This is called after a database update so the new
-// dataset can be used without restarting Zoraxy
+// ReloadGeoDB reloads the geoip dataset from the external geodb folder and swaps it into the store.
 func (s *Store) ReloadGeoDB() error {
 	if s.disabled.Load() {
-		return nil //Custom fork: loaded when lookups are turned back on
+		return nil
 	}
 	newDataSet, err := s.loadDataSet()
 	if err != nil {
@@ -187,7 +182,7 @@ func (s *Store) ReloadGeoDB() error {
 	}
 	s.dataset.Store(newDataSet)
 
-	//The lookup results might have changed. Drop the slow lookup caches
+	// Drop the slow lookup caches
 	s.slowLookupCacheIpv4.Clear()
 	s.slowLookupCacheIpv6.Clear()
 	return nil
@@ -217,7 +212,6 @@ func (s *Store) Close() {
 		s.updater.Close()
 	}
 	if s.option.AllowSlowIpv4LookUp || s.option.AllowSlowIpv6Lookup {
-		//Stop cache clear ticker
 		s.cacheClearTickerStopChan <- true
 	}
 }

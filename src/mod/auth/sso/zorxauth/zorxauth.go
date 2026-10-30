@@ -13,45 +13,25 @@ import (
 )
 
 /*
-
-	ZorxAuth SSO Authentication Module
-
-	This module is designed to replace forward auth providers like Authelia/Authentik with a lightweight SSO authentication solution
-	that only works in Zoraxy environment. It is ideal for lazy homelab sysadmins who don't want to setup a dedicated authentication
-	server just for a few services running in their homelab.
-
- 	SSORedirectURL is the URL of the SSO authentication endpoint, e.g. https://auth.example.com.
-	SSOSessionSetURL is the URL of the SSO session set endpoint, e.g. /.wellknown/zorxauth/session/set,
-	which will be called by the SSO endpoint after successful authentication to set the session ID in the AuthAgent.
-
-	The AuthAgent will redirect unauthenticated requests to this URL with a "redirect" query parameter
-	containing the original requested URL.
-	e.g. https://auth.example.com?redirect=http://mysite.example.com/protected/resource
-
-	After successful authentication, the user will be redirected back to the original domain (mysite.example.com) to
-	the SSOSessionSetURL with the session ID and original redirect URL as query parameters, e.g.
-	-> mysite.example.com/.wellknown/zorxauth/session/set?session_id=abc123&redirect=http://mysite.example.com/protected/resource
-
-	The zorxauth module will capture this endpoint and set the cookie in the user's browser, allowing them to access protected resources without needing to authenticate again until the session expires.
-	Lastly, the SSO endpoint will redirect the user back to the original URL specified in the "redirect" query parameter, e.g.
-	-> mysite.example.com/protected/resource
+	Waymark Auth SSO. Unauthenticated requests are redirected to
+	SSORedirectURL with the original URL in "redirect". After login the
+	gateway redirects to SSOSessionSetURL on the original host with a
+	one-time session_id; that request sets the session cookie and redirects
+	to the original URL.
 */
 
 // NewAuthRouter creates a new AuthRouter instance
 func NewAuthRouter(db *database.Database, log *logger.Logger) *AuthRouter {
-	// Create a new table for zorxauth settings if it doesn't exist
 	db.NewTable(DB_NAME)
 	db.NewTable(DB_USERS_TABLE)
 	db.NewTable(DB_BROWSER_SESSIONS_TABLE)
 	db.NewTable(DB_GATEWAY_SESSIONS_TABLE)
 
 	if !db.KeyExists(DB_NAME, "options") {
-		//Write default options to database
 		defaultOptions := getDefaultOptions()
 		db.Write(DB_NAME, "options", defaultOptions)
 	}
 
-	//Load options from database
 	options := AuthRouterOptions{}
 	db.Read(DB_NAME, "options", &options)
 
@@ -62,22 +42,16 @@ func NewAuthRouter(db *database.Database, log *logger.Logger) *AuthRouter {
 		rateLimitResetStop: make(chan bool, 1),
 	}
 
-	// Load browser sessions from database
 	authRouter.loadBrowserSessions()
 
-	// Load gateway sessions from database
 	authRouter.loadGatewaySessions()
 
-	// Initialize group policy store (load from disk)
 	authRouter.initGroupPolicyStore()
 
-	// Initialize login page branding store (load from disk)
 	authRouter.initBrandingStore()
 
-	// Start the per-minute login attempt counter reset ticker
 	go authRouter.startLoginRateLimitTicker()
 
-	//Start the authentication gateway if enabled
 	if options.EnableAuthGateway {
 		gatewayServer := NewGatewayServer(authRouter)
 		if err := gatewayServer.Start(); err != nil {
@@ -92,19 +66,18 @@ func NewAuthRouter(db *database.Database, log *logger.Logger) *AuthRouter {
 	return authRouter
 }
 
-// GenerateValidationCodeForSession generates a one-time validation code for the given session ID and stores the mapping in sessionIdStore.
-// this is not the cookie session ID, for cookie session ID, see generateSessionToken() instead.
+// generateValidationCodeForSession returns a one-time validation code for
+// sessionId, valid for 30 seconds.
 func (ar *AuthRouter) generateValidationCodeForSession(sessionId string) string {
 	buf := make([]byte, 24)
 	if _, err := rand.Read(buf); err != nil {
-		// Fallback to time-derived code when entropy source fails
+		// Time-derived code when the random source fails
 		buf = []byte(time.Now().Format("20060102150405.000000000"))
 	}
 
 	validationCode := hex.EncodeToString(buf)
 	ar.sessionIdStore.Store(validationCode, sessionId)
 
-	// Validation code is short-lived and one-time use.
 	time.AfterFunc(30*time.Second, func() {
 		ar.sessionIdStore.Delete(validationCode)
 	})
@@ -152,7 +125,6 @@ func (ar *AuthRouter) incrementLoginFailure(ip string) int64 {
 
 // loadBrowserSessions loads existing browser sessions from database into memory
 func (ar *AuthRouter) loadBrowserSessions() {
-	// Get all keys from the browser sessions table
 	entries, err := ar.Database.ListTable(DB_BROWSER_SESSIONS_TABLE)
 	if err != nil {
 		if ar.Logger != nil {
@@ -176,21 +148,17 @@ func (ar *AuthRouter) loadBrowserSessions() {
 			continue
 		}
 
-		// Skip expired sessions
 		if now.After(session.Expiry) {
 			expiredCount++
 			ar.Database.Delete(DB_BROWSER_SESSIONS_TABLE, key)
 			continue
 		}
 
-		// Extract session ID from key (remove prefix)
 		sessionID := strings.TrimPrefix(key, DB_BROWSER_SESSION_KEY_PREFIX)
 
-		// Store in memory
 		ar.cookieIdStore.Store(sessionID, &session)
 		loadedCount++
 
-		// Set up cleanup timer for when session expires
 		timeUntilExpiry := time.Until(session.Expiry)
 		if timeUntilExpiry > 0 {
 			sessionIDCopy := sessionID
@@ -207,7 +175,6 @@ func (ar *AuthRouter) loadBrowserSessions() {
 
 // loadGatewaySessions loads existing gateway sessions from database into memory
 func (ar *AuthRouter) loadGatewaySessions() {
-	// Get all keys from the gateway sessions table
 	entries, err := ar.Database.ListTable(DB_GATEWAY_SESSIONS_TABLE)
 	if err != nil {
 		if ar.Logger != nil {
@@ -231,21 +198,17 @@ func (ar *AuthRouter) loadGatewaySessions() {
 			continue
 		}
 
-		// Skip expired sessions
 		if now.After(session.Expiry) {
 			expiredCount++
 			ar.Database.Delete(DB_GATEWAY_SESSIONS_TABLE, key)
 			continue
 		}
 
-		// Extract session ID from key (remove prefix)
 		sessionID := strings.TrimPrefix(key, DB_GATEWAY_SESSION_KEY_PREFIX)
 
-		// Store in memory
 		ar.gatewaySessionStore.Store(sessionID, &session)
 		loadedCount++
 
-		// Set up cleanup timer for when session expires
 		timeUntilExpiry := time.Until(session.Expiry)
 		if timeUntilExpiry > 0 {
 			sessionIDCopy := sessionID
@@ -262,7 +225,6 @@ func (ar *AuthRouter) loadGatewaySessions() {
 
 // Close saves all browser sessions to database and performs cleanup
 func (ar *AuthRouter) Close() {
-	// Stop the login rate limit ticker
 	if ar.rateLimitResetStop != nil {
 		select {
 		case ar.rateLimitResetStop <- true:
@@ -270,12 +232,10 @@ func (ar *AuthRouter) Close() {
 		}
 	}
 
-	// Stop the gateway server if running
 	if ar.gatewayServer != nil {
 		ar.gatewayServer.Stop()
 	}
 
-	// Save all browser sessions to database
 	ar.cookieIdStore.Range(func(key, value interface{}) bool {
 		sessionID, ok := key.(string)
 		if !ok {
@@ -287,12 +247,10 @@ func (ar *AuthRouter) Close() {
 			return true
 		}
 
-		// Skip expired sessions
 		if time.Now().After(browserSession.Expiry) {
 			return true
 		}
 
-		// Save to database
 		dbKey := DB_BROWSER_SESSION_KEY_PREFIX + sessionID
 		err := ar.Database.Write(DB_BROWSER_SESSIONS_TABLE, dbKey, browserSession)
 		if err != nil && ar.Logger != nil {
@@ -302,7 +260,6 @@ func (ar *AuthRouter) Close() {
 		return true
 	})
 
-	// Save all gateway sessions to database
 	ar.gatewaySessionStore.Range(func(key, value interface{}) bool {
 		sessionID, ok := key.(string)
 		if !ok {
@@ -314,12 +271,10 @@ func (ar *AuthRouter) Close() {
 			return true
 		}
 
-		// Skip expired sessions
 		if time.Now().After(gatewaySession.Expiry) {
 			return true
 		}
 
-		// Save to database
 		dbKey := DB_GATEWAY_SESSION_KEY_PREFIX + sessionID
 		err := ar.Database.Write(DB_GATEWAY_SESSIONS_TABLE, dbKey, gatewaySession)
 		if err != nil && ar.Logger != nil {

@@ -91,9 +91,7 @@ func TestCheckExceptionCIDRRules(t *testing.T) {
 	}
 }
 
-// CIDR exceptions must only be matched against the caller resolved client IP.
-// Forwarding headers on the request are attacker controlled unless the caller
-// decided to trust them, so they must never be read here (#1321)
+// CIDR exceptions match only the resolved client IP, not forwarding headers.
 func TestCheckExceptionIgnoresForwardingHeaders(t *testing.T) {
 	rules := []*ExceptionRule{{RuleType: ExceptionTypeCIDR, CIDR: "10.0.0.0/8"}}
 	for _, headerName := range []string{"X-Real-Ip", "CF-Connecting-IP", "Fastly-Client-IP", "X-Forwarded-For"} {
@@ -108,8 +106,7 @@ func TestCheckExceptionIgnoresForwardingHeaders(t *testing.T) {
 	}
 }
 
-// ProtectedPathPrefixes is an inclusion list, so it must resolve the path too:
-// a request that resolves into the protected subtree has to be enforced.
+// Protected path prefixes match the resolved path.
 func TestShouldEnforcePathResolvesPath(t *testing.T) {
 	cfg := &Config{ProtectedPathPrefixes: []string{"/api"}}
 
@@ -135,8 +132,7 @@ func TestShouldEnforcePathResolvesPath(t *testing.T) {
 	}
 }
 
-// The root prefix keeps its broad meaning here, the opposite of how an
-// exception rule treats it. This is the regression guard for that asymmetry.
+// The "/" prefix protects every path.
 func TestShouldEnforcePathRootPrefixProtectsEverything(t *testing.T) {
 	cfg := &Config{ProtectedPathPrefixes: []string{"/"}}
 	for _, target := range []string{"/", "/anything", "/deep/nested/path", "/x/../y"} {

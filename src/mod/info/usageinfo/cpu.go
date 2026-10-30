@@ -73,10 +73,9 @@ func calculateCPUUsage(prev, current CPUStats) float64 {
 	return usage
 }
 
-// GetCPUUsage returns the current CPU usage as a percentage
-// Note this is blocking and will sleep for 1 second
+// GetCPUUsageUsingProcStat returns the current CPU usage as a percentage.
+// It blocks for 1 second.
 func GetCPUUsageUsingProcStat() (float64, error) {
-	// Get initial CPU stats
 	prevStats, err := getCPUStats()
 	if err != nil {
 		return 0, err
@@ -85,13 +84,11 @@ func GetCPUUsageUsingProcStat() (float64, error) {
 	// Sleep for 1 second to compare stats over time
 	time.Sleep(1 * time.Second)
 
-	// Get current CPU stats after 1 second
 	currentStats, err := getCPUStats()
 	if err != nil {
 		return 0, err
 	}
 
-	// Calculate and print the CPU usage
 	cpuUsage := calculateCPUUsage(prevStats, currentStats)
 	return cpuUsage, nil
 }

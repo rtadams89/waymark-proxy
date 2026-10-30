@@ -9,12 +9,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	handler.go
-
-	This script handles pathblock api
-*/
-
 func (h *Handler) HandleListBlockingPath(w http.ResponseWriter, r *http.Request) {
 	js, _ := json.Marshal(h.BlockingPaths)
 	utils.SendJSONResponse(w, string(js))
@@ -86,7 +80,6 @@ func (h *Handler) HandleRemoveBlockingPath(w http.ResponseWriter, r *http.Reques
 
 	targetRule := h.GetPathBlockerFromUUID(blockerUUID)
 	if targetRule == nil {
-		//Not found
 		utils.SendErrorResponse(w, "target path blocker not found")
 		return
 	}

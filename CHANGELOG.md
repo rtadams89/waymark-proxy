@@ -10,6 +10,12 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.2
+
+**Changed: code comments**
+- Comments throughout the Go code, the web interface (HTML, JavaScript, CSS), the scripts and the build workflows were reviewed. Comments now only say what the code does where that is not clear from the code itself: notes on history ("custom fork", issue numbers, what the code used to do), reasons, things the code does not do, file cross-references and commented-out code were removed or shortened, and comments that only repeated the code were dropped. License headers, build directives and generated-file markers are unchanged.
+- No behaviour change: the Go code compiles to the same program (checked by comparing the parsed code with comments ignored), and the web pages' scripts are unchanged apart from comments.
+
 ## 2.19.1
 
 **Fixed: streamed responses to POST requests could be cut short**

@@ -100,7 +100,7 @@ func (m *Monitor) masterPingTargets() {
 func (m *Monitor) pingTargets(timeout time.Duration, targets []*Target, requireOnlineStatusLog bool) {
 	for _, target := range targets {
 		if target.ExternallyMonitored {
-			//Custom fork: health checks supply this target's records
+			// Records supplied externally
 			continue
 		}
 		if target.Protocol != "http" && target.Protocol != "https" {
@@ -108,10 +108,9 @@ func (m *Monitor) pingTargets(timeout time.Duration, targets []*Target, requireO
 			continue
 		}
 
-		// Run each check in a separate goroutine to avoid blocking
+		// Run each check in a separate goroutine
 		go func(target *Target) {
-			// Get online status and latency, and handle state transitions and logging accordingly
-			// this also handle notifying the dynamic proxy to take down or bring up the upstream when state changes
+			// Online status and latency; notifies the dynamic proxy on state changes
 			online, latency, statusCode := m.getWebsiteStatusWithLatency(target, timeout)
 			now := time.Now().Unix()
 			thisRecord := Record{
@@ -321,9 +320,7 @@ func (m *Monitor) getWebsiteStatusWithLatency(target *Target, timeout time.Durat
 			m.Config.Logger.PrintAndLog(LOG_MODULE_NAME, "Ping destination timeout. Assume offline", err)
 		}
 
-		// Check if this is the first record
-		// sometime after startup the first check may fail due to network issues
-		// we will log it as failed but not notify dynamic proxy to take down the upstream
+		// The first record after startup is logged as failed without notifying the dynamic proxy
 		m.logMutex.RLock()
 		records, ok := m.OnlineStatusLog[target.ID]
 		m.logMutex.RUnlock()
@@ -359,8 +356,7 @@ func (m *Monitor) getWebsiteStatus(url string, skipTLSVerification bool, timeout
 		return 0, err
 	}
 
-	// Need to explicitly disable keep-alives and set a short idle connection timeout to avoid hanging connections
-	// See #1241 for details
+	// Keep-alives off and a short idle connection timeout
 	transport := &http.Transport{
 		DisableKeepAlives: true,
 		IdleConnTimeout:   15 * time.Second,
@@ -413,7 +409,7 @@ func (m *Monitor) getWebsiteStatus(url string, skipTLSVerification bool, timeout
 		}
 	}
 	defer resp.Body.Close()
-	// Drain the response body so OS close the connection with FIN instead of RST
+	// Drain the response body
 	io.Copy(io.Discard, resp.Body)
 	status_code := resp.StatusCode
 	return status_code, nil

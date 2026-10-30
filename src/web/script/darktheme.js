@@ -16,7 +16,7 @@ function _darkThemeHandleApplyChange(){
 }
 
 
- //Check if the theme is dark, must be done before the body is loaded to prevent flickering
+ //Apply the theme before the body is loaded
  function setDarkTheme(isDarkTheme = false){
     if (isDarkTheme){
         $("body").addClass("darkTheme");
@@ -36,7 +36,6 @@ function _darkThemeHandleApplyChange(){
         $("body").removeClass("darkTheme")
         $("#themeColorButton").html(`<i class="ui moon icon"></i>`);
         localStorage.setItem("theme", "light");
-        //By default the page is white theme. So no need to change the logo if page is still loading
         if (document.readyState == "complete"){
             //Switching back to light theme
             _whiteThemeHandleApplyChange();
@@ -48,4 +47,4 @@ if (localStorage.getItem("theme") == "dark"){
     setDarkTheme(true);
 }else{
     setDarkTheme(false);
-}
+}

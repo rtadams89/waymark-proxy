@@ -70,7 +70,7 @@ func SaveLogConfig(configPath string, config *LogConfig) error {
 	if err != nil {
 		return err
 	}
-	return utils.WriteFileAtomic(configPath, append(data, '\n'), 0644) //Custom fork: durable and atomic
+	return utils.WriteFileAtomic(configPath, append(data, '\n'), 0644)
 }
 
 // ApplyLogConfig applies the log configuration to the logger
@@ -128,25 +128,21 @@ func HandleUpdateLogConfig(configPath string, logger *Logger) http.HandlerFunc {
 			return
 		}
 
-		// Validate MaxSize
 		if _, err := utils.SizeStringToBytes(config.MaxSize); err != nil {
 			utils.SendErrorResponse(w, "Invalid maxSize: "+err.Error())
 			return
 		}
 
-		// Validate MaxBackups
 		if config.MaxBackups < 1 {
 			utils.SendErrorResponse(w, "maxBackups must be at least 1")
 			return
 		}
 
-		// Save config
 		if err := SaveLogConfig(configPath, &config); err != nil {
 			utils.SendErrorResponse(w, "Failed to save config: "+err.Error())
 			return
 		}
 
-		// Apply to logger
 		if err := logger.ApplyLogConfig(&config); err != nil {
 			utils.SendErrorResponse(w, "Failed to apply config: "+err.Error())
 			return

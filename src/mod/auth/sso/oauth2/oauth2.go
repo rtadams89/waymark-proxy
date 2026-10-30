@@ -61,7 +61,6 @@ type OAuth2Router struct {
 func NewOAuth2Router(options *OAuth2RouterOptions) *OAuth2Router {
 	options.Database.NewTable("oauth2")
 
-	//Read settings from database, if exists
 	options.Database.Read("oauth2", "oauth2WellKnownUrl", &options.OAuth2WellKnownUrl)
 	options.Database.Read("oauth2", "oauth2ServerUrl", &options.OAuth2ServerURL)
 	options.Database.Read("oauth2", "oauth2TokenUrl", &options.OAuth2TokenURL)
@@ -90,7 +89,7 @@ func NewOAuth2Router(options *OAuth2RouterOptions) *OAuth2Router {
 	return ar
 }
 
-// HandleSetOAuth2Settings is the internal handler for setting the OAuth URL and HTTPS
+// HandleSetOAuth2Settings gets (GET) or sets (POST) the OAuth2 settings.
 func (ar *OAuth2Router) HandleSetOAuth2Settings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -105,7 +104,6 @@ func (ar *OAuth2Router) HandleSetOAuth2Settings(w http.ResponseWriter, r *http.R
 }
 
 func (ar *OAuth2Router) handleSetOAuthSettingsGET(w http.ResponseWriter, r *http.Request) {
-	//Return the current settings
 	js, _ := json.Marshal(map[string]interface{}{
 		"oauth2WellKnownUrl":           ar.options.OAuth2WellKnownUrl,
 		"oauth2ServerUrl":              ar.options.OAuth2ServerURL,
@@ -122,7 +120,6 @@ func (ar *OAuth2Router) handleSetOAuthSettingsGET(w http.ResponseWriter, r *http
 }
 
 func (ar *OAuth2Router) handleSetOAuthSettingsPOST(w http.ResponseWriter, r *http.Request) {
-	//Update the settings
 	var oauth2ServerUrl, oauth2TokenURL, oauth2Scopes, oauth2UserInfoUrl, oauth2CodeChallengeMethod string
 	var oauth2ConfigurationCacheTime *time.Duration
 
@@ -179,7 +176,6 @@ func (ar *OAuth2Router) handleSetOAuthSettingsPOST(w http.ResponseWriter, r *htt
 		oauth2Scopes, _ = utils.PostPara(r, "oauth2Scopes")
 	}
 
-	//Write changes to runtime
 	ar.options.OAuth2WellKnownUrl = oauth2WellKnownUrl
 	ar.options.OAuth2ServerURL = oauth2ServerUrl
 	ar.options.OAuth2TokenURL = oauth2TokenURL
@@ -190,7 +186,6 @@ func (ar *OAuth2Router) handleSetOAuthSettingsPOST(w http.ResponseWriter, r *htt
 	ar.options.OAuth2CodeChallengeMethod = oauth2CodeChallengeMethod
 	ar.options.OAuth2ConfigurationCacheTime = oauth2ConfigurationCacheTime
 
-	//Write changes to database
 	ar.options.Database.Write("oauth2", "oauth2WellKnownUrl", oauth2WellKnownUrl)
 	ar.options.Database.Write("oauth2", "oauth2ServerUrl", oauth2ServerUrl)
 	ar.options.Database.Write("oauth2", "oauth2TokenUrl", oauth2TokenURL)
@@ -201,7 +196,6 @@ func (ar *OAuth2Router) handleSetOAuthSettingsPOST(w http.ResponseWriter, r *htt
 	ar.options.Database.Write("oauth2", "oauth2CodeChallengeMethod", oauth2CodeChallengeMethod)
 	ar.options.Database.Write("oauth2", "oauth2ConfigurationCacheTime", oauth2ConfigurationCacheTime)
 
-	// Flush caches
 	ar.options.OAuth2ConfigCache.DeleteAll()
 
 	utils.SendOK(w)
@@ -285,9 +279,7 @@ func (ar *OAuth2Router) newOAuth2Conf(redirectUrl string) (*oauth2.Config, error
 	return config, nil
 }
 
-// HandleOAuth2Auth is the internal handler for OAuth authentication
-// Set useHTTPS to true if your OAuth server is using HTTPS
-// Set OAuthURL to the URL of the OAuth server, e.g. OAuth.example.com
+// HandleOAuth2Auth authenticates a request with OAuth2.
 func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request) error {
 	const callbackPrefix = "/internal/oauth2"
 	const tokenCookie = "z-token"
@@ -365,8 +357,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 			w.Header().Add("Set-Cookie", cookie.String())
 		}
 
-		// Back to the page that started the login. The state comes back from
-		// the browser, so only addresses on this host are followed.
+		// Redirects back to the page that started the login, on this host
 		http.Redirect(w, r, oauth2ReturnLocation(state, r.Host), http.StatusTemporaryRedirect)
 
 		return errors.New("authorized")
@@ -421,12 +412,10 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
-// oauth2ReturnLocation turns the OAuth2 state (the query-escaped URL of the
-// page that started the login) into the address to return to: the path and
-// query of that page on this host. A state naming another host, or another
-// scheme than http(s), returns "/".
+// oauth2ReturnLocation returns the path and query, on this host, of the URL
+// in the OAuth2 state; "/" for another host or a non-http(s) scheme.
 func oauth2ReturnLocation(state string, host string) string {
-	location := strings.TrimPrefix(state, "/internal/") // fix for #695
+	location := strings.TrimPrefix(state, "/internal/")
 	if decoded, err := url.QueryUnescape(location); err == nil {
 		location = decoded
 	}
@@ -444,9 +433,8 @@ func oauth2ReturnLocation(state string, host string) string {
 	return localRedirectTarget(u.Path, u.RawQuery)
 }
 
-// localRedirectTarget builds a redirect that stays on the current host from
-// a URL's path and query only. Leading slashes and backslashes collapse to a
-// single "/", so the result can never be read as "//other-host".
+// localRedirectTarget builds a redirect on the current host from a path and
+// query, collapsing leading slashes and backslashes to one "/".
 func localRedirectTarget(path string, rawQuery string) string {
 	target := &url.URL{Path: "/" + strings.TrimLeft(path, "/\\"), RawQuery: rawQuery}
 	return target.String()

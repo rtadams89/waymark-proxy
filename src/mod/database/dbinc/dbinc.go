@@ -1,14 +1,12 @@
 package dbinc
 
-/*
-dbinc is the interface for all database backend
-*/
+// BackendType is a database backend.
 type BackendType int
 
 const (
-	BackendBoltDB  BackendType = iota //Default backend
-	BackendFSOnly                     //OpenWRT or RISCV backend
-	BackendLevelDB                    //LevelDB backend
+	BackendBoltDB BackendType = iota
+	BackendFSOnly             // filesystem backend for OpenWrt and RISC-V
+	BackendLevelDB
 
 	BackEndAuto = BackendBoltDB
 )

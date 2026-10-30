@@ -35,7 +35,7 @@ func TestBasicAuthExceptionMatchedPathPrefix(t *testing.T) {
 		target string
 		want   bool
 	}{
-		// Regression for the report that a /public/ exclusion still challenged the bare /public.
+		// A /public/ exception also covers the bare /public
 		{"trailing_slash_rule_bare_path", pathRule("/public/", false), "/public", true},
 		{"trailing_slash_rule_exact", pathRule("/public/", false), "/public/", true},
 		{"trailing_slash_rule_subpath", pathRule("/public/", false), "/public/logo.png", true},
@@ -44,7 +44,7 @@ func TestBasicAuthExceptionMatchedPathPrefix(t *testing.T) {
 		{"no_slash_rule_subpath", pathRule("/public", false), "/public/logo.png", true},
 		{"prefix_without_leading_slash", pathRule("public/", false), "/public/logo.png", true},
 
-		// A prefix must match on a segment boundary, never as a bare string prefix.
+		// Prefixes match on segment boundaries
 		{"sibling_substring", pathRule("/public", false), "/publicsecret", false},
 		{"sibling_hyphen", pathRule("/public", false), "/public-internal/secret.txt", false},
 		{"traversal_out_of_prefix", pathRule("/public/", false), "/public/../admin/secret.txt", false},
@@ -52,7 +52,7 @@ func TestBasicAuthExceptionMatchedPathPrefix(t *testing.T) {
 		{"unrelated_path", pathRule("/public/", false), "/admin", false},
 		{"empty_prefix", pathRule("   ", false), "/anything", false},
 
-		// Case matching is opt-in per rule and must not widen the prefix boundary.
+		// Case-insensitive matching keeps the segment boundary
 		{"case_sensitive_by_default", pathRule("/public/", false), "/Public/logo.png", false},
 		{"case_insensitive_subpath", pathRule("/public/", true), "/Public/logo.png", true},
 		{"case_insensitive_bare_path", pathRule("/public/", true), "/PUBLIC", true},
@@ -73,7 +73,7 @@ func TestBasicAuthExceptionMatchedPathPrefix(t *testing.T) {
 	}
 }
 
-// TestBasicAuthExceptionMatchedCIDR verifies IP exclusions still match on the untrusted client IP.
+// TestBasicAuthExceptionMatchedCIDR checks IP exceptions against the connection's address.
 func TestBasicAuthExceptionMatchedCIDR(t *testing.T) {
 	cidrRule := &BasicAuthExceptionRule{RuleType: AuthExceptionType_CIDR, CIDR: "192.168.1.0/24"}
 	pe := newBasicAuthEndpoint(cidrRule)
@@ -90,7 +90,7 @@ func TestBasicAuthExceptionMatchedCIDR(t *testing.T) {
 		t.Errorf("client outside the excluded CIDR must not be exempt")
 	}
 
-	// A spoofed header must be ignored unless the rule opted into trusting proxy headers.
+	// A forwarded header is ignored unless the rule trusts proxy headers
 	spoofed := httptest.NewRequest(http.MethodGet, "/admin", nil)
 	spoofed.RemoteAddr = "10.0.0.5:41234"
 	spoofed.Header.Set("X-Real-Ip", "192.168.1.50")
@@ -116,7 +116,7 @@ func TestBasicAuthExceptionMatchedGuards(t *testing.T) {
 	}
 }
 
-// TestHandleBasicAuthHonoursPathException reproduces the reported flow end to end without credentials.
+// TestHandleBasicAuthHonoursPathException checks path exceptions end to end.
 func TestHandleBasicAuthHonoursPathException(t *testing.T) {
 	cases := []struct {
 		target     string

@@ -108,9 +108,7 @@
                         <div class="default text">Let's Encrypt</div>
                         <div class="menu">
                           <div class="item" data-value="Let's Encrypt">Let's Encrypt</div>
-                          <!-- <div class="item" data-value="Buypass">Buypass</div> -->
                           <div class="item" data-value="ZeroSSL">ZeroSSL</div>
-                          <!-- <div class="item" data-value="Google">Google</div> -->
                         </div>
                       </div>
                     </div>
@@ -133,7 +131,6 @@
             }
 
              //Grab the longest common suffix of all domains
-    //not that smart technically
     function autoDetectMatchingRules(){
       var domainsString = $("#domainsInput").val();
       if (!domainsString.includes(",")){
@@ -200,8 +197,7 @@
         return;
       }
       if (filename.trim() == "" && !domains.includes(",")){
-        //Zoraxy filename are the matching name for domains.
-        //Use the same as domains
+        //The filename matches the domains
         filename = domains;
       }else if (filename != "" && !domains.includes(",")){
         //Invalid settings. Force the filename to be same as domain
@@ -231,7 +227,6 @@
           } else {
             console.log("Certificate installed successfully");
             // Show success message
-            //alert("Certificate installed successfully");
             $("#installSucc").show();
           }
         },

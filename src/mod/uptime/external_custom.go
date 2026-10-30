@@ -1,12 +1,7 @@
 package uptime
 
-/*
-	external_custom.go (custom fork)
-
-	Lets another module supply uptime records for targets marked
-	ExternallyMonitored, so the Uptime Monitor page shows their history
-	without this monitor probing them a second time.
-*/
+// Lets another module supply uptime records for targets marked
+// ExternallyMonitored.
 
 // RecordExternal appends a record to a target's history, trimming it to
 // MaxRecordsStore like records from this monitor's own checks.

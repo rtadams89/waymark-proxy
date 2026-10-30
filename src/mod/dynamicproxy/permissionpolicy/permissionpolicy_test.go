@@ -9,7 +9,6 @@ import (
 )
 
 func TestInjectPermissionPolicyHeader(t *testing.T) {
-	//Prepare the data for permission policy
 	testPermissionPolicy := permissionpolicy.GetDefaultPermissionPolicy()
 	testPermissionPolicy.Geolocation = []string{"self"}
 	testPermissionPolicy.Microphone = []string{"self", "https://example.com"}

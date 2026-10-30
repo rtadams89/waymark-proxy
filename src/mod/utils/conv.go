@@ -86,8 +86,7 @@ func ReplaceSpecialCharacters(filename string) string {
 	return filename
 }
 
-/* Zip File Handler */
-// zipFiles compresses multiple files into a single zip archive file
+// ZipFiles compresses multiple files into a single zip archive file
 func ZipFiles(filename string, files ...string) error {
 	newZipFile, err := os.Create(filename)
 	if err != nil {

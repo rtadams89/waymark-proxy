@@ -1,5 +1,5 @@
-// Package healthcheck (custom fork) decides which upstreams of a load
-// balanced proxy rule receive traffic.
+// Package healthcheck decides which upstreams of a load balanced proxy rule
+// receive traffic.
 //
 // Each proxy rule can enable two independent mechanisms:
 //
@@ -29,7 +29,7 @@ const (
 	CheckHTTPHead CheckType = "http-head"
 	CheckTCP      CheckType = "tcp"
 	CheckICMP     CheckType = "icmp"
-	CheckUDP      CheckType = "udp" // custom fork: Layer 4 proxies; send Send, expect a reply containing Expect
+	CheckUDP      CheckType = "udp" // Layer 4 proxies; send Send, expect a reply containing Expect
 )
 
 // Payload formats for Send and Expect.
@@ -38,7 +38,7 @@ const (
 	PayloadHex  = "hex"  // hex digits, spaces allowed
 )
 
-// Limits keep a typo from turning a health check into a flood or a no-op.
+// Limits for health check settings.
 const (
 	minIntervalSeconds = 2
 	maxIntervalSeconds = 3600
@@ -93,8 +93,7 @@ type Config struct {
 	PayloadFormat string `json:"payloadFormat,omitempty"` // text (default) or hex
 }
 
-// DefaultConfig is what the UI starts from. Both mechanisms are off until
-// the user enables them, so existing rules behave exactly as before.
+// DefaultConfig is what the UI starts from, with both mechanisms off.
 func DefaultConfig() *Config {
 	return &Config{
 		ActiveEnabled:          false,

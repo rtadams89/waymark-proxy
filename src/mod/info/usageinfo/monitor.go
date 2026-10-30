@@ -18,14 +18,12 @@ type monitorCache struct {
 var globalCache = &monitorCache{}
 
 // StartBackgroundMonitor launches a goroutine that samples CPU and RAM once
-// per second and stores results in a shared cache. Call this once at startup.
-// The HTTP handler can then return cached data without blocking.
+// per second into a shared cache.
 func StartBackgroundMonitor() {
 	go func() {
 		prevStats, err := getCPUStats()
 		if err != nil {
-			// /proc/stat not available (Windows or unsupported platform):
-			// fall back to the blocking platform-specific method.
+			// /proc/stat not available: use the blocking platform-specific method
 			for {
 				cpu := GetCPUUsage()
 				usedRAM, totalRAM, ramPct := GetRAMUsage()
@@ -65,9 +63,8 @@ func StartBackgroundMonitor() {
 	}()
 }
 
-// GetCachedStats returns the most recent sampled stats without blocking.
-// ready is false for the first ~1 s after startup; callers may return zero
-// values until then.
+// GetCachedStats returns the most recent sampled stats. ready is false for
+// the first ~1 s after startup.
 func GetCachedStats() (cpuUsage float64, usedRAM, totalRAM string, ramUsage float64, ready bool) {
 	globalCache.mu.RLock()
 	defer globalCache.mu.RUnlock()

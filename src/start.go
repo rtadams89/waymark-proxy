@@ -18,7 +18,7 @@ import (
 	"imuslab.com/zoraxy/mod/auth"
 	"imuslab.com/zoraxy/mod/auth/sso/forward"
 	"imuslab.com/zoraxy/mod/auth/sso/zorxauth"
-	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
+	csrf "imuslab.com/zoraxy/mod/csrfcompat" // stdlib CrossOriginProtection
 	"imuslab.com/zoraxy/mod/database"
 	"imuslab.com/zoraxy/mod/database/dbinc"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
@@ -39,15 +39,7 @@ import (
 	"imuslab.com/zoraxy/mod/webserv"
 )
 
-/*
-	Startup Sequence
-
-	This function starts the startup sequence of all
-	required modules. Their startup sequences are inter-dependent
-	and must be started in a specific order.
-
-	Don't touch this function unless you know what you are doing
-*/
+// startupSequence starts all required modules in order
 
 func startupSequence() {
 	//Start a system wide logger and log viewer
@@ -67,9 +59,7 @@ func startupSequence() {
 		SystemWideLogger = l
 	}
 
-	//Custom fork: log file and syslog outputs (logoutputs_custom.go). Applied
-	//before anything is logged, so no log file is created when file logging
-	//is off for both streams
+	// Log file and syslog outputs, applied before anything is logged
 	initLogOutputs()
 
 	if !*enableLog {
@@ -118,8 +108,8 @@ func startupSequence() {
 		log.Fatal(err)
 	}
 	sysdb = db
-	useConfFileTables()  //Custom fork: settings kept as files in the config folder (conftables_custom.go)
-	haApplyPendingSync() //Custom fork: apply configuration copied from the HA active node
+	useConfFileTables()  // settings kept as files in the config folder
+	haApplyPendingSync() // apply configuration copied from the HA active node
 	//Create tables for the database
 	sysdb.NewTable("settings")
 
@@ -164,7 +154,7 @@ func startupSequence() {
 		Logger:                       SystemWideLogger,
 		SlowLookupCacheClearInterval: GEODB_CACHE_CLEAR_INTERVAL * time.Minute,
 		ExternalGeoDBFolder:          CONF_GEODB_PATH,
-		Disabled:                     !geoIPEnabledSetting(), //Custom fork: GeoIP lookups can be turned off
+		Disabled:                     !geoIPEnabledSetting(), // GeoIP lookups can be turned off
 	})
 	if err != nil {
 		panic(err)
@@ -172,7 +162,7 @@ func startupSequence() {
 
 	//Create a load balancer
 	loadBalancer = loadbalance.NewLoadBalancer(&loadbalance.Options{
-		SessionKey: stickySessionKey(), //Custom fork: not the host UUID, which upstreams see (stickykey_custom.go)
+		SessionKey: stickySessionKey(), // sticky session cookie key
 		Geodb:      geodbStore,
 		Logger:     SystemWideLogger,
 	})
@@ -182,8 +172,8 @@ func startupSequence() {
 		Logger:             *SystemWideLogger,
 		Database:           sysdb,
 		GeoDB:              geodbStore,
-		ConfigFolder:       CONF_ACL,         //Custom fork: ACLs and objects (conf/acl)
-		LegacyFolder:       CONF_ACCESS_RULE, //Custom fork: access rules of 2.17 and earlier, converted once
+		ConfigFolder:       CONF_ACL,         // ACLs and objects (conf/acl)
+		LegacyFolder:       CONF_ACCESS_RULE, // access rules of 2.17 and earlier, converted once
 		TrustedProxiesFile: CONF_TRUSTED_PROXIES,
 	})
 	if err != nil {
@@ -235,30 +225,18 @@ func startupSequence() {
 		panic(err)
 	}
 
-	//Start the status page host resource monitors
-	//CPU / RAM usage is sampled once per second in the background so the
-	//dashboard API can return cached values without blocking
+	// CPU / RAM usage is sampled once per second in the background
 	usageinfo.StartBackgroundMonitor()
 	initDashboardBandwidthTracker()
 
-	/*
-		Path Rules
-
-		This section of starutp script start the path rules where
-		user can define their own routing logics
-	*/
+	// Path rules
 
 	pathRuleHandler = pathrule.NewPathRuleHandler(&pathrule.Options{
 		Enabled:      false,
 		ConfigFolder: CONF_PATH_RULE,
 	})
 
-	/*
-		MDNS Discovery Service
-
-		This discover nearby ArozOS Nodes or other services
-		that provide mDNS discovery with domain (e.g. Synology NAS)
-	*/
+	// mDNS discovery of nearby services
 
 	if *allowMdnsScanning {
 		portInt, err := strconv.Atoi(strings.Split(*webUIPort, ":")[1])
@@ -317,8 +295,8 @@ func startupSequence() {
 		AccessController: accessController,
 		ConfigStore:      CONF_L4_PROXY,
 		Logger:           SystemWideLogger,
-		ObserveConnect:   observeL4Connect,           //Custom fork: passive health monitoring (l4pool_custom.go)
-		OnChange:         UpdateUptimeMonitorTargets, //Custom fork: health checks follow Layer 4 rule changes
+		ObserveConnect:   observeL4Connect,           // passive health monitoring
+		OnChange:         UpdateUptimeMonitorTargets, // health checks follow Layer 4 rule changes
 	})
 	if err != nil {
 		panic(err)
@@ -388,7 +366,6 @@ func startupSequence() {
 		/* Plugin Store URLs */
 		PluginStoreURLs: []string{
 			"https://raw.githubusercontent.com/aroz-online/zoraxy-official-plugins/refs/heads/main/directories/index2.json",
-			//TO BE ADDED
 		},
 		/* Developer Options */
 		EnableHotReload:   *development_build, //Default to true if development build
@@ -447,8 +424,8 @@ func ShutdownSeq() {
 	if dashboardBandwidth != nil {
 		dashboardBandwidth.Close()
 	}
-	saveAssetCacheDaily() //Custom fork: keep today's cache stats across restarts
-	stopTrafficCapture()  //Custom fork: finish a running capture's file (capture_custom.go)
+	saveAssetCacheDaily() // keep today's cache stats across restarts
+	stopTrafficCapture()  // finish a running capture's file
 
 	if mdnsTickerStop != nil {
 		SystemWideLogger.Println("Stopping mDNS Discoverer (might take a few minutes)")

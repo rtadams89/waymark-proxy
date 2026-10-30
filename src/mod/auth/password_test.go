@@ -17,7 +17,7 @@ func TestPasswordHashing(t *testing.T) {
 		t.Error("wrong password accepted")
 	}
 
-	// Hashes written before 2.2.2: accepted, and flagged for upgrade
+	// Unsalted SHA-512 digests: accepted and flagged for upgrade
 	legacy := legacyPasswordDigest("correct horse")
 	if ok, up := PasswordMatches(legacy, "correct horse"); !ok || !up {
 		t.Errorf("legacy hash: %v %v", ok, up)

@@ -110,10 +110,8 @@ func (d *DataLoader) HandleRangeExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if format == "csv" {
-		// Create a buffer to store CSV content
 		var csvContent strings.Builder
 
-		// Create a CSV writer
 		writer := csv.NewWriter(&csvContent)
 
 		// Write the header row
@@ -146,7 +144,6 @@ func (d *DataLoader) HandleRangeExport(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Flush the CSV writer
 		writer.Flush()
 
 		// Check for any errors during writing

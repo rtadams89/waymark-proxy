@@ -43,7 +43,7 @@ func (m *Manager) HandleCertDownload(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "invalid certname given")
 		return
 	}
-	certname = filepath.Base(certname) // prevent path escape
+	certname = filepath.Base(certname)
 
 	// check if the cert exists
 	pubKey := filepath.Join(filepath.Join(m.CertStore), certname+".key")
@@ -53,7 +53,7 @@ func (m *Manager) HandleCertDownload(w http.ResponseWriter, r *http.Request) {
 		// Zip them and serve them via http download
 		seeking, _ := utils.GetBool(r, "seek")
 		if seeking {
-			// This request only check if the key exists. Do not provide download
+			// Existence check only
 			utils.SendOK(w)
 			return
 		}
@@ -74,7 +74,7 @@ func (m *Manager) HandleCertDownload(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/zip")
 		http.ServeFile(w, r, zipFileName)
 	} else {
-		// Not both key exists
+		// Key pair incomplete
 		utils.SendErrorResponse(w, "invalid key-pairs: private key or public key not found in key store")
 		return
 	}
@@ -88,7 +88,7 @@ func (m *Manager) SetCertAsDefault(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	certname = filepath.Base(certname) // prevent path escape
+	certname = filepath.Base(certname)
 
 	pubKey := filepath.Join(m.CertStore, certname+".pem")
 	priKey := filepath.Join(m.CertStore, certname+".key")
@@ -131,7 +131,7 @@ func (m *Manager) HandleCertUpload(w http.ResponseWriter, r *http.Request) {
 	// get the domain
 	domain, err := utils.GetPara(r, "domain")
 	if err != nil {
-		// Assume localhost
+		// No domain given
 		domain = "default"
 	}
 	domain, err = sanitizeCertDomain(domain)
@@ -165,7 +165,6 @@ func (m *Manager) HandleCertUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// create file in upload directory
 	// Read file contents for validation
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
@@ -273,7 +272,6 @@ func (m *Manager) HandleListCertificate(w http.ResponseWriter, r *http.Request) 
 
 		for _, filename := range filenames {
 			certFilepath := filepath.Join(m.CertStore, filename+".pem")
-			//keyFilepath := filepath.Join(tlsCertManager.CertStore, filename+".key")
 			fileInfo, err := os.Stat(certFilepath)
 			if err != nil {
 				utils.SendErrorResponse(w, "invalid domain certificate discovered: "+filename)
@@ -325,7 +323,7 @@ func (m *Manager) HandleListCertificate(w http.ResponseWriter, r *http.Request) 
 				ExpireDate:       certExpireTime,
 				RemainingDays:    expiredIn,
 				UseDNS:           useDNSValidation,
-				IsFallback:       (filename == m.FallbackCert), // TODO: figure out a better implementation
+				IsFallback:       (filename == m.FallbackCert),
 			}
 
 			results = append(results, &thisCertInfo)
@@ -389,7 +387,6 @@ func (m *Manager) HandleSelfSignCertGenerate(w http.ResponseWriter, r *http.Requ
 		utils.SendErrorResponse(w, "Invalid domains format: "+err.Error())
 		return
 	}
-	//SANs = append([]string{cn}, SANs...)
 	priKeyFilename := domainToFilename(cn, ".key")
 	pubKeyFilename := domainToFilename(cn, ".pem")
 

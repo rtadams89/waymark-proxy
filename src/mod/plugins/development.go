@@ -62,10 +62,8 @@ func (m *Manager) InitPluginHashList() error {
 // Update the plugin hash list and if there are change, reload the plugin
 func (m *Manager) UpdatePluginHashList(noReload bool) error {
 	for pluginId, plugin := range m.LoadedPlugins {
-		//Get the plugin Entry point
 		pluginEntryPoint, err := m.GetPluginEntryPoint(plugin.RootDir)
 		if err != nil {
-			//Unable to get the entry point of the plugin
 			return err
 		}
 
@@ -92,7 +90,6 @@ func (m *Manager) UpdatePluginHashList(noReload bool) error {
 			m.PluginHash[pluginId] = hash
 			m.pluginCheckMutex.Unlock()
 			if !noReload {
-				//Plugin file changed, reload the plugin
 				m.Options.Logger.PrintAndLog("plugin-manager", "Plugin file changed, reloading plugin: "+pluginId, nil)
 				err := m.HotReloadPlugin(pluginId)
 				if err != nil {
@@ -137,7 +134,7 @@ func (m *Manager) HotReloadPlugin(pluginId string) error {
 	}
 	m.loadedPluginsMutex.Unlock()
 
-	//Reload the plugin from disk, it should reload the plugin from latest version
+	// Reload the plugin from disk
 	m.ReloadPluginFromDisk()
 
 	return nil
@@ -161,7 +158,6 @@ func (m *Manager) HandleEnableHotReload(w http.ResponseWriter, r *http.Request) 
 	}
 	m.Options.EnableHotReload = enabled
 	if enabled {
-		//Start the hot reload ticker
 		err := m.StartHotReloadTicker()
 		if err != nil {
 			m.Options.Logger.PrintAndLog("plugin-manager", "Failed to start hot reload ticker", err)
@@ -170,7 +166,6 @@ func (m *Manager) HandleEnableHotReload(w http.ResponseWriter, r *http.Request) 
 		}
 		m.Options.Logger.PrintAndLog("plugin-manager", "Hot reload enabled", nil)
 	} else {
-		//Stop the hot reload ticker
 		err := m.StopHotReloadTicker()
 		if err != nil {
 			m.Options.Logger.PrintAndLog("plugin-manager", "Failed to stop hot reload ticker", err)
@@ -206,7 +201,6 @@ func (m *Manager) HandleSetHotReloadInterval(w http.ResponseWriter, r *http.Requ
 	if m.pluginReloadTicker != nil {
 		m.StopHotReloadTicker()
 		time.Sleep(1 * time.Second)
-		//Start the hot reload ticker again
 		m.StartHotReloadTicker()
 	}
 	m.Options.Logger.PrintAndLog("plugin-manager", "Hot reload interval set to "+strconv.Itoa(interval)+" sec", nil)

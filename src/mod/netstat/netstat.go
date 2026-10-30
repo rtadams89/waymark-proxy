@@ -11,13 +11,13 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// Float stat store the change of RX and TX
+// FlowStat stores the change of RX and TX
 type FlowStat struct {
 	RX int64
 	TX int64
 }
 
-// A new type of FloatStat that save the raw value from rx tx
+// RawFlowStat stores the raw rx and tx values
 type RawFlowStat struct {
 	RX int64
 	TX int64
@@ -46,7 +46,6 @@ func NewNetStatBuffer(recordCount int, systemWideLogger *logger.Logger) (*NetSta
 	//Setup a timer to get the value from NIC accumulation stats
 	ticker := time.NewTicker(time.Second)
 
-	//Setup a stop channel
 	stopCh := make(chan bool)
 
 	currnetNetSpec := RawFlowStat{
@@ -71,7 +70,7 @@ func NewNetStatBuffer(recordCount int, systemWideLogger *logger.Logger) (*NetSta
 
 	retryCount := 0
 	for rx == 0 && tx == 0 && retryCount < 10 {
-		//Strange. Retry
+		// All zero: retry
 		systemWideLogger.PrintAndLog("netstat", "NIC stats return all 0. Retrying...", nil)
 		rx, tx, err = thisNetBuffer.GetNetworkInterfaceStats()
 		if err != nil {
@@ -102,7 +101,7 @@ func NewNetStatBuffer(recordCount int, systemWideLogger *logger.Logger) (*NetSta
 				// Get the latest network interface stats
 				rx, tx, err := thisNetBuffer.GetNetworkInterfaceStats()
 				if err != nil {
-					// Log the error, but don't stop the buffer
+					// Log the error and keep going
 					systemWideLogger.PrintAndLog("netstat", "Failed to get network interface stats", err)
 					continue
 				}
@@ -164,7 +163,6 @@ func (n *NetStatBuffers) HandleGetBufferedNetworkInterfaceStats(w http.ResponseW
 }
 
 func (n *NetStatBuffers) Close() {
-	//Fixed issue #394 for stopping netstat listener on platforms not supported platforms
 	if n.StopChan != nil {
 		n.StopChan <- true
 		time.Sleep(300 * time.Millisecond)

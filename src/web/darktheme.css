@@ -6,9 +6,8 @@
 */
 
 /* Color Palette */
-/* Waymark brand colours (branding/build_logos.py): navy #123B5C, teal #14B8A6,
-   pale teal #CDEFEA. The --accent* tokens are used by the brand overrides at
-   the end of this file. */
+/* Waymark brand colours: navy #123B5C, teal #14B8A6, pale teal #CDEFEA.
+   The --accent* tokens are used by the brand overrides at the end of this file. */
 body:not(.darkTheme){
     --theme_bg: #f5f8f9;
     --theme_bg_primary: #ffffff;
@@ -404,7 +403,6 @@ body.darkTheme .ui.form .field .ui.checkbox input:checked ~ label {
 }
 
 body.darkTheme .ui.basic.label {
-    /* background-color: var(--theme_bg_secondary) !important; */
     background-color: var(--theme_highlight) !important;
     color: var(--text_color) !important;
 }
@@ -987,7 +985,6 @@ body.darkTheme #gan thead th {
 body.darkTheme #utm .standardContainer {
     background-color: var(--theme_bg) !important;
     color: var(--text_color) !important;
-    /* border: 1px solid var(--divider_color) !important; */
 
 }
 
@@ -1105,10 +1102,8 @@ body.darkTheme .ui.checkbox input:checked ~ label::after {
 
 
 /*
-    Waymark brand accents (light and dark)
-
-    Semantic UI's default accent is blue (#2185d0 / #4183c4). Links, blue
-    icons and buttons, toggles and focused inputs use the brand teal instead.
+    Waymark brand accents (light and dark): links, blue icons and buttons,
+    toggles and focused inputs use the brand teal.
 */
 
 body a {

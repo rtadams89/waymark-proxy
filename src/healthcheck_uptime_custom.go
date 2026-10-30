@@ -1,24 +1,10 @@
 package main
 
 /*
-	healthcheck_uptime_custom.go (custom fork)
-
-	The Uptime Monitor page shows proxy rules with active health checks, fed
-	from those checks. The uptime monitor no longer probes anything itself:
-	its target list contains only health-checked upstreams, all marked
-	ExternallyMonitored, and it is kept only as the history store behind the
-	page. Each upstream's check results are rolled up into one record per
-	uptime interval (5 minutes), the spacing the page expects.
-
-	A record is "offline" if the upstream was out of load balancing at any
-	point during its window, whether active checks or passive monitoring took
-	it out. Failed checks that did not reach the "Disable after" count do not
-	mark a window offline.
-
-	Rules without active health checks (including passive-only rules and
-	virtual directories) do not appear on the page.
-
-	Also here: the default health check for new rules.
+	Uptime history from active health checks: each upstream's results are
+	rolled up into one record per 5-minute interval, offline if the upstream
+	was out of load balancing at any point in it. Also the default health
+	check for new rules.
 */
 
 import (
@@ -74,10 +60,8 @@ func newUptimeFeed() *uptimeFeed {
 
 var healthUptimeFeed = newUptimeFeed()
 
-// healthCheckUptimeTargets builds the uptime monitor's target list: one
-// entry per upstream of every enabled rule with valid active health checks,
-// using upstream's ID format ("rule", or "rule (upstream:N)" when a rule has
-// several upstreams). It also registers those targets with the feed.
+// healthCheckUptimeTargets returns one uptime target per upstream of every
+// enabled rule with active health checks, and registers them with the feed.
 func healthCheckUptimeTargets(dp *dynamicproxy.Router) []*uptime.Target {
 	targets := []*uptime.Target{}
 	fed := map[uptimeFeedKey]uptimeFeedTarget{}
@@ -86,7 +70,7 @@ func healthCheckUptimeTargets(dp *dynamicproxy.Router) []*uptime.Target {
 			continue
 		}
 		if _, err := ep.HealthCheck.Validate(); err != nil {
-			continue // health checks ignore invalid settings too
+			continue
 		}
 		multiple := len(ep.ActiveOrigins) > 1
 		for i, origin := range ep.ActiveOrigins {
@@ -111,7 +95,7 @@ func healthCheckUptimeTargets(dp *dynamicproxy.Router) []*uptime.Target {
 			fed[uptimeFeedKey{ruleID, origin.OriginIpOrDomain}] = uptimeFeedTarget{id: id, name: id, url: t.URL, protocol: protocol}
 		}
 	}
-	targets = append(targets, l4UptimeTargets(fed)...) // l4pool_custom.go
+	targets = append(targets, l4UptimeTargets(fed)...)
 	healthUptimeFeed.setTargets(fed)
 	return targets
 }
@@ -143,8 +127,7 @@ func (f *uptimeFeed) onCheck(t healthcheck.Target, res healthcheck.ProbeResult, 
 	var emit *uptime.Record
 	w, exists := f.windows[info.id]
 	if !exists {
-		// First result for this upstream: record it straight away so the
-		// Uptime Monitor page is not empty for the first interval
+		// Records the first result immediately
 		w = &uptimeWindow{start: now}
 		f.windows[info.id] = w
 		w.observe(res, offline)
@@ -191,22 +174,19 @@ func (f *uptimeFeed) record(info uptimeFeedTarget, t healthcheck.Target, last he
 		Latency:    last.Latency.Milliseconds(),
 	}
 	if w.anyDown {
-		// The page treats an offline record with a 2xx code as online, so
-		// report the failing code (or 0 when there was no HTTP response)
+		// Offline records carry the failing code (0 for no HTTP response)
 		rec.StatusCode = w.failCode
 		rec.Latency = 0
 	}
 	return rec
 }
 
-/* Defaults for new rules */
-
-// customForkTable is the sys.db table for this fork's own values (the
-// sticky-session key, the asset cache's daily counters).
+// customForkTable is the sys.db table for the sticky-session key and the
+// asset cache's daily counters.
 const customForkTable = "custom_fork"
 
-// defaultActiveHealthCheck is used for new rules: HTTP GET every 10s,
-// disabled after 3 failures, re-enabled after 2 passes, on path.
+// defaultActiveHealthCheck returns the health check for new rules: HTTP GET
+// of path every 10s, disabled after 3 failures, re-enabled after 2 passes.
 func defaultActiveHealthCheck(path string) *healthcheck.Config {
 	cfg := healthcheck.DefaultConfig()
 	cfg.ActiveEnabled = true
@@ -217,14 +197,12 @@ func defaultActiveHealthCheck(path string) *healthcheck.Config {
 	if v, err := cfg.Validate(); err == nil {
 		return v
 	}
-	cfg.Path = "/" // unusable path: fall back to the root
+	cfg.Path = "/" // invalid path: use the root
 	v, _ := cfg.Validate()
 	return v
 }
 
-// newRuleHealthCheck is applied when a proxy rule is created. The create
-// form's "Health checks" checkbox and path field reuse upstream's enableUtm
-// and utmURI parameters.
+// newRuleHealthCheck returns the health check of a new proxy rule.
 func newRuleHealthCheck(enabled bool, path string) *healthcheck.Config {
 	if !enabled {
 		return nil

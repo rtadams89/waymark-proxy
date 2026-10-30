@@ -1,17 +1,9 @@
 package main
 
 /*
-	l4pool_custom.go (custom fork)
-
-	Health checks for Layer 4 proxy upstream pools (mod/l4proxy
-	pool_custom.go). Layer 4 rules share the health check manager with HTTP
-	proxy rules, under the rule ID "l4:<uuid>":
-	- every running Layer 4 rule with health checks contributes one target per
-	  upstream (refreshHealthCheckTargets)
-	- the manager's verdicts go to both the HTTP load balancer and the Layer 4
-	  proxy manager (an upstream address is taken out wherever it is used)
-	- failed upstream connections feed passive monitoring
-	- rules with active checks appear on Health & Uptime
+	Health checks of Layer 4 rule upstreams, under the rule ID "l4:<uuid>",
+	shared with HTTP proxy rules: targets, verdicts for both load balancers,
+	passive monitoring of failed connections, and uptime history.
 */
 
 import (
@@ -26,7 +18,8 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// notifyUpstreamOnline is the health check manager's notifier.
+// notifyUpstreamOnline applies a health check verdict to the HTTP load
+// balancer and the Layer 4 proxies.
 func notifyUpstreamOnline(addr string, online bool) {
 	if loadBalancer != nil {
 		loadBalancer.NotifyHostOnlineState(addr, online)
@@ -36,14 +29,13 @@ func notifyUpstreamOnline(addr string, online bool) {
 	}
 }
 
-// observeL4Connect is l4proxy.Options.ObserveConnect.
 func observeL4Connect(ruleID string, addr string, err error) {
 	if healthCheckManager != nil {
 		healthCheckManager.ObserveResult(ruleID, addr, 0, err)
 	}
 }
 
-// l4RuleName is how a Layer 4 rule is shown next to its upstreams.
+// l4RuleName returns a Layer 4 rule's display name.
 func l4RuleName(c l4proxy.InstanceView) string {
 	if strings.TrimSpace(c.Name) != "" {
 		return c.Name
@@ -80,8 +72,8 @@ func l4HealthTargets() []healthcheck.Target {
 	return targets
 }
 
-// l4RuleDisplay maps "l4:<uuid>" rule IDs to "Layer 4: <name>" for
-// the UI, and leaves other IDs alone.
+// l4RuleDisplay maps "l4:<uuid>" rule IDs to "Layer 4: <name>" and leaves
+// other IDs unchanged.
 func l4RuleDisplay(ruleID string) string {
 	if !strings.HasPrefix(ruleID, "l4:") || l4ProxyManager == nil {
 		return ruleID
@@ -107,8 +99,8 @@ func countL4CheckedRules() int {
 	return n
 }
 
-// l4UptimeTargets adds Layer 4 rules with active checks to Health &
-// Uptime, registering them with the feed in fed.
+// l4UptimeTargets returns uptime targets for Layer 4 rules with active
+// checks, registering them in fed.
 func l4UptimeTargets(fed map[uptimeFeedKey]uptimeFeedTarget) []*uptime.Target {
 	targets := []*uptime.Target{}
 	if l4ProxyManager == nil {
@@ -150,10 +142,8 @@ func l4UptimeTargets(fed map[uptimeFeedKey]uptimeFeedTarget) []*uptime.Target {
 	return targets
 }
 
-/* API: the health check side panel (snippet/healthChecks.html) for a Layer 4 rule */
-
-// l4DefaultHealthCheck is what the health check panel shows for a rule
-// without health checks: a TCP connect check, or ping for UDP-only rules.
+// l4DefaultHealthCheck returns the default check for a rule without health
+// checks: TCP connect, or ping for UDP-only rules.
 func l4DefaultHealthCheck(c l4proxy.InstanceView) *healthcheck.Config {
 	cfg := healthcheck.DefaultConfig()
 	cfg.Type = healthcheck.CheckTCP
@@ -165,7 +155,7 @@ func l4DefaultHealthCheck(c l4proxy.InstanceView) *healthcheck.Config {
 }
 
 // HandleL4HealthCheckGet returns a Layer 4 rule's health check settings,
-// live status and recent events, in the shape the HTTP rule version uses.
+// live status and recent events.
 // GET /api/l4proxy/healthcheck/get?uuid=<rule>
 func HandleL4HealthCheckGet(w http.ResponseWriter, r *http.Request) {
 	id, err := utils.GetPara(r, "uuid")
@@ -206,8 +196,7 @@ func HandleL4HealthCheckGet(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-// HandleL4HealthCheckSet saves a Layer 4 rule's health check settings and
-// keeps its destinations and load balancing.
+// HandleL4HealthCheckSet saves a Layer 4 rule's health check settings.
 // POST /api/l4proxy/healthcheck/set  uuid=<rule>  config=<json>
 func HandleL4HealthCheckSet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

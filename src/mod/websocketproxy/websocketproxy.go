@@ -177,10 +177,7 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		requestHeader.Set("User-Agent", "waymark-wsproxy/1.1")
 	}
 
-	// Pass X-Forwarded-For headers too, code below is a part of
-	// httputil.ReverseProxy. See http://en.wikipedia.org/wiki/X-Forwarded-For
-	// for more information
-	// TODO: use RFC7239 http://tools.ietf.org/html/rfc7239
+	// Pass X-Forwarded-For headers too
 	if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
 		// If we aren't the first proxy retain prior
 		// X-Forwarded-For information as a comma+space
@@ -191,9 +188,7 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		requestHeader.Set("X-Forwarded-For", clientIP)
 	}
 
-	// Set the originating protocol of the incoming HTTP request. The SSL might
-	// be terminated on our site and because we doing proxy adding this would
-	// be helpful for applications on the backend.
+	// Set the originating protocol of the incoming HTTP request
 	requestHeader.Set("X-Forwarded-Proto", "http")
 	if req.TLS != nil {
 		requestHeader.Set("X-Forwarded-Proto", "https")
@@ -202,9 +197,6 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Replace header variables and copy user-defined headers
 	if w.Options.CopyAllHeaders {
 		// Rewrite the user defined headers
-		// This is reported to be not compatible with Proxmox and Home Assistant
-		// but required by some other projects like MeshCentral
-		// we will make this optional
 		rewrittenUserDefinedHeaders := rewrite.PopulateRequestHeaderVariables(req, w.Options.UserDefinedHeaders)
 		upstreamHeaders, _ := rewrite.SplitUpDownStreamHeaders(&rewrite.HeaderRewriteOptions{
 			UserDefinedHeaders: rewrittenUserDefinedHeaders,
@@ -214,7 +206,7 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			if len(headerValuePair) < 2 {
 				continue
 			}
-			//Do not copy Upgrade and Connection headers, it will be handled by the upgrader
+			// Upgrade and Connection headers are handled by the upgrader
 			if strings.EqualFold(headerValuePair[0], "Upgrade") || strings.EqualFold(headerValuePair[0], "Connection") {
 				continue
 			}
@@ -228,19 +220,12 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// Connect to the backend URL, also pass the headers we get from the requst
-	// together with the Forwarded headers we prepared above.
-	// TODO: support multiplexing on the same backend connection instead of
-	// opening a new TCP connection time for each request. This should be
-	// optional:
-	// http://tools.ietf.org/html/draft-ietf-hybi-websocket-multiplexing-01
+	// Connect to the backend URL with the headers prepared above
 	connBackend, resp, err := dialer.Dial(backendURL.String(), requestHeader)
 	if err != nil {
 		w.Println("Couldn't dial to remote backend url "+backendURL.String(), err)
 		if resp != nil {
-			// If the WebSocket handshake fails, ErrBadHandshake is returned
-			// along with a non-nil *http.Response so that callers can handle
-			// redirects, authentication, etcetera.
+			// Failed handshake: pass the backend's response to the client
 			if err := copyResponse(rw, resp); err != nil {
 				w.Println("Couldn't write response after failed remote backend handshake to "+backendURL.String(), err)
 			}
@@ -251,16 +236,14 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	defer connBackend.Close()
 
-	//Use a copy of the upgrader for this connection. The upgrader might be
-	//a shared instance (e.g. DefaultUpgrader) across all proxy endpoints,
-	//so mutating it here will leak the settings of this proxy rule to others
+	// Use a copy of the upgrader for this connection
 	baseUpgrader := w.Upgrader
 	if baseUpgrader == nil {
 		baseUpgrader = DefaultUpgrader
 	}
 	upgrader := *baseUpgrader
 
-	//Fixing issue #107 by bypassing request origin check
+	// Bypass the request origin check
 	if w.Options.SkipOriginCheck {
 		upgrader.CheckOrigin = func(r *http.Request) bool {
 			return true
@@ -294,7 +277,6 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		connTimeout = defaultWebsocketTimeout
 	}
 
-	// Workaround for issue #1159
 	// Apply deadlines to both connections if timeout is enabled
 	if w.Options.EnableTimeoutRefreshOnActivity {
 		deadline := time.Now().Add(connTimeout)

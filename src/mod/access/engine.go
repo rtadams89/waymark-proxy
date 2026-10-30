@@ -1,18 +1,10 @@
 package access
 
 /*
-	engine.go (custom fork): evaluating ACLs.
-
-	ACLs are compiled when they or the objects they use change: addresses,
-	CIDRs and ranges are parsed once. A request then walks the rules in
-	order; the country of the address is looked up at most once, and only
-	when a rule that is reached needs it.
-
-	Country sources: an address without a country (private, loopback) is in
-	no country, so "not US" matches it. With Geo-IP lookups off a country
-	cannot be known: a rule whose source needs it and that cannot be
-	decided otherwise is skipped (with "not" too), so turning Geo-IP off
-	neither locks everyone out nor lets everyone in.
+	Evaluation of ACLs. ACLs are compiled when they or their objects change.
+	The country of an address is looked up at most once, when a reached rule
+	needs it. An address without a country matches "not <country>". When the
+	country cannot be known, rules that need it are skipped.
 */
 
 import (
@@ -31,7 +23,7 @@ type matcher struct {
 	ranges    [][2]netip.Addr
 	wildcards []string
 	countries map[string]bool
-	publicIP  bool // the server's own public address (Private networks)
+	publicIP  bool
 }
 
 func (m *matcher) needsCountry() bool { return len(m.countries) > 0 }
@@ -71,7 +63,7 @@ type evalCtx struct {
 	c        *Controller
 	country  string
 	looked   bool
-	known    bool // the country could be determined (Geo-IP on, lookup worked)
+	known    bool // the country lookup succeeded
 	publicIP string
 }
 
@@ -184,10 +176,8 @@ func itoa(n int) string {
 func (c *Controller) compileLocked() {
 	objs := c.objectsWithBuiltIns()
 	objMatchers := map[string]*matcher{}
-	// Each object is flattened on its own, with the objects nested in it,
-	// however deep, into one matcher. Saving refuses loops; one that got in
-	// anyway (a hand-edited file) just means every object on the loop
-	// matches everything on it. A missing object matches nothing.
+	// Flattens each object with its nested objects into one matcher; a
+	// missing object matches nothing
 	var walk func(id string, m *matcher, seen map[string]bool)
 	walk = func(id string, m *matcher, seen map[string]bool) {
 		o := objs[id]
@@ -226,7 +216,7 @@ func (c *Controller) compileLocked() {
 			case SourceObject:
 				cr.m = objMatchers[r.Source.Value]
 				if cr.m == nil {
-					cr.m = &matcher{} // a missing object matches nothing
+					cr.m = &matcher{}
 				}
 			default:
 				cr.m = &matcher{}
@@ -252,9 +242,8 @@ func (c *Controller) counter(aclID, ruleID string) *hitCounter {
 	return h
 }
 
-// resolveID maps an ACL ID as stored on a proxy rule to the ACL to use:
-// none (or the old default access rule, when it was not kept as an ACL)
-// means Allow all.
+// resolveIDLocked returns the ACL to use for an ID stored on a proxy rule:
+// Allow all for an empty or unknown ID.
 func (c *Controller) resolveIDLocked(id string) string {
 	if id == "" {
 		return AllowAllID
@@ -265,8 +254,7 @@ func (c *Controller) resolveIDLocked(id string) string {
 	return AllowAllID
 }
 
-// Resolve maps an ACL ID as stored on a proxy rule to the ACL that is
-// used for it (Allow all for none, or for an ACL that no longer exists).
+// Resolve returns the ACL used for an ID stored on a proxy rule.
 func (c *Controller) Resolve(id string) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -282,7 +270,7 @@ func (c *Controller) ACLExists(id string) bool {
 }
 
 // Evaluate decides what happens to a connection from ip under the ACL
-// aclID (as stored on the proxy rule) and counts the rule that matched.
+// aclID and counts the matching rule.
 func (c *Controller) Evaluate(aclID, ip string) Decision {
 	return c.evaluate(aclID, ip, true)
 }
@@ -366,8 +354,7 @@ func (c *Controller) Hits(aclID string) map[string]int64 {
 	return out
 }
 
-// TestWith evaluates ip against a candidate ACL and objects (not saved),
-// to check a change before making it.
+// TestWith evaluates ip against an unsaved ACL and objects.
 func (c *Controller) TestWith(acl *ACL, objects map[string]*Object, ip string) Decision {
 	tmp := &Controller{Options: c.Options, ServerPublicIP: c.ServerPublicIP, acls: map[string]*ACL{}, objects: map[string]*Object{}, countryLookup: c.countryLookup}
 	c.mu.RLock()

@@ -12,10 +12,8 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
 )
 
-// TestChunkedResponseReachesClientBeforeUpstreamFinishes reproduces the shape of
-// issue #1231: a POST carrying a request body whose response is streamed chunked
-// with no Content-Length. The response must reach the client as the upstream
-// produces it, rather than being held back until the upstream is done.
+// TestChunkedResponseReachesClientBeforeUpstreamFinishes checks that a
+// chunked response to a POST reaches the client as the upstream produces it.
 func TestChunkedResponseReachesClientBeforeUpstreamFinishes(t *testing.T) {
 	const (
 		chunkCount = 3
@@ -41,8 +39,7 @@ func TestChunkedResponseReachesClientBeforeUpstreamFinishes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//A flush interval far longer than the test would ever wait. If the streamed
-	//response is not detected, the chunks are batched behind this instead.
+	// A flush interval much longer than the test
 	proxy := dpcore.NewDynamicProxyCore(upstreamURL, "", &dpcore.DpcoreOptions{
 		FlushInterval: 10 * time.Second,
 	})
@@ -60,7 +57,7 @@ func TestChunkedResponseReachesClientBeforeUpstreamFinishes(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip, deflate, br, zstd") //As a browser would send
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br, zstd")
 
 	start := time.Now()
 	resp, err := http.DefaultClient.Do(req)
@@ -69,15 +66,14 @@ func TestChunkedResponseReachesClientBeforeUpstreamFinishes(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	//Time to the first byte of the body, which is what stalls in issue #1231
+	// Time to the first byte of the body
 	buf := make([]byte, len(chunkBody))
 	if _, err := io.ReadFull(resp.Body, buf); err != nil {
 		t.Fatalf("reading first chunk: %v", err)
 	}
 	firstChunk := time.Since(start)
 
-	//The upstream runs for chunkCount*chunkDelay. Arriving well inside that window
-	//is only possible if the chunk was passed through rather than buffered.
+	// The first chunk arrives well before the upstream finishes
 	if firstChunk > chunkDelay-200*time.Millisecond {
 		t.Errorf("first chunk took %v, expected it to arrive promptly; the response is being buffered until the upstream finishes", firstChunk)
 	}

@@ -99,7 +99,7 @@ func DailySummaryExportToSummary(export DailySummaryExport) DailySummary {
 	return summary
 }
 
-// External object function call
+// GetExportSummary returns the current summary in export format
 func (c *Collector) GetExportSummary() *DailySummaryExport {
 	exportFormatDailySummary := DailySummaryToExport(c.Summary())
 	return &exportFormatDailySummary

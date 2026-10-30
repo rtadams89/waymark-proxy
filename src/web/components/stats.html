@@ -235,7 +235,6 @@
         <button onclick="showSideWrapper('snippet/advanceStatsOprs.html?t=' + Date.now() + '#' + encodeURIComponent(JSON.stringify(getStatisticDateRange())));" class="ui basic right floated black button"><i class="external square alternate icon"></i> Advance Operations</button>
     </div>
     
-    <!-- <button class="ui icon right floated basic button" onclick="initStatisticSummery();"><i class="green refresh icon"></i> Refresh</button> -->
     <br><br>
 </div>
 <script>
@@ -253,7 +252,6 @@
             }else{
                 //Two dates are given and they are not identical
                 loadStatisticByRange(startdate, enddate);
-                //console.log(startdate, enddate);
             }
     }
 
@@ -327,7 +325,6 @@
 
    function loadStatisticByRange(startdate, endDate){
         $.getJSON("/api/analytic/loadRange?start=" + startdate + "&end=" + endDate, function(data){
-            //console.log(data);
             //Destroy all the previous charts
            
             statisticCharts.forEach(function(thisChart){
@@ -609,7 +606,6 @@
                 maintainAspectRatio: true,
                 title: {
                     display: true,
-                    //text: 'Line Chart Example'
                 },
                 scales: {
                     x: {

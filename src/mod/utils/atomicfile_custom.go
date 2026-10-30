@@ -1,16 +1,9 @@
 package utils
 
-/*
-	atomicfile_custom.go (custom fork)
-
-	WriteFileAtomic replaces a file so that a crash or power cut leaves
-	either the old content or the new content, never a truncated mix:
-	the data goes to a temporary file in the same folder, which is flushed
-	to disk, renamed over the target (an atomic step), and then the folder
-	itself is flushed so the rename is on disk too.
-
-	Used for every configuration and state file Waymark writes.
-*/
+// WriteFileAtomic replaces a file so that a crash or power cut leaves either
+// the old content or the new: the data goes to a temporary file in the same
+// folder, which is flushed to disk, renamed over the target, and then the
+// folder itself is flushed.
 
 import (
 	"os"
@@ -60,8 +53,7 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 	return nil
 }
 
-// syncDir flushes a folder's entries (the rename) to disk. Not possible on
-// Windows, where the rename is already durable once it returns.
+// syncDir flushes a folder's entries (the rename) to disk; a no-op on Windows.
 func syncDir(dir string) {
 	if runtime.GOOS == "windows" {
 		return

@@ -1,16 +1,9 @@
 package main
 
 /*
-	capture_custom.go (custom fork)
-
-	Traffic capture (mod/capture) from the web interface: start a capture
-	with filters and limits, watch it, stop it, download or delete the
-	files. Files are kept in ./captures on this node only (readable only by
-	Waymark's user), never synced to other HA nodes, and deleted after
-	captureRetention. Captures can be run on a read-only HA standby.
-
-	Starting, stopping, downloading and deleting are written to the system
-	log with the filters used.
+	Traffic capture API: start, watch, stop, download and delete captures,
+	stored in ./captures and deleted after captureRetention. Actions are
+	written to the system log.
 */
 
 import (
@@ -43,8 +36,7 @@ func initTrafficCapture() {
 	captureManager = m
 }
 
-// stopTrafficCapture finishes a running capture before Waymark stops or
-// restarts (HA sync, update).
+// stopTrafficCapture finishes a running capture.
 func stopTrafficCapture() {
 	if captureManager != nil {
 		captureManager.Stop("Waymark stopped or restarted")

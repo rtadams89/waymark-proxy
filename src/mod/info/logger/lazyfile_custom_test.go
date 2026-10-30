@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// Custom fork: with file logging off for both streams no log file is
-// created; it appears with the first line written to it.
+// With file logging off for both streams no log file is created until the
+// first line is written to it.
 func TestLogFileCreatedOnFirstWrite(t *testing.T) {
 	dir := t.TempDir()
 	l, err := NewLogger("wm", dir)

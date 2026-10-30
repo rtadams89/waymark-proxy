@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// This remove the certificates in the list where either the
-// public key or the private key is missing
+// getCertPairs returns the certificates in the list that have both a public
+// and a private key
 func getCertPairs(certFiles []string) []string {
 	pemMap := make(map[string]bool)
 	keyMap := make(map[string]bool)
@@ -43,6 +43,6 @@ func domainToFilename(domain string, ext string) string {
 		ext = strings.TrimPrefix(ext, ".") // Ensure ext does not start with a dot
 	}
 
-	// Add .pem extension
+	// Add the extension
 	return domain + "." + ext
 }

@@ -1,17 +1,6 @@
 package main
 
-/*
-	geoip_custom.go (custom fork)
-
-	Setting to turn GeoIP lookups off. While off, the GeoIP dataset is not
-	loaded (saving memory and a lookup per request), statistics record no
-	visitor countries, and access rules cannot use country lists.
-
-	Turning lookups off is refused while an enabled access rule list still
-	contains countries, because those entries would silently stop working
-	(a country blacklist would stop blocking; a country whitelist would
-	block everyone it was meant to allow).
-*/
+// Setting to turn GeoIP lookups off, refused while an ACL uses countries.
 
 import (
 	"encoding/json"
@@ -23,7 +12,7 @@ import (
 
 const geoIPEnabledKey = "geoip_enabled"
 
-// geoIPEnabledSetting reads the saved setting (on unless turned off).
+// geoIPEnabledSetting reads the saved setting (default on).
 func geoIPEnabledSetting() bool {
 	enabled := true
 	if sysdb != nil && sysdb.KeyExists(systemTable, geoIPEnabledKey) {
@@ -33,7 +22,7 @@ func geoIPEnabledSetting() bool {
 }
 
 // accessRulesUsingCountries lists the ACLs with an enabled rule that needs
-// a country (Custom fork: ACLs).
+// a country.
 func accessRulesUsingCountries() []string {
 	if accessController == nil {
 		return []string{}

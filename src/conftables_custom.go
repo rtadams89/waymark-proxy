@@ -1,17 +1,8 @@
 package main
 
 /*
-	conftables_custom.go (custom fork): settings kept as files in the config
-	folder instead of sys.db.
-
-	Each table below is stored in its own JSON file (see
-	mod/database/filetable_custom.go). The handlers that read and write
-	these settings use the database API as before; the routing is done in
-	mod/database. The HA settings are in conf/ha.json (ha_custom.go).
-
-	sys.db keeps secrets and accounts (admin accounts, Waymark Auth users,
-	ACME accounts and EAB credentials, DNS credentials, the sticky-session
-	key) and per-node state (statistics, counters, sessions).
+	Settings tables stored as JSON files in the config folder instead of
+	sys.db (routed in mod/database).
 */
 
 import (
@@ -41,8 +32,7 @@ var confFileTables = []struct {
 }
 
 // useConfFileTables routes the tables above to their files and checks that
-// conf/ha.json can be read. Run it right after sys.db is opened, before
-// anything reads them.
+// conf/ha.json can be read.
 func useConfFileTables() {
 	for _, t := range confFileTables {
 		path := filepath.Join(CONF_FOLDER, t.File)
@@ -56,24 +46,10 @@ func useConfFileTables() {
 	cleanupBefore2171()
 }
 
-/*
-cleanupBefore2171 (2.17.1) tidies up after the moves of 2.15.0 to 2.17.0
-once Waymark no longer needs to support going back to those versions:
-
-  - ACME account keys, which were stored with the ACME preferences and so
-    ended up in conf/acme_prefs.json, go back to sys.db (the "acme" table,
-    with the EAB credentials).
-  - The copies left in sys.db of the settings that moved to conf/, the
-    "authelia" and "authentik" tables of old Zoraxy versions, and the
-    custom_fork keys only used to move settings are deleted.
-  - conf/version (Zoraxy's config migration marker) and an empty
-    conf/streamproxy folder are removed.
-
-Each step finds nothing to do once it has run. It can be removed once
-every node has run 2.17.1.
-*/
+// cleanupBefore2171 moves ACME account keys from conf/acme_prefs.json to
+// sys.db, deletes moved settings and old tables from sys.db, and removes
+// conf/version and an empty conf/streamproxy folder.
 func cleanupBefore2171() {
-	// ACME account keys out of conf/acme_prefs.json
 	prefs := map[string]bool{"prefca": true, "prefcaurl": true, "skipTLS": true}
 	if rows, err := sysdb.ListTable("acmepref"); err == nil {
 		for _, kv := range rows {
@@ -93,7 +69,6 @@ func cleanupBefore2171() {
 		}
 	}
 
-	// Copies of moved settings and old tables in sys.db
 	if sysdb.Backend != nil {
 		stale := []string{"authelia", "authentik"}
 		for _, t := range confFileTables {
@@ -115,7 +90,6 @@ func cleanupBefore2171() {
 		}
 	}
 
-	// Files of the config migrations
 	os.Remove(filepath.Join(CONF_FOLDER, "version"))
-	os.Remove(filepath.Join(CONF_FOLDER, "streamproxy")) // only if empty
+	os.Remove(filepath.Join(CONF_FOLDER, "streamproxy"))
 }

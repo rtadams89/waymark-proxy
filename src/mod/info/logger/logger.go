@@ -11,34 +11,21 @@ import (
 	"time"
 )
 
-/*
-	Zoraxy Logger
-
-	This script is designed to make a managed log for the Zoraxy
-	and replace the ton of log.Println in the system core.
-	The core logger is based in golang's build-in log package
-*/
-
 type Logger struct {
 	Prefix         string        //Prefix for log files
 	LogFolder      string        //Folder to store the log  file
 	CurrentLogFile string        //Current writing filename
-	RotateOption   *RotateOption //Options for log rotation, see rotate.go
+	RotateOption   *RotateOption // Options for log rotation
 
 	//Internal
 	logRotateTicker *time.Ticker
 	logger          *log.Logger
 	file            *os.File
-	// Custom fork: where each stream goes (outputs_custom.go, syslog_custom.go).
-	// A pointer, so Logger values can still be copied (access.Options holds
-	// one by value) and copies follow later changes.
+	// Where each stream goes
 	outputs *atomic.Pointer[outputState]
-	// Custom fork: guards file, logger, CurrentLogFile and RotateOption, so
-	// writes, the month change and rotation do not interleave (a pointer for
-	// the same reason as outputs)
+	// Guards file, logger, CurrentLogFile and RotateOption
 	mu *sync.Mutex
-	// Custom fork: the log file is opened on the first line written to it,
-	// so no file is created while file logging is off (openLogFileLocked)
+	// The log file is opened on the first line written to it (openLogFileLocked)
 	openErrLogged bool
 	closed        bool // Close was called: no file is opened again
 }
@@ -67,9 +54,7 @@ func NewLogger(logFilePrefix string, logFolder string) (*Logger, error) {
 		mu:        &sync.Mutex{},
 	}
 
-	//Custom fork: the log file is created when the first line is written to
-	//it (openLogFileLocked), so turning file logging off for both streams
-	//leaves no empty file behind
+	// The log file is created when the first line is written to it
 	thisLogger.CurrentLogFile = thisLogger.getLogFilepath()
 
 	//Initiate the log rotation ticker
@@ -121,7 +106,6 @@ func (l *Logger) PrintAndLog(title string, message string, originalError error) 
 
 // Println is a fast snap-in replacement for log.Println
 func (l *Logger) Println(v ...interface{}) {
-	//Convert the array of interfaces into string
 	message := fmt.Sprint(v...)
 	go func() {
 		l.Log("internal", string(message), nil, true)
@@ -155,7 +139,7 @@ func (l *Logger) Log(title string, errorMessage string, originalError error, cop
 		//Use STDOUT instead of logger
 		fmt.Println(line)
 	}
-	l.toSyslog(ev) //Custom fork: remote syslog (syslog_custom.go)
+	l.toSyslog(ev) // remote syslog
 }
 
 // Validate if the logging target is still valid (detect any months change)
@@ -172,8 +156,7 @@ func (l *Logger) validateLogFilepathLocked() {
 	}
 	expectedCurrentLogFilepath := l.getLogFilepath()
 	if l.CurrentLogFile != expectedCurrentLogFilepath {
-		//Change of month. The new month's file is opened when the first line
-		//is written to it (custom fork)
+		// Change of month: the new month's file is opened on the first write
 		if l.file != nil {
 			l.file.Close()
 			l.file = nil
@@ -190,8 +173,8 @@ func (l *Logger) validateLogFilepathLocked() {
 	}
 }
 
-// openLogFileLocked opens the current log file if it is not open yet
-// (custom fork), and reports whether lines can be written to it.
+// openLogFileLocked opens the current log file if it is not open yet, and
+// reports whether lines can be written to it.
 func (l *Logger) openLogFileLocked() bool {
 	if l.file != nil && l.logger != nil {
 		return true

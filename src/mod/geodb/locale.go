@@ -2,7 +2,7 @@ package geodb
 
 import "net/http"
 
-// GetRequesterCountryISOCode get the locale of the requester
+// GetLocaleFromRequest returns the locale of the requester
 func (s *Store) GetLocaleFromRequest(r *http.Request) (string, error) {
 	cc := s.GetRequesterCountryISOCode(r)
 	return GetLocaleFromCountryCode(cc), nil
@@ -10,7 +10,6 @@ func (s *Store) GetLocaleFromRequest(r *http.Request) (string, error) {
 
 // GetLocaleFromCountryCode get the locale given the country code
 func GetLocaleFromCountryCode(cc string) string {
-	//If you find your country is not in the list, please add it here
 	mapCountryToLocale := map[string]string{
 		"aa": "ar_AA",
 		"by": "be_BY",

@@ -1,12 +1,6 @@
 package geodb
 
-/*
-	updater.go
-
-	This script handles the download of the latest geoip dataset from the
-	upstream CDN, either triggered manually by the administrator or by the
-	scheduled (weekly) updater.
-*/
+// Download of the latest geoip dataset, manual or scheduled (weekly).
 
 import (
 	"errors"
@@ -29,17 +23,10 @@ const (
 	//GeoDBUpdateInterval is the base interval between two scheduled updates
 	GeoDBUpdateInterval = 7 * 24 * time.Hour
 
-	/*
-		GeoDBUpdateJitter is the maximum random offset added on top of the base
-		update interval. As the schedule is anchored on the process start time
-		and further randomized here, nodes started by a cron job at a fixed time
-		will still spread their requests out instead of hitting the upstream CDN
-		all at the same moment
-	*/
+	// GeoDBUpdateJitter is the maximum random offset added on top of the base update interval
 	GeoDBUpdateJitter = 30 * time.Minute
 
-	//GeoDBUpdateRetryInterval is the (jittered) wait time before retrying a
-	//failed scheduled update instead of waiting for another full week
+	// GeoDBUpdateRetryInterval is the (jittered) wait time before retrying a failed scheduled update
 	GeoDBUpdateRetryInterval = 1 * time.Hour
 
 	//geoDBDownloadTimeout is the timeout for downloading one database file
@@ -110,9 +97,8 @@ func newUpdater(store *Store) *Updater {
 	return thisUpdater
 }
 
-// SetGeoDBAutoUpdate enable or disable the scheduled geoip database update.
-// When enabled, the first update is scheduled one week (plus a random offset)
-// from now instead of a fixed wall clock time
+// SetGeoDBAutoUpdate enables or disables the scheduled geoip database update.
+// The first update is scheduled one week (plus a random offset) from now.
 func (s *Store) SetGeoDBAutoUpdate(enabled bool) error {
 	if s.updater == nil {
 		return errors.New("geoip database updater not initialized")
@@ -189,7 +175,7 @@ func (u *Updater) UpdateNow() error {
 		return err
 	}
 
-	//Apply the newly downloaded dataset without restarting Zoraxy
+	// Apply the newly downloaded dataset
 	if err = u.store.ReloadGeoDB(); err != nil {
 		u.lastUpdateError.Store(err.Error())
 		return err
@@ -239,14 +225,8 @@ func (u *Updater) stopScheduler() {
 	u.nextUpdateTime.Store(0)
 }
 
-/*
-scheduleWorker wait until the next scheduled update time and update the
-database when the timer is up.
-
-The wait time is one week plus a random offset counted from the moment the
-scheduler was started, so the database is refreshed weekly relative to the
-system start time instead of at a fixed hour of the day.
-*/
+// scheduleWorker updates the database every week (plus a random offset),
+// counted from when the scheduler started.
 func (u *Updater) scheduleWorker(stopChan chan struct{}) {
 	waitDuration := jitteredInterval(GeoDBUpdateInterval)
 	for {
@@ -258,12 +238,12 @@ func (u *Updater) scheduleWorker(stopChan chan struct{}) {
 			return
 		case <-timer.C:
 			if u.store.disabled.Load() {
-				//Custom fork: no downloads while lookups are turned off
+				// No downloads while lookups are turned off
 				waitDuration = jitteredInterval(GeoDBUpdateInterval)
 				continue
 			}
 			if err := u.UpdateNow(); err != nil {
-				//Update failed. Retry sooner instead of waiting another week
+				// Update failed: retry sooner
 				u.store.log("Scheduled GeoIP database update failed", err)
 				waitDuration = jitteredInterval(GeoDBUpdateRetryInterval)
 			} else {
@@ -279,9 +259,8 @@ func jitteredInterval(baseInterval time.Duration) time.Duration {
 	return baseInterval + time.Duration(rand.Int63n(int64(GeoDBUpdateJitter)))
 }
 
-// DownloadGeoDBUpdateToPath download the latest geoip dataset into the given
-// folder. The downloaded files are validated before they replace the current
-// dataset, so a failed or corrupted download will not break the existing one
+// DownloadGeoDBUpdateToPath downloads the latest geoip dataset into the given
+// folder, validating the files before they replace the current dataset.
 func DownloadGeoDBUpdateToPath(externalGeoDBStoragePath string) error {
 	if externalGeoDBStoragePath == "" {
 		externalGeoDBStoragePath = DefaultExternalGeoDBFolder
@@ -320,8 +299,6 @@ func DownloadGeoDBUpdate(externalGeoDBStoragePath string) {
 	log.Println("Exiting...")
 }
 
-// Utility functions
-
 // downloadAndValidateGeoDBCsv download a geoip csv from the given url, validate
 // its content and atomically replace the file at savepath with it
 func downloadAndValidateGeoDBCsv(url string, savepath string) error {
@@ -341,8 +318,7 @@ func downloadAndValidateGeoDBCsv(url string, savepath string) error {
 		return err
 	}
 
-	//Make sure the downloaded file is a valid geoip csv before replacing the
-	//current one, otherwise the geodb will fail to load on the next startup
+	// Validate the downloaded file as a geoip csv
 	parsedContent, err := parseCSV(fileContent)
 	if err != nil {
 		return err
@@ -351,8 +327,6 @@ func downloadAndValidateGeoDBCsv(url string, savepath string) error {
 		return errors.New("downloaded database is empty or malformed")
 	}
 
-	//Write to a temporary file first so an interrupted write will not
-	//leave a partially downloaded database behind
 	if err = utils.WriteFileAtomic(savepath, fileContent, 0644); err != nil {
 		return err
 	}

@@ -1,15 +1,6 @@
 package main
 
 /*
-  ______
- |___  /
-    / / ___  _ __ __ ___  ___   _
-   / / / _ \| '__/ _` \ \/ / | | |
-  / /_| (_) | | | (_| |>  <| |_| |
- /_____\___/|_|  \__,_/_/\_\\__, |
-                             __/ |
-                            |___/
-
 Zoraxy - A general purpose HTTP reverse proxy and forwarding tool
 Author: tobychui
 License: AGPLv3
@@ -42,12 +33,12 @@ import (
 
 	"github.com/google/uuid"
 	"imuslab.com/zoraxy/mod/auth"
-	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
+	csrf "imuslab.com/zoraxy/mod/csrfcompat"
 	"imuslab.com/zoraxy/mod/geodb"
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/* SIGTERM handler, do shutdown sequences before closing */
+// SetupCloseHandler runs the shutdown sequence on SIGTERM.
 func SetupCloseHandler() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
@@ -59,10 +50,8 @@ func SetupCloseHandler() {
 }
 
 func main() {
-	//Parse startup flags
 	flag.Parse()
 
-	//Initialize path variables from flags
 	TMP_FOLDER = *path_tmp
 	CONF_FOLDER = *path_conf
 	CONF_HTTP_PROXY = CONF_FOLDER + "/proxy"
@@ -87,20 +76,18 @@ func main() {
 		geodb.DownloadGeoDBUpdate(CONF_GEODB_PATH)
 		os.Exit(0)
 	}
-	if handleHAMaintenanceFlags() { //Custom fork: -ha-export-installer
+	if handleHAMaintenanceFlags() {
 		os.Exit(0)
 	}
-	updateStartupCheck() //Custom fork: roll back an update that does not stay up (selfupdate_custom.go)
+	updateStartupCheck()
 	if *resetAdminRuleFlag {
-		adminRuleResetAndExit() //Custom fork: rebuild the admin console proxy rule (admin_rule_custom.go)
+		adminRuleResetAndExit()
 	}
 	if *reset_account {
-		//Reset admin account by removing all users from the system
 		auth.ResetAccount(databaseBackend, path_database)
 		os.Exit(0)
 	}
 
-	/* Main Zoraxy Routines */
 	if !utils.ValidateListeningAddress(*webUIPort) {
 		fmt.Println("Malformed -port (listening address) paramter. Do you mean -port=:" + *webUIPort + "?")
 		os.Exit(0)
@@ -108,7 +95,6 @@ func main() {
 
 	SetupCloseHandler()
 
-	//Read or create the system uuid
 	uuidRecord := *path_uuid
 	if !utils.FileExists(uuidRecord) {
 		newSystemUUID := uuid.New().String()
@@ -121,7 +107,6 @@ func main() {
 	}
 	nodeUUID = string(uuidBytes)
 
-	//Create a new webmin mux, plugin mux and csrf middleware layer
 	webminPanelMux = http.NewServeMux()
 	pluginAPIMux := http.NewServeMux()
 	csrfMiddleware = csrf.Protect(
@@ -131,38 +116,31 @@ func main() {
 		csrf.Path("/"),
 		csrf.SameSite(csrf.SameSiteLaxMode),
 	)
-	csrfMiddleware = haWithReadOnly(csrfMiddleware) //Custom fork: settings are read-only on an HA standby
-	csrfMiddleware = adminGuardWrap(csrfMiddleware) //Custom fork: keep the admin console rule working (admin_guard_custom.go)
+	csrfMiddleware = haWithReadOnly(csrfMiddleware)
+	csrfMiddleware = adminGuardWrap(csrfMiddleware)
 
-	//Startup all modules, see start.go
 	startupSequence()
-	initSelfUpdate()     //Custom fork: daily check for a new release (selfupdate_custom.go)
-	initTrafficCapture() //Custom fork: traffic capture (capture_custom.go)
+	initSelfUpdate()
+	initTrafficCapture()
 
-	//Initiate APIs
 	requireAuth = !(*noauth)
 	initAPIs(webminPanelMux)
 	initRestAPI(pluginAPIMux)
 
-	// Create a entry mux to accept all management interface requests
 	entryMux := http.NewServeMux()
-	entryMux.Handle("/plugin/", pluginAPIMux)            //For plugins API access
-	entryMux.Handle("/", csrfMiddleware(webminPanelMux)) //For webmin UI access, require csrf token
+	entryMux.Handle("/plugin/", pluginAPIMux)
+	entryMux.Handle("/", csrfMiddleware(webminPanelMux)) // requires a CSRF token
 
-	// Start the reverse proxy server in go routine
 	go func() {
 		ReverseProxyInit()
 	}()
 
-	// Wait for dynamicProxyRouter to be initialized before proceeding
-	// See ReverseProxyInit() in reverseproxy.go
+	// Waits for ReverseProxyInit to create dynamicProxyRouter
 	<-dynamicProxyRouterReady
 
-	//Start the finalize sequences
 	finalSequence()
 
 	if strings.HasPrefix(*webUIPort, ":") {
-		//Bind to all interfaces, issue #672
 		SystemWideLogger.Println(SYSTEM_NAME + " started. Visit control panel at http://localhost" + *webUIPort)
 	} else {
 		SystemWideLogger.Println(SYSTEM_NAME + " started. Visit control panel at http://" + *webUIPort)

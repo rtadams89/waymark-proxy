@@ -7,17 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	csrf "imuslab.com/zoraxy/mod/csrfcompat" // custom fork: stdlib CrossOriginProtection, replaces github.com/gorilla/csrf
+	csrf "imuslab.com/zoraxy/mod/csrfcompat" // stdlib CrossOriginProtection
 )
 
-/*
-	router.go
-
-	This script holds the static resources router
-	for the reverse proxy service
-
-	If you are looking for reverse proxy handler, see Server.go in mod/dynamicproxy/
-*/
+// Static resources router for the admin console
 
 func FSHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -77,8 +70,7 @@ func handleInjectHTML(w http.ResponseWriter, r *http.Request, relativeFilepath s
 		relativeFilepath = relativeFilepath + "index.html"
 	}
 	if *development_build {
-		//Load from disk
-		// path.Clean on a rooted path drops any "..", so the file stays in web/
+		// Load from disk; path.Clean keeps the file in web/
 		targetFilePath := strings.ReplaceAll(filepath.Join("web/", path.Clean("/"+relativeFilepath)), "\\", "/")
 		content, err = os.ReadFile(targetFilePath)
 		if err != nil {

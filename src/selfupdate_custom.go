@@ -1,36 +1,22 @@
 package main
 
-/*
-	selfupdate_custom.go (custom fork)
-
-	Checks GitHub for a newer Waymark release and installs it from the web
-	interface.
-
-	- Waymark asks GitHub for the latest release once a day (and when you
-	  click Check now). Nothing is downloaded until you click Install.
-	- Install downloads the binary for this platform and its .sha256 from the
-	  release (only from this project's release downloads on github.com,
-	  over HTTPS), checks the checksum, runs the new binary with -version to
-	  make sure it starts and is the expected version, keeps the running
-	  binary as waymark.prev, swaps the new one in and restarts Waymark in
-	  place (same process, so systemd keeps tracking it).
-	- If the new version does not stay up (it is started three times without
-	  running for two minutes, e.g. systemd restarting a crashing binary),
-	  the next start puts waymark.prev back.
-	- Roll back swaps waymark.prev and the running binary, with the same
-	  protection.
-	- In a cluster, Rolling update updates every node one at a time
-	  (rollingupdate_custom.go), and each node can still be updated on its
-	  own (HA page: per node buttons); a node asks another one to update
-	  itself over the sync connection (action "update"). Nodes on different
-	  versions keep running but pause configuration sync until they match.
-
-	No root is involved: Waymark replaces the file in the folder it runs
-	from, so that folder must be writable by the waymark user (it is with the
-	install steps in the README, where /opt/waymark belongs to waymark).
-	Older versions can only be installed with Roll back (to waymark.prev) or
-	by hand.
-*/
+// Checks GitHub for a newer Waymark release and installs it from the web
+// interface.
+//
+//   - The latest release is checked once a day (and on Check now).
+//   - Install downloads the binary for this platform and its .sha256 from the
+//     project's release downloads on github.com over HTTPS, checks the
+//     checksum, runs the new binary with -version, keeps the running binary as
+//     waymark.prev, swaps the new one in and restarts Waymark in place.
+//   - If the new version is started three times without running for two
+//     minutes, the next start puts waymark.prev back.
+//   - Roll back swaps waymark.prev and the running binary, with the same
+//     protection.
+//   - In a cluster, a node asks another one to update itself over the sync
+//     connection (action "update").
+//
+// Waymark replaces the file in the folder it runs from, so that folder must be
+// writable by the waymark user.
 
 import (
 	"context"
@@ -270,8 +256,7 @@ func updateFetchLatest() (*updateRelease, error) {
 	return rel, nil
 }
 
-// updateCheck refreshes the latest release. manual checks are limited to
-// one a minute (GitHub allows 60 unauthenticated requests an hour).
+// updateCheck refreshes the latest release; manual checks are limited to one a minute.
 func updateCheck(manual bool) error {
 	upd.mu.Lock()
 	if manual {
@@ -483,7 +468,7 @@ func updateInstall(exe string, rel *updateRelease) error {
 	}
 	wantSum := strings.ToLower(fields[0])
 
-	// Binary, written next to the running one so it can be renamed into place
+	// Binary, written next to the running one
 	resp, err = updateGet(ctx, client, rel.AssetURL)
 	if err != nil {
 		return fmt.Errorf("downloading the binary: %v", err)
@@ -552,7 +537,7 @@ func updateRestart(exe, message string) {
 		mdnsTickerStop = nil
 		ShutdownSeq()
 		err := syscall.Exec(exe, os.Args, os.Environ())
-		// Only reached if exec failed; exit so systemd starts Waymark again
+		// Only reached if exec failed
 		fmt.Println("Update: restart failed: " + err.Error())
 		os.Exit(1)
 	}()
@@ -608,8 +593,7 @@ func updateRollback() (string, error) {
 /* Startup */
 
 // plannedRestartVar is set in the environment of a restart Waymark does
-// itself after a clean shutdown, so the start is not counted against a new
-// version.
+// itself after a clean shutdown.
 const plannedRestartVar = "WAYMARK_PLANNED_RESTART"
 
 func plannedRestartEnv() []string {
@@ -628,8 +612,7 @@ func plannedRestartEnv() []string {
 // previous binary is put back. Once it has run that long, the update is
 // recorded as done.
 func updateStartupCheck() {
-	// A restart Waymark did itself (to load the configuration from the HA
-	// active node) is not a failed start.
+	// A restart Waymark did itself is not counted as a failed start
 	planned := os.Getenv(plannedRestartVar) == "1"
 	os.Unsetenv(plannedRestartVar)
 	exe, err := updateExecutable()
@@ -682,7 +665,7 @@ func updateStartupCheck() {
 }
 
 func initSelfUpdate() {
-	initRollingUpdate() // rollingupdate_custom.go
+	initRollingUpdate()
 	go updateCheckLoop()
 }
 
@@ -769,7 +752,7 @@ func HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	resp := updateStatus()
 	cfg := haConfig()
 	resp["haActive"] = cfg.Enabled && len(cfg.Nodes) > 1 && haEffectiveRole(haRuntime()).State == "MASTER"
-	// rollingupdate_custom.go: a rolling update can update every node
+	// A rolling update can update every node
 	resp["haCluster"] = cfg.Enabled && cfg.SyncEnabled && len(cfg.Nodes) > 1 && haSelf(cfg) >= 0
 	resp["rolling"] = rollView()
 	js, _ := json.Marshal(resp)

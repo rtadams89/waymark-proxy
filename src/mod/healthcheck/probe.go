@@ -37,7 +37,7 @@ type Upstream struct {
 	Addr          string // OriginIpOrDomain, e.g. "10.0.0.5:8080"
 	RequireTLS    bool
 	SkipTLSVerify bool
-	TLSServerName string // custom fork: name the certificate is checked against (and SNI); empty = from the address or HostHeader
+	TLSServerName string // name the certificate is checked against (and SNI); empty = from the address or HostHeader
 }
 
 // Prober runs one active check. Replaceable in tests.
@@ -106,13 +106,13 @@ func probeHTTP(ctx context.Context, up Upstream, cfg *Config, timeout time.Durat
 	client := &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
-			// One-shot connections, like the upstream uptime monitor (see #1241)
+			// One-shot connections
 			DisableKeepAlives:     true,
 			TLSClientConfig:       tlsConfig,
 			ResponseHeaderTimeout: timeout,
-			Proxy:                 nil, // never route health checks through an environment proxy
+			Proxy:                 nil,
 		},
-		// A redirect is an answer; judge it against ExpectedStatus instead of following it
+		// Redirects are judged against ExpectedStatus, not followed
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 	start := time.Now()
@@ -158,7 +158,7 @@ func probeTCP(ctx context.Context, up Upstream, timeout time.Duration) ProbeResu
 }
 
 // probeTCPExchange connects, sends cfg.Send (if any) and waits until the
-// reply contains cfg.Expect (if any). Custom fork: Layer 4 proxy checks.
+// reply contains cfg.Expect (if any).
 func probeTCPExchange(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
 	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat) // validated on save
 	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)
@@ -184,7 +184,7 @@ func probeTCPExchange(ctx context.Context, up Upstream, cfg *Config, timeout tim
 }
 
 // probeUDP sends cfg.Send and waits for a reply containing cfg.Expect (any
-// reply when Expect is empty). Custom fork: Layer 4 proxy checks.
+// reply when Expect is empty).
 func probeUDP(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
 	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat)
 	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)
@@ -292,10 +292,8 @@ func probeICMP(ctx context.Context, up Upstream, timeout time.Duration) ProbeRes
 	return ProbeResult{OK: true, Detail: "reply from " + ip.String(), Latency: rtt}
 }
 
-// pingOnce sends one ICMP echo request and waits for the matching reply.
-// It first uses an unprivileged ICMP socket (allowed by Debian's default
-// net.ipv4.ping_group_range), then falls back to a raw socket (root or
-// CAP_NET_RAW).
+// pingOnce sends one ICMP echo request and waits for the matching reply,
+// using an unprivileged ICMP socket, then a raw socket.
 func pingOnce(ip net.IP, deadline time.Time) (time.Duration, error) {
 	v4 := ip.To4() != nil
 	type mode struct {
@@ -373,8 +371,7 @@ func pingOnce(ip net.IP, deadline time.Time) (time.Duration, error) {
 		if !ok || echo.Seq != seq {
 			continue
 		}
-		// Unprivileged sockets rewrite the ID to the socket's port; only
-		// raw sockets see our own ID
+		// Raw sockets: match our own ID
 		if !udp && echo.ID != id {
 			continue
 		}

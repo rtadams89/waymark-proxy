@@ -12,12 +12,7 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Pathrules.go
-
-	This script handle advance path settings and rules on particular
-	paths of the incoming requests
-*/
+// Advanced settings and rules for particular request paths
 
 type Options struct {
 	Enabled      bool   //If the pathrule is enabled.
@@ -42,13 +37,9 @@ type Handler struct {
 
 // Create a new path blocker handler
 func NewPathRuleHandler(options *Options) *Handler {
-	//Create folder if not exists
 	if !utils.FileExists(options.ConfigFolder) {
 		os.Mkdir(options.ConfigFolder, 0775)
 	}
-
-	//Load the configs from file
-	//TODO
 
 	return &Handler{
 		Options:       options,
@@ -80,17 +71,14 @@ func (h *Handler) GetPathBlockerFromUUID(UUID string) *BlockingPath {
 }
 
 func (h *Handler) AddBlockingPath(pathBlocker *BlockingPath) error {
-	//Check if the blocker exists
 	blockerPath := pathBlocker.MatchingPath
 	targetBlocker := h.GetPathBlockerFromMatchingPath(blockerPath)
 	if targetBlocker != nil {
-		//Blocker with the same matching path already exists
 		return errors.New("path blocker with the same path already exists")
 	}
 
 	h.BlockingPaths = append(h.BlockingPaths, pathBlocker)
 
-	//Write the new config to file
 	return h.SaveBlockerToFile(pathBlocker)
 }
 
@@ -103,7 +91,6 @@ func (h *Handler) RemoveBlockingPathByUUID(uuid string) error {
 	}
 
 	if len(h.BlockingPaths) == len(newBlockingList) {
-		//Nothing is removed
 		return errors.New("given matching path blocker not exists")
 	}
 
@@ -113,8 +100,7 @@ func (h *Handler) RemoveBlockingPathByUUID(uuid string) error {
 }
 
 // blockerFilename returns the config file of a blocker, accepting only a
-// well-formed UUID as the name (custom fork: the UUID comes from API
-// requests, and "../" in it must never reach the file system).
+// well-formed UUID as the name.
 func (h *Handler) blockerFilename(id string) (string, error) {
 	parsed, err := uuid.Parse(id)
 	if err != nil {

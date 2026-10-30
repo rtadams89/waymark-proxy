@@ -14,12 +14,8 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Plugin Store Update
-
-	Check if an installed plugin has a newer version available on the
-	plugin store index, and update the plugin binary in place.
-*/
+// Checks installed plugins for newer versions on the plugin store index and
+// updates the plugin binary in place.
 
 type PluginUpdateInfo struct {
 	PluginID         string `json:"pluginID"`         //The ID of the plugin
@@ -82,7 +78,7 @@ func (m *Manager) GetPluginUpdateInfos() []*PluginUpdateInfo {
 	for pluginID, plugin := range m.LoadedPlugins {
 		storeCopy := m.getDownloadablePluginByID(pluginID)
 		if storeCopy == nil {
-			//Not from the plugin store, cannot check for updates
+			// Not from the plugin store
 			continue
 		}
 		updateInfos = append(updateInfos, &PluginUpdateInfo{
@@ -138,8 +134,7 @@ func (m *Manager) UpdatePlugin(pluginID string) error {
 		}
 	}
 
-	//Download the new binary to a temporary file next to the current one
-	//so a failed download never corrupts the existing installation
+	// Download the new binary to a temporary file next to the current one
 	tmpPath := entryPoint + ".download"
 	err = downloadFileTo(downloadURL, tmpPath)
 	if err != nil {
@@ -167,7 +162,7 @@ func (m *Manager) UpdatePlugin(pluginID string) error {
 	if strings.HasPrefix(iconURL, "http://") || strings.HasPrefix(iconURL, "https://") {
 		err = downloadFileTo(iconURL, filepath.Join(installedPlugin.RootDir, "icon.png"))
 		if err != nil {
-			//Icon is not critical, log and continue
+			// Log and continue
 			m.Log("Failed to update plugin icon for "+pluginID, err)
 		}
 	}
@@ -225,10 +220,6 @@ func downloadFileTo(downloadURL string, destPath string) error {
 	_, err = io.Copy(out, resp.Body)
 	return err
 }
-
-/*
-	Handlers for Plugin Update
-*/
 
 // HandleCheckPluginUpdates returns the update state of all installed plugins
 // that are available on the plugin store

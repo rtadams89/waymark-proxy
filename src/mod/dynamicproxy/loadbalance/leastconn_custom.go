@@ -1,21 +1,9 @@
 package loadbalance
 
-/*
-	leastconn_custom.go (custom fork)
-
-	Load balancing methods shared with Layer 4 rules:
-	- weighted (the default): a random destination, in proportion to its
-	  weight
-	- leastconn: the destination with the fewest requests in progress for
-	  its weight (requests / weight), so a destination with weight 2 is
-	  given twice as many as one with weight 1
-
-	Destinations with weight 0 are backups: they are only used when no
-	destination with a weight above 0 is available.
-
-	Requests in progress are counted per destination address, across rules,
-	from the moment one is picked until its response (or WebSocket) ends.
-*/
+// Load balancing methods: weighted picks a random destination in proportion
+// to its weight; leastconn picks the destination with the fewest requests in
+// progress per unit of weight. Destinations with weight 0 are used only when
+// no other destination is available.
 
 import (
 	"math/rand"

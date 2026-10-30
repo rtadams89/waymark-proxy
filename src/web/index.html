@@ -15,7 +15,7 @@
         <script src="script/countryCode.js"></script>
         <script src="script/chart.js"></script>
         <script src="script/utils.js"></script>
-        <script src="script/logpage.js"></script> <!-- Custom fork: Access Logs and System Logs pages -->
+        <script src="script/logpage.js"></script> <!-- Access Logs and System Logs pages -->
         <link rel="stylesheet" href="script/jsvectormap/jsvectormap.min.css">
         <script src="script/jsvectormap/jsvectormap.min.js"></script>
         <script src="script/jsvectormap/world.js"></script>
@@ -28,9 +28,9 @@
             <div class="item">
                 <img class="logo" src="img/logo.svg">
             </div>
-            <!-- Custom fork: HA role (script/haBanner.js) -->
+            <!-- HA role (script/haBanner.js) -->
             <div class="item" id="haRoleBadge" style="display:none; cursor: pointer;" onclick="openTabById('ha');"></div>
-            <!-- Custom fork: update available (script/updateNotice.js) -->
+            <!-- Update available (script/updateNotice.js) -->
             <div class="item" id="updateBadge" style="display:none; cursor: pointer; align-items: center; vertical-align: middle; margin-left: 0.4em;" onclick="updOpenAbout();"></div>
 
             <div class="ui right floated buttons menutoggle" style="padding-top: 2px;">
@@ -207,7 +207,6 @@
                         </div>
                     </div>
 
-                    <!-- Add more components here -->
                 </div>
             </div>
             <div class="contentWindow">
@@ -241,7 +240,7 @@
                 <!-- Redirections -->
                 <div id="redirectset" class="functiontab" target="redirection.html"></div>
                 
-                <!-- Custom fork: ACLs and their objects -->
+                <!-- ACLs and their objects -->
                 <div id="access" class="functiontab" target="access.html"></div>
                 <div id="aclobjects" class="functiontab" target="aclobjects.html"></div>
 
@@ -270,10 +269,10 @@
                 <div id="logsettings" class="functiontab" target="logsettings.html"></div>
                 <div id="syslogs" class="functiontab" target="syslogs.html"></div>
 
-                <!-- Custom fork: traffic capture -->
+                <!-- Traffic capture -->
                 <div id="capture" class="functiontab" target="capture.html"></div>
 
-                <!-- Custom fork: High Availability -->
+                <!-- High Availability -->
                 <div id="ha" class="functiontab" target="ha.html"></div>
 
                 <!-- Statistic Tools -->
@@ -302,7 +301,7 @@
         <br>
         <div class="ui divider"></div>
         <div class="ui container" style="color: grey; font-size: 90%; padding-bottom: 1em;">
-            <!-- Custom fork: copyright, license and source are on System > About (components/about.html) -->
+            <!-- Copyright, license and source are on System > About (components/about.html) -->
             <p>Waymark Proxy <span class="zrversion"></span> · <a href="#about" onclick="openTabById('about'); return false;">About, license &amp; source code</a></p>
         </div>
         
@@ -323,12 +322,9 @@
 
         <br><br>
         <script>
-           /* 
-                Plugin Manager State 
-           
-                As some initiation must be done before the plugin manager
-                loaded up the plugin list, this state here tells the plugin
-                manager to do some actions after the plugin list is initiated
+           /*
+               Plugin Manager State: actions for the plugin manager to run after the
+               plugin list is initiated
            */
             var plugin_manager_state = {
                 initated: false, //Whether the plugin manager has been initiated
@@ -384,7 +380,7 @@
                     let tabID = window.location.hash.substr(1);
                     if (tabID.startsWith("{")) {
                         tabID = decodeURIComponent(tabID);
-                        //Zoraxy v3.2.x plugin context window
+                        //Plugin context window
                         try {
                             let parsedData = JSON.parse(tabID);
                             tabID = parsedData.tabID;
@@ -450,7 +446,7 @@
             function initLogoutButtonState() {
                 $.get("/api/auth/authEnabled", function(authEnabled) {
                     if (authEnabled === false) {
-                        //noauth mode, logout is a no-op. Hide the button to avoid confusion
+                        //noauth mode: hide the logout button
                         $("#logoutButtonWrapper").hide();
                     }
                 });
@@ -522,7 +518,7 @@
 
             //Select and open a tab by its tag id
             let tabSwitchEventBind = {}; //Bind event to tab switch by tabid
-            //Custom fork: pages merged into others (Layer 4 rules are on Proxy Rules since 2.12.0)
+            //Pages merged into others
             const TAB_ALIASES = {streamproxy: "httprp", l4proxy: "httprp", l4rules: "rules"};
             function openTabById(tabID, object=undefined){
                 if (object == undefined && TAB_ALIASES[tabID] != undefined){
@@ -690,7 +686,7 @@
                     $("#httprpEditModal .editor_side_wrapper").hide();
                 }
                 if ($("#l4EditModal").length && $("#l4EditModal").is(":visible") && typeof hideL4EditorSideWrapper == "function") {
-                    //Custom fork: Layer 4 proxy editor side wrapper
+                    //Layer 4 proxy editor side wrapper
                     hideL4EditorSideWrapper(true);
                 }
 
@@ -727,7 +723,7 @@
                 return map;
             })();
 
-            //Custom fork: renamed from zoraxy_menu_groups; the old key is moved once
+            //Move the old zoraxy_menu_groups key once
             function getMenuGroupStates() {
                 try {
                     let saved = localStorage.getItem('waymark_menu_groups');

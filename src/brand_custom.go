@@ -7,8 +7,7 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// HandleBrandInfo returns the product name, version and the Zoraxy release
-// it is based on, for the web UI's About page.
+// HandleBrandInfo returns the product name, version and upstream base version.
 // GET /api/info/brand
 func HandleBrandInfo(w http.ResponseWriter, r *http.Request) {
 	js, _ := json.Marshal(map[string]string{

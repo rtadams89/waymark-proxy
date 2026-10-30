@@ -1,5 +1,5 @@
-<!-- Custom fork: Certificates > DNS Credentials. The credential set manager
-     (snippet/dnsProfiles.html) shown in a frame that follows its height. -->
+<!-- Certificates > DNS Credentials: the credential set manager
+     (snippet/dnsProfiles.html) in a frame that follows its height. -->
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>DNS Credentials</h2>
@@ -15,8 +15,7 @@
             if (e.origin != window.location.origin || !e.data || e.data.wmFrame != "dnscreds") return;
             frame.css("height", Math.max(420, parseInt(e.data.height) || 0) + "px");
         });
-        //Loaded when the page is first opened, and again on later visits (a set
-        //may have been added from the ACME tool meanwhile)
+        //Loaded each time the page is opened
         tabSwitchEventBind["dnscreds"] = function(){
             frame.attr("src", "snippet/dnsProfiles.html?page=1");
         };

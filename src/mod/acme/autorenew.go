@@ -15,18 +15,12 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	autorenew.go
-
-	This script handle auto renew
-*/
-
 type AutoRenewConfig struct {
-	Enabled      bool     //Automatic renew is enabled
-	Email        string   //Email for acme
-	RenewAll     bool     //Renew all or selective renew with the slice below
-	FilesToRenew []string //If RenewAll is false, renew these certificate files
-	DNSServers   string   // DNS servers
+	Enabled      bool
+	Email        string
+	RenewAll     bool // renew all, or only FilesToRenew
+	FilesToRenew []string
+	DNSServers   string
 }
 
 type AutoRenewer struct {
@@ -35,9 +29,9 @@ type AutoRenewer struct {
 	AcmeHandler       *ACMEHandler
 	RenewerConfig     *AutoRenewConfig
 	RenewTickInterval int64
-	EarlyRenewDays    int //How many days before cert expire to renew certificate
+	EarlyRenewDays    int // days before expiry to renew
 	TickerstopChan    chan bool
-	Logger            *logger.Logger //System wide logger
+	Logger            *logger.Logger
 }
 
 type ExpiredCerts struct {
@@ -45,20 +39,18 @@ type ExpiredCerts struct {
 	Filepath string
 }
 
-// Create an auto renew agent, require config filepath and auto scan & renew interval (seconds)
-// Set renew check interval to 0 for auto (1 day)
+// NewAutoRenewer creates an auto renewer; renewCheckInterval is in seconds
+// (0 for one day).
 func NewAutoRenewer(config string, certFolder string, renewCheckInterval int64, earlyRenewDays int, AcmeHandler *ACMEHandler, logger *logger.Logger) (*AutoRenewer, error) {
 	if renewCheckInterval == 0 {
-		renewCheckInterval = 86400 //1 day
+		renewCheckInterval = 86400
 	}
 
 	if earlyRenewDays == 0 {
 		earlyRenewDays = 30
 	}
 
-	//Load the config file. If not found, create one
 	if !utils.FileExists(config) {
-		//Create one
 		os.MkdirAll(filepath.Dir(config), 0775)
 		newConfig := AutoRenewConfig{
 			RenewAll:     true,
@@ -82,7 +74,6 @@ func NewAutoRenewer(config string, certFolder string, renewCheckInterval int64, 
 		return nil, errors.New("Malformed acme config file: " + err.Error())
 	}
 
-	//Create an Auto renew object
 	thisRenewer := AutoRenewer{
 		ConfigFilePath:    config,
 		CertFolder:        certFolder,
@@ -96,12 +87,10 @@ func NewAutoRenewer(config string, certFolder string, renewCheckInterval int64, 
 	thisRenewer.Logf("ACME early renew set to "+fmt.Sprint(earlyRenewDays)+" days and check interval set to "+fmt.Sprint(renewCheckInterval)+" seconds", nil)
 
 	if thisRenewer.RenewerConfig.Enabled {
-		//Start the renew ticker
 		thisRenewer.StartAutoRenewTicker()
 
-		//Check and renew certificate on startup
 		go func() {
-			if !thisRenewer.renewalHeld() { //Custom fork: HA standby
+			if !thisRenewer.renewalHeld() {
 				thisRenewer.CheckAndRenewCertificates()
 			}
 		}()
@@ -115,7 +104,6 @@ func (a *AutoRenewer) Logf(message string, err error) {
 }
 
 func (a *AutoRenewer) StartAutoRenewTicker() {
-	//Stop the previous ticker if still running
 	if a.TickerstopChan != nil {
 		a.TickerstopChan <- true
 	}
@@ -125,14 +113,13 @@ func (a *AutoRenewer) StartAutoRenewTicker() {
 	ticker := time.NewTicker(time.Duration(a.RenewTickInterval) * time.Second)
 	done := make(chan bool)
 
-	//Start the ticker to check and renew every x seconds
 	go func(a *AutoRenewer) {
 		for {
 			select {
 			case <-done:
 				return
 			case <-ticker.C:
-				if a.renewalHeld() { //Custom fork: HA standby
+				if a.renewalHeld() {
 					continue
 				}
 				a.Logf("Check and renew certificates in progress", nil)
@@ -152,10 +139,8 @@ func (a *AutoRenewer) StopAutoRenewTicker() {
 	a.TickerstopChan = nil
 }
 
-// Handle update auto renew domains
-// Set opr for different mode of operations
-// opr = setSelected -> Enter a list of file names (or matching rules) for auto renew
-// opr = setAuto -> Set to use auto detect certificates and renew
+// HandleSetAutoRenewDomains sets the certificates to renew: opr=setSelected
+// with a list of file names, or opr=setAuto for all.
 func (a *AutoRenewer) HandleSetAutoRenewDomains(w http.ResponseWriter, r *http.Request) {
 	opr, err := utils.PostPara(r, "opr")
 	if err != nil {
@@ -170,7 +155,6 @@ func (a *AutoRenewer) HandleSetAutoRenewDomains(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		//Parse it int array of string
 		matchingRuleFiles := []string{}
 		err = json.Unmarshal([]byte(files), &matchingRuleFiles)
 		if err != nil {
@@ -178,7 +162,6 @@ func (a *AutoRenewer) HandleSetAutoRenewDomains(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		//Update the configs
 		a.RenewerConfig.RenewAll = false
 		a.RenewerConfig.FilesToRenew = matchingRuleFiles
 		a.saveRenewConfigToFile()
@@ -193,14 +176,12 @@ func (a *AutoRenewer) HandleSetAutoRenewDomains(w http.ResponseWriter, r *http.R
 
 }
 
-// if auto renew all is true (aka auto scan), it will return []string{"*"}
+// HandleLoadAutoRenewDomains returns the certificates to renew, or ["*"] for all.
 func (a *AutoRenewer) HandleLoadAutoRenewDomains(w http.ResponseWriter, r *http.Request) {
 	results := []string{}
 	if a.RenewerConfig.RenewAll {
-		//Auto pick which cert to renew.
 		results = append(results, "*")
 	} else {
-		//Manually set the files to renew
 		results = a.RenewerConfig.FilesToRenew
 	}
 
@@ -209,7 +190,6 @@ func (a *AutoRenewer) HandleLoadAutoRenewDomains(w http.ResponseWriter, r *http.
 }
 
 func (a *AutoRenewer) HandleRenewPolicy(w http.ResponseWriter, r *http.Request) {
-	//Load the current value
 	js, _ := json.Marshal(a.RenewerConfig.RenewAll)
 	utils.SendJSONResponse(w, string(js))
 }
@@ -243,7 +223,6 @@ func (a *AutoRenewer) HandleAutoRenewEnable(w http.ResponseWriter, r *http.Reque
 			utils.SendErrorResponse(w, "invalid or empty enable state")
 		}
 		if val {
-			//Check if the email is not empty
 			if a.RenewerConfig.Email == "" {
 				utils.SendErrorResponse(w, "Email is not set")
 				return
@@ -266,7 +245,6 @@ func (a *AutoRenewer) HandleAutoRenewEnable(w http.ResponseWriter, r *http.Reque
 
 func (a *AutoRenewer) HandleACMEEmail(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		//Return the current email to user
 		js, _ := json.Marshal(a.RenewerConfig.Email)
 		utils.SendJSONResponse(w, string(js))
 	} else if r.Method == http.MethodPost {
@@ -276,14 +254,12 @@ func (a *AutoRenewer) HandleACMEEmail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//Check if the email is valid
 		_, err = mail.ParseAddress(email)
 		if err != nil {
 			utils.SendErrorResponse(w, err.Error())
 			return
 		}
 
-		//Set the new config
 		a.RenewerConfig.Email = email
 		a.saveRenewConfigToFile()
 
@@ -293,9 +269,8 @@ func (a *AutoRenewer) HandleACMEEmail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Check and renew certificates. This check all the certificates in the
-// certificate folder and return a list of certs that is renewed in this call
-// Return string array with length 0 when no cert is expired
+// CheckAndRenewCertificates renews expired certificates in the certificate
+// folder and returns the renewed ones.
 func (a *AutoRenewer) CheckAndRenewCertificates() ([]string, error) {
 	certFolder := a.CertFolder
 	files, err := os.ReadDir(certFolder)
@@ -306,19 +281,16 @@ func (a *AutoRenewer) CheckAndRenewCertificates() ([]string, error) {
 
 	expiredCertList := []*ExpiredCerts{}
 	if a.RenewerConfig.RenewAll {
-		//Scan and renew all
 		for _, file := range files {
 			if filepath.Ext(file.Name()) == ".crt" || filepath.Ext(file.Name()) == ".pem" {
-				//This is a public key file
 				certBytes, err := os.ReadFile(filepath.Join(certFolder, file.Name()))
 				if err != nil {
 					continue
 				}
 				if CertExpireSoon(certBytes, a.EarlyRenewDays) || CertIsExpired(certBytes) {
-					//This cert is expired
 					DNSName, err := ExtractDomains(certBytes)
 					if err != nil {
-						//Maybe self signed. Ignore this
+						// Skips certificates without DNS names
 						a.Logf("Encounted error when trying to resolve DNS name for cert "+file.Name(), err)
 						continue
 					}
@@ -331,21 +303,18 @@ func (a *AutoRenewer) CheckAndRenewCertificates() ([]string, error) {
 			}
 		}
 	} else {
-		//Only renew those in the list
 		for _, file := range files {
 			fileName := file.Name()
 			certName := fileName[:len(fileName)-len(filepath.Ext(fileName))]
 			if contains(a.RenewerConfig.FilesToRenew, certName) {
-				//This is the one to auto renew
 				certBytes, err := os.ReadFile(filepath.Join(certFolder, file.Name()))
 				if err != nil {
 					continue
 				}
 				if CertExpireSoon(certBytes, a.EarlyRenewDays) || CertIsExpired(certBytes) {
-					//This cert is expired
 					DNSName, err := ExtractDomains(certBytes)
 					if err != nil {
-						//Maybe self signed. Ignore this
+						// Skips certificates without DNS names
 						a.Logf("Encounted error when trying to resolve DNS name for cert "+file.Name(), err)
 						continue
 					}
@@ -362,15 +331,13 @@ func (a *AutoRenewer) CheckAndRenewCertificates() ([]string, error) {
 	return a.renewExpiredDomains(expiredCertList)
 }
 
-// Close the auto renewer
 func (a *AutoRenewer) Close() {
 	if a.TickerstopChan != nil {
 		a.TickerstopChan <- true
 	}
 }
 
-// Renew the certificate by filename extract all DNS name from the
-// certificate and renew them one by one by calling to the acmeHandler
+// renewExpiredDomains renews each expired certificate with all its domains.
 func (a *AutoRenewer) renewExpiredDomains(certs []*ExpiredCerts) ([]string, error) {
 	renewedCertFiles := []string{}
 	for _, expiredCert := range certs {
@@ -378,7 +345,6 @@ func (a *AutoRenewer) renewExpiredDomains(certs []*ExpiredCerts) ([]string, erro
 		fileName := filepath.Base(expiredCert.Filepath)
 		certName := fileName[:len(fileName)-len(filepath.Ext(fileName))]
 
-		// Load certificate info for ACME detail
 		certInfoFilename := fmt.Sprintf("%s/%s.json", filepath.Dir(expiredCert.Filepath), certName)
 		certInfo, err := LoadCertInfoJSON(certInfoFilename)
 		if err != nil {
@@ -392,19 +358,17 @@ func (a *AutoRenewer) renewExpiredDomains(certs []*ExpiredCerts) ([]string, erro
 			}
 		}
 
-		//For upgrading config from older version of Zoraxy which don't have timeout
+		// Default propagation timeout when missing
 		if certInfo.PropTimeout == 0 {
-			//Set default timeout
 			certInfo.PropTimeout = 300
 		}
 
-		// Extract DNS servers from the certificate info if available
 		var dnsServers string
 		if len(certInfo.DNSServers) > 0 {
 			dnsServers = strings.Join(certInfo.DNSServers, ",")
 		}
 
-		// Extract SANs from the existing PEM to ensure all domains are included
+		// Adds the domains of the existing certificate
 		sanDomains, errSan := ExtractDomainsFromPEM(expiredCert.Filepath)
 		if errSan == nil && len(sanDomains) > 0 {
 			expiredCert.Domains = sanDomains
@@ -425,13 +389,12 @@ func (a *AutoRenewer) renewExpiredDomains(certs []*ExpiredCerts) ([]string, erro
 	return renewedCertFiles, nil
 }
 
-// Write the current renewer config to file
 func (a *AutoRenewer) saveRenewConfigToFile() error {
 	js, _ := json.MarshalIndent(a.RenewerConfig, "", " ")
 	return utils.WriteFileAtomic(a.ConfigFilePath, js, 0644)
 }
 
-// Handle update auto renew EAD configuration
+// HanldeSetEAB sets the external account binding (kid, hmacEncoded) of an ACME directory.
 func (a *AutoRenewer) HanldeSetEAB(w http.ResponseWriter, r *http.Request) {
 	kid, err := utils.GetPara(r, "kid")
 	if err != nil {

@@ -9,9 +9,7 @@ import (
 	"time"
 )
 
-// Get the issuer name from pem file
 func ExtractIssuerNameFromPEM(pemFilePath string) (string, error) {
-	// Read the PEM file
 	pemData, err := os.ReadFile(pemFilePath)
 	if err != nil {
 		return "", err
@@ -20,7 +18,7 @@ func ExtractIssuerNameFromPEM(pemFilePath string) (string, error) {
 	return ExtractIssuerName(pemData)
 }
 
-// Get the DNSName in the cert
+// ExtractDomains returns the DNS names of a PEM certificate.
 func ExtractDomains(certBytes []byte) ([]string, error) {
 	domains := []string{}
 	block, _ := pem.Decode(certBytes)
@@ -41,24 +39,20 @@ func ExtractDomains(certBytes []byte) ([]string, error) {
 }
 
 func ExtractIssuerName(certBytes []byte) (string, error) {
-	// Parse the PEM block
 	block, _ := pem.Decode(certBytes)
 	if block == nil || block.Type != "CERTIFICATE" {
 		return "", fmt.Errorf("failed to decode PEM block containing certificate")
 	}
 
-	// Parse the certificate
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse certificate: %v", err)
 	}
 
-	// Check if exist incase some acme server didn't have org section
 	if len(cert.Issuer.Organization) == 0 {
 		return "", fmt.Errorf("cert didn't have org section exist")
 	}
 
-	// Extract the issuer name
 	issuer := cert.Issuer.Organization[0]
 
 	return issuer, nil
@@ -78,7 +72,7 @@ func ExtractDomainsFromPEM(pemFilePath string) ([]string, error) {
 	return domains, nil
 }
 
-// Check if a cert is expired by public key
+// CertIsExpired reports whether a PEM certificate is expired.
 func CertIsExpired(certBytes []byte) bool {
 	block, _ := pem.Decode(certBytes)
 	if block != nil {
@@ -86,8 +80,6 @@ func CertIsExpired(certBytes []byte) bool {
 		if err == nil {
 			elapsed := time.Since(cert.NotAfter)
 			if elapsed > 0 {
-				// if it is expired then add it in
-				// make sure it's uniqueless
 				return true
 			}
 		}
@@ -95,7 +87,7 @@ func CertIsExpired(certBytes []byte) bool {
 	return false
 }
 
-// CertExpireSoon check if the given cert bytes will expires within the given number of days from now
+// CertExpireSoon reports whether a PEM certificate expires within numberOfDays.
 func CertExpireSoon(certBytes []byte, numberOfDays int) bool {
 	block, _ := pem.Decode(certBytes)
 	if block != nil {

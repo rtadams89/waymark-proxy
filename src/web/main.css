@@ -263,12 +263,12 @@ body.darkTheme .menubar{
 
     .contentWindow{
         display: inline-block;
-        width: calc(100% - 0.8em); /* Custom fork: leave room for the side margins (the page scrolled sideways) */
+        width: calc(100% - 0.8em); /* Leave room for the side margins */
         margin-right: 0.4em;
         margin-left: 0.4em;
     }
 
-    /* Custom fork: sub-page menus scroll sideways instead of widening the page */
+    /* Sub-page menus scroll sideways instead of widening the page */
     .standardContainer > .ui.secondary.pointing.menu{
         overflow-x: auto;
         overflow-y: hidden;
@@ -752,6 +752,6 @@ body.darkTheme .menudivider{
     border-left: 6px solid #9c3c3c !important;
 }
 
-/* Custom fork: update available pill next to the logo (script/updateNotice.js) */
+/* Update available pill next to the logo (script/updateNotice.js) */
 .menubar .updPill{ display: inline-block; padding: 0.25em 0.8em; border-radius: 1em; font-weight: 600; font-size: 0.85em; white-space: nowrap;
     color: var(--accent_strong, #0f766e); background: var(--accent_soft, rgba(20,184,166,0.15)); }

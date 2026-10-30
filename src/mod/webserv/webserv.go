@@ -16,27 +16,16 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Static Web Server package
-
-	This module host a static web server
-*/
-
 //go:embed templates/*
 var templates embed.FS
 
-/*
-WebServerOptions define the default option for the webserv
-might get override by user settings loaded from db
-
-Any changes in here might need to also update the StaticWebServerStatus struct
-in handler.go. See handler.go for more information.
-*/
+// WebServerOptions defines the default options for the webserv; user
+// settings loaded from the db may override them.
 type WebServerOptions struct {
 	Port                        string             //Port for listening
 	EnableDirectoryListing      bool               //Enable listing of directory
 	WebRoot                     string             //Folder for stroing the static web folders
-	DisableListenToAllInterface bool               // Disable listening to all interfaces, only listen to localhost
+	DisableListenToAllInterface bool               // Listen on localhost only
 	EnableWebDAV                bool               //Enable WebDAV server
 	WebDAVPort                  string             //Port for WebDAV server (default: 5488)
 	UseCustomCredentials        bool               // Use custom credentials for WebDAV instead of the global credentials in auth module
@@ -55,7 +44,7 @@ type WebServer struct {
 	mu        sync.Mutex
 }
 
-// NewWebServer creates a new WebServer instance. One instance only
+// NewWebServer creates a new WebServer instance
 func NewWebServer(options *WebServerOptions) *WebServer {
 	if options.Logger == nil {
 		options.Logger, _ = logger.NewFmtLogger()

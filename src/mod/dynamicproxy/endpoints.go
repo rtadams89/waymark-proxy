@@ -12,20 +12,9 @@ import (
 )
 
 /*
-	endpoint.go
-	author: tobychui
-
-	This script handle the proxy endpoint object actions
-	so proxyEndpoint can be handled like a proper oop object
-
-	Most of the functions are implemented in dynamicproxy.go
-*/
-
-/*
 	User Defined Header Functions
 */
 
-// Check if a user define header exists in this endpoint, ignore case
 func (ep *ProxyEndpoint) UserDefinedHeaderExists(key string) bool {
 	endpointProxyRewriteRules := GetDefaultHeaderRewriteRules()
 	if ep.HeaderRewriteRules != nil {
@@ -40,7 +29,6 @@ func (ep *ProxyEndpoint) UserDefinedHeaderExists(key string) bool {
 	return false
 }
 
-// Remvoe a user defined header from the list
 func (ep *ProxyEndpoint) RemoveUserDefinedHeader(key string) error {
 	newHeaderList := []*rewrite.UserDefinedHeader{}
 	if ep.HeaderRewriteRules == nil {
@@ -57,7 +45,7 @@ func (ep *ProxyEndpoint) RemoveUserDefinedHeader(key string) error {
 	return nil
 }
 
-// Add a user defined header to the list, duplicates will be automatically removed
+// AddUserDefinedHeader adds a header rule, replacing one with the same key.
 func (ep *ProxyEndpoint) AddUserDefinedHeader(newHeaderRule *rewrite.UserDefinedHeader) error {
 	if ep.UserDefinedHeaderExists(newHeaderRule.Key) {
 		ep.RemoveUserDefinedHeader(newHeaderRule.Key)
@@ -75,7 +63,8 @@ func (ep *ProxyEndpoint) AddUserDefinedHeader(newHeaderRule *rewrite.UserDefined
 	Virtual Directory Functions
 */
 
-// Get virtual directory handler from given URI
+// GetVirtualDirectoryHandlerFromRequestURI returns the virtual directory
+// matching requestURI.
 func (ep *ProxyEndpoint) GetVirtualDirectoryHandlerFromRequestURI(requestURI string) *VirtualDirectoryEndpoint {
 	for _, vdir := range ep.VirtualDirectories {
 		if strings.HasPrefix(requestURI, vdir.MatchingPath) {
@@ -86,7 +75,8 @@ func (ep *ProxyEndpoint) GetVirtualDirectoryHandlerFromRequestURI(requestURI str
 	return nil
 }
 
-// Get virtual directory handler by matching path (exact match required)
+// GetVirtualDirectoryRuleByMatchingPath returns the virtual directory with
+// exactly this matching path.
 func (ep *ProxyEndpoint) GetVirtualDirectoryRuleByMatchingPath(matchingPath string) *VirtualDirectoryEndpoint {
 	for _, vdir := range ep.VirtualDirectories {
 		if vdir.MatchingPath == matchingPath {
@@ -97,36 +87,26 @@ func (ep *ProxyEndpoint) GetVirtualDirectoryRuleByMatchingPath(matchingPath stri
 	return nil
 }
 
-// HasSameTarget reports whether this virtual directory points at the same target as the given
-// spec (domain + TLS settings). The matching path is assumed to already be equal. Used to decide
-// whether a bulk apply/remove may treat an existing directory as "ours" (safe to skip or remove)
-// or as a user-customized one that must be left untouched.
+// HasSameTarget reports whether the virtual directory has the given domain
+// and TLS settings.
 func (vdir *VirtualDirectoryEndpoint) HasSameTarget(domain string, requireTLS bool, skipCertValidations bool) bool {
 	return vdir.Domain == domain && vdir.RequireTLS == requireTLS && vdir.SkipCertValidations == skipCertValidations
 }
 
-// BulkVdirAction describes what a bulk virtual-directory apply/remove operation should do for one host.
+// BulkVdirAction is the action of a bulk virtual directory operation for one host.
 type BulkVdirAction string
 
 const (
 	BulkVdirCreate   BulkVdirAction = "create"   // directory is missing and should be created
-	BulkVdirRemove   BulkVdirAction = "remove"   // an identical directory exists and should be removed
-	BulkVdirSkip     BulkVdirAction = "skip"     // an identical directory already exists; nothing to do
-	BulkVdirConflict BulkVdirAction = "conflict" // a directory exists at this path with different settings; leave it untouched
-	BulkVdirNoop     BulkVdirAction = "noop"     // nothing present to remove
+	BulkVdirRemove   BulkVdirAction = "remove"   // an identical directory exists and is removed
+	BulkVdirSkip     BulkVdirAction = "skip"     // an identical directory already exists
+	BulkVdirConflict BulkVdirAction = "conflict" // a directory with different settings exists at this path
+	BulkVdirNoop     BulkVdirAction = "noop"     // nothing to remove
 )
 
-// ClassifyBulkVdir decides the action for a single host in a bulk virtual-directory operation,
-// given the desired target spec and the host's existing directory at the same matching path
-// (nil if none).
-//
-//	ensurePresent = true  -> make sure the directory exists (used for forward-auth hosts)
-//	ensurePresent = false -> make sure the directory is absent (used for non-forward-auth hosts)
-//
-// An existing directory is only ever skipped (when ensuring present) or removed (when ensuring
-// absent) if it has the SAME target as the spec. A directory at the same path with different
-// settings is reported as a conflict and left untouched, so user-customized directories are
-// never silently changed or deleted.
+// ClassifyBulkVdir returns the action for one host: with ensurePresent the
+// directory is created or skipped, otherwise removed or noop. A directory
+// at the same path with a different target is a conflict.
 func ClassifyBulkVdir(ensurePresent bool, existing *VirtualDirectoryEndpoint, domain string, requireTLS bool, skipCertValidations bool) BulkVdirAction {
 	if ensurePresent {
 		if existing == nil {
@@ -146,7 +126,6 @@ func ClassifyBulkVdir(ensurePresent bool, existing *VirtualDirectoryEndpoint, do
 	return BulkVdirConflict
 }
 
-// Delete a vdir rule by its matching path
 func (ep *ProxyEndpoint) RemoveVirtualDirectoryRuleByMatchingPath(matchingPath string) error {
 	entryFound := false
 	newVirtualDirectoryList := []*VirtualDirectoryEndpoint{}
@@ -159,24 +138,20 @@ func (ep *ProxyEndpoint) RemoveVirtualDirectoryRuleByMatchingPath(matchingPath s
 	}
 
 	if entryFound {
-		//Update the list of vdirs
 		ep.VirtualDirectories = newVirtualDirectoryList
 		return nil
 	}
 	return errors.New("target virtual directory routing rule not found")
 }
 
-// Add a vdir rule by its matching path
+// AddVirtualDirectoryRule adds a virtual directory and applies the rule.
 func (ep *ProxyEndpoint) AddVirtualDirectoryRule(vdir *VirtualDirectoryEndpoint) (*ProxyEndpoint, error) {
-	//Check for matching path duplicate
 	if ep.GetVirtualDirectoryRuleByMatchingPath(vdir.MatchingPath) != nil {
 		return nil, errors.New("rule with same matching path already exists")
 	}
 
-	//Append it to the list of virtual directory
 	ep.VirtualDirectories = append(ep.VirtualDirectories, vdir)
 
-	//Prepare to replace the current routing rule
 	parentRouter := ep.parent
 	readyRoutingRule, err := parentRouter.PrepareProxyRoute(ep)
 	if err != nil {
@@ -196,8 +171,7 @@ func (ep *ProxyEndpoint) AddVirtualDirectoryRule(vdir *VirtualDirectoryEndpoint)
 	return readyRoutingRule, nil
 }
 
-/* Upstream related wrapper functions */
-//Check if there already exists another upstream with identical origin
+/* Upstreams */
 func (ep *ProxyEndpoint) UpstreamOriginExists(originURL string) bool {
 	for _, origin := range ep.ActiveOrigins {
 		if origin.OriginIpOrDomain == originURL {
@@ -212,7 +186,6 @@ func (ep *ProxyEndpoint) UpstreamOriginExists(originURL string) bool {
 	return false
 }
 
-// Get a upstream origin from given origin ip or domain
 func (ep *ProxyEndpoint) GetUpstreamOriginByMatchingIP(originIpOrDomain string) (*loadbalance.Upstream, error) {
 	for _, origin := range ep.ActiveOrigins {
 		if origin.OriginIpOrDomain == originIpOrDomain {
@@ -228,8 +201,8 @@ func (ep *ProxyEndpoint) GetUpstreamOriginByMatchingIP(originIpOrDomain string) 
 	return nil, errors.New("target destination not found")
 }
 
-// upstreamTLSServerName returns the hostname to use as the upstream TLS SNI /
-// certificate verification name, or "" to derive it from the upstream address.
+// upstreamTLSServerName returns the upstream TLS server name from the Host
+// header override, or "".
 func (ep *ProxyEndpoint) upstreamTLSServerName() string {
 	if ep.HeaderRewriteRules == nil {
 		return ""
@@ -237,22 +210,19 @@ func (ep *ProxyEndpoint) upstreamTLSServerName() string {
 	return ep.HeaderRewriteRules.RequestHostOverwrite
 }
 
-// Add upstream to endpoint and update it to runtime
+// AddUpstreamOrigin adds an upstream, started and active if activate.
 func (ep *ProxyEndpoint) AddUpstreamOrigin(newOrigin *loadbalance.Upstream, activate bool) error {
-	//Check if the upstream already exists
 	if ep.UpstreamOriginExists(newOrigin.OriginIpOrDomain) {
 		return errors.New("destination with same origin already exists")
 	}
 
 	if activate {
-		//Add it to the active origin list
 		err := newOrigin.StartProxy(ep.upstreamTLSServerName())
 		if err != nil {
 			return err
 		}
 		ep.ActiveOrigins = append(ep.ActiveOrigins, newOrigin)
 	} else {
-		//Add to inactive origin list
 		ep.InactiveOrigins = append(ep.InactiveOrigins, newOrigin)
 	}
 
@@ -260,14 +230,10 @@ func (ep *ProxyEndpoint) AddUpstreamOrigin(newOrigin *loadbalance.Upstream, acti
 	return nil
 }
 
-// Remove upstream from endpoint and update it to runtime
 func (ep *ProxyEndpoint) RemoveUpstreamOrigin(originIpOrDomain string) error {
-	//Just to make sure there are no spaces
 	originIpOrDomain = strings.TrimSpace(originIpOrDomain)
 
-	//Check if the upstream already been removed
 	if !ep.UpstreamOriginExists(originIpOrDomain) {
-		//Not exists in the first place
 		return nil
 	}
 
@@ -284,14 +250,14 @@ func (ep *ProxyEndpoint) RemoveUpstreamOrigin(originIpOrDomain string) error {
 			newInactiveOriginList = append(newInactiveOriginList, origin)
 		}
 	}
-	//Ok, set the origin list to the new one
 	ep.ActiveOrigins = newActiveOriginList
 	ep.InactiveOrigins = newInactiveOriginList
 	ep.UpdateToRuntime()
 	return nil
 }
 
-// Check if the proxy endpoint hostname or alias name contains subdomain wildcard
+// ContainsWildcardName reports whether the host name, or unless
+// skipAliasCheck an alias, contains a wildcard.
 func (ep *ProxyEndpoint) ContainsWildcardName(skipAliasCheck bool) bool {
 	hostname := ep.RootOrMatchingDomain
 	aliasHostnames := ep.MatchingDomainAlias
@@ -315,8 +281,7 @@ func (ep *ProxyEndpoint) ContainsWildcardName(skipAliasCheck bool) bool {
 	return false
 }
 
-// Create a deep clone object of the proxy endpoint
-// Note the returned object is not activated. Call to prepare function before pushing into runtime
+// Clone returns a deep copy of the rule, not yet prepared.
 func (ep *ProxyEndpoint) Clone() *ProxyEndpoint {
 	clonedProxyEndpoint := ProxyEndpoint{}
 	js, _ := json.Marshal(ep)
@@ -324,21 +289,17 @@ func (ep *ProxyEndpoint) Clone() *ProxyEndpoint {
 	return &clonedProxyEndpoint
 }
 
-// Remove this proxy endpoint from running proxy endpoint list
 func (ep *ProxyEndpoint) Remove() error {
 	lookupHostname := strings.ToLower(ep.RootOrMatchingDomain)
 	ep.parent.ProxyEndpoints.Delete(lookupHostname)
 	return nil
 }
 
-// Check if the proxy endpoint is enabled
 func (ep *ProxyEndpoint) IsEnabled() bool {
 	return !ep.Disabled
 }
 
-// Write changes to runtime without respawning the proxy handler
-// use prepare -> remove -> add if you change anything in the endpoint
-// that effects the proxy routing src / dest
+// UpdateToRuntime replaces the running rule without preparing it again.
 func (ep *ProxyEndpoint) UpdateToRuntime() {
 	lookupHostname := strings.ToLower(ep.RootOrMatchingDomain)
 	ep.parent.ProxyEndpoints.Store(lookupHostname, ep)

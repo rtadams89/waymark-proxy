@@ -1,11 +1,8 @@
 /*
-    haBanner.js (custom fork)
-
     Shows this node's name and high availability role next to the logo when
-    HA is on (for example "zrx-b · Standby"), so it is clear which node a
-    page came from. Click opens the High Availability page. On a standby
-    with configuration sync on, a second pill says settings are read-only
-    there and which node to change them on.
+    HA is on (for example "zrx-b · Standby"). Click opens the High
+    Availability page. On a standby with configuration sync on, a second pill
+    says settings are read-only there and which node to change them on.
 */
 (function(){
     const styles = {
@@ -36,7 +33,7 @@
             let held = (d.floatingIPs || []).filter(f => f.held);
             let vip = held.length == 0 ? "" : " · holds " + esc(held[0].address) + (held.length > 1 ? " +" + (held.length - 1) : "");
             badge.html(`<span style="display:inline-block; padding: 0.25em 0.8em; border-radius: 1em; font-weight: 600; font-size: 0.85em; color: ${s[1]}; background: ${s[2]};" title="High availability role of this node${name ? " (" + name + ")" : ""}"><i class="${s[3]} icon"></i>${name ? esc(name) + " · " : ""}${s[0]}${vip}</span>` + readOnlyPill(d));
-            // inline-flex keeps it on the logo's line, so the header keeps its height
+            // inline-flex keeps it on the logo's line
             badge.css({"display": "inline-flex", "align-items": "center", "vertical-align": "middle", "margin-left": "0.8em",
                        "white-space": "nowrap", "overflow": "hidden", "max-width": "calc(100vw - 300px)"});
         });

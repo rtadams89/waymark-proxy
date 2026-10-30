@@ -6,15 +6,14 @@ import (
 	"github.com/armon/go-radix"
 )
 
-// HandleRoute handles the request to the plugin
-// return true if the request is handled by the plugin
-// clientIP must be the trusted-proxy resolved client IP, not re-derived from raw request headers
+// HandleRoute handles the request to the plugin and returns true if a plugin
+// handled it. clientIP is the trusted-proxy resolved client IP.
 func (m *Manager) HandleRoute(w http.ResponseWriter, r *http.Request, tags []string, clientIP string) bool {
 	if len(tags) == 0 {
 		return false
 	}
 
-	//For each tag, check if the request path matches the static capture path                    //Wait group for the goroutines
+	// For each tag, check if the request path matches the static capture path
 	var staticRoutehandlers []*Plugin          //The handler for the request, can be multiple plugins
 	var longestPrefixAcrossAlltags string = "" //The longest prefix across all tags
 	var dynamicRouteHandlers []*Plugin         //The handler for the dynamic routes
@@ -44,7 +43,6 @@ func (m *Manager) HandleRoute(w http.ResponseWriter, r *http.Request, tags []str
 
 	//Handle the static route if found
 	if len(staticRoutehandlers) > 0 {
-		//Handle the request
 		staticRoutehandlers[0].HandleStaticRoute(w, r, longestPrefixAcrossAlltags)
 		return true
 	}

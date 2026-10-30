@@ -11,7 +11,7 @@
         .subdEntry td:not(.ignoremw), .l4Entry td:not(.ignoremw){
             min-width: 100px;
         }
-        /* Custom fork: type of each rule in the merged list */
+        /* Type of each rule in the merged list */
         .ruleTypeLabel{
             display: inline-block;
             padding: 0.15em 0.6em;
@@ -58,7 +58,7 @@
             border: 0px solid transparent !important;
         }
 
-        /* Custom fork: all columns are always shown; the table scrolls inside its wrapper */
+        /* All columns are always shown; the table scrolls inside its wrapper */
         #proxyRulesTableWrapper {
             width: 100%;
             overflow-x: auto;
@@ -196,7 +196,7 @@
     </style>
     <div class="httpProxyListTools" style="margin-bottom: 1em;">
         <button class="ui basic green button" onclick="openAddProxyRule(ruleTypeFilter == 'tcp' || ruleTypeFilter == 'udp' ? 'l4' : 'http');"><i class="plus icon"></i> Add Proxy Rule</button>
-        <!-- Custom fork: which kind of rule to show (always starts on All) -->
+        <!-- Which kind of rule to show (always starts on All) -->
         <div id="ruleTypeFilter" class="ui basic buttons" style="vertical-align: top;">
             <button class="ui active button" data-type="all" onclick="setRuleTypeFilter('all');">All</button>
             <button class="ui button" data-type="http" onclick="setRuleTypeFilter('http');">HTTP</button>
@@ -213,13 +213,6 @@
               </div>
               <div class="divider"></div>
                 <div class="scrolling menu tagList">
-                    <!--
-                    Example: 
-                    <div class="item">
-                        <div class="ui red empty circular label"></div>
-                        Important
-                    </div>
-                    -->
                     <!-- Add more tag options dynamically -->
                 </div>
             </div>
@@ -231,7 +224,7 @@
         </div>
     </div>
     
-    <!-- Custom fork: HTTP rules (this file) and Layer 4 rules (l4proxy.html) in one list -->
+    <!-- HTTP rules (this file) and Layer 4 rules (l4proxy.html) in one list -->
     <div id="proxyRulesTableWrapper" style="width: 100%; overflow-x: auto; margin-bottom: 1em; min-height: 300px;">
         <table id="proxyRulesTable" class="ui unstackable sortable compact celled definition table">
             <thead>
@@ -284,11 +277,11 @@
                     <a class="item hrpedit_menu_item" cfgpage="headers">
                         <i class="heading icon"></i> <span class="editorSideMenuText">Headers</span>
                     </a>
-                    <!-- Custom fork: static file cache (snippet/assetCache.html) -->
+                    <!-- Static file cache (snippet/assetCache.html) -->
                     <a class="item hrpedit_menu_item" cfgpage="cache">
                         <i class="archive icon"></i> <span class="editorSideMenuText">Caching</span>
                     </a>
-                    <!-- Custom fork: maintenance mode (snippet/maintenance.html) -->
+                    <!-- Maintenance mode (snippet/maintenance.html) -->
                     <a class="item hrpedit_menu_item" cfgpage="maintenance">
                         <i class="wrench icon"></i> <span class="editorSideMenuText">Maintenance</span>
                     </a>
@@ -329,7 +322,7 @@
                             <div class="downstream_alias_hostname">
 
                             </div>
-                            <!-- Custom fork: the admin console rule (admin_rule_custom.go) -->
+                            <!-- The admin console rule -->
                             <div class="wmAdminRuleBox" style="display:none;"></div>
                             <div class="ui divider"></div>
                             <div class="downstream_action_list">
@@ -378,7 +371,7 @@
                             </div>
                             <div class="ui divider"></div>
                             <div class="wmNotForSystem">
-                            <!-- Custom fork: the address this rule answers on (listenip_custom.go) -->
+                            <!-- The address this rule answers on -->
                             <b>Listen On</b>
                             <p style="margin-top: 0.4em;"><small>The address of this host the rule answers on, through the main HTTP(S) listener. Requests that arrive on another address are handled as if this rule did not exist (another matching rule, or the default site). This routes requests; to limit who can reach the site, use an ACL.</small></p>
                             <select class="ruleListenIP" style="margin-top: 0.4em; width: 100%; padding: 0.55em 0.6em; border-radius: 0.3em; border: 1px solid var(--button_border_color); background: var(--theme_bg_primary); color: var(--text_color);"></select>
@@ -407,12 +400,11 @@
 
                             </div>
                             <button class="ui basic compact button editUpstreamButton" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey server icon"></i> Edit Destinations</button>
-                            <!-- Custom fork: health checks (snippet/healthChecks.html) -->
+                            <!-- Health checks (snippet/healthChecks.html) -->
                             <button class="ui basic compact button editHealthCheckButton" style="margin-left: 0.4em; margin-top: 1em;"><i class="grey heartbeat icon"></i> Health Checks</button>
                             <div class="healthCheckSummary" style="margin-left: 0.4em; margin-top: 0.6em; opacity: 0.75; font-size: 0.9em;"></div>
                             <div class="ui divider"></div>
-                            <!-- Custom fork: upstream's uptime monitor option is replaced by health checks.
-                                 Kept hidden (not removed) because the save code reads these inputs. -->
+                            <!-- Hidden uptime monitor inputs, read by the save code -->
                             <div style="display:none;">
                             <div class="ui checkbox" style="margin-top: 0.4em;">
                                 <input type="checkbox" class="EnableUptimeMonitor">
@@ -427,7 +419,7 @@
                             <small style="opacity:0.7;">Path appended to the destination URL when the health check runs (e.g. <code>/identity</code> for Plex, <code>/healthz</code>). Leave empty to use <code>/</code>.</small>
                             <br>
                             </div>
-                            <!-- Custom fork: the same load balancing settings as Layer 4 rules -->
+                            <!-- Load balancing settings -->
                             <div class="ui form">
                                 <div class="field">
                                     <label>Load Balancing</label>
@@ -556,13 +548,13 @@
 
                         </iframe>
                     </div>
-                    <!-- Custom fork: Caching -->
+                    <!-- Caching -->
                     <div class="rpconfig_content" rpcfg="cache">
                         <iframe src="" class="wrapper_frame">
 
                         </iframe>
                     </div>
-                    <!-- Custom fork: Maintenance -->
+                    <!-- Maintenance -->
                     <div class="rpconfig_content" rpcfg="maintenance">
                         <iframe src="" class="wrapper_frame">
 
@@ -755,7 +747,6 @@
             upstreams = `<i class="ui yellow exclamation triangle icon"></i> No Active Destination<br>`;
         }else{
             subd.ActiveOrigins.forEach(upstream => {
-                //console.log(upstream);
                 //Check if the upstreams require TLS connections
                 let tlsIcon = "";
                 if (upstream.RequireTLS){
@@ -767,15 +758,15 @@
 
                 let upstreamLink = `${upstream.RequireTLS?"https://":"http://"}${upstream.OriginIpOrDomain}`;
 
-                //Custom fork: health of each destination, as for Layer 4 rules (filled in by updateHealthIndicators)
+                //Health of each destination (filled in by updateHealthIndicators)
                 upstreams += `<div style="white-space: nowrap;">${httpDestStatusIcon(subd, upstream.OriginIpOrDomain)}<a href="${htmlEscape(upstreamLink)}" target="_blank">${htmlEscape(upstream.OriginIpOrDomain)} ${tlsIcon}</a></div>`;
             })
         }
         return upstreams;
     }
 
-    // Custom fork: a destination's health icon before its address, the same as
-    // for Layer 4 rules: green heart healthy, red heartbeat down, grey circle
+    // A destination's health icon before its address:
+    // green heart healthy, red heartbeat down, grey circle
     // not health checked, grey outline rule disabled
     function httpHcOn(subd){
         let hc = subd.HealthCheck;
@@ -832,7 +823,7 @@
         return portsList;
     }
 
-    /* Custom fork: the address a rule answers on (listenip_custom.go) */
+    /* The address a rule answers on */
     var proxyListenOptions = null; // /api/proxy/listenip/options
 
     function hostPort(ip, port){
@@ -898,7 +889,7 @@
         });
     }
 
-    /* Custom fork: caching state and hit rate, in the Details column */
+    /* Caching state and hit rate, in the Details column */
     function renderCacheDetail(subd){
         let ac = subd.AssetCache;
         if (ac && ac.enabled){
@@ -1001,7 +992,7 @@
                         subd.MatchingDomainAlias.forEach(alias => {
                             aliasDomains += `<a href="${httpProto}${alias}${hostnameRedirectPort}" target="_blank">${alias}</a>, `;
                         });
-                        aliasDomains = aliasDomains.substr(0, aliasDomains.length - 2); //Remove the last tailing seperator
+                        aliasDomains = aliasDomains.substr(0, aliasDomains.length - 2);
                         aliasDomains += `</small><br>`;
                     }
 
@@ -1052,7 +1043,7 @@
                     }
                     let authDisplayEmpty = (subd.AuthenticationProvider.AuthMethod == 0x0);
                     
-                    //Custom fork: the admin console rule cannot be disabled or deleted (admin_rule_custom.go)
+                    //The admin console rule cannot be disabled or deleted
                     let isAdminRule = (subd.System == "admin-console");
                     let enableCell = isAdminRule ? `<span title="Serves this admin console; always on" style="opacity: 0.7;"><i class="lock icon"></i></span>` :
                         `<div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Enable / Disable Rule">
@@ -1132,7 +1123,7 @@
             newAliasDomainList.forEach(alias => {
                 aliasDomains += `<a href="//${alias}" target="_blank">${alias}</a>, `;
             });
-            aliasDomains = aliasDomains.substr(0, aliasDomains.length - 2); //Remove the last tailing seperator
+            aliasDomains = aliasDomains.substr(0, aliasDomains.length - 2);
             $(targetEle).html(aliasDomains);
             $(targetEle).show();
         }else{
@@ -1293,7 +1284,7 @@
         let loadBalancingMode = $(editor).find(".LoadBalancingMode").val() || "weighted";
         let DisableUptimeMonitor = !$(editor).find(".EnableUptimeMonitor")[0].checked;
         let uptimeMonitorURI = $(editor).find(".UptimeMonitorURI").val().trim();
-        let disableAutoFallback = false; //$(editor).find(".DisableAutoFallback")[0].checked;
+        let disableAutoFallback = false;
         let authProviderType = $(editor).find(".authProviderPicker input[type='radio']:checked").val();
         let requireRateLimit = $(editor).find(".RequireRateLimit")[0].checked;
         let rateLimit = $(editor).find(".RateLimit").val();
@@ -1425,7 +1416,7 @@
         $("#vdirBaseRoutingRule").parent().dropdown("set selected", uuid);
     }
 
-    //Custom fork: open the health check settings for this rule
+    //Open the health check settings for this rule
     function editHealthChecks(uuid){
         let payload = encodeURIComponent(JSON.stringify({
             ept: "host",
@@ -1434,8 +1425,8 @@
         showEditorSideWrapper("snippet/healthChecks.html?t=" + Date.now() + "#" + payload);
     }
 
-    //Custom fork: health check and caching indicators in the rule list
-    //Custom fork: the same load balancing methods as Layer 4 rules
+    //Health check and caching indicators in the rule list
+    //Load balancing method names
     const HTTP_LB_NAMES = {weighted: "Weighted", leastconn: "Least connections"};
     const HTTP_LB_HINTS = {
         weighted: "Each new request goes to a random healthy destination, in proportion to its weight. Destinations with weight 0 are backups.",
@@ -1467,7 +1458,7 @@
         return parts.join("<br>");
     }
 
-    //Custom fork: colour the health indicators from live health check state
+    //Colour the health indicators from live health check state
     function updateHealthIndicators(){
         if ($("#proxyRulesList .hcIndicator").length == 0){
             return;
@@ -1532,9 +1523,9 @@
             });
         });
     }
-    //Custom fork: refresh the whole list every 15 s while it is on screen, unless
+    //Refresh the whole list every 15 s while it is on screen, unless
     //the editor, a side panel, a menu or a column sort is in use (then only the
-    //health indicators are refreshed, so nothing the user is working with moves)
+    //health indicators are refreshed)
     function canAutoRefreshHttpProxyList(){
         return !document.hidden
             && !$("#httprpEditModalWrapper").is(":visible")
@@ -1555,7 +1546,7 @@
         }
     }, 15000);
 
-    //Custom fork: orange wrench next to hosts in maintenance mode
+    //Orange wrench next to hosts in maintenance mode
     function markMaintenanceHosts(){
         $("#proxyRulesList .maintenanceHost").remove();
         (httpProxyList || []).forEach(subd => {
@@ -1569,7 +1560,7 @@
         });
     }
 
-    //Custom fork: one-line summary of a rule's health check settings
+    //One-line summary of a rule's health check settings
     function describeHealthCheck(hc){
         if (!hc || (!hc.activeEnabled && !hc.passiveEnabled)){
             return "Health checks: off. No automatic failover, and this rule is not shown on Health & Uptime.";
@@ -1805,8 +1796,6 @@
     });
 
     function closeHttpRuleEditor(){
-        // Fixing a bug in semantic ui that when an element fade in/out on top of checkbox
-        // the checkbox suddently flash on top of the fading element
         $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
         $("#httprpEditModalWrapper").fadeOut("fast", function(){
             $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
@@ -1842,7 +1831,7 @@
             success: function(data) {
                 let dropdown = $('<div class="ui fluid selection dropdown"></div>');
                 let menu = $('<div class="menu"></div>');
-                //Custom fork: the list is null when no certificate is installed yet
+                //The list is null when no certificate is installed yet
                 (Array.isArray(data) ? data : []).forEach(cert => {
                     menu.append(`<div class="item" data-value="${htmlEscape(cert)}">${htmlEscape(cert)}</div>`);
                 });
@@ -1862,7 +1851,7 @@
     
         //Populate all the information in the proxy editor
         populateAndBindEventsToHTTPProxyEditor(subd);
-        wmAdminRuleEditor(subd); //Custom fork: limits for the admin console rule
+        wmAdminRuleEditor(subd); //Limits for the admin console rule
 
         //Hide all previously opened editor side-frame wrapper
         hideEditorSideWrapper();
@@ -1873,17 +1862,13 @@
         $("#httprpEditModal .hrpedit_menu_item.active").removeClass("active");
         $("#httprpEditModal .hrpedit_menu_item[cfgpage='downstream']").addClass("active");
         $("body").css("overflow", "hidden");
-        // Fixing a bug in semantic ui that when an element fade in/out on top of checkbox
-        // the checkbox suddently flash on top of the fading element
         $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
         $("#httprpEditModalWrapper").fadeIn("fast", function(){
             $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
         });
     }
 
-    //Custom fork: the admin console rule (admin_rule_custom.go). Waymark keeps
-    //its addresses, destination and anything that could cut off the admin
-    //console; the editor only shows what can be changed.
+    //The admin console rule: the editor only shows what can be changed
     function wmAdminRuleEditor(subd){
         let editor = $("#httprpEditModalWrapper");
         let isAdmin = (subd.System == "admin-console");
@@ -1948,8 +1933,7 @@
         });
     }
 
-    // This function populate the bind all the events required for the proxy editor
-    // pass a copy of the data structure of subd to prevent modification to the original one
+    // Populate the proxy editor and bind its events
     function populateAndBindEventsToHTTPProxyEditor(subd){
         //Assign the editing host to DOM element
         let uuid = subd.RootOrMatchingDomain; //Each matching hostname as uuid
@@ -2077,7 +2061,7 @@
         });
         editor.find(".downstream_alias_hostname").html(aliasHTML);
 
-        /* ------------ Listen On (custom fork) ------------ */
+        /* ------------ Listen On ------------ */
         loadProxyListenOptions(function(opts){
             fillListenIPSelect(editor.find(".ruleListenIP"), opts, subd.ListenIP || "");
             editor.find(".ruleListenIPNote").text(listenIPNote(opts));
@@ -2146,7 +2130,7 @@
             editUpstreams(uuid);
         });
 
-        /* Custom fork: health checks */
+        /* Health checks */
         editor.find(".healthCheckSummary").text(describeHealthCheck(subd.HealthCheck));
         editor.find(".editHealthCheckButton").off("click").on("click", function(){
             editHealthChecks(uuid);
@@ -2256,7 +2240,7 @@
             editor.find(".rpconfig_content[rpcfg='headers'] .wrapper_frame").attr('src', frameURL);
         })();
 
-        /* ------------ Custom fork: Caching ------------ */
+        /* ------------ Caching ------------ */
         (() => {
             let payload = encodeURIComponent(JSON.stringify({
                 ept: "host",
@@ -2310,7 +2294,7 @@
             editZorxAuthExceptions(uuid);
         });
 
-        // Rate limit: load with .val() so the shared modal shows each proxy's saved value (#1107)
+        // Rate limit: load with .val() so the shared modal shows each proxy's saved value
         editor.find(".RateLimit").off("change");
         editor.find(".RequireRateLimit").off("change");
         if (subd.RequireRateLimit) {
@@ -2479,9 +2463,7 @@
             domains.push(subd.MatchingDomainAlias[i]);
         }
 
-        //Custom fork: open the ACME tool on Certificates > ACME and Auto-Renew for
-        //these names, where the challenge type (DNS for wildcards), DNS
-        //credentials and CA are chosen
+        //Open the ACME tool on Certificates > ACME and Auto-Renew for these names
         editor.find(".getCertificateBtn").removeClass("disabled");
         editor.find(".getCertificateBtn").off("click").on("click", function(){
             closeHttpRuleEditor();
@@ -2552,7 +2534,7 @@
 
     function hideEditorSideWrapper(){
         $("#httprpEditModal .editor_side_wrapper").fadeOut("fast", function(){
-            // Reset the side wrapper frame URL to prevent stale content
+            // Reset the side wrapper frame URL
             $("#httprpEditModal .editor_side_wrapper .wrapper_frame").attr('src', 'snippet/placeholder.html');
         });
     }
@@ -2578,10 +2560,7 @@
     tabSwitchEventBind["httprp"] = function(){
         //Check if the proxy editor is opened
         if ($("#httprpEditModalWrapper").is(":visible")) {
-            // When page switch from Vdir and back to this page
-            // there is a chance where the user has modified the Vdir
-            // we need to get the latest setting from server side and 
-            // render it again
+            // Back from another page: reload the editor's settings
             resyncProxyEditorConfig();
             window.scrollTo(0, 0);
             $("body").css("overflow", "hidden");
@@ -2596,12 +2575,12 @@
     }
 
     /*
-        Custom fork: one list for HTTP and Layer 4 rules. Each kind renders its
-        own rows (tr.httpRow here, tr.l4Row in l4proxy.html) into #proxyRulesList;
+        One list for HTTP and Layer 4 rules. Each kind renders its own rows
+        (tr.httpRow here, tr.l4Row in l4proxy.html) into #proxyRulesList;
         after either renders, the rows are put in name order, the type filter
         is applied and a single "no rules" row is shown when nothing is listed.
     */
-    var ruleTypeFilter = "all"; //all, http, tcp or udp; not remembered on purpose
+    var ruleTypeFilter = "all"; //all, http, tcp or udp
 
     function setRuleTypeFilter(type){
         ruleTypeFilter = type;
@@ -2641,7 +2620,7 @@
     }
         
 </script>
-<!-- Custom fork: Layer 4 rules (their rows go into the list above, their editor is its own) -->
+<!-- Layer 4 rules (their rows go into the list above) -->
 <div id="l4proxyComponent"></div>
 <script>
     $("#l4proxyComponent").load("./components/l4proxy.html");

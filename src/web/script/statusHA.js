@@ -1,9 +1,6 @@
 /*
-    statusHA.js (custom fork)
-
     Status page "High Availability" panel: the cluster overview from
-    /api/ha/cluster, drawn by haCluster.js. The panel is shown only while
-    HA is on (and can also be hidden in the panel settings).
+    /api/ha/cluster, drawn by haCluster.js. Shown only while HA is on.
 */
 (function(){
     function update(){

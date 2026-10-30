@@ -1,21 +1,7 @@
 package zorxauth
 
-/*
-	customization_validate.go
-
-	Content validation for administrator uploaded login page resources.
-
-	Uploaded resources are served from the authentication gateway origin, which
-	is the origin holding the SSO session cookie, and from the webmin origin
-	through the preview endpoint. A resource that can execute script on either
-	origin is a session takeover, so every upload is checked to actually be the
-	image format its extension claims, and SVGs are additionally screened for
-	active content before they are ever written to disk.
-
-	This is defence in depth: writeBrandingAsset() also serves every resource
-	under a "default-src 'none'; sandbox" Content Security Policy so a payload
-	that slips through the parser still cannot execute when navigated directly.
-*/
+// Validation of uploaded login page resources: format checks, and SVG
+// screening for active and external content.
 
 import (
 	"bytes"
@@ -30,8 +16,8 @@ import (
 	"unicode"
 )
 
-// svgForbiddenElements lists SVG elements that can execute script or embed a
-// foreign document. Element names are compared lowercased and namespace free.
+// svgForbiddenElements lists SVG elements that can run script or embed a
+// document (lowercase, without namespace).
 var svgForbiddenElements = map[string]bool{
 	"script":        true, //Direct script execution
 	"foreignobject": true, //Embeds arbitrary HTML, including <script>
@@ -40,19 +26,17 @@ var svgForbiddenElements = map[string]bool{
 	"object":        true,
 	"audio":         true,
 	"video":         true,
-	"handler":       true, //SVG Tiny event handler element
-	"animate":       true, //Can animate an arbitrary attribute into an href/event handler
+	"handler":       true, // SVG Tiny event handler element
+	"animate":       true, // can animate an attribute into an href or event handler
 	"set":           true, //Same, via attributeName
 }
 
-// svgAllowedURLPrefixes are the only reference targets allowed in href / src
-// style attributes. Same document fragments and inline data images are safe,
-// remote references are not (they leak visitor IPs and can pull in script).
+// svgAllowedURLPrefixes are the allowed href and src targets: document
+// fragments and inline raster data.
 var svgAllowedURLPrefixes = []string{"#", "data:image/png", "data:image/jpeg", "data:image/gif", "data:image/webp"}
 
-// validateUploadContent verifies that content really is the format claimed by
-// ext, and that it is safe to serve. spec is used to enforce the aspect ratio
-// of the default resource being replaced.
+// validateUploadContent checks that content is the format claimed by ext and
+// safe to serve, and the aspect ratio of spec.
 func validateUploadContent(content []byte, ext string, spec *AssetSpec) error {
 	switch ext {
 	case ".svg":
@@ -68,8 +52,7 @@ func validateUploadContent(content []byte, ext string, spec *AssetSpec) error {
 // validateSVGContent rejects SVG uploads carrying active or external content.
 func validateSVGContent(content []byte) error {
 	decoder := xml.NewDecoder(bytes.NewReader(content))
-	//Allow the named entities a design tool may emit, but see the Directive
-	//check below: documents declaring their own entities are rejected outright.
+	// Named HTML entities are allowed; entity declarations are rejected below
 	decoder.Entity = xml.HTMLEntity
 	decoder.Strict = true
 
@@ -85,13 +68,13 @@ func validateSVGContent(content []byte) error {
 
 		switch t := token.(type) {
 		case xml.ProcInst:
-			//<?xml-stylesheet?> can pull in a remote stylesheet
+			// Only the xml declaration is allowed
 			if !strings.EqualFold(t.Target, "xml") {
 				return errors.New("SVG file contains an unsupported processing instruction: <?" + t.Target + "?>")
 			}
 
 		case xml.Directive:
-			//Reject inline entity declarations (XXE and billion laughs)
+			// Rejects entity declarations
 			directive := strings.ToUpper(string(t))
 			if strings.Contains(directive, "ENTITY") {
 				return errors.New("SVG file declares XML entities, which are not allowed")
@@ -156,9 +139,8 @@ func validateSVGAttributes(elementName string, attrs []xml.Attr) error {
 	return nil
 }
 
-// containsScriptURL reports whether value carries a scheme that can execute code.
-// Whitespace and control characters are stripped first because browsers ignore
-// them when resolving a URL scheme (e.g. "java\nscript:alert(1)").
+// containsScriptURL reports whether value, with whitespace and control
+// characters removed, contains a script-capable scheme.
 func containsScriptURL(value string) bool {
 	var sb strings.Builder
 	for _, r := range value {
@@ -209,8 +191,7 @@ func validateRasterContent(content []byte, ext string, spec *AssetSpec) error {
 	return checkAspectRatio(width, height, spec)
 }
 
-// checkRasterSignature rejects files whose magic bytes do not match their
-// extension, so arbitrary content cannot be served under an image content type.
+// checkRasterSignature checks that the file signature matches the extension.
 func checkRasterSignature(content []byte, ext string) error {
 	valid := false
 	switch ext {
@@ -243,8 +224,7 @@ func rasterDimensions(content []byte, ext string) (int, int, error) {
 	return config.Width, config.Height, nil
 }
 
-// webpDimensions reads the canvas size out of a WEBP container. The standard
-// library has no WEBP decoder, so the three container variants are read here.
+// webpDimensions reads the canvas size of a WEBP file.
 func webpDimensions(content []byte) (int, int, error) {
 	//Chunks start after the 12 byte RIFF header: 4 byte FourCC + 4 byte size
 	if len(content) < 30 {
@@ -281,8 +261,7 @@ func webpDimensions(content []byte) (int, int, error) {
 	return 0, 0, errors.New("Could not read the WEBP image dimensions. Try re-exporting the file as PNG.")
 }
 
-// checkAspectRatio rejects images whose width : height ratio differs from the
-// default resource they replace, which would break the login page layout.
+// checkAspectRatio checks an image's ratio against the default resource's.
 func checkAspectRatio(width int, height int, spec *AssetSpec) error {
 	if width <= 0 || height <= 0 {
 		return errors.New("Uploaded image has invalid dimensions")
@@ -302,9 +281,7 @@ func checkAspectRatio(width int, height int, spec *AssetSpec) error {
 
 /* ── Text ────────────────────────────────────────────────────────────── */
 
-// sanitizeBrandingText strips control characters from an administrator supplied
-// label. The value is HTML escaped again at render time; this only keeps the
-// stored value to a single printable line.
+// sanitizeBrandingText strips control characters from a label.
 func sanitizeBrandingText(value string) string {
 	var sb strings.Builder
 	for _, r := range value {

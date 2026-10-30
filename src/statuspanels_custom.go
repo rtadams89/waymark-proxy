@@ -1,12 +1,7 @@
 package main
 
-/*
-	statuspanels_custom.go (custom fork)
-
-	Stores which status page panels are shown. The panel list, labels and
-	defaults live in web/script/statusPanels.js; this only persists the
-	user's on/off choices, so they follow the user across browsers.
-*/
+// Stores which status page panels are shown (the panel list, labels and
+// defaults are in web/script/statusPanels.js).
 
 import (
 	"encoding/json"

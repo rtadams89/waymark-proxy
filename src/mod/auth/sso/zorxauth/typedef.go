@@ -21,19 +21,18 @@ const (
 type User struct {
 	ID             string   `json:"id"` //uuidv4
 	Username       string   `json:"username"`
-	Email          string   `json:"email"` //optional, alternative login identifier if provided
+	Email          string   `json:"email"` // optional, also accepted as login name
 	PasswordHash   string   `json:"passwordHash"`
-	UseGroupPolicy bool     `json:"useGroupPolicy"` //Use group poliy instead of AllowedHosts for checking access
-	GroupID        string   `json:"groupId"`        //GroupID is the group policy ID that the user belongs to
-	AllowedHosts   []string `json:"allowedHosts"`   //optional, if empty, allow all hosts
+	UseGroupPolicy bool     `json:"useGroupPolicy"` // check access with the group policy instead of AllowedHosts
+	GroupID        string   `json:"groupId"`
+	AllowedHosts   []string `json:"allowedHosts"` // empty allows all hosts
 
 	/* User Configs */
-	Enable2FA  bool   `json:"enable2FA"`  //Whether the user has enabled 2FA. If true, the user must complete 2FA verification after password verification to complete login.
-	TOTPSecret string `json:"totpSecret"` //The TOTP secret for 2FA. Required if Enable2FA is true.
+	Enable2FA  bool   `json:"enable2FA"`  // a TOTP code is required after the password
+	TOTPSecret string `json:"totpSecret"` // required if Enable2FA
 
 	/* Passkeys (WebAuthn) */
-	PasskeyCredentials []PasskeyCredential `json:"passkeyCredentials"` //Registered WebAuthn/passkey credentials
-
+	PasskeyCredentials []PasskeyCredential `json:"passkeyCredentials"`
 }
 
 // PasskeyCredential stores a single WebAuthn credential for a user.
@@ -54,20 +53,19 @@ type PasskeyCredential struct {
 // AuthRouterOptions contains configuration for the ZorxAuth router
 type AuthRouterOptions struct {
 	/* Auth Gateway Options */
-	EnableAuthGateway bool `json:"enable_auth_gateway"` //Whether to enable the authentication gateway. If disabled, all auth request are treated as rejected. Default: false
-	GatewayPort       int  `json:"gateway_port"`        //Port number for the authentication gateway. Default: 5489
-	//FallbackRedirectURL string `json:"fallback_redirect_url"` //Fallback redirect URL if the original redirect URL is missing or invalid.
+	EnableAuthGateway bool `json:"enable_auth_gateway"` // when off, all auth requests are rejected; default false
+	GatewayPort       int  `json:"gateway_port"`        // default 5489
 	/* Auth Router Options */
-	EnableRateLimit          bool   `json:"enable_rate_limit"`           //Whether to enable rate limiting for authentication attempts. Default: true
-	RateLimitPerIp           int    `json:"rate_limit_per_ip"`           //Number of allowed authentication attempts per minute per IP. Default: 60
-	UseExpotentialBackoff    bool   `json:"use_exponential_backoff"`     //Whether to use exponential backoff for failed authentication attempts. Default: true
-	SSORedirectURL           string `json:"sso_redirect_url"`            //URL of the SSO authentication endpoint
-	SSOSessionSetURL         string `json:"sso_session_set_url"`         //URL of the SSO session set endpoint
-	CookieName               string `json:"cookie_name"`                 //Name of the session cookie
-	CookieDuration           int    `json:"cookie_duration"`             //Duration in seconds for the session cookie
-	CookieDurationRememberMe int    `json:"cookie_duration_remember_me"` //Duration in seconds for the session cookie when "Remember Me" is selected
+	EnableRateLimit          bool   `json:"enable_rate_limit"`       // default true
+	RateLimitPerIp           int    `json:"rate_limit_per_ip"`       // attempts per minute per IP; default 60
+	UseExpotentialBackoff    bool   `json:"use_exponential_backoff"` // default true
+	SSORedirectURL           string `json:"sso_redirect_url"`        // URL of the SSO login endpoint
+	SSOSessionSetURL         string `json:"sso_session_set_url"`
+	CookieName               string `json:"cookie_name"`
+	CookieDuration           int    `json:"cookie_duration"`             // seconds
+	CookieDurationRememberMe int    `json:"cookie_duration_remember_me"` // seconds, with "Remember Me"
 	/* Storage Options */
-	ConfigFolderPath string `json:"config_folder_path"` //Path to the config folder for storing group policy files. Default: ./conf/sso/zorxauth
+	ConfigFolderPath string `json:"config_folder_path"` // group policy folder; default ./conf/sso/zorxauth
 }
 
 type BrowserSession struct {
@@ -88,7 +86,7 @@ type PendingTOTPSession struct {
 	Protocol       string
 	RedirectTarget string
 	RememberMe     bool
-	IsDirectLogin  bool // true when no redirect target was provided (direct gateway access)
+	IsDirectLogin  bool // no redirect target
 	Expiry         time.Time
 }
 
@@ -114,13 +112,13 @@ type AuthRouter struct {
 	groupPolicies sync.Map // id (string) -> *GroupPolicy
 
 	/* Login page customization */
-	branding      *BrandingConfig //Login page branding config, nil means defaults
-	brandingMutex sync.RWMutex    //Guards branding and its on-disk resources
+	branding      *BrandingConfig // nil for defaults
+	brandingMutex sync.RWMutex
 
 	/* Login rate limiting */
-	loginAttemptCounter sync.Map  // IP -> *int64, total attempts in current minute window
-	loginFailureCounter sync.Map  // IP -> *int64, consecutive failures used for exponential backoff
-	rateLimitResetStop  chan bool // stop channel for the per-minute counter reset ticker
+	loginAttemptCounter sync.Map // IP -> *int64, attempts in the current minute
+	loginFailureCounter sync.Map // IP -> *int64, consecutive failures
+	rateLimitResetStop  chan bool
 
 	/* 2FA */
 	pendingTOTPSessions sync.Map // totp_token (string) -> *PendingTOTPSession (pending login 2FA)

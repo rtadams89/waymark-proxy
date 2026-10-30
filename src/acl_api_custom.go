@@ -1,25 +1,19 @@
 package main
 
 /*
-	acl_api_custom.go (custom fork): the API of ACLs and objects
-	(mod/access), and attaching ACLs to proxy rules.
+	API of ACLs and objects.
 
 	/api/acl/list        GET  every ACL with its rule count and users
 	/api/acl/get         GET  one ACL with hit counts, users and warnings
 	/api/acl/create      POST name, description
 	/api/acl/duplicate   POST id, name
 	/api/acl/save        POST acl (JSON: id, revision, name, description, rules)
-	/api/acl/delete      POST id (only when no proxy rule uses it)
+	/api/acl/delete      POST id
 	/api/acl/test        GET  id, ip: which rule decides for that address
-	/api/acl/attach      POST id, host[, trust]: the ACL of an HTTP proxy rule
-	                     (and whether it trusts addresses forwarded by trusted proxies)
+	/api/acl/attach      POST id, host[, trust]: sets the ACL of an HTTP proxy rule
 	/api/acl/objects     GET  every object with the ACLs using it
 	/api/acl/object/save POST object (JSON: id (empty for a new one), revision, name, description, entries)
 	/api/acl/object/delete POST id
-
-	Saving an ACL or object, or attaching an ACL, is refused when the
-	request came through the admin console rule and the change would deny
-	the requester there (admin_guard_custom.go).
 */
 
 import (
@@ -38,7 +32,6 @@ type aclUser struct {
 	Name string `json:"name"`
 }
 
-// aclUsers lists the proxy rules using each ACL (by resolved ACL ID).
 func aclUsers() map[string][]aclUser {
 	out := map[string][]aclUser{}
 	if accessController == nil {
@@ -107,7 +100,7 @@ func HandleACLList(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, out)
 }
 
-// aclWarnings explains rules that may not do what they look like.
+// aclWarnings returns a warning per rule ID for rules that may not match as expected.
 func aclWarnings(a *access.ACL) map[string]string {
 	out := map[string]string{}
 	usesCountry := func(s access.Source) bool {
@@ -282,7 +275,7 @@ func HandleACLTest(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, map[string]any{"ip": ip, "decision": d})
 }
 
-// clientAddress is the address the request came from (no headers).
+// clientAddress returns the request's remote IP address.
 func clientAddress(r *http.Request) string {
 	host := r.RemoteAddr
 	if i := strings.LastIndex(host, ":"); i > 0 {
@@ -330,8 +323,6 @@ func HandleACLAttach(w http.ResponseWriter, r *http.Request) {
 	}
 	utils.SendOK(w)
 }
-
-/* Objects */
 
 func HandleACLObjects(w http.ResponseWriter, r *http.Request) {
 	type row struct {
@@ -390,11 +381,8 @@ func HandleACLObjectDelete(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-/* Conversion of the access rules of 2.17 and earlier */
-
-// applyACLConversion points proxy rules at the ACLs their access rules
-// became, and gives HTTP rules whose access rule trusted forwarded
-// addresses that option themselves. Run once the proxy rules are loaded.
+// applyACLConversion points proxy rules at the ACLs converted from their
+// access rules and sets their forwarded-address trust.
 func applyACLConversion() {
 	if accessController == nil {
 		return

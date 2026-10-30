@@ -8,13 +8,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Redirect.go
-
-	This script handle all the http handlers
-	related to redirection function in the reverse proxy
-*/
-
 // Handle request for listing all stored redirection rules
 func handleListRedirectionRules(w http.ResponseWriter, r *http.Request) {
 	rules := redirectTable.GetAllRedirectRules()
@@ -144,7 +137,7 @@ func handleEditRedirectionRule(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-// Toggle redirection regex support. Note that this cost another O(n) time complexity to each page load
+// Toggle redirection regex support
 func handleToggleRedirectRegexpSupport(w http.ResponseWriter, r *http.Request) {
 	//Update the current regex support rule enable state
 	enableRegexSupport, err := utils.PostBool(r, "enable")

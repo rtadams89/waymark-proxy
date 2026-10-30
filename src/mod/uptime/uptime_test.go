@@ -10,10 +10,8 @@ import (
 	"time"
 )
 
-// This test reproduces GitHub issue #1241: getWebsiteStatus used to leak one
-// upstream TCP connection per call because it built a fresh keep-alive
-// http.Transport every time and never closed/reused it. It verifies that
-// every connection opened by a check is closed again shortly after.
+// TestGetWebsiteStatusClosesConnections checks that every connection opened by
+// a check is closed again shortly after.
 func TestGetWebsiteStatusClosesConnections(t *testing.T) {
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

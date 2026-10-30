@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <!-- Notes: This should be open in its original path-->
+        <!-- Opened at its original path -->
         <meta charset="utf-8">
         <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
         <link rel="stylesheet" href="../script/semantic/semantic.min.css">
@@ -15,7 +15,7 @@
                 right: 0.6em;
             }
 
-            /* Custom fork: keep host:port on one line; only very long names wrap, at any point */
+            /* Keep host:port on one line; only very long names wrap, at any point */
             .upstreamLink{
                 display: inline;
                 overflow-wrap: anywhere;
@@ -123,7 +123,7 @@
                      <label>Skip Verification<br>
                         <small>Check this if the destination uses a self-signed certificate</small></label>
                 </div><br>
-                <!-- Custom fork: which name the upstream certificate is checked against -->
+                <!-- Which name the upstream certificate is checked against -->
                 <div class="tlsNameField" id="newTLSNameField" style="margin-top: 0.8em; display: none;">
                     <p style="margin-bottom: 0.4em;">Check certificate name against</p>
                     <select class="ui small dropdown" id="newTLSVerifyName">
@@ -210,7 +210,7 @@
                             });
 
                             $(".advanceUpstreamOptions.accordion").accordion();
-                            $(".upstreamEntry").each(function(){ syncTLSNameField(this); }); //Custom fork
+                            $(".upstreamEntry").each(function(){ syncTLSNameField(this); });
                             syncTLSNameField($('[data-tab="newupstream"]'));
 
                             let totalUpstreams = data.ActiveOrigins.length + data.InactiveOrigins.length;
@@ -469,12 +469,11 @@
                 originalSettings.RequireTLS = requireTLS;
                 originalSettings.SkipCertValidations = skipTLSVerification;
                 originalSettings.SkipWebSocketOriginCheck = skipWebSocketOriginCheck;
-                originalSettings.TLSVerifyName = $(upstream).find(".tlsVerifyName").val() || ""; //Custom fork
+                originalSettings.TLSVerifyName = $(upstream).find(".tlsVerifyName").val() || "";
                 originalSettings.MaxConn = parseInt(maxConn);
                 originalSettings.RespTimeout = respTimeout;
-                originalSettings.Weight = parseInt($(upstream).find(".newWeight").val(), 10); //Custom fork: checked in saveUpstreamUpdate
+                originalSettings.Weight = parseInt($(upstream).find(".newWeight").val(), 10);
 
-                //console.log(originalSettings);
                 return originalSettings;
             }
 
@@ -612,7 +611,7 @@
                 parent.hideSideWrapper(true);
             }
         
-            /* Custom fork: certificate name check option */
+            /* Certificate name check option */
             const TLS_NAME_HINTS = {
                 "": 'The "Host" header override if one is set, otherwise the name in the destination address (for an IP address, the host name the client asked for).',
                 "upstream": "The host name or IP address in the destination address. Use this when the destination has its own certificate.",
@@ -634,4 +633,4 @@
             });
 </script>
     </body>
-</html>
+</html>

@@ -26,7 +26,6 @@ func NewManagedHTTPRouter(option RouterOption) *RouterDef {
 }
 
 func (router *RouterDef) HandleFunc(endpoint string, handler func(http.ResponseWriter, *http.Request)) error {
-	//Check if the endpoint already registered
 	if _, exist := router.endpoints[endpoint]; exist {
 		fmt.Println("WARNING! Duplicated registering of web endpoint: " + endpoint)
 		return errors.New("endpoint register duplicated")
@@ -34,10 +33,8 @@ func (router *RouterDef) HandleFunc(endpoint string, handler func(http.ResponseW
 
 	authAgent := router.option.AuthAgent
 
-	//OK. Register handler
 	if router.option.TargetMux == nil {
 		http.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
-			//Check authentication of the user
 			if router.option.RequireAuth {
 				authAgent.HandleCheckAuth(w, r, func(w http.ResponseWriter, r *http.Request) {
 					handler(w, r)
@@ -49,7 +46,6 @@ func (router *RouterDef) HandleFunc(endpoint string, handler func(http.ResponseW
 		})
 	} else {
 		router.option.TargetMux.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
-			//Check authentication of the user
 			if router.option.RequireAuth {
 				authAgent.HandleCheckAuth(w, r, func(w http.ResponseWriter, r *http.Request) {
 					handler(w, r)

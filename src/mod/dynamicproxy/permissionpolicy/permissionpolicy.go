@@ -6,15 +6,6 @@ import (
 	"strings"
 )
 
-/*
-	Permisson Policy
-
-	This is a permission policy header modifier that changes
-	the request permission related policy fields
-
-	author: tobychui
-*/
-
 type PermissionsPolicy struct {
 	Accelerometer              []string `json:"accelerometer"`
 	AmbientLightSensor         []string `json:"ambient_light_sensor"`
@@ -112,14 +103,12 @@ func GetDefaultPermissionPolicy() *PermissionsPolicy {
 func (policy *PermissionsPolicy) ToKeyValueHeader() []string {
 	policyHeader := []string{}
 
-	// Helper function to add policy directives
 	addDirective := func(name string, sources []string) {
 		if len(sources) > 0 {
 			if sources[0] == "*" {
-				//Allow all
 				policyHeader = append(policyHeader, fmt.Sprintf("%s=%s", name, "*"))
 			} else {
-				//Other than "self" which do not need double quote, others domain need double quote in place
+				// Sources other than "self" are quoted
 				formatedSources := []string{}
 				for _, source := range sources {
 					if source == "self" {
@@ -131,12 +120,11 @@ func (policy *PermissionsPolicy) ToKeyValueHeader() []string {
 				policyHeader = append(policyHeader, fmt.Sprintf("%s=(%s)", name, strings.Join(formatedSources, " ")))
 			}
 		} else {
-			//There are no setting for this field. Assume no permission
+			// No sources: no permission
 			policyHeader = append(policyHeader, fmt.Sprintf("%s=()", name))
 		}
 	}
 
-	// Add each policy directive to the header
 	addDirective("accelerometer", policy.Accelerometer)
 	addDirective("ambient-light-sensor", policy.AmbientLightSensor)
 	addDirective("autoplay", policy.Autoplay)
@@ -180,7 +168,6 @@ func (policy *PermissionsPolicy) ToKeyValueHeader() []string {
 	addDirective("window-placement", policy.WindowPlacement)
 	addDirective("vertical-scroll", policy.VerticalScroll)
 
-	// Join the directives and set the header
 	policyHeaderValue := strings.Join(policyHeader, ", ")
 	return []string{"Permissions-Policy", policyHeaderValue}
 }
@@ -192,6 +179,5 @@ func InjectPermissionPolicyHeader(w http.ResponseWriter, policy *PermissionsPoli
 		return
 	}
 	headerKV := policy.ToKeyValueHeader()
-	//Inject the new policy into the header
 	w.Header().Set(headerKV[0], headerKV[1])
 }

@@ -38,17 +38,14 @@ func (m *APIKeyManager) GenerateAPIKey(pluginID string, permittedEndpoints []zor
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	// Generate a cryptographically secure random key
 	bytes := make([]byte, 32)
 	if _, err := rand.Read(bytes); err != nil {
 		return nil, fmt.Errorf("failed to generate random bytes: %w", err)
 	}
 
-	// Hash the random bytes to create the API key
 	hash := sha256.Sum256(bytes)
 	apiKey := hex.EncodeToString(hash[:])
 
-	// Create the plugin API key
 	pluginAPIKey := &PluginAPIKey{
 		PluginID:           pluginID,
 		APIKey:             apiKey,
@@ -56,7 +53,6 @@ func (m *APIKeyManager) GenerateAPIKey(pluginID string, permittedEndpoints []zor
 		CreatedAt:          time.Now(),
 	}
 
-	// Store the API key
 	m.keys[apiKey] = pluginAPIKey
 
 	return pluginAPIKey, nil
@@ -82,7 +78,6 @@ func (m *APIKeyManager) ValidateAPIKeyForEndpoint(endpoint string, method string
 		return nil, err
 	}
 
-	// Check if the endpoint is permitted
 	for _, permittedEndpoint := range pluginAPIKey.PermittedEndpoints {
 		if permittedEndpoint.Endpoint == endpoint && permittedEndpoint.Method == method {
 			return pluginAPIKey, nil

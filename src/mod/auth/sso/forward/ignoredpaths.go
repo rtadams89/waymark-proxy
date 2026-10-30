@@ -6,34 +6,17 @@ import (
 	"imuslab.com/zoraxy/mod/pathmatch"
 )
 
-/*
-	ignoredpaths.go
+// Ignored paths for forward auth: request path prefixes served without
+// authentication.
 
-	Implements "Ignored Paths" for forward auth: a list of request path prefixes that bypass
-	the forward auth check entirely. Requests whose path falls within one of these prefixes are
-	served WITHOUT authentication.
-
-	The primary use case is auth-provider callback subpaths that are served on the protected
-	application's own domain and therefore must not be gated by the auth check, e.g. Authentik's
-	/outpost.goauthentik.io in single-application mode (see issue #895). It is intentionally
-	generic: any path the operator explicitly wants public can be listed.
-*/
-
-// requestPathWithinPrefix reports whether the given request URI falls *within* the supplied
-// path prefix using normalized path boundaries. It is hardened against:
-//   - boundary tricks    e.g. "/outpost.goauthentik.io.evil" must NOT match "/outpost.goauthentik.io"
-//   - path traversal     e.g. "/outpost.goauthentik.io/../admin" must NOT match (resolves to "/admin")
-//   - encoded traversal  e.g. "/outpost.goauthentik.io/%2e%2e/admin"
-//
-// This matters because a false positive would skip authentication for a path the operator
-// did not intend to expose.
+// requestPathWithinPrefix reports whether the normalized request path is
+// prefix or below it.
 func requestPathWithinPrefix(requestURI string, prefix string) bool {
 	return pathmatch.RequestPathWithinPrefix(requestURI, prefix)
 }
 
-// IsIgnoredPath reports whether the given request URI should bypass forward auth because it
-// falls within one of the configured ignored path prefixes. Empty / whitespace-only entries
-// are skipped so a stray comma cannot accidentally disable auth for the whole site.
+// IsIgnoredPath reports whether requestURI is within one of the ignored
+// path prefixes; empty entries are skipped.
 func (ar *AuthRouter) IsIgnoredPath(requestURI string) bool {
 	if ar == nil {
 		return false

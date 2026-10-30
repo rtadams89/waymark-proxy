@@ -10,8 +10,7 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// HandlePluginUI handles the request to the plugin UI
-// This function will route the request to the correct plugin UI handler
+// HandlePluginUI routes the request to the plugin's UI handler
 func (m *Manager) HandlePluginUI(pluginID string, w http.ResponseWriter, r *http.Request) {
 	plugin, err := m.GetPluginByID(pluginID)
 	if err != nil {

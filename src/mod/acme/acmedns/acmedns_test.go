@@ -7,7 +7,6 @@ import (
 	"imuslab.com/zoraxy/mod/acme/acmedns"
 )
 
-// Test if the structure of ACME DNS config can be reflected from lego source code definations
 func TestACMEDNSConfigStructureReflector(t *testing.T) {
 	providers := []string{
 		"gandi",

@@ -1,14 +1,5 @@
 package main
 
-/*
-	Vdir.go
-
-	This script handle virtual directory functions
-	in global scopes
-
-	Author: tobychui
-*/
-
 import (
 	"encoding/json"
 	"net/http"
@@ -269,16 +260,15 @@ func ReverseProxyEditVdir(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-// ReverseProxyBulkApplyVdirByForwardAuth bulk-manages a virtual directory across hosts based on
-// their Forward Auth state, so the auth callback directory (e.g. Authentik's
-// /outpost.goauthentik.io) can be set up or torn down without per-host manual work.
+// ReverseProxyBulkApplyVdirByForwardAuth bulk-manages a virtual directory across
+// hosts based on their Forward Auth state:
 //
 //	action=add    -> create the directory on every host that USES Forward Auth
 //	action=remove -> remove the directory from every host that does NOT use Forward Auth
 //
-// Existing directories are only skipped (add) or removed when their target matches the spec
-// exactly; a directory at the same path with different settings is reported as a conflict and
-// left untouched, so nothing is silently overwritten or deleted.
+// Existing directories are skipped (add) or removed only when their target
+// matches the spec exactly; a directory at the same path with different
+// settings is reported as a conflict and left untouched.
 func ReverseProxyBulkApplyVdirByForwardAuth(w http.ResponseWriter, r *http.Request) {
 	action, err := utils.PostPara(r, "action")
 	if err != nil || (action != "add" && action != "remove") {
@@ -306,8 +296,8 @@ func ReverseProxyBulkApplyVdirByForwardAuth(w http.ResponseWriter, r *http.Reque
 
 	ensurePresent := (action == "add")
 
-	// Collect the target host endpoints first so we don't mutate the map while ranging it.
-	// "add" applies to hosts using Forward Auth; "remove" applies to all other hosts.
+	// Collect the target host endpoints first. "add" applies to hosts using
+	// Forward Auth; "remove" applies to all other hosts.
 	targets := []*dynamicproxy.ProxyEndpoint{}
 	dynamicProxyRouter.ProxyEndpoints.Range(func(key, value interface{}) bool {
 		ep, ok := value.(*dynamicproxy.ProxyEndpoint)
@@ -346,8 +336,7 @@ func ReverseProxyBulkApplyVdirByForwardAuth(w http.ResponseWriter, r *http.Reque
 			SaveReverseProxyConfig(activatedProxyEndpoint)
 			created = append(created, ep.RootOrMatchingDomain)
 		case dynamicproxy.BulkVdirRemove:
-			// Re-fetch right before deletion: if the vdir was edited concurrently and
-			// no longer points at the SSO endpoint, treat it as a conflict instead.
+			// Re-fetch right before deletion; a changed vdir is a conflict
 			current := ep.GetVirtualDirectoryRuleByMatchingPath(matchingPath)
 			if current == nil || !current.HasSameTarget(domain, reqTLS, skipValid) {
 				conflicts = append(conflicts, ep.RootOrMatchingDomain)

@@ -44,7 +44,7 @@ func TestAdminRuleNewSingleNode(t *testing.T) {
 func TestAdminRuleBecomesClusterRule(t *testing.T) {
 	s := adminConsoleSettings{Address: "10.10.20.5", Hostname: "waymark01.home.example"}
 	ep := adminBuildRule(nil, adminRequiredHosts(nil, s), adminDefaultRoot(nil, s), "127.0.0.1:8000")
-	ep.MatchingDomainAlias = append(ep.MatchingDomainAlias, "extra.example") // the user's own alias
+	ep.MatchingDomainAlias = append(ep.MatchingDomainAlias, "extra.example")
 	c := testCluster()
 	req := adminRequiredHosts(c, s)
 	ep2 := adminBuildRule(ep, req, adminDefaultRoot(c, s), "127.0.0.1:8000")
@@ -80,7 +80,7 @@ func TestAdminRuleKeepsEditableSettings(t *testing.T) {
 		"AuthenticationProvider":{"AuthMethod":1},"AccessFilterUUID":"728ce19b","Tags":["infra"],
 		"AssetCache":{"enabled":true,"extensions":["css"],"defaultTTLSeconds":60,"maxFileMB":1}}`), &old)
 	c := testCluster()
-	c.VIPHostname, c.Nodes[0].Hostname, c.Nodes[1].Hostname = "", "", "" // names not entered yet
+	c.VIPHostname, c.Nodes[0].Hostname, c.Nodes[1].Hostname = "", "", ""
 	ep := adminBuildRule(&old, adminRequiredHosts(c, adminConsoleSettings{}), adminDefaultRoot(c, adminConsoleSettings{}), "127.0.0.1:8000")
 	if ep.RootOrMatchingDomain != "waymark.home.example" || ep.SystemAutoRoot {
 		t.Fatal("a main domain set by the user is kept")
@@ -102,7 +102,7 @@ func TestAdminRuleKeepsEditableSettings(t *testing.T) {
 func TestAdminRuleUserRoot(t *testing.T) {
 	s := adminConsoleSettings{Address: "10.0.0.5"}
 	ep := adminBuildRule(nil, adminRequiredHosts(nil, s), adminDefaultRoot(nil, s), "127.0.0.1:8000")
-	ep.RootOrMatchingDomain, ep.SystemAutoRoot = "admin.example", false // renamed by the user
+	ep.RootOrMatchingDomain, ep.SystemAutoRoot = "admin.example", false
 	ep2 := adminBuildRule(ep, adminRequiredHosts(nil, s), adminDefaultRoot(nil, s), "127.0.0.1:8000")
 	if ep2.RootOrMatchingDomain != "admin.example" || strings.Join(ep2.MatchingDomainAlias, ",") != "10.0.0.5" {
 		t.Fatalf("%s %v", ep2.RootOrMatchingDomain, ep2.MatchingDomainAlias)

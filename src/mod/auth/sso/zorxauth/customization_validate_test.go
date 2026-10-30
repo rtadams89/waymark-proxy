@@ -77,8 +77,7 @@ func TestValidateSVGContentAcceptsPlainArtwork(t *testing.T) {
 	}
 }
 
-// The resources shipped with Zoraxy must themselves pass the upload validator,
-// otherwise an administrator could not re-upload the stock artwork.
+// The default resources pass the upload validator.
 func TestDefaultAssetsPassValidation(t *testing.T) {
 	for _, key := range []string{ASSET_BRAND_MARK, ASSET_WATERMARK, ASSET_WALLPAPER} {
 		content, _ := defaultAssetContent(key)
@@ -121,8 +120,7 @@ func TestValidateUploadContentEnforcesAspectRatio(t *testing.T) {
 	}
 }
 
-// The stored file name is always derived from the asset key, never from the
-// uploaded file name, so a traversal attempt cannot escape the branding folder.
+// The stored file name is derived from the asset key, not the uploaded name.
 func TestUploadFileNameCannotEscapeBrandingFolder(t *testing.T) {
 	hostileNames := []string{
 		`../../../../windows/system32/evil.png`,
@@ -135,10 +133,9 @@ func TestUploadFileNameCannotEscapeBrandingFolder(t *testing.T) {
 	for _, name := range hostileNames {
 		ext := strings.ToLower(filepath.Ext(name))
 		if _, accepted := brandingUploadTypes[ext]; !accepted {
-			continue //Rejected before a path is ever built
+			continue
 		}
 
-		//This mirrors what HandleCustomizationUpload builds
 		stored := ASSET_WALLPAPER + ext
 		if strings.ContainsAny(stored, `/\`) || stored != filepath.Base(stored) {
 			t.Errorf("stored name %q derived from %q is not a bare file name", stored, name)
@@ -152,8 +149,7 @@ func TestSanitizeBrandingTextStripsControlCharacters(t *testing.T) {
 	}
 }
 
-// A label containing a template placeholder must be emitted literally rather
-// than expanded into markup by a later replacement pass.
+// A label containing a template placeholder is emitted literally.
 func TestRenderAuthPageDoesNotExpandPlaceholdersFromText(t *testing.T) {
 	ar := &AuthRouter{
 		branding: &BrandingConfig{

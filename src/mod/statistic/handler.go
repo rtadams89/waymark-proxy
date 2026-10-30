@@ -7,13 +7,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Handler.go
-
-	This script handles incoming request for loading the statistic of the day
-
-*/
-
 func (c *Collector) HandleTodayStatLoad(w http.ResponseWriter, r *http.Request) {
 
 	fast, _ := utils.GetBool(r, "fast")

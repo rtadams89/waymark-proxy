@@ -21,7 +21,6 @@ func (p *Plugin) GetID() eventsystem.ListenerID {
 
 // Send an event to the plugin
 func (p *Plugin) Notify(event events.Event) error {
-	// Handle the event notification
 	if !p.Enabled || p.AssignedPort == 0 {
 		return fmt.Errorf("plugin %s is not running", p.Spec.ID)
 	}
@@ -36,16 +35,13 @@ func (p *Plugin) Notify(event events.Event) error {
 	}
 	subscriptionPath = strings.TrimSuffix(subscriptionPath, "/")
 
-	// Prepare the URL
 	url := fmt.Sprintf("http://127.0.0.1:%d%s/%s", p.AssignedPort, subscriptionPath, event.Name)
 
-	// Marshal the event to JSON
 	eventData, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	// Create HTTP request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(eventData))
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %w", err)

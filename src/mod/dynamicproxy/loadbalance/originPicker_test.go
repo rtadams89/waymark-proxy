@@ -8,11 +8,9 @@ import (
 	"time"
 )
 
-// func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) { ... }
 func TestRandomUpstreamSelection(t *testing.T) {
-	rand.Seed(time.Now().UnixNano()) // Seed for randomness
+	rand.Seed(time.Now().UnixNano())
 
-	// Define some test upstreams
 	upstreams := []*Upstream{
 		{
 			OriginIpOrDomain:         "192.168.1.1:8080",
@@ -20,7 +18,7 @@ func TestRandomUpstreamSelection(t *testing.T) {
 			SkipCertValidations:      false,
 			SkipWebSocketOriginCheck: false,
 			Weight:                   1,
-			MaxConn:                  0, // No connection limit for now
+			MaxConn:                  0, // No connection limit
 		},
 		{
 			OriginIpOrDomain:         "192.168.1.2:8080",
@@ -51,7 +49,6 @@ func TestRandomUpstreamSelection(t *testing.T) {
 	// Track how many times each upstream is selected
 	selectionCount := make(map[string]int)
 	totalPicks := 10000 // Number of times to call getRandomUpstreamByWeight
-	//expectedPickCount := totalPicks / len(upstreams) // Ideal count for each upstream
 
 	// Pick upstreams and record their selection count
 	for i := 0; i < totalPicks; i++ {

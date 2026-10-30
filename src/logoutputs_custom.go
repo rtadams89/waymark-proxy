@@ -1,14 +1,6 @@
 package main
 
-/*
-	logoutputs_custom.go (custom fork)
-
-	Settings for where system and traffic logs go: the log file, remote
-	syslog servers, both or neither (mod/info/logger/outputs_custom.go and
-	syslog_custom.go). Stored in conf/log_outputs.json, which HA
-	configuration sync copies to standby nodes; each node sends with its own
-	host name.
-*/
+// Settings for where system and traffic logs go (conf/log_outputs.json).
 
 import (
 	"encoding/json"
@@ -22,8 +14,7 @@ import (
 
 func logOutputsPath() string { return CONF_FOLDER + "/log_outputs.json" }
 
-// initLogOutputs applies the saved settings to the system logger. Called
-// from startupSequence once the logger exists.
+// initLogOutputs applies the saved settings to the system logger.
 func initLogOutputs() {
 	o, err := logger.LoadLogOutputs(logOutputsPath())
 	if err != nil {
@@ -96,8 +87,7 @@ func boolWord(b bool) string {
 	return "off"
 }
 
-// HandleLogOutputsTest sends one test message to a syslog server (as
-// entered, saved or not).
+// HandleLogOutputsTest sends one test message to a syslog server.
 // POST /api/logger/outputs/test  destination=<json>
 func HandleLogOutputsTest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

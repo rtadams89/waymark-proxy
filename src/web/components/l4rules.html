@@ -1,4 +1,4 @@
-<!-- Custom fork: Layer 4 rule create form, laid out like Add Proxy Rule (rules.html) -->
+<!-- Layer 4 rule create form -->
 <style>
     #addRuleL4 .l4RulesInstructions{
         background: var(--theme_background) !important;
@@ -224,7 +224,7 @@
                     return;
                 }
                 let finish = function(warning){
-                    //Like HTTP proxy rules, a new Layer 4 rule is live straight away
+                    //A new Layer 4 rule is live straight away
                     $.cjax({
                         url: "/api/l4proxy/config/start",
                         method: "POST",
@@ -327,8 +327,7 @@
         $("#newL4AccessFilter").parent().dropdown("set selected", "allow-all");
     });
 
-    //Called when Add Proxy Rule (rules.html) is opened: access rules may have
-    //changed on the Access Control page
+    //Called when Add Proxy Rule (rules.html) is opened
     window.refreshNewL4AccessList = function(){
         let current = $("#newL4AccessFilter").val() || "allow-all";
         initNewL4AccessDropdownList(function(){

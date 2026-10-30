@@ -13,17 +13,7 @@ import (
 	"imuslab.com/zoraxy/mod/info/shellexec"
 )
 
-/*
-	Usage Info (CPU / RAM)
-	author: tobychui
-
-	This module get the CPU information on different platform using
-	native terminal commands
-
-	Note: Unlike the arozos version, the Windows implementation uses
-	gopsutil (already a Zoraxy dependency) instead of the external
-	helper executables shipped with arozos.
-*/
+// CPU and RAM usage on different platforms
 
 const query_cpuproc_command = "ps -eo pcpu,pid,user,args | sort -k 1 -r | head -10"
 const query_freemem_command = "top -d1 | sed '4q;d' | awk '{print $(NF-1)}'"
@@ -43,26 +33,14 @@ func GetCPUUsage() float64 {
 		}
 		usage = percentages[0]
 	} else if runtime.GOOS == "linux" || runtime.GOOS == "freebsd" || runtime.GOOS == "darwin" {
-		/*
-			Updated shortcut method
-
-			This method uses the /proc/stat file to get the CPU usage
-			which is more accurate than the previous method
-
-			If the new method got an error, it will fallback to the old method
-		*/
+		// CPU usage from /proc/stat, falling back to the ps method on error
 
 		currentCPUUsage, err := GetCPUUsageUsingProcStat()
 		if err == nil {
 			return currentCPUUsage
 		}
 
-		/*
-			Old Method
-
-			This method uses the top command to get the CPU usage
-			which has higher compatibility but less accurate
-		*/
+		// ps method
 
 		//Get CPU first 10 processes uses most CPU resources
 		cmd := shellexec.Command(query_cpuproc_command)
@@ -131,10 +109,7 @@ func GetRAMUsage() (string, string, float64) {
 	usedRam := "Unknown"
 	totalRam := "Unknown"
 	usedPercentage := float64(0)
-	//Custom fork: read the kernel's figures directly (/proc/meminfo on
-	//Linux) on every platform. The dashboard samples this every second, and
-	//the Linux path used to start a shell running free and grep each time;
-	//the commands below are only a fallback now.
+	// Kernel figures (/proc/meminfo on Linux); the commands below are a fallback
 	if vm, err := mem.VirtualMemory(); err == nil && vm.Total > 0 {
 		usedRam = fmt.Sprintf("%d MB", vm.Used/1024/1024)
 		totalRam = fmt.Sprintf("%d MB", vm.Total/1024/1024)

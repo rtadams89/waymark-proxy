@@ -1,20 +1,10 @@
 package database
 
 /*
-	filetable_custom.go (custom fork): database tables kept in JSON files.
-
-	A table registered with UseFileTable is stored in its own JSON file in
-	the config folder instead of the database file: one object with a
-	member per key, the value being what the database would have stored.
-	Handlers keep calling Read, Write and the rest as before; the routing
-	is done here.
-
-	The file is written atomically on every change. It is read again
-	whenever it changes on disk (modification time or size), so a copy
-	put in place by HA sync or by hand is picked up.
-
-	Behaviour matches the bolt backend: reading a key that is not there
-	returns no error and leaves the destination unchanged.
+	Database tables stored in JSON files: a table registered with
+	UseFileTable is kept as one JSON object per file, written atomically and
+	reloaded when the file changes on disk. A missing key reads without
+	error and leaves the destination unchanged.
 */
 
 import (
@@ -53,8 +43,8 @@ func (d *Database) fileTable(table string) *fileTable {
 	return fileTables[d][table]
 }
 
-// UseFileTable keeps table in the JSON file at path (created with perm on
-// the first write) from now on.
+// UseFileTable stores table in the JSON file at path, created with perm on
+// the first write.
 func (d *Database) UseFileTable(table, path string, perm os.FileMode) error {
 	if d.fileTable(table) != nil {
 		return fmt.Errorf("table %s is already kept in a file", table)
@@ -88,7 +78,7 @@ func (d *Database) FileTablePath(table string) string {
 	return ""
 }
 
-// refresh loads the file if it changed since it was last read. Call with
+// refresh loads the file if it changed since it was last read; call with
 // ft.mu held.
 func (ft *fileTable) refresh() error {
 	info, err := os.Stat(ft.path)
@@ -148,7 +138,7 @@ func (ft *fileTable) write(key string, value interface{}) error {
 	ft.mu.Lock()
 	defer ft.mu.Unlock()
 	if err := ft.refresh(); err != nil {
-		return err // never overwrite a file that could not be read
+		return err // the file could not be read
 	}
 	old, had := ft.rows[key]
 	ft.rows[key] = raw
@@ -225,6 +215,6 @@ func (ft *fileTable) list() ([][][]byte, error) {
 	for k, v := range ft.rows {
 		out = append(out, [][]byte{[]byte(k), append([]byte{}, v...)})
 	}
-	sort.Slice(out, func(i, j int) bool { return string(out[i][0]) < string(out[j][0]) }) // key order, as bolt lists them
+	sort.Slice(out, func(i, j int) bool { return string(out[i][0]) < string(out[j][0]) }) // key order
 	return out, nil
 }

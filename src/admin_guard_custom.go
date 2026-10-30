@@ -1,22 +1,9 @@
 package main
 
 /*
-	admin_guard_custom.go (custom fork): keeps the admin console reachable.
-
-	Wraps the admin UI's API (inside CSRF and the HA read-only check):
-
-	- The admin console rule (admin_rule_custom.go) cannot be disabled or
-	  deleted, and its destinations, virtual directories, headers,
-	  authentication, health checks, maintenance mode, listening address and
-	  extra listening ports cannot be changed. Its required hosts cannot be
-	  removed. Its main domain, extra aliases, certificate, ACL,
-	  caching, logging and tags can be changed; after every change the
-	  fixed settings are put back (adminRuleReconcile).
-	- No other rule can take one of its hosts.
-	- When the request came through Waymark's proxy, a change to the ACL of
-	  the admin console rule (its rules, an object they use, or attaching
-	  another ACL) that would deny the requester is refused
-	  (acl_api_custom.go calls adminACLChangeBlocks / adminACLAttachBlocks).
+	API checks for the admin console rule: its fixed settings and required
+	hosts cannot be changed, no other rule can take its hosts, and ACL
+	changes that would deny the requester on it are refused.
 */
 
 import (
@@ -30,7 +17,7 @@ import (
 	"imuslab.com/zoraxy/mod/netutils"
 )
 
-// Changes to these are refused for the admin console rule.
+// API paths refused for the admin console rule, with the action named in the error.
 var adminLockedPaths = map[string]string{
 	"/api/proxy/del":                             "deleted",
 	"/api/proxy/updateCredentials":               "given basic authentication",
@@ -64,7 +51,7 @@ func adminGuardRefuse(w http.ResponseWriter, msg string) {
 	w.Write(js)
 }
 
-// adminRuleHosts are every host the admin console rule answers on.
+// adminRuleHosts returns every host the admin console rule answers on.
 func adminRuleHosts(ep *dynamicproxy.ProxyEndpoint) map[string]bool {
 	out := map[string]bool{}
 	if ep == nil {
@@ -80,8 +67,8 @@ func adminRuleHosts(ep *dynamicproxy.ProxyEndpoint) map[string]bool {
 	return out
 }
 
-// adminHostsTakenByOtherRules returns why one of hosts cannot be used by
-// the admin console rule (another rule has it), or "".
+// adminHostsTakenByOtherRules returns an error message if another rule has
+// one of hosts, or "".
 func adminHostsTakenByOtherRules(hosts []string) string {
 	sys := adminRule()
 	for _, ep := range adminAllRules() {
@@ -100,8 +87,8 @@ func adminHostsTakenByOtherRules(hosts []string) string {
 	return ""
 }
 
-// adminProxiedClientIP is the requester's address when the request came
-// through Waymark's own proxy (the admin console rule), or "".
+// adminProxiedClientIP returns the requester's address when the request came
+// through the admin console rule, or "".
 func adminProxiedClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -124,9 +111,8 @@ func adminBlockedMessage(ip string) string {
 	return "This would deny your own address (" + ip + ") on the admin console: its proxy rule uses this ACL. Allow " + ip + " first, or make the change from a computer the ACL still allows."
 }
 
-// adminACLChangeBlocks says why a change to an ACL or an object would deny
-// the requester on the admin console rule, or "" (also when the request
-// did not come through Waymark's proxy).
+// adminACLChangeBlocks returns an error message if the change to acl or obj
+// would deny the requester on the admin console rule, or "".
 func adminACLChangeBlocks(r *http.Request, acl *access.ACL, obj *access.Object) string {
 	ip := adminProxiedClientIP(r)
 	sys := adminRule()
@@ -146,7 +132,6 @@ func adminACLChangeBlocks(r *http.Request, acl *access.ACL, obj *access.Object) 
 	}
 	var objs map[string]*access.Object
 	if obj != nil {
-		// The ACL may use the object directly or through other objects
 		objs = map[string]*access.Object{obj.ID: obj}
 	}
 	if d := accessController.TestWith(cand, objs, ip); d.Action != access.ActionAllow {
@@ -155,8 +140,8 @@ func adminACLChangeBlocks(r *http.Request, acl *access.ACL, obj *access.Object) 
 	return ""
 }
 
-// adminACLAttachBlocks says why giving the admin console rule the ACL id
-// would deny the requester, or "".
+// adminACLAttachBlocks returns an error message if attaching ACL id to the
+// admin console rule would deny the requester, or "".
 func adminACLAttachBlocks(r *http.Request, id string) string {
 	ip := adminProxiedClientIP(r)
 	if ip == "" || accessController == nil {
@@ -224,7 +209,6 @@ func adminGuard(next http.Handler) http.Handler {
 				}
 			}
 		} else if write {
-			// Another rule taking one of the admin console rule's hosts
 			taken := adminRuleHosts(sys)
 			var claimed []string
 			switch p {
@@ -250,10 +234,10 @@ func adminGuard(next http.Handler) http.Handler {
 		if isSys && write {
 			if p == "/api/proxy/setHostname" {
 				if ep := adminRule(); ep != nil && strings.EqualFold(ep.RootOrMatchingDomain, r.Form.Get("newHostname")) {
-					ep.SystemAutoRoot = false // the main domain is now the user's choice
+					ep.SystemAutoRoot = false
 				}
 			}
-			adminRuleReconcile() // put back anything fixed the change touched
+			adminRuleReconcile()
 		}
 	})
 }

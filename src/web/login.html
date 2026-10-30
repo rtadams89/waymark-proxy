@@ -67,7 +67,7 @@
                 top: 0;
                 bottom: 0;
                 margin: auto;
-                /*Solves a problem in which the content is being cut when the div is smaller than its' wrapper:*/
+                /* Keep the content from being cut when the div is smaller than its wrapper */
                 max-width: 100%;
                 max-height: 100%;
                 overflow: auto;
@@ -223,15 +223,14 @@
             </svg>
         </div>
         <div class="wavebase">
-            <!-- Custom fork: System > About needs a sign-in, so the license notice is also here in short -->
+            <!-- Short license notice -->
             <p>Waymark Proxy, based on Zoraxy · <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">AGPL v3</a>, no warranty · <a href="https://github.com/rtadams89/waymark-proxy" target="_blank">Source code</a> · <a href="/index.html#about">About</a></p>
         </div>
     <script>
         AOS.init();
         var registerMode = false;
         var redirectionAddress = "/";
-        //Custom fork: a page asked for before signing in (e.g. #about from the
-        //footer, kept through the redirect to this page) opens after signing in
+        //A page asked for before signing in (e.g. #about) opens after signing in
         if (/^#[A-Za-z0-9]{1,32}$/.test(window.location.hash)){
             redirectionAddress = "/index.html" + window.location.hash;
         }
@@ -266,7 +265,6 @@
                         window.location.href = "/";
                     }else{
                         console.log(data);
-                        //window.location.href = redirectionAddress;
                     }
                 }
                 }catch(ex){
@@ -415,4 +413,4 @@
         });
     </script>
     </body>
-</html>
+</html>

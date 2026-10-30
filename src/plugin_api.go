@@ -7,15 +7,7 @@ import (
 	"imuslab.com/zoraxy/mod/netstat"
 )
 
-/*
-	plugin_api.go
-
-	Module to register all the REST API endpoints for various management functions
-
-	**Important Notes**
-	These APIs are for plugin use only. If you are implementing a new feature for the
-	webmin UI, add them in api.go instead of this file.
-*/
+// REST API endpoints for plugin use
 
 // Register the APIs for HTTP proxy management functions
 func RegisterHTTPProxyRestAPI(authMiddleware *auth.PluginAuthMiddleware) {
@@ -47,7 +39,7 @@ func RegisterRedirectionRestAPI(authRouter *auth.PluginAuthMiddleware) {
 
 // Register the APIs for access rules management functions
 func RegisterAccessRuleRestAPI(authRouter *auth.PluginAuthMiddleware) {
-	/* ACLs (Custom fork: read only for plugins) */
+	/* ACLs (read only) */
 	authRouter.HandleFunc("/api/acl/list", HandleACLList)
 	authRouter.HandleFunc("/api/acl/get", HandleACLGet)
 	authRouter.HandleFunc("/api/acl/objects", HandleACLObjects)
@@ -55,7 +47,7 @@ func RegisterAccessRuleRestAPI(authRouter *auth.PluginAuthMiddleware) {
 	authRouter.HandleFunc("/api/quickban/list", handleListQuickBan)
 }
 
-// Register the APIs for path blocking rules management functions, WIP
+// Register the APIs for path blocking rules management functions
 func RegisterPathRuleRestAPI(authRouter *auth.PluginAuthMiddleware) {
 	authRouter.HandleFunc("/api/pathrule/list", pathRuleHandler.HandleListBlockingPath)
 }
@@ -83,7 +75,7 @@ func RegisterStatisticalRestAPI(authRouter *auth.PluginAuthMiddleware) {
 func RegisterL4ProxyRestAPI(authRouter *auth.PluginAuthMiddleware) {
 	authRouter.HandleFunc("/api/l4proxy/config/list", l4ProxyManager.HandleListConfigs)
 	authRouter.HandleFunc("/api/l4proxy/config/status", l4ProxyManager.HandleGetProxyStatus)
-	//Custom fork: the paths from before the rename to "Layer 4", for existing plugins
+	// Paths from before the rename to "Layer 4"
 	authRouter.HandleFunc("/api/streamprox/config/list", l4ProxyManager.HandleListConfigs)
 	authRouter.HandleFunc("/api/streamprox/config/status", l4ProxyManager.HandleGetProxyStatus)
 }
@@ -98,7 +90,6 @@ func RegisterStaticWebServerRestAPI(authRouter *auth.PluginAuthMiddleware) {
 	/* Static Web Server Controls */
 	authRouter.HandleFunc("/api/webserv/status", staticWebServer.HandleGetStatus)
 
-	// File manager list api removed due to WebDAV implementation
 }
 
 func RegisterPluginRestAPI(authRouter *auth.PluginAuthMiddleware) {
@@ -109,8 +100,7 @@ func RegisterPluginRestAPI(authRouter *auth.PluginAuthMiddleware) {
 
 	authRouter.HandleFunc("/api/plugins/store/list", pluginManager.HandleListDownloadablePlugins)
 
-	// recall that these plugin APIs are under the /plugin path, so
-	// the full path to this endpoint is /plugin/event/emit
+	// Full path: /plugin/event/emit
 	authRouter.HandleFunc("/event/emit", pluginManager.HandleEmitCustomEvent)
 }
 

@@ -6,13 +6,7 @@ import (
 	"net"
 )
 
-/*
-	slowSearch.go
-
-	This script implement the slow search method for ip to country code
-	lookup. If you have the memory allocation for near O(1) lookup,
-	you should not be using slow search mode.
-*/
+// Slow search method for ip to country code lookup
 
 func ipv4ToUInt32(ip net.IP) uint32 {
 	ip = ip.To4()
@@ -51,7 +45,7 @@ func isIPv6InRange(startIP, endIP, testIP string) (bool, error) {
 	return testInt.Cmp(startInt) >= 0 && testInt.Cmp(endInt) <= 0, nil
 }
 
-// Slow country code lookup for
+// slowSearchIpv4 is the slow country code lookup for IPv4
 func (s *Store) slowSearchIpv4(dataset *geoDataSet, ipAddr string) string {
 	// Check reserved IP zones
 	reservedZone := getReservedIPZone(ipAddr)
@@ -72,7 +66,6 @@ func (s *Store) slowSearchIpv4(dataset *geoDataSet, ipAddr string) string {
 
 		inRange, _ := isIPv4InRange(startIp, endIp, ipAddr)
 		if inRange {
-			//Add to cache
 			s.slowLookupCacheIpv4.Store(ipAddr, cc)
 			return cc
 		}
@@ -102,7 +95,6 @@ func (s *Store) slowSearchIpv6(dataset *geoDataSet, ipAddr string) string {
 
 		inRange, _ := isIPv6InRange(startIp, endIp, ipAddr)
 		if inRange {
-			//Add to cache
 			s.slowLookupCacheIpv6.Store(ipAddr, cc)
 			return cc
 		}

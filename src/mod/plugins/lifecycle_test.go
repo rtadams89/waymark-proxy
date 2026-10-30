@@ -12,8 +12,7 @@ import (
 )
 
 // TestStartPluginOutputReadersDoNotRaceProcessField starts a plugin that writes
-// to stdout and stderr immediately. The output readers must not read
-// Plugin.process while StartPlugin assigns it (run with -race), see #1326.
+// to stdout and stderr immediately; run with -race.
 func TestStartPluginOutputReadersDoNotRaceProcessField(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("uses a start.sh entry point")
@@ -47,7 +46,7 @@ func TestStartPluginOutputReadersDoNotRaceProcessField(t *testing.T) {
 }
 
 // TestPluginOutputForUnknownPluginDoesNotPanic covers a line that arrives after
-// the plugin entry is gone: it must reach the [unknown:<pid>] branch.
+// the plugin entry is gone ([unknown:<pid>] branch).
 func TestPluginOutputForUnknownPluginDoesNotPanic(t *testing.T) {
 	lg, err := logger.NewFmtLogger()
 	if err != nil {

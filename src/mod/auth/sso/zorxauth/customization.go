@@ -1,18 +1,9 @@
 package zorxauth
 
 /*
-	customization.go
-
-	This file handles the branding customization of the Zoraxy Auth login page.
-
-	Administrators can replace the four visual resources of the login page
-	(brand mark, brand text, watermark icon / text and the panel art wallpaper)
-	with their own. Uploaded resources are stored as plain files under
-	./conf/sso/zorxauth/branding/ and the accompanying text settings are kept
-	in branding.json inside the same folder.
-
-	Resolution order at serve time is always:
-		user uploaded resource  ->  go:embed default resource
+	Login page branding: uploaded resources in ./conf/sso/zorxauth/branding/
+	and text settings in branding.json there, falling back to the embedded
+	defaults.
 */
 
 import (
@@ -27,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	//Register the image decoders used for dimension validation
 	_ "image/jpeg"
 	_ "image/png"
 
@@ -41,22 +31,20 @@ const (
 	BRANDING_FOLDER      = "branding"
 	BRANDING_CONFIG_FILE = "branding.json"
 
-	BRANDING_MAX_UPLOAD_SIZE = 8 << 20 //8 MB, generous enough for a high resolution wallpaper
-	//Slack over the file size limit for multipart part headers and boundaries
+	BRANDING_MAX_UPLOAD_SIZE = 8 << 20 // 8 MB
+	// Allowance for multipart headers and boundaries
 	BRANDING_MULTIPART_OVERHEAD = 1 << 16
 
-	//Asset keys. These are also used as the uploaded file base names.
+	// Asset keys, also the uploaded files' base names
 	ASSET_BRAND_MARK = "brandmark"
 	ASSET_WATERMARK  = "watermark"
 	ASSET_WALLPAPER  = "wallpaper"
 
-	//Aspect ratio of an uploaded raster image may deviate from the default
-	//resource by at most this ratio before it is rejected.
+	// Maximum aspect ratio deviation of an uploaded raster image
 	BRANDING_ASPECT_TOLERANCE = 0.02
 )
 
-// AssetSpec describes the dimensions of a default (go:embed) resource.
-// Uploaded replacements must keep the same width : height ratio.
+// AssetSpec describes the dimensions of a default resource.
 type AssetSpec struct {
 	Key         string `json:"key"`
 	Label       string `json:"label"`
@@ -65,9 +53,7 @@ type AssetSpec struct {
 	Description string `json:"description"`
 }
 
-// assetSpecs is the source of truth for the recommended resolution of each
-// customizable resource. The webmin UI reads this to lock its scaling tool to
-// the correct aspect ratio.
+// assetSpecs are the recommended dimensions of each customizable resource.
 var assetSpecs = map[string]*AssetSpec{
 	ASSET_BRAND_MARK: {
 		Key:         ASSET_BRAND_MARK,
@@ -101,8 +87,8 @@ var brandingUploadTypes = map[string]string{
 	".webp": "image/webp",
 }
 
-// BrandingConfig holds the login page customization settings.
-// An empty asset file name means the go:embed default is used.
+// BrandingConfig holds the login page customization; an empty file name
+// means the default is used.
 type BrandingConfig struct {
 	BrandText         string `json:"brandText"`         //Text next to the brand mark
 	WatermarkText     string `json:"watermarkText"`     //Text under the watermark icon on the panel art
@@ -111,7 +97,7 @@ type BrandingConfig struct {
 	BrandMarkFile     string `json:"brandMarkFile"`     //File name of the uploaded brand mark, relative to the branding folder
 	WatermarkFile     string `json:"watermarkFile"`     //File name of the uploaded watermark icon
 	WallpaperFile     string `json:"wallpaperFile"`     //File name of the uploaded panel art wallpaper
-	Revision          int64  `json:"revision"`          //Bumped on every change, used as the asset cache buster
+	Revision          int64  `json:"revision"`          // bumped on every change, used as the asset cache buster
 }
 
 func getDefaultBranding() *BrandingConfig {
@@ -154,7 +140,6 @@ func (ar *AuthRouter) initBrandingStore() {
 
 	data, err := os.ReadFile(ar.brandingConfigPath())
 	if err != nil {
-		//No customization saved yet, defaults are already in place
 		return
 	}
 
@@ -166,8 +151,7 @@ func (ar *AuthRouter) initBrandingStore() {
 		return
 	}
 
-	//Drop references to resources that no longer exist on disk so the page
-	//falls back to the embedded defaults instead of serving a 404.
+	// Drops references to missing files
 	loaded.BrandMarkFile = ar.validateBrandingFile(loaded.BrandMarkFile)
 	loaded.WatermarkFile = ar.validateBrandingFile(loaded.WatermarkFile)
 	loaded.WallpaperFile = ar.validateBrandingFile(loaded.WallpaperFile)
@@ -187,7 +171,7 @@ func (ar *AuthRouter) validateBrandingFile(filename string) string {
 	if filename == "" {
 		return ""
 	}
-	//Never trust a path from disk, only accept a bare file name
+	// Accepts only a bare file name
 	filename = filepath.Base(filename)
 	if _, err := os.Stat(filepath.Join(ar.brandingFolder(), filename)); err != nil {
 		return ""
@@ -206,7 +190,7 @@ func (ar *AuthRouter) GetBranding() BrandingConfig {
 	return *ar.branding
 }
 
-// saveBranding persists the in-memory branding config to disk. Caller must hold the write lock.
+// saveBranding writes the branding config to disk; the caller holds the write lock.
 func (ar *AuthRouter) saveBranding() error {
 	folder := ar.brandingFolder()
 	if err := os.MkdirAll(folder, 0755); err != nil {
@@ -263,8 +247,8 @@ func defaultAssetContent(assetKey string) ([]byte, string) {
 	return nil, ""
 }
 
-// ServeBrandingAsset writes the customized resource for assetKey, falling back
-// to the embedded default when the administrator has not uploaded one.
+// ServeBrandingAsset writes the uploaded resource for assetKey, or the
+// embedded default.
 func (ar *AuthRouter) ServeBrandingAsset(w http.ResponseWriter, r *http.Request, assetKey string) {
 	branding := ar.GetBranding()
 
@@ -278,7 +262,6 @@ func (ar *AuthRouter) ServeBrandingAsset(w http.ResponseWriter, r *http.Request,
 			writeBrandingAsset(w, content, contentType)
 			return
 		}
-		//Unreadable upload, fall through to the embedded default
 	}
 
 	content, contentType := defaultAssetContent(assetKey)
@@ -291,13 +274,8 @@ func (ar *AuthRouter) ServeBrandingAsset(w http.ResponseWriter, r *http.Request,
 
 func writeBrandingAsset(w http.ResponseWriter, content []byte, contentType string) {
 	w.Header().Set("Content-Type", contentType)
-	//Assets are addressed with a ?v= revision so they can be cached aggressively
 	w.Header().Set("Cache-Control", "public, max-age=86400")
-	//Uploaded resources are only ever referenced as images, block sniffing them into anything else
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	//Defence in depth on top of the upload validation: an SVG navigated to
-	//directly renders in a sandboxed unique origin with scripts and every
-	//external fetch blocked, so it can never reach the SSO session origin.
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox")
 	w.WriteHeader(http.StatusOK)
 	w.Write(content)
@@ -308,15 +286,13 @@ func (ar *AuthRouter) RenderAuthPage() []byte {
 	branding := ar.GetBranding()
 	revision := strconv.FormatInt(branding.Revision, 10)
 
-	//Custom brand marks are served as an <img>, the default one is inlined so
-	//it can pick up the page's light / dark theme colors through CSS variables.
+	// Uploaded brand marks are served as an <img>; the default is inlined
 	brandMark := string(defaultBrandMarkSVG)
 	if branding.BrandMarkFile != "" {
 		brandMark = `<img class="brand-mark" src="` + BRANDING_ASSET_PATH + ASSET_BRAND_MARK + `?v=` + revision + `" alt="">`
 	}
 
-	//Disabled watermark elements are left out of the markup entirely instead of
-	//being hidden with CSS, so nothing is downloaded for them either.
+	// Hidden watermark elements are left out of the markup
 	watermarkIcon := ""
 	if !branding.HideWatermarkIcon {
 		watermarkIcon = `<img src="` + BRANDING_ASSET_PATH + ASSET_WATERMARK + `?v=` + revision + `" alt="">`
@@ -327,9 +303,7 @@ func (ar *AuthRouter) RenderAuthPage() []byte {
 		watermarkLabel = `<span>` + html.EscapeString(branding.WatermarkText) + `</span>`
 	}
 
-	//Single pass replacement: a Replacer never re-scans what it just inserted,
-	//so an administrator supplied label containing a placeholder such as
-	//"{{brand_mark}}" is emitted literally instead of being expanded.
+	// Single pass replacement: inserted text is not expanded again
 	replacer := strings.NewReplacer(
 		"{{brand_mark}}", brandMark,
 		"{{brand_text}}", html.EscapeString(branding.BrandText),
@@ -343,7 +317,7 @@ func (ar *AuthRouter) RenderAuthPage() []byte {
 
 /* ── Webmin API ──────────────────────────────────────────────────────── */
 
-// HandleCustomizationSettings handles reading and updating the text based branding settings
+// HandleCustomizationSettings gets (GET) or sets (POST) the text branding settings.
 func (ar *AuthRouter) HandleCustomizationSettings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -395,8 +369,7 @@ func (ar *AuthRouter) handleCustomizationPOST(w http.ResponseWriter, r *http.Req
 	hideWatermarkText, _ := utils.PostBool(r, "hideWatermarkText")
 	hideWatermarkIcon, _ := utils.PostBool(r, "hideWatermarkIcon")
 
-	//Strip control characters so the stored label stays a single printable line.
-	//It is HTML escaped again when the login page is rendered.
+	// Strips control characters
 	brandText = sanitizeBrandingText(brandText)
 	watermarkText = sanitizeBrandingText(watermarkText)
 
@@ -407,7 +380,6 @@ func (ar *AuthRouter) handleCustomizationPOST(w http.ResponseWriter, r *http.Req
 		watermarkText = getDefaultBranding().WatermarkText
 	}
 
-	//Keep the login page layout intact, these are single line labels
 	if len([]rune(brandText)) > 48 || len([]rune(watermarkText)) > 48 {
 		utils.SendErrorResponse(w, "Brand text and watermark text must be 48 characters or shorter")
 		return
@@ -429,8 +401,7 @@ func (ar *AuthRouter) handleCustomizationPOST(w http.ResponseWriter, r *http.Req
 	utils.SendOK(w)
 }
 
-// HandleCustomizationPreview serves the currently effective resource for an asset
-// so the webmin UI can preview it without depending on the gateway being reachable.
+// HandleCustomizationPreview serves the current resource for an asset.
 func (ar *AuthRouter) HandleCustomizationPreview(w http.ResponseWriter, r *http.Request) {
 	assetKey, err := utils.GetPara(r, "asset")
 	if err != nil {
@@ -453,9 +424,7 @@ func (ar *AuthRouter) HandleCustomizationUpload(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	//ParseMultipartForm's argument is only an in-memory limit, anything larger
-	//spills to a temp file unbounded. Cap the request body itself so an
-	//oversized upload cannot fill the disk before it is inspected.
+	// Limits the request body size
 	r.Body = http.MaxBytesReader(w, r.Body, BRANDING_MAX_UPLOAD_SIZE+BRANDING_MULTIPART_OVERHEAD)
 	if err := r.ParseMultipartForm(BRANDING_MAX_UPLOAD_SIZE); err != nil {
 		utils.SendErrorResponse(w, "Upload too large or malformed. Maximum resource size is 8 MB.")
@@ -477,9 +446,7 @@ func (ar *AuthRouter) HandleCustomizationUpload(w http.ResponseWriter, r *http.R
 	}
 	defer file.Close()
 
-	//Only the extension is taken from the uploaded name, and only if it is one
-	//of the accepted formats. The stored file name is built from the asset key
-	//below, so a crafted upload name can never influence the write path.
+	// Only the extension is taken from the uploaded name
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if _, accepted := brandingUploadTypes[ext]; !accepted {
 		utils.SendErrorResponse(w, "Unsupported file type. Accepted formats: SVG, PNG, JPG, WEBP")
@@ -500,9 +467,8 @@ func (ar *AuthRouter) HandleCustomizationUpload(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	//Verify the file really is the format its extension claims, screen SVGs for
-	//active content, and hold raster uploads to the aspect ratio of the
-	//resource they replace. See customization_validate.go.
+	// Checks the format, screens SVGs for active content and checks raster
+	// aspect ratios
 	if err := validateUploadContent(content, ext, spec); err != nil {
 		utils.SendErrorResponse(w, err.Error())
 		return
@@ -514,7 +480,7 @@ func (ar *AuthRouter) HandleCustomizationUpload(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	//The file name is derived from the asset key, never from user input
+	// The file name is the asset key plus extension
 	filename := assetKey + ext
 	if err := utils.WriteFileAtomic(filepath.Join(folder, filename), content, 0644); err != nil {
 		utils.SendErrorResponse(w, "Failed to save uploaded file: "+err.Error())
@@ -542,7 +508,7 @@ func (ar *AuthRouter) HandleCustomizationUpload(w http.ResponseWriter, r *http.R
 	utils.SendOK(w)
 }
 
-// HandleCustomizationReset restores one asset, or the whole customization, back to the embedded defaults
+// HandleCustomizationReset restores one asset, or all of them, to the defaults.
 func (ar *AuthRouter) HandleCustomizationReset(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

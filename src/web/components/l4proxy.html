@@ -1,9 +1,8 @@
-<!-- Custom fork: Layer 4 (TCP / UDP) rules. Loaded by httprp.html: their rows
-     go into the Proxy Rules list there (#proxyRulesList, tr.l4Row) and this
-     file holds their editor. -->
+<!-- Layer 4 (TCP / UDP) rules: their rows go into the Proxy Rules list in
+     httprp.html (#proxyRulesList, tr.l4Row); this file holds their editor. -->
     <style>
 
-        /* Editor, the same as the HTTP proxy rule editor */
+        /* Editor */
         #l4EditModal{
             position: fixed;
             top: 50%;
@@ -117,7 +116,7 @@
             }
         }
     </style>
-<!-- Custom fork: editor for a Layer 4 rule, the same as the HTTP proxy rule editor. Each setting is saved when it is changed. -->
+<!-- Editor for a Layer 4 rule. Each setting is saved when it is changed. -->
 <div id="l4EditModalWrapper">
     <div id="l4EditModal" editing-uuid="">
         <div class="ui grid" style="height:100%;">
@@ -268,16 +267,14 @@
     <div id="l4EditDarkenLayer"></div>
 </div>
 <script>
-    /*
-        Custom fork: Layer 4 (TCP / UDP) proxies (mod/l4proxy)
-    */
+    /* Layer 4 (TCP / UDP) proxies */
     let l4ProxyConfigs = [];        // the rules, as /api/l4proxy/config/list returns them
     let l4Editing = null;           // the rule open in the editor
     let l4UpstreamState = {};       // uuid -> [{address, online, active, total, failed}]
     let l4HealthReasons = {};       // "l4:uuid|addr" -> why it is down
     let l4AccessRules = {};         // access rule ID -> rule, for the names under each rule
 
-    //Custom fork: the same load balancing methods as HTTP proxy rules
+    // Load balancing method names
     const L4_LB_NAMES = {weighted: "Weighted", leastconn: "Least connections"};
     const L4_LB_HINTS = {
         weighted: "Each new connection or UDP client goes to a random healthy destination, in proportion to its weight. Destinations with weight 0 are backups.",
@@ -578,12 +575,10 @@
         populateL4Editor();
         hideL4EditorSideWrapper();
         showL4EditorPage("listener");
-        //Access rule picker, the same as the HTTP proxy rule editor's
+        //Access rule picker
         let payload = encodeURIComponent(JSON.stringify({ept: "l4", ep: config.UUID}));
         $("#l4EditModal .l4config_content[l4cfg='accessrule'] .wrapper_frame").attr("src", "snippet/hostAccessEditor.html?t=" + Date.now() + "#" + payload);
         $("body").css("overflow", "hidden");
-        // Fixing a bug in semantic ui that when an element fade in/out on top of checkbox
-        // the checkbox suddently flash on top of the fading element
         $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
         $("#l4EditModalWrapper").fadeIn("fast", function(){
             $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
@@ -833,7 +828,7 @@
     // reloads what the panel changed
     function hideL4EditorSideWrapper(resync=false){
         $("#l4EditModal .editor_side_wrapper").fadeOut("fast", function(){
-            // Reset the side wrapper frame URL to prevent stale content
+            // Reset the side wrapper frame URL
             $("#l4EditModal .editor_side_wrapper .wrapper_frame").attr("src", "snippet/placeholder.html");
         });
         if (resync){

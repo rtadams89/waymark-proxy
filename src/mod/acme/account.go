@@ -13,32 +13,10 @@ import (
 	"github.com/go-acme/lego/v5/acme"
 )
 
-/*
-	account.go
+// Storage of ACME accounts (key and registration), reused per CA directory
+// URL and email.
 
-	This file persists and reuses the ACME account (account key + registration)
-	across certificate requests and renewals.
-
-	Without this, ObtainCert() generated a fresh account key and registered a
-	brand new ACME account on every single call. Let's Encrypt counts each of
-	those as a "new registration" and rate limits them to 10 per IP per 3h, so
-	routine renewals would eventually fail with:
-
-		urn:ietf:params:acme:error:rateLimited :: too many new registrations
-
-	The account is stored in the system database, in the same "acme" table and
-	keyed by the same CA directory URL already used for this provider's EAB
-	credentials (see ObtainCert). It is keyed by the CA directory URL only (NOT
-	the email): an ACME account is identified by its key pair, the email is just
-	a contact address. Keying by CA URL alone means a renewal still reuses the
-	account even if the renewer email differs from the email used at first
-	issuance.
-*/
-
-// acmeAccountTable is the database table reusable ACME accounts are stored in:
-// the "acme" table in sys.db, with this module's EAB credentials, so all
-// per-CA ACME secrets live together. (Custom fork: until 2.17.0 it was
-// "acmepref", which is kept as conf/acme_prefs.json since 2.15.0.)
+// acmeAccountTable is the sys.db table storing ACME accounts.
 const acmeAccountTable = "acme"
 
 // ACMEUser represents a user in the ACME system.
@@ -48,24 +26,19 @@ type ACMEUser struct {
 	key          crypto.Signer
 }
 
-// GetEmail returns the email of the ACMEUser.
 func (u *ACMEUser) GetEmail() string {
 	return u.Email
 }
 
-// GetRegistration returns the registration resource of the ACMEUser.
 func (u *ACMEUser) GetRegistration() *acme.ExtendedAccount {
 	return u.Registration
 }
 
-// GetPrivateKey returns the private key of the ACMEUser.
 func (u *ACMEUser) GetPrivateKey() crypto.Signer {
 	return u.key
 }
 
-// MarshalJSON implements json.Marshaler for ACMEUser.
-// It serializes the private key as a PEM string because
-// crypto.PrivateKey cannot be marshalled directly.
+// MarshalJSON serializes the private key as a PEM string.
 func (u *ACMEUser) MarshalJSON() ([]byte, error) {
 	pemData := ""
 	if u.key == nil {
@@ -92,9 +65,7 @@ func (u *ACMEUser) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON implements json.Unmarshaler for ACMEUser.
-// It deserializes the private key from the PEM string field
-// back into a crypto.PrivateKey.
+// UnmarshalJSON deserializes the private key from its PEM string.
 func (u *ACMEUser) UnmarshalJSON(data []byte) error {
 	aux := struct {
 		Email        string                `json:"email"`
@@ -125,27 +96,21 @@ func (u *ACMEUser) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// accountDBKey returns the database key for the account of a given CA
-// directory URL and email. Using both ensures unique keys per account
-// even when the same CA is used with different emails.
+// accountDBKey returns the database key for a CA directory URL and email.
 func accountDBKey(caDirURL string, email string) string {
 	h := sha256.Sum256([]byte(caDirURL + "|" + email))
 	return "acme_account_" + hex.EncodeToString(h[:8])
 }
 
-// loadACMEAccount tries to load a previously persisted account for the given
-// CA directory URL and email. It returns (key, registration, true) only when
-// a complete, reusable account is found; otherwise ok is false and the caller
-// should register a new account.
+// loadACMEAccount returns a stored account for the CA directory URL and
+// email; ok is false when none is usable.
 func (a *ACMEHandler) loadACMEAccount(caDirURL string, email string) (*ecdsa.PrivateKey, *acme.ExtendedAccount, bool) {
 	if !a.Database.TableExists(acmeAccountTable) {
-		// No ACME table yet (first run) - not an error.
 		return nil, nil, false
 	}
 
 	dbKey := accountDBKey(caDirURL, email)
 	if !a.Database.KeyExists(acmeAccountTable, dbKey) {
-		// No stored account for this CA yet - not an error.
 		return nil, nil, false
 	}
 
@@ -156,7 +121,6 @@ func (a *ACMEHandler) loadACMEAccount(caDirURL string, email string) (*ecdsa.Pri
 	}
 
 	if user.Registration == nil || user.Registration.Location == "" {
-		// A key without a usable registration URI cannot be reused on its own.
 		return nil, nil, false
 	}
 
@@ -169,9 +133,7 @@ func (a *ACMEHandler) loadACMEAccount(caDirURL string, email string) (*ecdsa.Pri
 	return ecKey, user.Registration, true
 }
 
-// saveACMEAccount persists the account (key + registration) so that subsequent
-// certificate requests and renewals reuse it instead of registering a new
-// ACME account every time.
+// saveACMEAccount stores the account key and registration.
 func (a *ACMEHandler) saveACMEAccount(caDirURL string, user *ACMEUser) error {
 	if user == nil || user.GetRegistration() == nil {
 		return errors.New("no ACME registration to persist")

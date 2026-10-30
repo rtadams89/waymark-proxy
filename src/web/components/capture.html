@@ -1,4 +1,4 @@
-<!-- Custom fork: traffic capture (capture_custom.go, mod/capture) -->
+<!-- Traffic capture -->
 <div class="standardContainer">
     <style>
         #capture .capHint{ color: var(--text_color_secondary); font-size: 0.9em; }
@@ -179,7 +179,7 @@
             $("#capRunning").show();
             $("#capStartBtn").addClass("disabled");
             let c = r.config;
-            let what = {all: "HTTP and Layer 4 proxies", http: "HTTP proxies", l4: "Layer 4 proxies", stream: "Layer 4 proxies"}[c.scope]; //"stream": captures from before the rename
+            let what = {all: "HTTP and Layer 4 proxies", http: "HTTP proxies", l4: "Layer 4 proxies", stream: "Layer 4 proxies"}[c.scope]; //"stream" is the same as "l4"
             let side = {both: "both sides", client: "client to Waymark", upstream: "Waymark to destination"}[c.sides];
             let filters = [];
             if (c.hosts && c.hosts.length) filters.push("hosts " + c.hosts.join(", "));

@@ -1,13 +1,12 @@
-<!-- Custom fork: System > Logging, the log settings (outputs and rotation).
-     The logs themselves are on Monitoring > Access Logs (logs.html) and
-     System > System Logs (syslogs.html). -->
+<!-- System > Logging: log outputs and rotation. The logs are on Monitoring >
+     Access Logs (logs.html) and System > System Logs (syslogs.html). -->
 <div class="standardContainer">
     <div class="ui basic segment">
         <h2>Logging</h2>
         <p>Where Waymark's system and access logs go, and how the log file is rotated. Read them on System &gt; System Logs and Monitoring &gt; Access Logs.</p>
     </div>
     <div class="ui basic segment">
-        <!-- Custom fork: log outputs (logoutputs_custom.go, mod/info/logger/syslog_custom.go) -->
+        <!-- Log outputs -->
         <style>
             #logsettings .loHint{ color: var(--text_color_secondary); font-size: 0.9em; }
             #logsettings .loMono{ font-family: monospace; }
@@ -192,7 +191,7 @@
     loadLogSettings();
 
     /*
-        Log outputs: log file and syslog servers (custom fork)
+        Log outputs: log file and syslog servers
     */
     (function(){
         const FACILITIES = ["kern","user","mail","daemon","auth","syslog","lpr","news","uucp","cron","authpriv","ftp","local0","local1","local2","local3","local4","local5","local6","local7"];

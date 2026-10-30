@@ -42,10 +42,8 @@ type AuthRouterOptions struct {
 	// X-Forwarded-* headers.
 	UseXOriginalHeaders bool
 
-	// IgnoredPaths is a list of request path prefixes that bypass forward auth entirely. Any
-	// request whose (normalized) path falls within one of these prefixes is served WITHOUT
-	// authentication. Used for auth callback subpaths that must not be gated, e.g. Authentik's
-	// /outpost.goauthentik.io in single-application mode. Matching is hardened against traversal.
+	// IgnoredPaths is a list of request path prefixes that are served without
+	// forward auth.
 	IgnoredPaths []string
 
 	Logger   *logger.Logger
@@ -61,7 +59,6 @@ type AuthRouter struct {
 func NewAuthRouter(options *AuthRouterOptions) *AuthRouter {
 	options.Database.NewTable(DatabaseTable)
 
-	//Read settings from database if available.
 	options.Database.Read(DatabaseTable, DatabaseKeyAddress, &options.Address)
 
 	responseHeaders, responseClientHeaders, requestHeaders, requestIncludedCookies, requestExcludedCookies := "", "", "", "", ""
@@ -130,7 +127,6 @@ func (ar *AuthRouter) handleOptionsGET(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ar *AuthRouter) handleOptionsPOST(w http.ResponseWriter, r *http.Request) {
-	// Update the settings
 	address, err := utils.PostPara(r, DatabaseKeyAddress)
 	if err != nil {
 		utils.SendErrorResponse(w, "address not found")
@@ -138,7 +134,6 @@ func (ar *AuthRouter) handleOptionsPOST(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// These are optional fields and can be empty strings.
 	responseHeaders, _ := utils.PostPara(r, DatabaseKeyResponseHeaders)
 	responseClientHeaders, _ := utils.PostPara(r, DatabaseKeyResponseClientHeaders)
 	requestHeaders, _ := utils.PostPara(r, DatabaseKeyRequestHeaders)
@@ -148,7 +143,6 @@ func (ar *AuthRouter) handleOptionsPOST(w http.ResponseWriter, r *http.Request) 
 	useXOriginalHeaders, _ := utils.PostBool(r, DatabaseKeyUseXOriginalHeaders)
 	ignoredPaths, _ := utils.PostPara(r, DatabaseKeyIgnoredPaths)
 
-	// Write changes to runtime
 	ar.options.Address = address
 	ar.options.ResponseHeaders = cleanSplit(responseHeaders)
 	ar.options.ResponseClientHeaders = cleanSplit(responseClientHeaders)
@@ -159,7 +153,6 @@ func (ar *AuthRouter) handleOptionsPOST(w http.ResponseWriter, r *http.Request) 
 	ar.options.UseXOriginalHeaders = useXOriginalHeaders
 	ar.options.IgnoredPaths = cleanSplit(ignoredPaths)
 
-	// Write changes to database
 	ar.options.Database.Write(DatabaseTable, DatabaseKeyAddress, address)
 	ar.options.Database.Write(DatabaseTable, DatabaseKeyResponseHeaders, responseHeaders)
 	ar.options.Database.Write(DatabaseTable, DatabaseKeyResponseClientHeaders, responseClientHeaders)
@@ -207,9 +200,7 @@ func (ar *AuthRouter) handleOptionsMethodNotAllowed(w http.ResponseWriter, r *ht
 
 // HandleAuthProviderRouting is the internal handler for Forward Auth authentication.
 func (ar *AuthRouter) HandleAuthProviderRouting(w http.ResponseWriter, r *http.Request) error {
-	// Skip forward auth for SSO-ignored paths. These paths are served WITHOUT authentication
-	// (e.g. an auth provider callback subpath that must reach its own handler), so matching is
-	// hardened against path traversal / boundary tricks (see IsIgnoredPath).
+	// Ignored paths skip forward auth
 	if ar.IsIgnoredPath(r.RequestURI) {
 		headerReplaceIncluded(nil, r.Header, ar.options.ResponseHeaders)
 		return nil
@@ -219,7 +210,6 @@ func (ar *AuthRouter) HandleAuthProviderRouting(w http.ResponseWriter, r *http.R
 		return ar.handle500Error(w, nil, "Address not set")
 	}
 
-	// Make a request to Authz Server to verify the request
 	req, err := http.NewRequest(http.MethodGet, ar.options.Address, nil)
 	if err != nil {
 		return ar.handle500Error(w, err, "Unable to create request")
@@ -228,8 +218,6 @@ func (ar *AuthRouter) HandleAuthProviderRouting(w http.ResponseWriter, r *http.R
 	headerCopyIncluded(r.Header, req.Header, ar.options.RequestHeaders, true)
 	headerCookieRedact(r, ar.options.RequestIncludedCookies, false)
 
-	// TODO: Add support for headers from upstream proxies. This will likely involve implementing some form of
-	//       proxy specific trust system within Zoraxy.
 	if ar.options.UseXOriginalHeaders {
 		rSetXOriginalHeaders(r, req)
 	} else {
@@ -242,7 +230,6 @@ func (ar *AuthRouter) HandleAuthProviderRouting(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	// Make the Authz Request.
 	respForwarded, err := ar.client.Do(req)
 	if err != nil {
 		return ar.handle500Error(w, err, "Unable to perform forwarded auth due to a request error")
@@ -250,7 +237,7 @@ func (ar *AuthRouter) HandleAuthProviderRouting(w http.ResponseWriter, r *http.R
 
 	defer respForwarded.Body.Close()
 
-	// Responses within the 200-299 range are considered successful and allow the proxy to handle the request.
+	// A 2xx response lets the request through
 	if respForwarded.StatusCode >= http.StatusOK && respForwarded.StatusCode < http.StatusMultipleChoices {
 		if len(ar.options.ResponseClientHeaders) != 0 {
 			headerCopyIncluded(respForwarded.Header, w.Header(), ar.options.ResponseClientHeaders, false)
@@ -259,16 +246,14 @@ func (ar *AuthRouter) HandleAuthProviderRouting(w http.ResponseWriter, r *http.R
 		headerCookieRedact(r, ar.options.RequestExcludedCookies, true)
 
 		if len(ar.options.ResponseHeaders) != 0 {
-			// Copy specific user-specified headers from the response of the forward auth request to the request sent to the
-			// upstream server/next hop.
+			// Copies the configured response headers to the upstream request
 			headerReplaceIncluded(respForwarded.Header, r.Header, ar.options.ResponseHeaders)
 		}
 
-		// Return the request to the proxy for forwarding to the backend.
 		return nil
 	}
 
-	// Copy the unsuccessful response.
+	// Returns the unsuccessful response to the client
 	headerCopyExcluded(respForwarded.Header, w.Header(), nil)
 
 	if ar.options.UseXOriginalHeaders && respForwarded.StatusCode == 401 && respForwarded.Header.Get(HeaderLocation) != "" {
@@ -284,7 +269,7 @@ func (ar *AuthRouter) HandleAuthProviderRouting(w http.ResponseWriter, r *http.R
 	return ErrUnauthorized
 }
 
-// handle500Error is func intended on factorizing a commonly repeated functional flow within this provider.
+// handle500Error sends a 500 response and logs err.
 func (ar *AuthRouter) handle500Error(w http.ResponseWriter, err error, message string) error {
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 

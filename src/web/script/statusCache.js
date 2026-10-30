@@ -1,14 +1,10 @@
 /*
-    statusCache.js (custom fork)
-
     Fills the status page's "Static File Cache (Today)" and "Cache Memory"
     panels from /api/proxy/assetcache/summary. Today's counters cover every
-    host with caching on and reset at local midnight, like the other
-    "today" panels.
+    host with caching on and reset at local midnight.
 */
 (function(){
-    // Bandwidth uses the status page's own formatter, to match its other
-    // bandwidth figures
+    // Bandwidth uses the status page's own formatter
     function bytes(n){
         if (typeof formatByteSize === "function"){
             return formatByteSize(n);
@@ -16,8 +12,7 @@
         return memBytes(n);
     }
 
-    // Memory figures use 1024-based units, matching the limit set in MB
-    // in the rule editor's Caching tab
+    // Memory figures use 1024-based units
     function memBytes(n){
         const u = ["B","KB","MB","GB","TB"];
         let i = 0;

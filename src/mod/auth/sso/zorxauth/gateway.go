@@ -15,8 +15,7 @@ import (
 	"imuslab.com/zoraxy/mod/netutils"
 )
 
-// validateTOTPCode is a thin wrapper so that gateway.go can validate
-// TOTP codes without a direct call-site import of the otp package elsewhere.
+// validateTOTPCode validates a TOTP code against secret.
 func validateTOTPCode(code, secret string) bool {
 	return totp.Validate(code, secret)
 }
@@ -39,8 +38,8 @@ var wallpaperSVG []byte
 //go:embed logo_white.svg
 var logoWhiteSVG []byte
 
-// BRANDING_ASSET_PATH is the URL prefix the login page uses to reference its
-// customizable resources, e.g. /assets/branding/wallpaper
+// BRANDING_ASSET_PATH is the URL prefix of the login page's customizable
+// resources.
 const BRANDING_ASSET_PATH = "/assets/branding/"
 
 // GatewayServer represents the authentication gateway HTTP server
@@ -59,7 +58,6 @@ func NewGatewayServer(router *AuthRouter) *GatewayServer {
 		mux:    mux,
 	}
 
-	// Register routes
 	mux.HandleFunc("/", gs.handleAuthPage)
 	mux.HandleFunc("/noaccess", gs.handleNoAccessPage)
 	mux.HandleFunc("/favicon.png", func(w http.ResponseWriter, r *http.Request) {
@@ -68,8 +66,7 @@ func NewGatewayServer(router *AuthRouter) *GatewayServer {
 		w.WriteHeader(http.StatusOK)
 		w.Write(faviconPNG)
 	})
-	// Branding assets. Each serves the administrator's upload when one exists,
-	// otherwise the go:embed default. See customization.go.
+	// Branding assets: the upload if one exists, otherwise the embedded default
 	mux.HandleFunc(BRANDING_ASSET_PATH, func(w http.ResponseWriter, r *http.Request) {
 		assetKey := strings.TrimPrefix(r.URL.Path, BRANDING_ASSET_PATH)
 		if _, ok := assetSpecs[assetKey]; !ok {
@@ -115,7 +112,6 @@ func (gs *GatewayServer) Start() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in a goroutine
 	go func() {
 		if gs.router.Logger != nil {
 			gs.router.Logger.PrintAndLog("waymark-auth", fmt.Sprintf("Starting authentication gateway on port %d", port), nil)
@@ -161,7 +157,6 @@ func (gs *GatewayServer) Restart() error {
 		gs.router.Logger.PrintAndLog("waymark-auth", "Restarting authentication gateway", nil)
 	}
 
-	// Stop the server if it's running
 	gs.mu.RLock()
 	isRunning := gs.server != nil
 	gs.mu.RUnlock()
@@ -170,11 +165,9 @@ func (gs *GatewayServer) Restart() error {
 		if err := gs.Stop(); err != nil {
 			return fmt.Errorf("failed to stop gateway during restart: %w", err)
 		}
-		// Give it a moment to fully stop
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Start the server
 	return gs.Start()
 }
 
@@ -185,26 +178,21 @@ func (gs *GatewayServer) IsRunning() bool {
 	return gs.server != nil
 }
 
-/*
-	Authentication Gateway Handlers
-	These handlers serve the authentication pages and process login/logout requests.
-*/
+/* Authentication gateway handlers */
 
 // handleAuthPage serves the authentication/login page
 func (gs *GatewayServer) handleAuthPage(w http.ResponseWriter, r *http.Request) {
-	// Check if gateway is enabled
 	if gs.ServeGatewayDisabled(w, r) {
 		return
 	}
 
-	// Check if the user already has a valid session cookie in the SSO portal
-	// if yes, grant access without showing the login page and directly redirect to the original
-	// request domain set session URL with a one-time validation code
+	// With a valid SSO portal session, redirects to the target domain's
+	// session-set URL with a one-time validation code
 	authenticated, username := gs.router.RequestIsAuthenticatedInSSO(w, r)
 	if authenticated {
 		redirectURL := r.URL.Query().Get("redirect")
 		if redirectURL == "" {
-			redirectURL = "/user" // default to user portal if redirect URL is missing
+			redirectURL = "/user" // user portal
 			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 			return
 		}
@@ -220,13 +208,11 @@ func (gs *GatewayServer) handleAuthPage(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if gs.router.ValidateUserAccessToHost(username, host) {
-			// Renew the gateway session expiry time since the user is actively using it
+			// Extends the gateway session expiry
 			cookie, cookieErr := r.Cookie(gs.router.Options.CookieName)
 			if cookieErr == nil && cookie.Value != "" {
-				// Load the existing gateway session
 				if sessionData, exists := gs.router.gatewaySessionStore.Load(cookie.Value); exists {
 					if gatewaySession, ok := sessionData.(*GatewaySession); ok {
-						// Extend the session expiry time
 						newExpiry := time.Now().Add(time.Duration(gs.router.Options.CookieDuration) * time.Second)
 						gatewaySession.Expiry = newExpiry
 						gs.router.gatewaySessionStore.Store(cookie.Value, gatewaySession)
@@ -235,7 +221,6 @@ func (gs *GatewayServer) handleAuthPage(w http.ResponseWriter, r *http.Request) 
 			}
 
 			sessionId := gs.router.generateValidationCodeForSession(username)
-			// Parse the redirect target so we can build the session-set URL on the target host.
 			parsedTarget, parseErr := url.Parse(redirectURL)
 			if parseErr == nil && parsedTarget.Host != "" {
 				host := parsedTarget.Hostname()
@@ -256,8 +241,7 @@ func (gs *GatewayServer) handleAuthPage(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 		} else {
-			// User doesn't have access to this host — send them to the no-access page
-			// so they can choose to logout and switch to an account that has access.
+			// No access to this host: no-access page
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusOK)
 			w.Write(noAccessHTML)
@@ -265,7 +249,6 @@ func (gs *GatewayServer) handleAuthPage(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Serve the authentication page with the administrator's branding applied
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(gs.router.RenderAuthPage())
@@ -289,7 +272,7 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	clientIP := netutils.GetRequesterIPUntrusted(r)
 
-	// --- Rate limiting: enforce per-minute attempt ceiling per IP ---
+	// Per-minute attempt limit per IP
 	if gs.router.Options.EnableRateLimit && gs.router.Options.RateLimitPerIp > 0 {
 		if gs.router.getLoginAttemptCount(clientIP) >= int64(gs.router.Options.RateLimitPerIp) {
 			w.Header().Set("Content-Type", "application/json")
@@ -303,18 +286,17 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	gs.router.incrementLoginAttempt(clientIP)
 
-	// Extract credentials
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
 	if !gs.router.ValidateUsername(username, password) {
-		// --- Exponential backoff on failed credential check ---
+		// Exponential backoff on failed attempts
 		if gs.router.Options.UseExpotentialBackoff {
 			failures := gs.router.incrementLoginFailure(clientIP)
-			// delay = 100ms * 2^(failures-1), capped at 30 s
+			// 100ms * 2^(failures-1), at most 30 s
 			delay := 100 * time.Millisecond * (1 << uint(failures-1))
 			const maxDelay = 30 * time.Second
-			if delay > maxDelay || delay < 0 { // guard against int overflow on large failure counts
+			if delay > maxDelay || delay < 0 {
 				delay = maxDelay
 			}
 			time.Sleep(delay)
@@ -328,7 +310,6 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Successful login: clear the consecutive-failure counter for this IP
 	gs.router.loginFailureCounter.Delete(clientIP)
 
 	rawRedirect := r.FormValue("redirect")
@@ -339,7 +320,7 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Scheme != "" {
 			protocolScheme = r.URL.Scheme
 		}
-		redirectTarget = protocolScheme + "://" + r.Host + "/user" // default to user portal if redirect URL is missing
+		redirectTarget = protocolScheme + "://" + r.Host + "/user" // user portal
 	}
 
 	parsedTarget, err := url.Parse(redirectTarget)
@@ -383,7 +364,6 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//User can access this host
 	rememberMe := false
 	if r.FormValue("remember_me") == "on" || strings.EqualFold(r.FormValue("remember_me"), "true") {
 		rememberMe = true
@@ -392,8 +372,7 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		rememberMe = true
 	}
 
-	// If 2FA is enabled for this user, pause here and issue a short-lived pending
-	// TOTP session so the client can supply the authenticator code.
+	// With 2FA, issues a short-lived pending TOTP session
 	if u.Enable2FA {
 		totpToken := gs.router.generateSessionToken()
 		gs.router.pendingTOTPSessions.Store(totpToken, &PendingTOTPSession{
@@ -419,16 +398,13 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Generate a cookie for the authentication gateway domain with Domain
-	// this way next time this user is redirected to the gateway for authentication,
-	// the cookie will be included in the request and the gateway can recognize the user and skip the login step
+	// Gateway session cookie
 	cookieDuration := gs.router.Options.CookieDuration
 	if rememberMe {
 		cookieDuration = gs.router.Options.CookieDurationRememberMe
 	}
 	isSecure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 
-	// Generate a session token and store it in the gateway session store
 	sessionToken := gs.router.generateSessionToken()
 	expiryTime := time.Now().Add(time.Duration(cookieDuration) * time.Second)
 	gatewaySession := &GatewaySession{
@@ -437,7 +413,6 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	gs.router.gatewaySessionStore.Store(sessionToken, gatewaySession)
 
-	// Set the gateway cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     gs.router.Options.CookieName,
 		Value:    sessionToken,
@@ -448,13 +423,12 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   cookieDuration,
 	})
 
-	// Schedule automatic removal from the store when the cookie expires
+	// Removes the session from the store when the cookie expires
 	time.AfterFunc(time.Duration(cookieDuration)*time.Second, func() {
 		gs.router.gatewaySessionStore.Delete(sessionToken)
 	})
 
-	// Direct login: user accessed the gateway domain directly with no redirect target.
-	// Issue the session cookie and send them to the user-management panel.
+	// Direct login (no redirect target): sends the user to the user portal
 	if isDirectLogin {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -494,27 +468,22 @@ func (gs *GatewayServer) handleNoAccessPage(w http.ResponseWriter, r *http.Reque
 	w.Write(noAccessHTML)
 }
 
-// handleLogout processes logout requests.
-// GET: Serves the logout page with user info and logout button
-// POST: Invalidates all sessions (gateway and browser sessions) and clears cookies
+// handleLogout: GET serves the logout page; POST ends all of the user's
+// sessions and clears the cookie.
 func (gs *GatewayServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if gs.ServeGatewayDisabled(w, r) {
 		return
 	}
 
-	// Handle GET request - serve logout page
 	if r.Method == http.MethodGet {
-		// Get current username for template replacement
 		authenticated, username := gs.router.RequestIsAuthenticatedInSSO(w, r)
 		if !authenticated {
-			// If user is not authenticated show error
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Unauthorized"))
 			return
 		}
 
-		// Replace template placeholder with actual username
 		pageContent := strings.Replace(string(logoutHTML), "{{username}}", username, -1)
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -523,16 +492,13 @@ func (gs *GatewayServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle POST request - perform logout
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Get the current user's username from their session
 	authenticated, username := gs.router.RequestIsAuthenticatedInSSO(w, r)
 	if !authenticated || username == "" {
-		// No valid session to logout from
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -542,35 +508,30 @@ func (gs *GatewayServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the session cookie for the current browser
 	cookie, err := r.Cookie(gs.router.Options.CookieName)
 	if err == nil && cookie.Value != "" {
-		// Remove from gateway session store
 		gs.router.gatewaySessionStore.Delete(cookie.Value)
 	}
 
-	// Iterate through all browser sessions and remove all sessions for this username
-	// This ensures the user is logged out from ALL devices/browsers
+	// Removes all browser sessions of this user
 	gs.router.cookieIdStore.Range(func(key, value interface{}) bool {
 		sessionID, ok := key.(string)
 		if !ok {
-			return true // continue iteration
+			return true
 		}
 
 		browserSession, ok := value.(*BrowserSession)
 		if !ok {
-			return true // continue iteration
+			return true
 		}
 
-		// If this session belongs to the current user, delete it
 		if browserSession.Username == username {
 			gs.router.cookieIdStore.Delete(sessionID)
 		}
 
-		return true // continue iteration
+		return true
 	})
 
-	// Expire the cookie in the current browser
 	isSecure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 	http.SetCookie(w, &http.Cookie{
 		Name:     gs.router.Options.CookieName,
@@ -598,9 +559,7 @@ func (gs *GatewayServer) ServeGatewayDisabled(w http.ResponseWriter, r *http.Req
 	return false
 }
 
-// handleTOTPVerify completes the second step of a 2FA login.
-// The client posts the totp_token issued by handleLogin together with
-// the 6-digit code from their authenticator app.
+// handleTOTPVerify completes a 2FA login with the posted totp_token and code.
 func (gs *GatewayServer) handleTOTPVerify(w http.ResponseWriter, r *http.Request) {
 	if gs.ServeGatewayDisabled(w, r) {
 		return
@@ -629,7 +588,6 @@ func (gs *GatewayServer) handleTOTPVerify(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Look up the pending session
 	pendingObj, exists := gs.router.pendingTOTPSessions.Load(totpToken)
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -653,10 +611,9 @@ func (gs *GatewayServer) handleTOTPVerify(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// One-time use: consume the pending session immediately
+	// The pending session is used once
 	gs.router.pendingTOTPSessions.Delete(totpToken)
 
-	// Fetch user and validate the TOTP code
 	u, err := gs.router.getUserByUsername(pending.Username)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -678,7 +635,6 @@ func (gs *GatewayServer) handleTOTPVerify(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TOTP is valid – create the gateway session exactly as handleLogin would.
 	cookieDuration := gs.router.Options.CookieDuration
 	if pending.RememberMe {
 		cookieDuration = gs.router.Options.CookieDurationRememberMe
@@ -705,8 +661,7 @@ func (gs *GatewayServer) handleTOTPVerify(w http.ResponseWriter, r *http.Request
 		MaxAge:   cookieDuration,
 	})
 
-	// Direct login: user accessed the gateway domain directly with no redirect target.
-	// Issue the session cookie and send them to the user-management panel.
+	// Direct login (no redirect target): sends the user to the user portal
 	if pending.IsDirectLogin {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

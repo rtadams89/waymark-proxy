@@ -28,12 +28,7 @@
     background-color: var(--theme_bg_active);
   }
 
-  /* Force the avatar icon to stay inline with the name/description instead of
-     stacking above it. Semantic UI's own CSS gives a plain <img class="image">
-     (as opposed to a <div class="image">) a more specific "img.image+.content"
-     rule that sets the following .content to display:inline-block;width:auto,
-     which wraps the whole content block onto its own line whenever the
-     description text is too long to fit next to the icon on one line. */
+  /* Keep the avatar icon inline with the name/description */
   #selectablePluginList .item,
   #selectedTagPluginList .item {
     display: flex;
@@ -91,10 +86,7 @@
     display: block;
   }
 
-  /* Plugin List table — keep the icon on the left and the name/version block on
-     the right, even when the plugin name is long enough to wrap onto two lines.
-     Without this, Semantic UI's "img.image + .content" rule makes .content an
-     inline-block that drops below the icon once the name gets too wide. */
+  /* Plugin List table: keep the icon on the left and the name/version block on the right */
   #pluginTable td[data-label="PluginName"] .ui.header {
     display: flex;
     align-items: flex-start;
@@ -200,7 +192,6 @@
           <i class="dropdown icon"></i>
           <div class="default text">Select Tag</div>
           <div class="menu">
-            <!-- <div class="item" data-value="tag1">Tag 1</div> -->
           </div>
         </div>
         <button class="ui basic fluid button" onclick="loadTags();" style="margin-top: 0.4em;"><i class="ui green refresh icon"></i> Refresh Tag List</button>
@@ -698,7 +689,7 @@ function getPluginInfo(pluginId, btn){
 }
 
 function openPluginStore(){
-  //The Plugin Store side wrapper is replaced by the App Store tab
+  //Open the App Store tab
   openTabById("appstore");
 }
 
@@ -817,8 +808,7 @@ function uninstallPlugin(pluginId, pluginName, btn=undefined) {
   }
 
   initDeveloperSettings();
-  // Scope to this page's accordion only; .advanceSettings is reused by
-  // other webmin components loaded dynamically via ajax.
+  // Scope to this page's accordion only
   $("#pluginDeveloperSettings").accordion();
 </script>
 

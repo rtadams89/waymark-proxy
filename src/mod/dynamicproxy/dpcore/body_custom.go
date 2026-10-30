@@ -6,26 +6,14 @@ import (
 	"sync/atomic"
 )
 
-/*
-	body_custom.go (custom fork): the request body sent upstream.
-
-	The transport may read the request body once more after it has returned
-	EOF. Meanwhile, once the response to the client has started (a streamed
-	response is flushed as soon as its first bytes arrive), net/http's
-	server closes the request body, so that extra read fails with "invalid
-	Read on closed Body". The transport takes it as a failure to send the
-	request and closes the upstream connection, cutting the response short.
-	Once the body has reached EOF, stickyEOF answers every later read with
-	EOF itself.
-*/
+// stickyEOF returns EOF for every read after the request body reached EOF.
 
 type stickyEOF struct {
 	rc  io.ReadCloser
 	eof atomic.Bool
 }
 
-// stickyEOFBody wraps a request body (nil and http.NoBody are kept as they
-// are, the transport treats them specially).
+// stickyEOFBody wraps a request body; nil and http.NoBody are returned as is.
 func stickyEOFBody(rc io.ReadCloser) io.ReadCloser {
 	if rc == nil || rc == http.NoBody {
 		return rc

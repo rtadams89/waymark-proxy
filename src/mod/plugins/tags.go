@@ -6,17 +6,10 @@ import (
 	"os"
 )
 
-/*
-	Plugin Tags
+// Plugin tags match plugins to HTTP proxy rules with the same tag.
 
-	This file contains the tags that are used to match the plugin tag
-	to the one on HTTP proxy rule. Once the tag is matched, the plugin
-	will be enabled on that given rule.
-*/
-
-// LoadTagPluginMap loads the plugin map into the manager
-// This will only load the plugin tags to option.PluginGroups map
-// to push the changes to runtime, call UpdateTagsToPluginMaps()
+// LoadPluginGroupsFromConfig loads the plugin tags into option.PluginGroups;
+// call UpdateTagsToPluginMaps() to apply them.
 func (m *Manager) LoadPluginGroupsFromConfig() error {
 	m.pluginGroupsMutex.RLock()
 	defer m.pluginGroupsMutex.RUnlock()
@@ -33,7 +26,6 @@ func (m *Manager) LoadPluginGroupsFromConfig() error {
 		return err
 	}
 
-	//Reset m.tagPluginList
 	m.Options.PluginGroups = config
 	return nil
 }

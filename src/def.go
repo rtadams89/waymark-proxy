@@ -1,12 +1,5 @@
 package main
 
-/*
-	Type and flag definations
-
-	This file contains all the type and flag definations
-	Author: tobychui
-*/
-
 import (
 	"embed"
 	"flag"
@@ -45,7 +38,7 @@ const (
 
 	/* System Constants */
 	WEBSERV_DEFAULT_PORT         = 5487
-	MDNS_HOSTNAME_PREFIX         = "waymark_" /* Follow by node UUID */
+	MDNS_HOSTNAME_PREFIX         = "waymark_"
 	MDNS_IDENTIFY_DEVICE_TYPE    = "Network Gateway"
 	MDNS_IDENTIFY_DOMAIN         = "waymark-proxy"
 	MDNS_IDENTIFY_VENDOR         = "Waymark Proxy"
@@ -117,70 +110,61 @@ var (
 /* Global Variables and Handlers */
 var (
 	/* System */
-	nodeUUID    = "generic" //System uuid in uuidv4 format, load from database on startup
+	nodeUUID    = "generic"
 	bootTime    = time.Now().Unix()
-	requireAuth = true //Require authentication for webmin panel, override from flag
+	requireAuth = true
 
 	/* Path variables initialized after flag parsing */
-	TMP_FOLDER                 string //Temporary folder path
-	ACME_AUTORENEW_CONFIG_PATH string //ACME auto renew configuration path
-	CONF_FOLDER                string //Configuration folder path
-	CONF_HTTP_PROXY            string //HTTP proxy configuration path
-	CONF_L4_PROXY              string //Layer 4 proxy configuration path
-	CONF_CERT_STORE            string //Certificate store path
-	CONF_REDIRECTION           string //Redirection configuration path
-	CONF_ACCESS_RULE           string //Access rule configuration path (Custom fork: 2.17 and earlier, converted to ACLs)
-	CONF_ACL                   string //Custom fork: ACLs and objects
-	CONF_PATH_RULE             string //Path rule configuration path
-	CONF_PLUGIN_GROUPS         string //Plugin groups configuration path
-	CONF_GEODB_PATH            string //GeoIP database path
-	CONF_LOG_CONFIG            string //Log configuration path
-	CONF_TRUSTED_PROXIES       string //Trusted proxy IPs configuration path
+	TMP_FOLDER                 string
+	ACME_AUTORENEW_CONFIG_PATH string
+	CONF_FOLDER                string
+	CONF_HTTP_PROXY            string
+	CONF_L4_PROXY              string
+	CONF_CERT_STORE            string
+	CONF_REDIRECTION           string
+	CONF_ACCESS_RULE           string // access rules of 2.17 and earlier, converted to ACLs
+	CONF_ACL                   string // ACLs and objects
+	CONF_PATH_RULE             string
+	CONF_PLUGIN_GROUPS         string
+	CONF_GEODB_PATH            string
+	CONF_LOG_CONFIG            string
+	CONF_TRUSTED_PROXIES       string
 
 	/* mDNS */
 	previousmdnsScanResults = []*mdns.NetworkHost{}
 	mdnsTickerStop          chan bool
 
-	/*
-		Binary Embedding File System
-	*/
 	//go:embed web/*
 	webres embed.FS
 
-	/*
-		Handler Modules
-	*/
-	sysdb          *database.Database              //System database
-	authAgent      *auth.AuthAgent                 //Authentication agent
-	tlsCertManager *tlscert.Manager                //TLS / SSL management
-	redirectTable  *redirection.RuleTable          //Handle special redirection rule sets
-	webminPanelMux *http.ServeMux                  //Server mux for handling webmin panel APIs
-	csrfMiddleware func(http.Handler) http.Handler //CSRF protection middleware
+	sysdb          *database.Database
+	authAgent      *auth.AuthAgent
+	tlsCertManager *tlscert.Manager
+	redirectTable  *redirection.RuleTable
+	webminPanelMux *http.ServeMux
+	csrfMiddleware func(http.Handler) http.Handler
 
-	pathRuleHandler    *pathrule.Handler         //Handle specific path blocking or custom headers
-	geodbStore         *geodb.Store              //GeoIP database, for resolving IP into country code
-	accessController   *access.Controller        //Access controller, handle black list and white list
-	netstatBuffers     *netstat.NetStatBuffers   //Realtime graph buffers
-	statisticCollector *statistic.Collector      //Collecting statistic from visitors
-	uptimeMonitor      *uptime.Monitor           //Uptime monitor service worker
-	mdnsScanner        *mdns.MDNSHost            //mDNS discovery services
-	l4ProxyManager     *l4proxy.Manager          //Layer 4 Proxy Manager for TCP / UDP forwarding
-	acmeHandler        *acme.ACMEHandler         //Handler for ACME Certificate renew
-	acmeAutoRenewer    *acme.AutoRenewer         //Handler for ACME auto renew ticking
-	staticWebServer    *webserv.WebServer        //Static web server for hosting simple stuffs
-	loadBalancer       *loadbalance.RouteManager //Global scope loadbalancer, store the state of the lb routing
-	pluginManager      *plugins.Manager          //Plugin manager for managing plugins
+	pathRuleHandler    *pathrule.Handler
+	geodbStore         *geodb.Store
+	accessController   *access.Controller
+	netstatBuffers     *netstat.NetStatBuffers
+	statisticCollector *statistic.Collector
+	uptimeMonitor      *uptime.Monitor
+	mdnsScanner        *mdns.MDNSHost
+	l4ProxyManager     *l4proxy.Manager
+	acmeHandler        *acme.ACMEHandler
+	acmeAutoRenewer    *acme.AutoRenewer
+	staticWebServer    *webserv.WebServer
+	loadBalancer       *loadbalance.RouteManager
+	pluginManager      *plugins.Manager
 
-	//Plugin auth related
-	pluginApiKeyManager *auth.APIKeyManager //API key manager for plugin authentication
+	pluginApiKeyManager *auth.APIKeyManager
 
-	//Authentication Provider
-	forwardAuthRouter *forward.AuthRouter  // Forward Auth router for Authelia/Authentik/etc authentication
-	oauth2Router      *oauth2.OAuth2Router //OAuth2Router router for OAuth2Router authentication
-	zorxAuthRouter    *zorxauth.AuthRouter //ZorxAuth router for ZorxAuth SSO authentication
+	forwardAuthRouter *forward.AuthRouter
+	oauth2Router      *oauth2.OAuth2Router
+	zorxAuthRouter    *zorxauth.AuthRouter
 
-	//Helper modules
-	AnalyticLoader   *analytic.DataLoader //Data loader for Zoraxy Analytic
-	SystemWideLogger *logger.Logger       //Logger for Zoraxy
-	LogViewer        *logviewer.Viewer    //Log viewer HTTP handlers
+	AnalyticLoader   *analytic.DataLoader
+	SystemWideLogger *logger.Logger
+	LogViewer        *logviewer.Viewer
 )

@@ -1,21 +1,5 @@
 package main
 
-/*
-	Wrappers.go
-
-	This script provide wrapping functions
-	for modules that do not provide
-	handler interface within the modules
-
-	--- NOTES ---
-	If your module have more than one layer
-	or require state keeping, please move
-	the abstraction up one layer into
-	your own module. Do not keep state on
-	the global scope other than single
-	Manager instance
-*/
-
 import (
 	"encoding/json"
 	"net/http"
@@ -117,7 +101,6 @@ func HandleCountryDistrSummary(w http.ResponseWriter, r *http.Request) {
 	statisticCollector.Summary().RequestClientIp.Range(func(key, value interface{}) bool {
 		//Get this client country of original
 		clientIp := key.(string)
-		//requestCount := value.(int)
 
 		ci, err := geodbStore.ResolveCountryCodeFromIP(clientIp)
 		if err != nil {
@@ -147,11 +130,10 @@ func HandleCountryDistrSummary(w http.ResponseWriter, r *http.Request) {
 	Up Time Monitor
 */
 
-// Update uptime monitor targets after rules updated
-// See https://github.com/tobychui/zoraxy/issues/77
+// UpdateUptimeMonitorTargets updates the uptime monitor and health check targets after rules change
 func UpdateUptimeMonitorTargets() {
-	refreshHealthCheckTargets() //Custom fork: health checks follow the same rule changes
-	pruneAssetCache()           //Custom fork: drop cached files of removed rules
+	refreshHealthCheckTargets() // health checks follow the same rule changes
+	pruneAssetCache()           // drop cached files of removed rules
 	if uptimeMonitor != nil {
 		uptimeMonitor.SetTargets(GetUptimeTargetsFromReverseProxyRules(dynamicProxyRouter))
 		uptimeMonitor.CleanRecords()
@@ -220,7 +202,7 @@ func GetUptimeTargetsFromReverseProxyRules(dp *dynamicproxy.Router) []*uptime.Ta
 		}
 	}
 
-	return healthCheckUptimeTargets(dp) //Custom fork: the Uptime Monitor shows rules with active health checks, fed by those checks
+	return healthCheckUptimeTargets(dp) // the Uptime Monitor shows rules with active health checks
 }
 
 // Handle rendering up time monitor data

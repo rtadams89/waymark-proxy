@@ -8,9 +8,8 @@ import (
 	"strings"
 )
 
-// requestScheme returns http or https for the incoming request, honoring
-// X-Forwarded-Proto. The header is matched case-insensitively and only the
-// first value is used when proxies send a comma-separated list (e.g. "https, http").
+// requestScheme returns http or https for the request, using the first
+// X-Forwarded-Proto value if present.
 func requestScheme(r *http.Request) string {
 	if r.TLS != nil {
 		return "https"
@@ -25,17 +24,15 @@ func requestScheme(r *http.Request) string {
 	return "http"
 }
 
-// hasAbsoluteHTTPScheme reports whether raw already starts with http:// or
-// https://, ignoring scheme letter case (e.g. HTTPS://).
+// hasAbsoluteHTTPScheme reports whether raw starts with http:// or https://
+// (any case).
 func hasAbsoluteHTTPScheme(raw string) bool {
 	lower := strings.ToLower(raw)
 	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
 }
 
-// ensureAbsoluteHTTPURL makes sure raw is an absolute http(s) URL.
-// Host-only values such as "auth.example.com" (common when users omit the
-// protocol) are rewritten with fallbackScheme so http.Redirect does not treat
-// them as a relative path on the protected host (see #1108).
+// ensureAbsoluteHTTPURL returns raw as an absolute http(s) URL, adding
+// fallbackScheme to host-only values.
 func ensureAbsoluteHTTPURL(raw, fallbackScheme string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -63,8 +60,7 @@ func ensureAbsoluteHTTPURL(raw, fallbackScheme string) (string, error) {
 		return "", errors.New("URL missing host")
 	}
 
-	// Keep path if present; drop a lone trailing slash so "?redirect=" appends cleanly
-	// when callers still concatenate. Prefer buildSSOAuthRedirect for new call sites.
+	// Drops a lone trailing slash
 	if u.Path == "/" {
 		u.Path = ""
 	}
@@ -87,19 +83,16 @@ func buildSSOAuthRedirect(ssoBase, originalURL string) (string, error) {
 	return u.String(), nil
 }
 
-// buildOriginalRequestURL reconstructs the absolute URL the user originally requested.
-// Nested "redirect" query values from a prior broken relative SSO hop are unwrapped
-// so a single successful login lands on the real resource instead of a nested URL.
+// buildOriginalRequestURL returns the absolute URL of the request, with
+// nested redirect values unwrapped.
 func buildOriginalRequestURL(r *http.Request) string {
 	scheme := requestScheme(r)
 	candidate := scheme + "://" + r.Host + r.URL.RequestURI()
 	return unwrapNestedRedirectTarget(candidate, r.Host)
 }
 
-// unwrapNestedRedirectTarget walks redirect= query values that still point at the
-// same host (the #1108 relative-redirect loop shape) and returns the innermost URL.
-// It only unwraps when the path looks like a host token (e.g. "/za.lan"), so a
-// legitimate app query such as "/oauth/callback?redirect=..." is left alone.
+// unwrapNestedRedirectTarget returns the innermost redirect= value pointing
+// at the same host whose path is a single host-like segment.
 func unwrapNestedRedirectTarget(candidate, host string) string {
 	const maxDepth = 8
 	for i := 0; i < maxDepth; i++ {
@@ -112,7 +105,6 @@ func unwrapNestedRedirectTarget(candidate, host string) string {
 		}
 
 		path := strings.Trim(u.Path, "/")
-		// Relative SSO loop uses the SSO hostname as a single path segment.
 		if path == "" || strings.Contains(path, "/") || !strings.Contains(path, ".") {
 			return candidate
 		}
@@ -141,8 +133,8 @@ func hostnameOnly(hostport string) string {
 	return host
 }
 
-// ssoRedirectWouldLoop reports whether sending the browser to ssoBase would stay
-// on the same host as the protected request (misconfiguration / relative path).
+// ssoRedirectWouldLoop reports whether ssoBase is on the same host as the
+// request.
 func ssoRedirectWouldLoop(ssoBase string, r *http.Request) bool {
 	u, err := url.Parse(ssoBase)
 	if err != nil || u.Host == "" {
@@ -151,10 +143,8 @@ func ssoRedirectWouldLoop(ssoBase string, r *http.Request) bool {
 	return strings.EqualFold(u.Hostname(), hostnameOnly(r.Host))
 }
 
-// sameHostRedirect returns where to send the browser for a redirect target
-// that came from the browser: the path and query of raw, on the current
-// host. raw may be a path or an http(s) URL whose host name is the
-// request's (ports may differ); anything else returns "/".
+// sameHostRedirect returns the path and query of raw on the current host;
+// raw may be a path or an http(s) URL with the request's host name, else "/".
 func sameHostRedirect(raw string, r *http.Request) string {
 	raw = strings.TrimSpace(raw)
 	u, err := url.Parse(raw)
@@ -169,8 +159,7 @@ func sameHostRedirect(raw string, r *http.Request) string {
 	} else if !strings.HasPrefix(raw, "/") {
 		return "/"
 	}
-	// Built from the path and query only, with leading slashes and
-	// backslashes collapsed, so it can never name another host
+	// Path and query only, leading slashes and backslashes collapsed
 	target := &url.URL{Path: "/" + strings.TrimLeft(u.Path, "/\\"), RawQuery: u.RawQuery}
 	return target.String()
 }

@@ -7,13 +7,13 @@ import (
 )
 
 func TestMatchIpWildcard_IPv6(t *testing.T) {
-	// IPv6 wildcards are not supported by MatchIpWildcard, so these should all return false
+	// MatchIpWildcard returns false for IPv6 addresses
 	tests := []struct {
 		ip       string
 		wildcard string
 		want     bool
 	}{
-		{"fd7a:115c:a1e0::e101:6f0f", "fd7a:115c:a1e0::e101:6f0f", false}, // not supported
+		{"fd7a:115c:a1e0::e101:6f0f", "fd7a:115c:a1e0::e101:6f0f", false},
 		{"fd7a:115c:a1e0::e101:6f0f", "*:*:*:*:*:*:*:*", false},
 	}
 	for _, tt := range tests {

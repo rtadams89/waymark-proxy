@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-      <!-- Custom fork: manage shared DNS challenge credential sets.
-           Open as snippet/dnsProfiles.html, or snippet/dnsProfiles.html?assign=<cert filename>
-           to pick the credential set used by one certificate. ?page=1 is the
-           Certificates > DNS Credentials page (components/dnscreds.html). -->
+      <!-- Manage shared DNS challenge credential sets. Open as snippet/dnsProfiles.html,
+           or snippet/dnsProfiles.html?assign=<cert filename> to pick the credential set used
+           by one certificate. ?page=1 is the Certificates > DNS Credentials page. -->
       <meta charset="utf-8">
       <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
       <link rel="stylesheet" href="../script/semantic/semantic.min.css">
@@ -59,7 +58,7 @@
         <div class="sub header">Saved DNS challenge credentials that any certificate can use</div>
       </div>
     </div>
-    <!-- unstackable: in the narrow side panel Semantic UI would otherwise stack every cell vertically -->
+    <!-- unstackable: keeps the cells in rows in the narrow side panel -->
     <table class="ui unstackable basic celled table">
       <thead>
         <tr><th>Name</th><th>Provider</th><th>Used By</th><th style="width: 7em;"></th></tr>
@@ -107,8 +106,8 @@
     <button class="ui basic button" id="closeButton" style="float: right;" onclick="parent.hideSideWrapper();"><i class="remove icon"></i> Close</button>
     <br><br><br><br>
     <script>
-      // Custom fork: ?page=1 is the Certificates > DNS Credentials page (components/dnscreds.html),
-      // which shows this in a frame: no Close button, and the frame follows this page's height
+      // ?page=1: shown in a frame on Certificates > DNS Credentials: no Close button,
+      // and the frame follows this page's height
       if (new URLSearchParams(window.location.search).get("page") == "1"){
         document.getElementById("closeButton").style.display = "none";
         document.body.style.background = "transparent";
@@ -244,7 +243,7 @@
     let suppressProviderChange = false;
     function onProviderChange(value){
       if (suppressProviderChange || value == "") return;
-      //Changing provider while editing starts from a blank form; the old values are discarded on save
+      //Changing provider while editing starts from a blank form
       let id = $("#editProfileId").val();
       let p = profiles.find(x => x.id == id);
       renderProviderFields(value, (p && p.provider == value) ? p : null);
@@ -299,7 +298,7 @@
               <input type="${/key|token|secret|password/i.test(key) ? "password" : "text"}" autocomplete="off" placeholder="${placeholder}">
             </div>`);
           }
-          //Other types (e.g. *http.Client) cannot be set from a form; skip them
+          //Skip types that cannot be set from a form (e.g. *http.Client)
         });
         container.append(boolHTML);
         container.append(durationHTML);
@@ -330,7 +329,7 @@
       let id = $("#editProfileId").val();
       let creds = readEditorCredentials();
       if (id == ""){
-        //For a new set, don't send empty strings for fields that were never filled
+        //For a new set, drop empty strings for fields that were never filled
         Object.keys(creds).forEach(k => { if (creds[k] === "") delete creds[k]; });
       }
       $("#saveProfileButton").addClass("loading disabled");

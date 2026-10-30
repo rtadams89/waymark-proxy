@@ -1,40 +1,29 @@
 package l4proxy
 
-/*
-	pool_custom.go (custom fork)
-
-	Destination pools for Layer 4 rules, load balanced the same way as HTTP
-	proxy rules (mod/dynamicproxy/loadbalance):
-	- each destination has a weight (0-100) and can be turned off; weight 0
-	  makes it a backup, used only when no destination with a weight above 0
-	  is healthy
-	- weighted (the default): a new TCP connection or UDP client session goes
-	  to a random healthy destination, in proportion to its weight
-	- leastconn: to the healthy destination with the fewest open connections
-	  (TCP) or sessions (UDP) for its weight
-	- sticky sessions: a client IP address keeps going to the destination it
-	  was given while that destination is healthy (remembered for a day
-	  after its last connection), like the HTTP sticky session cookie
-
-	Health checks are run by mod/healthcheck from the main package, which
-	reports each destination's state with Manager.SetUpstreamOnline.
-
-	TCP: when connecting to the chosen destination fails, the others are
-	tried before the client connection is given up. With no healthy
-	destination the client connection is closed at once. UDP: a new client
-	session goes to the first candidate; with no healthy destination its
-	packets are dropped.
-
-	A connection failure (refused, unreachable, timed out; for UDP an ICMP
-	port unreachable) is reported to passive monitoring.
-
-	With CloseOnUpstreamDown, connections and sessions to a destination are
-	closed when health checks take it out of load balancing.
-
-	A rule given only an address list (Upstreams or ProxyTargetAddr, as the
-	edit API and hand-written files may) gets one destination per address
-	with weight 1 (normalizePool).
-*/
+// Destination pools for Layer 4 rules:
+//   - each destination has a weight (0-100) and can be turned off; weight 0
+//     makes it a backup, used only when no destination with a weight above 0
+//     is healthy
+//   - weighted (the default): a new TCP connection or UDP client session goes
+//     to a random healthy destination, in proportion to its weight
+//   - leastconn: to the healthy destination with the fewest open connections
+//     (TCP) or sessions (UDP) for its weight
+//   - sticky sessions: a client IP address keeps going to the destination it
+//     was given while that destination is healthy (remembered for a day after
+//     its last connection)
+//
+// Health checks report each destination's state with Manager.SetUpstreamOnline.
+//
+// TCP: when connecting to the chosen destination fails, the others are tried
+// before the client connection is given up. With no healthy destination the
+// client connection is closed at once. UDP: a new client session goes to the
+// first candidate; with no healthy destination its packets are dropped.
+//
+// Connection failures (refused, unreachable, timed out; for UDP an ICMP port
+// unreachable) are reported to passive monitoring. With CloseOnUpstreamDown,
+// connections and sessions to a destination are closed when health checks
+// take it out. A rule given only an address list gets one destination per
+// address with weight 1 (normalizePool).
 
 import (
 	"encoding/json"
@@ -64,7 +53,7 @@ const (
 // MaxUpstreams is the most destination servers one Layer 4 rule can have.
 const MaxUpstreams = 32
 
-// MaxWeight is the highest destination weight (as for HTTP proxy rules).
+// MaxWeight is the highest destination weight.
 const MaxWeight = 100
 
 const upstreamDialTimeout = 5 * time.Second
@@ -180,7 +169,7 @@ func (c *ProxyRelayInstance) DestinationList() []Destination {
 	if len(c.Destinations) > 0 {
 		return append([]Destination{}, c.Destinations...)
 	}
-	// A rule that has not been normalised yet (tests, older callers)
+	// A rule that has not been normalised yet
 	out := []Destination{}
 	addrs := c.Upstreams
 	if len(addrs) == 0 && strings.TrimSpace(c.ProxyTargetAddr) != "" {
@@ -630,7 +619,7 @@ type UpstreamInfo struct {
 	Failed  uint64 `json:"failed"` // failed connection attempts
 }
 
-// Upstreams returns each upstream's state for a rule.
+// UpstreamInfos returns each upstream's state for a rule.
 func (c *ProxyRelayInstance) UpstreamInfos() []UpstreamInfo {
 	out := []UpstreamInfo{}
 	pool := c.getPool()

@@ -1,4 +1,4 @@
-<!-- Custom fork: high availability (ha_custom.go, mod/hacluster) -->
+<!-- High availability -->
 <style>
     #ha .haGrid{ display: grid; grid-template-columns: minmax(10em, max-content) 1fr; gap: 0.55em 1.2em; align-items: baseline; }
     #ha .haGrid .haLabel{ color: var(--text_color_secondary); }
@@ -189,7 +189,6 @@ sudo sysctl --system</pre></div>
             return new Date(ts*1000).toLocaleString();
         }
         // A response that is not JSON is Waymark's login page: the session ended
-        // (for example after signing in to another node on the same host name)
         const LOGGED_OUT = "Your login on this node has ended (signing in to another Waymark node on the same host name, even on another port, replaces this node's login cookie). Reload the page and sign in again.";
         function loggedOut(d){ return d == null || typeof d != "object"; }
         function showMsg(text, ok){
@@ -567,7 +566,7 @@ sudo sysctl --system</pre></div>
 
         window.haNewKey = function(){
             if ($("#haClusterKey").val().trim() != "" && !confirm("Replace the cluster key? Sync stops until the new key is on every node.")) return;
-            // Made in the browser (crypto.getRandomValues works without HTTPS too)
+            // Made in the browser
             let b = new Uint8Array(32);
             window.crypto.getRandomValues(b);
             let k = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");

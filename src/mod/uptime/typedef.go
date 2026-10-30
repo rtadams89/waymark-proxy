@@ -38,8 +38,7 @@ type Target struct {
 	SkipTlsValidation bool
 	HealthCheckURI    string //Optional URI path appended to URL for the health check. If empty, "/" is used.
 
-	//Custom fork: not probed by this monitor; its records are supplied by the
-	//health check module through RecordExternal (see external_custom.go)
+	// Records are supplied through RecordExternal instead of probing
 	ExternallyMonitored bool
 }
 

@@ -18,29 +18,20 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	acme.go
+// Routing of ACME HTTP-01 challenges and certificate renewal.
 
-	This script handle special routing required for acme auto cert renew functions
-*/
-
-// acmeTokenRegex validates ACME HTTP-01 challenge tokens (RFC 8555).
-// Token format: base64url encoded, characters [A-Za-z0-9_-].
+// acmeTokenRegex matches ACME HTTP-01 challenge tokens (base64url).
 var acmeTokenRegex = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
-// Helper function to generate a random port above a specified value
 func getRandomPort(minPort int) int {
 	return rand.Intn(65535-minPort) + minPort
 }
 
-// init the new ACME instance
 func initACME() *acme.ACMEHandler {
 	SystemWideLogger.Println("Starting ACME handler")
 	rand.Seed(time.Now().UnixNano())
-	// Generate a random port above 30000
 	port := getRandomPort(30000)
 
-	// Check if the port is already in use
 	for acme.IsPortInUse(port) {
 		port = getRandomPort(30000)
 	}
@@ -61,14 +52,13 @@ func parseACMEFileMode(raw string, fallback os.FileMode, flagName string) os.Fil
 	return os.FileMode(parsed)
 }
 
-// create the special routing rule for ACME
+// Routes /.well-known/acme-challenge/ requests to the ACME handler.
 func acmeRegisterSpecialRoutingRule() {
 	SystemWideLogger.Println("Assigned temporary port:" + acmeHandler.Getport())
 
 	err := dynamicProxyRouter.AddRoutingRules(&dynamicproxy.RoutingRule{
 		ID: "acme-autorenew",
 		MatchRule: func(r *http.Request) bool {
-			// Use ParseRequestURI for strict RFC 3986 validation.
 			parsedURL, err := url.ParseRequestURI(r.RequestURI)
 			if err != nil {
 				return false
@@ -82,15 +72,12 @@ func acmeRegisterSpecialRoutingRule() {
 				return
 			}
 
-			// HTTP-01 challenges (RFC 8555) use only the path, no query string.
-			// Reject requests with query parameters as they are unexpected.
+			// Rejects challenge requests with a query string.
 			if parsedURL.RawQuery != "" {
 				http.Error(w, "Query string not allowed in ACME challenge", http.StatusBadRequest)
 				return
 			}
 
-			// Whitelist: RFC 8555 token is base64url encoded [A-Za-z0-9_-].
-			// Extract and validate the token part after the fixed prefix.
 			prefix := "/.well-known/acme-challenge/"
 			token := strings.TrimPrefix(parsedURL.Path, prefix)
 			if len(token) == 0 || len(token) > 255 || !acmeTokenRegex.MatchString(token) {
@@ -98,8 +85,7 @@ func acmeRegisterSpecialRoutingRule() {
 				return
 			}
 
-			// Build internal URL using only the validated path component,
-			// preventing SSRF via userinfo injection in the raw URI.
+			// Builds the internal URL from the validated path only.
 			internalURL := "http://localhost:" + acmeHandler.Getport() + parsedURL.Path
 
 			req, err := http.NewRequest(http.MethodGet, internalURL, nil)
@@ -131,65 +117,53 @@ func acmeRegisterSpecialRoutingRule() {
 	}
 }
 
-// This function check if the renew setup is satisfied. If not, toggle them automatically
+// Enables port 80 and the HTTPS redirect if needed, renews the certificate,
+// then restores those settings.
 func AcmeCheckAndHandleRenewCertificate(w http.ResponseWriter, r *http.Request) {
 	requireRestoreHttpsRedirect := false
 	requireRestorePort80 := false
 	dnsPara, _ := utils.PostBool(r, "dns")
 	if !dnsPara {
-		// HTTP-01 challenge
 		switch dynamicProxyRouter.Option.Port {
 		case 443:
-			// Check if port 80 is enabled
 			if !dynamicProxyRouter.Option.ListenOnPort80 {
-				// Enable port 80 temporarily
 				SystemWideLogger.PrintAndLog("acme", "Temporarily enabling port 80 listener to handle ACME request ", nil)
 				dynamicProxyRouter.UpdatePort80ListenerState(true)
 				requireRestorePort80 = true
 				time.Sleep(2 * time.Second)
 			}
 
-			// Enable port 80 to 443 redirect
 			if !dynamicProxyRouter.Option.ForceHttpsRedirect {
 				SystemWideLogger.Println("Temporary enabling HTTP to HTTPS redirect for ACME certificate renew requests")
 				dynamicProxyRouter.UpdateHttpToHttpsRedirectSetting(true)
-				// Mark that we need to restore this setting after renewal
 				requireRestoreHttpsRedirect = true
 			}
 
 		case 80:
-			// Go ahead
 
 		default:
-			// This port do not support ACME
 			utils.SendErrorResponse(w, "ACME renew only support web server listening on port 80 (http) or 443 (https)")
 			return
 		}
 	}
 
-	// Add a 2 second delay to make sure everything is settle down
 	time.Sleep(2 * time.Second)
 
-	// Pass over to the acmeHandler to deal with the communication
 	acmeHandler.HandleRenewCertificate(w, r)
 
-	// Update the TLS cert store buffer
 	tlsCertManager.UpdateLoadedCertList()
 
-	// Restore original settings only if they were changed
 	if requireRestorePort80 {
-		// Restore port 80 listener
 		SystemWideLogger.PrintAndLog("acme", "Restoring previous port 80 listener settings", nil)
 		dynamicProxyRouter.UpdatePort80ListenerState(false)
 	}
 	if requireRestoreHttpsRedirect {
-		// Restore HTTP to HTTPS redirect setting that was temporarily enabled
 		SystemWideLogger.PrintAndLog("acme", "Restoring HTTP to HTTPS redirect settings", nil)
 		dynamicProxyRouter.UpdateHttpToHttpsRedirectSetting(false)
 	}
 }
 
-// HandleACMEPreferredCA return the user preferred / default CA for new subdomain auto creation
+// HandleACMEPreferredCA gets (GET) or sets (POST ca) the preferred CA.
 func HandleACMEPreferredCA(w http.ResponseWriter, r *http.Request) {
 	type PreferredCA struct {
 		Name    string `json:"name"`
@@ -199,7 +173,6 @@ func HandleACMEPreferredCA(w http.ResponseWriter, r *http.Request) {
 
 	ca, err := utils.PostPara(r, "set")
 	if err != nil {
-		// Return the current ca to user
 		prefCA := "Let's Encrypt"
 		prefCAURL := ""
 		skipTLS := false
@@ -213,7 +186,6 @@ func HandleACMEPreferredCA(w http.ResponseWriter, r *http.Request) {
 		})
 		utils.SendJSONResponse(w, string(js))
 	} else {
-		// Check if the CA is supported
 		isSupported := acme.IsSupportedCA(ca, *acmeTestMode)
 
 		if !isSupported && ca != "custom" {
@@ -236,7 +208,6 @@ func HandleACMEPreferredCA(w http.ResponseWriter, r *http.Request) {
 			sysdb.Write("acmepref", "skipTLS", skipTLS)
 			SystemWideLogger.Println("Updating prefered skipTLS to " + fmt.Sprintf("%t", skipTLS))
 		}
-		// Set the new config
 		sysdb.Write("acmepref", "prefca", ca)
 		SystemWideLogger.Println("Updating prefered ACME CA to " + ca)
 		utils.SendOK(w)

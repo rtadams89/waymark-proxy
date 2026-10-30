@@ -7,12 +7,7 @@ import (
 	"strings"
 )
 
-/*
-	pathmatch.go
-
-	Shared request path matching for proxy path rules. Several rule types used to
-	carry their own copy of this logic; they now share this one.
-*/
+// Shared request path matching for proxy path rules.
 
 // CleanRequestPath returns the decoded, lexically resolved path of a request
 // target. The query string is dropped.
@@ -52,7 +47,7 @@ func requestPathWithinPrefix(requestURI string, prefix string, ignoreCase bool) 
 	}
 	requestPath := CleanRequestPath(requestURI)
 	if ignoreCase {
-		//Fold both sides so the segment boundary check below stays case-insensitive
+		// Fold both sides
 		requestPath = strings.ToLower(requestPath)
 		cleanedPrefix = strings.ToLower(cleanedPrefix)
 	}

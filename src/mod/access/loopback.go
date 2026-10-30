@@ -13,7 +13,7 @@ const (
 	PUBLIC_IP_CHECK_URL = "http://checkip.amazonaws.com/"
 )
 
-// Start the public IP address updater
+// StartPublicIPUpdater updates the server's public IP periodically.
 func (c *Controller) StartPublicIPUpdater() {
 	stopChan := make(chan bool)
 	c.publicIpTickerStop = stopChan
@@ -36,9 +36,7 @@ func (c *Controller) StartPublicIPUpdater() {
 	c.publicIpTicker = ticker
 }
 
-// Stop the public IP address updater
 func (c *Controller) StopPublicIPUpdater() {
-	// Stop the public IP address updater
 	if c.publicIpTickerStop != nil {
 		c.publicIpTickerStop <- true
 	}
@@ -46,7 +44,6 @@ func (c *Controller) StopPublicIPUpdater() {
 	c.publicIpTickerStop = nil
 }
 
-// Update the public IP address of the server
 func (c *Controller) UpdatePublicIP() error {
 	req, err := http.NewRequest("GET", PUBLIC_IP_CHECK_URL, nil)
 	if err != nil {
@@ -73,7 +70,6 @@ func (c *Controller) UpdatePublicIP() error {
 		return err
 	}
 
-	// Validate if the returned byte is a valid IP address
 	pubIP := net.ParseIP(strings.TrimSpace(string(ip)))
 	if pubIP == nil {
 		return errors.New("invalid IP address")
@@ -91,12 +87,10 @@ func (c *Controller) IsLoopbackRequest(ipAddr string) bool {
 		"127.0.0.1",
 	}
 
-	// Check if the request is loopback from public IP
 	if ipAddr == c.ServerPublicIP {
 		return true
 	}
 
-	// Check if the request is from localhost or loopback IPv4 or 6
 	for _, loopbackIP := range loopbackIPs {
 		if ipAddr == loopbackIP {
 			return true
@@ -106,7 +100,6 @@ func (c *Controller) IsLoopbackRequest(ipAddr string) bool {
 	return false
 }
 
-// Check if the IP address is in private IP range
 func (c *Controller) IsPrivateIPRange(ipAddr string) bool {
 	privateIPBlocks := []string{
 		"10.0.0.0/8",

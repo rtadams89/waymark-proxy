@@ -6,16 +6,8 @@ import (
 	"strings"
 )
 
-/*
-	MatchIP.go
-
-	This script contains function for matching IP address, comparing
-	CIDR and IPv4 / v6 validations
-*/
-
 // Get the requester IP without trusting any proxy headers
 func GetRequesterIPUntrusted(r *http.Request) string {
-	// If the request is from an untrusted IP, we should not trust the X-Real-IP and X-Forwarded-For headers
 	ip := r.RemoteAddr
 	// Trim away the port number
 	reqHost, _, err := net.SplitHostPort(ip)

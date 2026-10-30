@@ -7,15 +7,6 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
 )
 
-/*
-	Default Provider
-
-	This script provide the default options for all datatype
-	provided by dynamicproxy module
-
-*/
-
-// GetDefaultAuthenticationProvider return a default authentication provider
 func GetDefaultAuthenticationProvider() *AuthenticationProvider {
 	return &AuthenticationProvider{
 		AuthMethod:                        AuthMethodNone,
@@ -30,7 +21,6 @@ func GetDefaultAuthenticationProvider() *AuthenticationProvider {
 	}
 }
 
-// GetDefaultHeaderRewriteRules return a default header rewrite rules
 func GetDefaultHeaderRewriteRules() *HeaderRewriteRules {
 	return &HeaderRewriteRules{
 		UserDefinedHeaders:            []*rewrite.UserDefinedHeader{},
@@ -43,7 +33,6 @@ func GetDefaultHeaderRewriteRules() *HeaderRewriteRules {
 	}
 }
 
-// GetDefaultProxyEndpoint return a default proxy endpoint
 func GetDefaultProxyEndpoint() ProxyEndpoint {
 	randomPrefix := uuid.New().String()
 	return ProxyEndpoint{
@@ -64,7 +53,7 @@ func GetDefaultProxyEndpoint() ProxyEndpoint {
 		RateLimit:                    0,
 		DisableUptimeMonitor:         false,
 		DisableAutoFallback:          false,
-		AccessFilterUUID:             access.AllowAllID, //Custom fork: ACLs
+		AccessFilterUUID:             access.AllowAllID,
 		DefaultSiteOption:            DefaultSite_InternalStaticWebServer,
 		DefaultSiteValue:             "",
 	}

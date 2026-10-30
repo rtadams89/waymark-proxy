@@ -1,12 +1,6 @@
 package main
 
-/*
-	maintenance_custom.go (custom fork)
-
-	API for per-rule maintenance mode (mod/dynamicproxy/maintenance_custom.go),
-	used by snippet/maintenance.html, and the status page's upstream health
-	summary.
-*/
+// API of per-rule maintenance mode, and the status page's upstream health summary.
 
 import (
 	"encoding/json"
@@ -94,7 +88,7 @@ func HandleMaintenanceSet(w http.ResponseWriter, r *http.Request) {
 	}
 	since := time.Now().Unix()
 	if target.Maintenance.On() && enabled && target.Maintenance.Since > 0 {
-		since = target.Maintenance.Since // editing the message keeps the start time
+		since = target.Maintenance.Since
 	}
 	cfg := &dynamicproxy.MaintenanceConfig{Enabled: enabled, Message: message, RetryAfterMinutes: retry}
 	if enabled {
@@ -122,8 +116,8 @@ func HandleMaintenanceSet(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-// HandleMaintenancePreview renders a rule's maintenance page as visitors
-// would see it (with the settings given, or the saved ones).
+// HandleMaintenancePreview renders a rule's maintenance page with the given
+// or saved settings.
 // GET /api/proxy/maintenance/preview?ep=<rule>[&message=..&retryAfterMinutes=..]
 func HandleMaintenancePreview(w http.ResponseWriter, r *http.Request) {
 	epName, err := utils.GetPara(r, "ep")
@@ -156,8 +150,6 @@ func HandleMaintenancePreview(w http.ResponseWriter, r *http.Request) {
 	w.Write(dynamicProxyRouter.RenderMaintenancePage(ep.RootOrMatchingDomain, cfg))
 }
 
-/* Status page: upstream health summary */
-
 type maintenanceEntry struct {
 	Rule              string `json:"rule"`
 	Since             int64  `json:"since"`
@@ -175,7 +167,7 @@ func HandleUpstreamHealthSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := range statuses {
 		if strings.HasPrefix(statuses[i].RuleID, "l4:") {
-			statuses[i].RuleID = l4RuleDisplay(statuses[i].RuleID) // Layer 4 rules by name
+			statuses[i].RuleID = l4RuleDisplay(statuses[i].RuleID)
 			statuses[i].Label = ""
 		}
 	}

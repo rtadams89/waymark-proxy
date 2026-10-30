@@ -52,7 +52,6 @@ func TestSaveSummaryOfDay(t *testing.T) {
 	option := statistic.CollectorOption{Database: db}
 	collector, _ := statistic.NewStatisticCollector(option)
 	collector.SaveSummaryOfDay()
-	// Add assertions to check if data is saved correctly
 }
 
 func TestLoadSummaryOfDay(t *testing.T) {
@@ -163,7 +162,7 @@ func generateTestRequestInfo(db *database.Database) statistic.RequestInfo {
 	ipLocation := "unknown"
 	geoIpResolver, err := geodb.NewGeoDb(db, &geodb.StoreOptions{
 		AllowSlowIpv4LookUp: false,
-		AllowSlowIpv6Lookup: true, //Just to save some RAM
+		AllowSlowIpv6Lookup: true,
 	})
 
 	if err == nil {
@@ -210,13 +209,9 @@ func BenchmarkRecordRequest(b *testing.B) {
 	//Write the current in-memory summary to database file
 	b.StopTimer()
 
-	//Print the generated summary
-	//testSummary := collector.GetCurrentDailySummary()
-	//statistic.PrintDailySummary(testSummary)
 }
 
-// Concurrent requests must all be counted (custom fork: increments used to
-// race and lose counts).
+// Concurrent requests are all counted.
 func TestRecordRequestConcurrentCounts(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "stats.db")
 	db, err := database.NewDatabase(tmpFile, dbinc.BackendBoltDB)

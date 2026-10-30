@@ -1,4 +1,4 @@
-<!-- Custom fork: ACLs (mod/access, acl_api_custom.go) -->
+<!-- ACLs -->
 <style>
     #aclEditor .aclRules td{ vertical-align: middle; }
     #aclEditor .aclRules tr.aclDisabled td:not(.aclKeep){ opacity: 0.45; }
@@ -525,8 +525,7 @@
     };
 
     /* Init */
-    // The page may re-initialize dropdowns without our settings, so listen
-    // on the select itself (the dropdown triggers "change" on it)
+    // Listen on the select itself (the dropdown triggers "change" on it)
     $("#aclSrcType").dropdown();
     $("#aclSrcType").on("change", showSourceField);
     $("#aclSrcObject").dropdown({fullTextSearch: true});

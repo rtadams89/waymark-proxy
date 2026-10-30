@@ -5,16 +5,8 @@ import (
 	"sync"
 )
 
-/*
-	Shell Exec
-	author: tobychui
-
-	Resolve a usable POSIX shell for commands that need pipes or
-	other shell features. bash is not always available (e.g. a stock
-	FreeBSD install), so this falls back to sh when bash cannot be found.
-
-	All commands passed to Command must be POSIX sh compatible.
-*/
+// Resolves a POSIX shell (bash, else sh) for commands that need shell
+// features. Commands passed to Command must be POSIX sh compatible.
 
 var (
 	resolveOnce  sync.Once
@@ -31,7 +23,7 @@ func Shell() string {
 				return
 			}
 		}
-		//Nothing found, let exec report the error on run
+		// Nothing found
 		resolvedPath = "sh"
 	})
 	return resolvedPath

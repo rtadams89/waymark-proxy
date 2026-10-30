@@ -12,8 +12,7 @@ import (
 	"time"
 )
 
-// Custom fork: lifecycle tests on loopback (the old test listened on :8080
-// for 20 seconds and dialled a host on the internet).
+// Lifecycle tests on loopback.
 
 func echoServer(t *testing.T) string {
 	t.Helper()
@@ -86,7 +85,7 @@ func TestStartEditStop(t *testing.T) {
 	}
 	echoThrough(t, listen)
 
-	// Editing a running rule restarts it without the old 3 second pause
+	// Editing a running rule restarts it promptly
 	listen2 := freeAddr(t)
 	start := time.Now()
 	if err := m.EditConfig(&ProxyRuleUpdateConfig{InstanceUUID: id, NewListeningAddr: listen2, UseTCP: true, NewTimeout: -1}); err != nil {

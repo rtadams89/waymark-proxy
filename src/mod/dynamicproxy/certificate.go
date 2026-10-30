@@ -18,11 +18,9 @@ func (router *Router) ResolveHostSpecificTlsBehaviorForHostname(hostname string)
 		return tlscert.GetDefaultHostSpecificTlsBehavior(), nil
 	}
 
-	// Check if the endpoint has a specific TLS behavior
 	if ept.TlsOptions != nil {
 		imported := &tlscert.HostSpecificTlsBehavior{}
 		router.tlsBehaviorMutex.RLock()
-		// Deep copy the TlsOptions using JSON marshal/unmarshal
 		data, err := json.Marshal(ept.TlsOptions)
 		if err != nil {
 			router.tlsBehaviorMutex.RUnlock()
@@ -43,7 +41,6 @@ func (router *Router) SetPreferredCertificateForDomain(ept *ProxyEndpoint, domai
 		return errors.New("endpoint and certificate name cannot be empty")
 	}
 
-	// Set the preferred certificate for the endpoint
 	if ept.TlsOptions == nil {
 		ept.TlsOptions = tlscert.GetDefaultHostSpecificTlsBehavior()
 	}

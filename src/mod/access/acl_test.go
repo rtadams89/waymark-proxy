@@ -109,7 +109,7 @@ func TestACLNotAndCountries(t *testing.T) {
 			t.Errorf("%s: %s (rule %d), want %s", ip, d.Action, d.Rule, want)
 		}
 	}
-	// Geo-IP off: the country rule is skipped, not "everyone is not US"
+	// GeoIP off: the country rule is skipped
 	c.countryLookup = func(string) (string, bool) { return "", false }
 	d := c.Evaluate(a.ID, "1.1.1.1")
 	if d.Action != ActionAllow || d.Rule != 3 || len(d.Skipped) != 1 || d.Skipped[0] != 2 {
@@ -218,9 +218,7 @@ func TestTestWith(t *testing.T) {
 	}
 }
 
-/* Conversion: the converted ACL lets in exactly the addresses the old access rule did */
-
-// oldAllowed is the decision of the access rules of 2.17 and earlier.
+// oldAllowed is the decision of an old access rule.
 func oldAllowed(old legacyAccessRule, ip, publicIP string) bool {
 	cc := testCountries[ip]
 	inIPs := func(m *map[string]string) bool {
@@ -280,7 +278,7 @@ func TestConversionMatchesOldAccessRules(t *testing.T) {
 		return &out
 	}
 	rules := []legacyAccessRule{
-		{ID: "default", Name: "Default"}, // restricts nothing: Allow all
+		{ID: "default", Name: "Default"}, // converts to Allow all
 		{ID: "r-block", Name: "Block", BlacklistEnabled: true, BlackListIP: m("10.0.0.5", "bad", "192.168.7.*", "lab", "172.20.0.0/16", "net"), BlackListContryCode: m("cn", "")},
 		{ID: "r-allow", Name: "Allow", WhitelistEnabled: true, WhiteListIP: m("10.0.0.0/24", "office"), WhiteListCountryCode: m("au", "")},
 		{ID: "r-local", Name: "Local", WhitelistEnabled: true, WhitelistAllowLocalAndLoopback: true, TrustProxyHeadersOnly: true},
@@ -401,11 +399,11 @@ func TestNestedObjects(t *testing.T) {
 		t.Errorf("after inner change: %+v", d)
 	}
 
-	// A loop that got in anyway (hand-edited file) does not hang compiling
+	// A loop in the stored objects
 	c.mu.Lock()
 	c.objects[inner.ID].Entries = append(c.objects[inner.ID].Entries, Entry{Type: SourceObject, Value: outer.ID})
 	c.mu.Unlock()
-	// Map order changes from one compile to the next; the result must not
+	// The result is the same on every compile
 	for i := 0; i < 50; i++ {
 		c.mu.Lock()
 		c.compileLocked()

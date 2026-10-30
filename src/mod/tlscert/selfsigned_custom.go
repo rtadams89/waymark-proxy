@@ -1,9 +1,7 @@
 package tlscert
 
-/*
-	selfsigned_custom.go (custom fork): self-signed certificates for host
-	names and IP addresses, and the certificate for a connection without SNI.
-*/
+// Self-signed certificates for host names and IP addresses, and the
+// certificate for a connection without SNI.
 
 import (
 	"crypto/ecdsa"
@@ -26,8 +24,7 @@ import (
 
 // WriteSelfSignedCertificate writes a self-signed ECDSA P-256 certificate
 // for names (host names and IP addresses; the first is the common name) to
-// dir/name.pem and its key to dir/name.key. It needs no Manager, so it can
-// run before Waymark has started.
+// dir/name.pem and its key to dir/name.key.
 func WriteSelfSignedCertificate(dir, name string, names []string, validFor time.Duration) error {
 	if len(names) == 0 {
 		return errors.New("no names for the certificate")
@@ -74,7 +71,7 @@ func WriteSelfSignedCertificate(dir, name string, names []string, validFor time.
 	if err := os.MkdirAll(dir, 0775); err != nil {
 		return err
 	}
-	// Key first: a certificate without its key is never left behind
+	// Write the key first
 	if err := utils.WriteFileAtomic(filepath.Join(dir, name+".key"), pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}), defaultPrivateKeyFileMode); err != nil {
 		return err
 	}

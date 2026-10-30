@@ -106,7 +106,7 @@ def main():
     png(light, os.path.join(HERE, "logo.png"), height=200)
     png(dark, os.path.join(HERE, "logo-dark.png"), height=200)
     png(t, os.path.join(HERE, "icon-tile.png"), 512, 512)
-    # Web UI (src/web/img), same file names as before
+    # Web UI (src/web/img)
     write(os.path.join(IMG, "logo.svg"), light)
     write(os.path.join(IMG, "logo_white.svg"), dark)
     png(light, os.path.join(IMG, "logo.png"), height=200)

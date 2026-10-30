@@ -1,13 +1,6 @@
 package dpcore
 
-/*
-
-Max Latency Writer
-
-This script implements a io writer with periodic flushing base on a ticker
-Mostly based on httputil.ReverseProxy
-
-*/
+// maxLatencyWriter is a writer that flushes periodically.
 
 import (
 	"io"
@@ -29,13 +22,11 @@ func (m *maxLatencyWriter) Write(p []byte) (n int, err error) {
 	defer m.mu.Unlock()
 	n, err = m.dst.Write(p)
 	if m.latency < 0 {
-		//Flush immediately
 		m.flush()
 		return
 	}
 
 	if m.flushPending {
-		//Flush in next tick cycle
 		return
 	}
 
@@ -54,7 +45,7 @@ func (m *maxLatencyWriter) delayedFlush() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if !m.flushPending {
-		// if stop was called but AfterFunc already started this goroutine
+		// Stopped
 		return
 	}
 

@@ -34,44 +34,35 @@ func NewPluginAuthMiddleware(option PluginMiddlewareOptions) *PluginAuthMiddlewa
 }
 
 func (m *PluginAuthMiddleware) HandleAuthCheck(w http.ResponseWriter, r *http.Request, handler http.HandlerFunc) {
-	// Check for API key in the Authorization header
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		// No authorization header
 		m.option.DeniedHandler(w, r)
 		return
 	}
 
-	// Check if it's a plugin API key (Bearer token)
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		// Not a Bearer token
 		m.option.DeniedHandler(w, r)
 		return
 	}
 
-	// Extract the API key
 	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 
-	// Validate the API key for this endpoint
 	_, err := m.option.ApiKeyManager.ValidateAPIKeyForEndpoint(r.URL.Path, r.Method, apiKey)
 	if err != nil {
-		// Invalid API key or endpoint not permitted
 		m.option.DeniedHandler(w, r)
 		return
 	}
 
-	// Call the original handler
 	handler(w, r)
 }
 
-// wraps an HTTP handler with plugin authentication middleware
+// HandleFunc registers handler under PLUGIN_API_PREFIX with plugin API key
+// authentication.
 func (m *PluginAuthMiddleware) HandleFunc(endpoint string, handler http.HandlerFunc) error {
-	// ensure the endpoint is prefixed with PLUGIN_API_PREFIX
 	if !strings.HasPrefix(endpoint, PLUGIN_API_PREFIX) {
 		endpoint = PLUGIN_API_PREFIX + endpoint
 	}
 
-	// Check if the endpoint already registered
 	if _, exist := m.endpoints[endpoint]; exist {
 		fmt.Println("WARNING! Duplicated registering of plugin api endpoint: " + endpoint)
 		return errors.New("endpoint register duplicated")
@@ -83,7 +74,6 @@ func (m *PluginAuthMiddleware) HandleFunc(endpoint string, handler http.HandlerF
 		m.HandleAuthCheck(w, r, handler)
 	}
 
-	// Ok. Register handler
 	if m.option.TargetMux == nil {
 		http.HandleFunc(endpoint, wrappedHandler)
 	} else {

@@ -1,11 +1,6 @@
 package geodb
 
-/*
-	specialRange.go
-
-	This script implement the reserved / special IP range checking
-	using radix tree for efficient CIDR matching
-*/
+// Reserved / special IP range checking using a radix tree
 import (
 	"net"
 	"strings"
@@ -159,7 +154,6 @@ func (t *reservedIPRadixTree) search(ip net.IP) string {
 }
 
 // getReservedIPZone checks if an IP is in a reserved range and returns the zone name
-// Uses radix tree for O(log n) lookup complexity
 func getReservedIPZone(ipStr string) string {
 	// Initialize trees on first call
 	initReservedIPTrees()
@@ -168,8 +162,7 @@ func getReservedIPZone(ipStr string) string {
 		return ""
 	}
 
-	// Determine if this is an IPv4 or IPv6 address string
-	// We check the original string because net.ParseIP can normalize addresses
+	// IPv4 address string
 	isIPv4Str := ip.To4() != nil && !strings.Contains(ipStr, ":")
 
 	// Search in the appropriate radix tree

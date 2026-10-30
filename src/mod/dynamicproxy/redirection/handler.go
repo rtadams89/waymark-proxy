@@ -6,13 +6,6 @@ import (
 	"strings"
 )
 
-/*
-	handler.go
-
-	This script store the handlers use for handling
-	redirection request
-*/
-
 // detectDeviceType determines if the request is from a mobile or desktop device
 // based on the User-Agent header
 func detectDeviceType(r *http.Request) string {
@@ -51,9 +44,7 @@ func (t *RuleTable) IsRedirectable(r *http.Request) bool {
 	return rr.DeviceType == deviceType
 }
 
-// Handle the redirect request, return after calling this function to prevent
-// multiple write to the response writer
-// Return the status code of the redirection handling
+// HandleRedirect serves the redirect and returns its status code.
 func (t *RuleTable) HandleRedirect(w http.ResponseWriter, r *http.Request) int {
 	requestPath := r.Host + r.URL.Path
 	rr := t.MatchRedirectRule(requestPath)
@@ -80,7 +71,6 @@ func (t *RuleTable) HandleRedirect(w http.ResponseWriter, r *http.Request) int {
 		http.Redirect(w, r, redirectTarget, rr.StatusCode)
 		return rr.StatusCode
 	} else {
-		//Invalid usage
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500 - Internal Server Error"))
 		t.log("Target request URL do not have matching redirect rule. Check with IsRedirectable before calling HandleRedirect!", errors.New("invalid usage"))

@@ -13,13 +13,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Handler.go
-	Handlers for the tcprox. Remove this file
-	if your application do not need any http
-	handler.
-*/
-
 func (m *Manager) HandleAddProxyConfig(w http.ResponseWriter, r *http.Request) {
 	name, err := utils.PostPara(r, "name")
 	if err != nil {
@@ -55,8 +48,7 @@ func (m *Manager) HandleAddProxyConfig(w http.ResponseWriter, r *http.Request) {
 	enableLogging, _ := utils.PostBool(r, "enableLogging")
 	accessRuleUUID, _ := utils.PostPara(r, "accessRuleUUID")
 
-	//Create the target config
-	//Custom fork: reject rules that could never listen
+	// Reject rules that could never listen
 	if err := m.validateListener(strings.TrimSpace(listenAddr), useTCP, useUDP, ""); err != nil {
 		utils.SendErrorResponse(w, err.Error())
 		return
@@ -83,7 +75,6 @@ func (m *Manager) HandleAddProxyConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request) {
-	// Extract POST parameters using utils.PostPara
 	configUUID, err := utils.PostPara(r, "uuid")
 	if err != nil {
 		utils.SendErrorResponse(w, "config UUID cannot be empty")
@@ -109,8 +100,7 @@ func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Create a new ProxyRuleUpdateConfig with the extracted parameters
-	//Custom fork: reject rules that could never listen
+	// Reject rules that could never listen
 	if existing, err := m.GetConfigByUUID(configUUID); err == nil {
 		effective := strings.TrimSpace(listenAddr)
 		if effective == "" {
@@ -120,8 +110,7 @@ func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request)
 			utils.SendErrorResponse(w, err.Error())
 			return
 		}
-		//Custom fork: the editor saves each setting on its own, so keep the
-		//protocols and the active health check in step
+		// Keep the protocols and the active health check in step
 		if hc := existing.View().HealthCheck; hc != nil && hc.ActiveEnabled {
 			if hc.Type == healthcheck.CheckTCP && !useTCP {
 				utils.SendErrorResponse(w, "this rule's health check uses TCP: change the health check before turning TCP off")
@@ -147,7 +136,6 @@ func (m *Manager) HandleEditProxyConfigs(w http.ResponseWriter, r *http.Request)
 		NewAccessRuleUUID:    accessRuleUUID,
 	}
 
-	// Call the EditConfig method to modify the configuration
 	err = m.EditConfig(newConfig)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
@@ -250,9 +238,9 @@ func (m *Manager) HandleGetProxyStatus(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-// validateListener checks a rule's listening address and protocols (custom
-// fork): at least one protocol, a usable host:port or port, and no other
-// rule listening on the same address with the same protocol.
+// validateListener checks a rule's listening address and protocols: at least
+// one protocol, a usable host:port or port, and no other rule listening on the
+// same address with the same protocol.
 func (m *Manager) validateListener(listen string, useTCP, useUDP bool, exceptUUID string) error {
 	if !useTCP && !useUDP {
 		return errors.New("enable TCP, UDP or both")

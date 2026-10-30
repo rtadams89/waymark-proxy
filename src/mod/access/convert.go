@@ -1,27 +1,11 @@
 package access
 
 /*
-	convert.go (custom fork): turns the access rules of Waymark 2.17 and
-	earlier (conf/access/*.json: a blocklist and an allowlist each) into
-	ACLs, once.
-
-	Each access rule becomes an ACL with the same ID, so proxy rules keep
-	pointing at it. Its lists become objects ("<name> blocklist", "<name>
-	allowlist", with the comments) and the rules are, in order:
-
-	  1. blocklist on:                      deny <name> blocklist
-	  2. allowlist on, "allow LAN" ticked:  allow Private networks
-	  3. allowlist on:                      allow <name> allowlist
-	     allowlist off:                     allow any
-	  (then the default deny)
-
-	which lets in exactly the addresses the access rule let in. The old
-	"default" access rule becomes Allow all when it restricted nothing,
-	otherwise an ACL "Default" with its ID. IPv4 wildcards stay wildcards.
-
-	The "trust forwarded headers" option of each access rule is reported in
-	LegacyConversion.Trust, so the proxy rules that used it get the option
-	themselves. The converted files are then removed.
+	Converts the access rules of 2.17 and earlier (conf/access/*.json) into
+	ACLs with the same IDs. Each list becomes an object, and the rules are:
+	deny the blocklist; allow Private networks (if LAN was allowed); allow
+	the allowlist, or allow any without an allowlist. A permissive "default"
+	rule becomes Allow all. The old files are removed.
 */
 
 import (
@@ -47,14 +31,13 @@ type legacyAccessRule struct {
 	BlackListIP                    *map[string]string
 }
 
-// LegacyConversion describes a conversion of old access rules, for the
-// proxy rules that referred to them.
+// LegacyConversion describes a conversion of old access rules.
 type LegacyConversion struct {
-	IDMap map[string]string // old access rule ID -> ACL ID (when it changed)
+	IDMap map[string]string // old access rule ID -> ACL ID, when different
 	Trust map[string]bool   // old access rule ID -> it trusted forwarded headers
 }
 
-// Converted is set when access rules were converted at start-up.
+// Converted returns the conversion done at startup, or nil.
 func (c *Controller) Converted() *LegacyConversion { return c.converted }
 
 func legacyEntries(ips, countries *map[string]string) []Entry {
@@ -124,7 +107,7 @@ func (c *Controller) convertLegacy(folder string) error {
 		allow := legacyEntries(old.WhiteListIP, old.WhiteListCountryCode)
 		blockOn := old.BlacklistEnabled && len(block) > 0
 		if old.ID == LegacyDefaultID && !blockOn && !old.WhitelistEnabled {
-			conv.IDMap[old.ID] = AllowAllID // restricted nothing
+			conv.IDMap[old.ID] = AllowAllID
 			continue
 		}
 		name := strings.TrimSpace(old.Name)
@@ -173,7 +156,7 @@ func (c *Controller) convertLegacy(folder string) error {
 		acls = append(acls, a)
 	}
 
-	// Write the new files, keeping objects already there
+	// Writes the new files, keeping existing objects
 	c.mu.Lock()
 	c.objects = map[string]*Object{}
 	if b, err := os.ReadFile(filepath.Join(c.Options.ConfigFolder, objectsFile)); err == nil {
@@ -204,7 +187,7 @@ func (c *Controller) convertLegacy(folder string) error {
 	for _, f := range files {
 		os.Remove(f)
 	}
-	os.Remove(folder) // only if empty
+	os.Remove(folder) // removed only if empty
 	c.converted = conv
 	c.Options.Logger.PrintAndLog("access", fmt.Sprintf("Converted %d access rule(s) to ACLs in %s", len(files), c.Options.ConfigFolder), nil)
 	return nil

@@ -17,10 +17,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Plugin Store
-*/
-
 // See https://github.com/aroz-online/zoraxy-official-plugins/blob/main/directories/index2.json for the standard format
 
 type DownloadablePlugin struct {
@@ -30,8 +26,7 @@ type DownloadablePlugin struct {
 	Source           string                   `json:"Source"`           //The plugin store index URL this plugin was fetched from
 }
 
-/* Plugin Store Index List Sync */
-//Update the plugin list from the plugin store URLs
+// UpdateDownloadablePluginList updates the plugin list from the plugin store URLs
 func (m *Manager) UpdateDownloadablePluginList() error {
 	//Get downloadable plugins from each of the plugin store URLS
 	newCache := []*DownloadablePlugin{}
@@ -40,7 +35,7 @@ func (m *Manager) UpdateDownloadablePluginList() error {
 	for _, url := range m.GetAllStoreURLs() {
 		pluginList, err := m.getPluginListFromURL(url)
 		if err != nil {
-			//One broken source should not prevent the other sources from syncing
+			// Continue with the other sources
 			lastErr = fmt.Errorf("failed to get plugin list from %s: %w", url, err)
 			m.Log("Failed to sync plugin list from "+url, err)
 			continue
@@ -64,7 +59,6 @@ func (m *Manager) UpdateDownloadablePluginList() error {
 
 // Get the plugin list from the URL
 func (m *Manager) getPluginListFromURL(url string) ([]*DownloadablePlugin, error) {
-	//Get the plugin list from the URL
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -87,7 +81,7 @@ func (m *Manager) getPluginListFromURL(url string) ([]*DownloadablePlugin, error
 		return nil, fmt.Errorf("failed to unmarshal plugin list from %s: %w", url, err)
 	}
 
-	// Filter out if IconPath is empty string, set it to "/img/plugin_icon.png"
+	// Default an empty IconPath to "/img/plugin_icon.png"
 	for _, plugin := range pluginList {
 		if strings.TrimSpace(plugin.IconPath) == "" {
 			plugin.IconPath = "/img/plugin_icon.png"
@@ -118,7 +112,6 @@ func (m *Manager) InstallPlugin(plugin *DownloadablePlugin) error {
 		return fmt.Errorf("plugin already installed: %s", plugin.PluginIntroSpect.ID)
 	}
 
-	// Create the plugin directory if it doesn't exist
 	err := os.MkdirAll(pluginDir, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create plugin directory: %w", err)
@@ -153,16 +146,13 @@ func (m *Manager) InstallPlugin(plugin *DownloadablePlugin) error {
 		return fmt.Errorf("failed to write plugin file: %w", err)
 	}
 
-	// Make the plugin executable
 	err = os.Chmod(pluginPath, 0755)
 	if err != nil {
 		out.Close()
 		return fmt.Errorf("failed to set executable permissions: %w", err)
 	}
 
-	//Ok, also download the icon if exists
-	//Note the IconPath might be a relative path pointing to the default
-	//icon on the webmin server, only download it if it is a full URL
+	// Download the icon if IconPath is a full URL
 	iconURL := strings.TrimSpace(plugin.IconPath)
 	if strings.HasPrefix(iconURL, "http://") || strings.HasPrefix(iconURL, "https://") {
 		err = downloadFileTo(iconURL, filepath.Join(pluginDir, "icon.png"))
@@ -170,7 +160,6 @@ func (m *Manager) InstallPlugin(plugin *DownloadablePlugin) error {
 			return fmt.Errorf("failed to download plugin icon: %w", err)
 		}
 	}
-	//Close the plugin exeutable
 	out.Close()
 
 	//Reload the plugin list
@@ -199,7 +188,6 @@ func (m *Manager) UninstallPlugin(pluginID string) error {
 	m.Options.Logger.PrintAndLog("plugin-manager", "Removing plugin in 3 seconds...", nil)
 	time.Sleep(3 * time.Second)
 
-	// Remove the plugin directory
 	err := os.RemoveAll(plugin.RootDir)
 	if err != nil {
 		return fmt.Errorf("failed to remove plugin directory: %w", err)
@@ -210,12 +198,7 @@ func (m *Manager) UninstallPlugin(pluginID string) error {
 	return nil
 }
 
-/*
-	Handlers for Plugin Store
-*/
-
 func (m *Manager) HandleListDownloadablePlugins(w http.ResponseWriter, r *http.Request) {
-	//List all downloadable plugins
 	plugins := m.ListDownloadablePlugins()
 	js, _ := json.Marshal(plugins)
 	utils.SendJSONResponse(w, string(js))
@@ -224,12 +207,10 @@ func (m *Manager) HandleListDownloadablePlugins(w http.ResponseWriter, r *http.R
 // HandleResyncPluginList is the handler for resyncing the plugin list from the plugin store URLs
 func (m *Manager) HandleResyncPluginList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		//Make sure this function require csrf token
 		utils.SendErrorResponse(w, "Method not allowed")
 		return
 	}
 
-	//Resync the plugin list from the plugin store URLs
 	err := m.UpdateDownloadablePluginList()
 	if err != nil {
 		utils.SendErrorResponse(w, "Failed to resync plugin list: "+err.Error())
@@ -259,7 +240,7 @@ func (m *Manager) HandleInstallPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Install the plugin (implementation depends on your system)
+	// Install the plugin
 	err = m.InstallPlugin(plugin)
 	if err != nil {
 		utils.SendErrorResponse(w, "Failed to install plugin: "+err.Error())
@@ -282,7 +263,7 @@ func (m *Manager) HandleUninstallPlugin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Uninstall the plugin (implementation depends on your system)
+	// Uninstall the plugin
 	err = m.UninstallPlugin(pluginID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Failed to uninstall plugin: "+err.Error())

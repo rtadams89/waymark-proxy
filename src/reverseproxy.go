@@ -24,7 +24,6 @@ import (
 )
 
 const (
-	//Todo: Move to dedicated module and def files
 	EXCEPTION_TYPE_PATH = 0x00
 	EXCEPTION_TYPE_IP   = 0x01
 )
@@ -166,8 +165,6 @@ func ReverseProxyInit() {
 	sysdb.Read("settings", "idleTimeout", &idleTimeout)
 	SystemWideLogger.Println("Proxy timeout settings loaded. Read header: " + strconv.Itoa(readHeaderTimeout) + "s, Write: " + strconv.Itoa(writeTimeout) + "s, Idle: " + strconv.Itoa(idleTimeout) + "s")
 
-	//The tuning knobs stay flag only, they exist for diagnosing HTTP/2 issues.
-	//The off switch is persisted as it doubles as a user facing workaround.
 	disableHttp2 := *proxyDisableHttp2
 	sysdb.Read("settings", "disableHttp2", &disableHttp2)
 
@@ -197,11 +194,7 @@ func ReverseProxyInit() {
 		SystemWideLogger.Println("Port 80 listener disabled")
 	}
 
-	/*
-		Create a new proxy object
-		The DynamicProxy is the parent of all reverse proxy handlers,
-		use for managemening and provide functions to access proxy handlers
-	*/
+	// Create the dynamic proxy, the parent of all reverse proxy handlers
 
 	dprouter, err := dynamicproxy.NewDynamicProxy(dynamicproxy.RouterOption{
 		HostUUID:           nodeUUID,
@@ -248,7 +241,7 @@ func ReverseProxyInit() {
 	}
 
 	dynamicProxyRouter = dprouter
-	dprouter.Option.UpstreamResultObserver = observeUpstreamResult //Custom fork: passive health monitoring
+	dprouter.Option.UpstreamResultObserver = observeUpstreamResult // passive health monitoring
 	// Signal that the router is ready
 	select {
 	case dynamicProxyRouterReady <- true:
@@ -256,11 +249,7 @@ func ReverseProxyInit() {
 		// Channel already has a value, skip
 	}
 
-	/*
-
-		Load all conf from files
-
-	*/
+	// Load all conf from files
 	confs, _ := filepath.Glob(CONF_HTTP_PROXY + "/*.config")
 	for _, conf := range confs {
 		err := LoadReverseProxyConfig(conf)
@@ -280,34 +269,29 @@ func ReverseProxyInit() {
 		dynamicProxyRouter.SetProxyRouteAsRoot(defaultRootRouter)
 	}
 
-	//Start Service
-	//Not sure why but delay must be added if you have another
-	//reverse proxy server in front of this service
+	// Start service (after a short delay)
 	if autoStartReverseProxy {
 		time.Sleep(300 * time.Millisecond)
 		dynamicProxyRouter.StartProxyService()
 		SystemWideLogger.Println("Dynamic Reverse Proxy service started")
 	}
 
-	//Create a uptime monitor service
-	//Custom fork: created here, empty, before the health checks that feed it
-	//start (it used to be set from a goroutine, racing with them and the API
-	//handlers); UpdateUptimeMonitorTargets below adds the targets and runs
-	//the first check in the background, once the health checks exist.
+	// Create the uptime monitor, empty; UpdateUptimeMonitorTargets below adds
+	// the targets and runs the first check
 	uptimeMonitor, _ = uptime.NewUptimeMonitor(&uptime.Config{
 		Targets:           []*uptime.Target{},
 		Interval:          300,                                //5 minutes
 		MaxRecordsStore:   288,                                //1 day
-		OnlineStateNotify: uptimeNotifyRespectingHealthChecks, //Notify the load balancer for online state (custom fork: skips health-checked upstreams)
-		Logger:            SystemWideLogger,                   //Logger
-		Verbal:            *development_build,                 //Enable verbose logging in dev mode
+		OnlineStateNotify: uptimeNotifyRespectingHealthChecks, // Notify the load balancer for online state (skips health-checked upstreams)
+		Logger:            SystemWideLogger,
+		Verbal:            *development_build, //Enable verbose logging in dev mode
 	})
 	SystemWideLogger.Println("Uptime Monitor background service started")
 	initHealthChecks()
-	initAssetCache()     //Custom fork: static file cache memory limit
-	initHA()             //Custom fork: keepalived heartbeat and role
-	applyACLConversion() //Custom fork: proxy rules follow access rules converted to ACLs (acl_api_custom.go)
-	initAdminRule()      //Custom fork: the admin console rule (admin_rule_custom.go)
+	initAssetCache()     // static file cache memory limit
+	initHA()             // keepalived heartbeat and role
+	applyACLConversion() // proxy rules follow access rules converted to ACLs
+	initAdminRule()      // the admin console rule
 	UpdateUptimeMonitorTargets()
 
 }
@@ -329,8 +313,6 @@ func ReverseProxyHandleOnOff(w http.ResponseWriter, r *http.Request) {
 	} else {
 		//Check if it is loopback
 		if dynamicProxyRouter.IsProxiedSubdomain(r) {
-			//Loopback routing. Turning it off will make the user lost control
-			//of the whole system. Do not allow shutdown
 			utils.SendErrorResponse(w, "You are using this page through Waymark's proxy, so stopping it would cut off this page. Stop it from the admin console's own address (port "+adminConsolePort()+") or restart Waymark.")
 			return
 		}
@@ -389,13 +371,13 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 	//Get access rule ID
 	accessRuleID, _ := utils.PostPara(r, "access")
 	if accessRuleID == "" {
-		accessRuleID = access.AllowAllID //Custom fork: ACLs
+		accessRuleID = access.AllowAllID
 	}
 	if !accessController.ACLExists(accessRuleID) {
 		utils.SendErrorResponse(w, "the selected ACL does not exist")
 		return
 	}
-	//Custom fork: trust the client address forwarded by trusted proxies
+	// Trust the client address forwarded by trusted proxies
 	trustProxyHeaders, _ := utils.PostBool(r, "trustProxyHeaders")
 
 	// Require basic auth?
@@ -488,7 +470,7 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 	tags = filteredTags
 
-	// Custom fork: the address the rule answers on, "" for every address (listenip_custom.go)
+	// The address the rule answers on, "" for every address
 	listenIPStr, _ := utils.PostPara(r, "listenip")
 	listenIP, err := normalizeListenIP(strings.TrimSpace(listenIPStr), "")
 	if err != nil {
@@ -629,7 +611,7 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 			EnableTimeoutRefreshOnActivity: enableTimeoutRefreshOnActivity,
 		}
 
-		thisProxyEndpoint.HealthCheck = newRuleHealthCheck(enableUtm, utmURI) //Custom fork: "Health checks" option on the create form
+		thisProxyEndpoint.HealthCheck = newRuleHealthCheck(enableUtm, utmURI) // "Health checks" option on the create form
 		preparedEndpoint, err := dynamicProxyRouter.PrepareProxyRoute(&thisProxyEndpoint)
 		if err != nil {
 			utils.SendErrorResponse(w, "unable to prepare proxy route to target endpoint: "+err.Error())
@@ -713,12 +695,8 @@ func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-/*
-ReverseProxyHandleEditEndpoint handles proxy endpoint edit
-(host only, for root use Default Site page to edit)
-This endpoint do not handle basic auth credential update.
-The credential will be loaded from old config and reused
-*/
+// ReverseProxyHandleEditEndpoint handles proxy endpoint edit (host only).
+// Basic auth credentials are kept from the old config.
 func ReverseProxyHandleEditEndpoint(w http.ResponseWriter, r *http.Request) {
 	rootNameOrMatchingDomain, err := utils.PostPara(r, "rootname")
 	if err != nil {
@@ -728,8 +706,7 @@ func ReverseProxyHandleEditEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	useStickySession, _ := utils.PostBool(r, "ss")
 
-	//Custom fork: load balancing method (loadbalance/leastconn_custom.go);
-	//not sent: keep the current one
+	// Load balancing method; kept when not sent
 	lbMode, lbErr := utils.PostPara(r, "lbmode")
 	if lbErr == nil && !loadbalance.ValidLoadBalancingMode(lbMode) {
 		utils.SendErrorResponse(w, "unknown load balancing method")
@@ -888,7 +865,7 @@ func ReverseProxyHandleEditEndpoint(w http.ResponseWriter, r *http.Request) {
 	newProxyEndpoint.BlockAICrawlers = blockAICrawlers
 	newProxyEndpoint.MitigationAction = mitigationAction
 	newProxyEndpoint.Tags = tags
-	//Custom fork: trust the client address forwarded by trusted proxies (sent by the editor)
+	// Trust the client address forwarded by trusted proxies (sent by the editor)
 	if _, err := utils.PostPara(r, "trustProxyHeaders"); err == nil {
 		newProxyEndpoint.TrustProxyHeaders, _ = utils.PostBool(r, "trustProxyHeaders")
 	}
@@ -963,9 +940,6 @@ func ReverseProxyHandleAlias(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "Invalid ep given")
 		return
 	}
-
-	//No need to check for type as root (/) can be set to default route
-	//and hence, you will not need alias
 
 	//Load the previous alias from current proxy rules
 	targetProxyEntry, err := dynamicProxyRouter.LoadProxy(rootNameOrMatchingDomain)
@@ -1109,7 +1083,6 @@ func ReverseProxyHandleSetHostname(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if newHostname == "/" {
-		//Reserevd, reutrn error
 		utils.SendErrorResponse(w, "Invalid new hostname: system reserved path")
 		return
 	}
@@ -1192,14 +1165,8 @@ func DeleteProxyEndpoint(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-/*
-Handle update request for basic auth credential
-Require paramter: ep (Endpoint) and pytype (proxy Type)
-if request with GET, the handler will return current credentials
-on this endpoint by its username
-
-if request is POST, the handler will write the results to proxy config
-*/
+// UpdateProxyBasicAuthCredentials returns the endpoint's credentials (GET) or
+// writes new ones to the proxy config (POST). Parameters: ep and pytype.
 func UpdateProxyBasicAuthCredentials(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		ep, err := utils.GetPara(r, "ep")
@@ -1326,7 +1293,7 @@ func ListProxyBasicAuthExceptionPaths(w http.ResponseWriter, r *http.Request) {
 	//List all the exception paths for this proxy
 	results := targetProxy.AuthenticationProvider.BasicAuthExceptionRules
 	if results == nil {
-		//It is a config from a really old version of zoraxy. Overwrite it with empty array
+		// Old config without exception rules
 		results = []*dynamicproxy.BasicAuthExceptionRule{}
 	}
 	js, _ := json.Marshal(results)
@@ -1442,7 +1409,7 @@ func AddProxyBasicAuthExceptionPaths(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Only trust proxy headers when explicitly requested. Defaults to false (secure).
+		// Trust proxy headers only when requested
 		useTrustedProxy, _ := utils.PostBool(r, "trustproxy")
 
 		targetProxy.AuthenticationProvider.BasicAuthExceptionRules = append(targetProxy.AuthenticationProvider.BasicAuthExceptionRules, &dynamicproxy.BasicAuthExceptionRule{
@@ -1498,7 +1465,7 @@ func RemoveProxyBasicAuthExceptionPaths(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	case EXCEPTION_TYPE_PATH:
-		fallthrough //For backward compatibility
+		fallthrough
 	default:
 		typeToCheck = dynamicproxy.AuthExceptionType_Paths
 		//Check if the prefix is valid
@@ -1526,7 +1493,7 @@ func RemoveProxyBasicAuthExceptionPaths(w http.ResponseWriter, r *http.Request) 
 				matchingExists = true
 			}
 		case dynamicproxy.AuthExceptionType_Paths:
-			fallthrough //For backward compatibility
+			fallthrough
 		default:
 			if thisExceptionalRule.PathPrefix != matchingPrefix {
 				newExceptionRuleList = append(newExceptionRuleList, thisExceptionalRule)
@@ -1776,7 +1743,6 @@ func ReverseProxyStatus(w http.ResponseWriter, r *http.Request) {
 
 // Toggle a certain rule on and off
 func ReverseProxyToggleRuleSet(w http.ResponseWriter, r *http.Request) {
-	//No need to check for type as root cannot be turned off
 	ep, err := utils.PostPara(r, "ep")
 	if err != nil {
 		utils.SendErrorResponse(w, "invalid ep given")
@@ -2171,8 +2137,7 @@ func HandleIncomingPortSet(w http.ResponseWriter, r *http.Request) {
 
 	//Check if it is identical as proxy root (recursion!)
 	if dynamicProxyRouter.Root == nil || rootProxyTargetOrigin == "" {
-		//Check if proxy root is set before checking recursive listen
-		//Fixing issue #43
+		// Proxy root must be set
 		utils.SendErrorResponse(w, "Set Proxy Root before changing inbound port")
 		return
 	}
@@ -2188,7 +2153,7 @@ func HandleIncomingPortSet(w http.ResponseWriter, r *http.Request) {
 	//Stop and change the setting of the reverse proxy service
 	if dynamicProxyRouter.Running {
 		dynamicProxyRouter.Option.Port = newIncomingPortInt
-		time.Sleep(300 * time.Millisecond) //Fixed start fail issue
+		time.Sleep(300 * time.Millisecond)
 		dynamicProxyRouter.Restart()
 	} else {
 		//Only change setting but not starting the proxy service
@@ -2200,8 +2165,7 @@ func HandleIncomingPortSet(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-/* Handle Custom Header Rules */
-//List all the custom header defined in this proxy rule
+// HandleCustomHeaderList lists all the custom headers defined in this proxy rule
 
 func HandleCustomHeaderList(w http.ResponseWriter, r *http.Request) {
 	epType, err := utils.GetPara(r, "type")
@@ -2308,7 +2272,7 @@ func HandleCustomHeaderAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Save it (no need reload as header are not handled by dpcore)
+	// Save it
 	err = SaveReverseProxyConfig(targetProxyEndpoint)
 	if err != nil {
 		utils.SendErrorResponse(w, "unable to save update")
@@ -2378,8 +2342,7 @@ func HandleHostOverwrite(w http.ResponseWriter, r *http.Request) {
 		//Set the new host header
 		newHostname, _ := utils.PostPara(r, "hostname")
 
-		//As this will require change in the proxy instance we are running
-		//we need to clone and respawn this proxy endpoint
+		// Clone and respawn this proxy endpoint
 		newProxyEndpoint := targetProxyEndpoint.Clone()
 		newProxyEndpoint.HeaderRewriteRules.RequestHostOverwrite = newHostname
 		//Save proxy endpoint
@@ -2450,8 +2413,7 @@ func HandleHopByHop(w http.ResponseWriter, r *http.Request) {
 		//Set the hop by hop header state
 		enableHopByHopRemover, _ := utils.PostBool(r, "removeHopByHop")
 
-		//As this will require change in the proxy instance we are running
-		//we need to clone and respawn this proxy endpoint
+		// Clone and respawn this proxy endpoint
 		newProxyEndpoint := targetProxyEndpoint.Clone()
 		//Storage file use false as default, so disable removal = not enable remover
 		newProxyEndpoint.HeaderRewriteRules.DisableHopByHopHeaderRemoval = !enableHopByHopRemover
@@ -2524,8 +2486,7 @@ func HandleUserAgent(w http.ResponseWriter, r *http.Request) {
 		//Set the user agent header state
 		enableUserAgentRemover, _ := utils.PostBool(r, "removeUserAgent")
 
-		//As this will require change in the proxy instance we are running
-		//we need to clone and respawn this proxy endpoint
+		// Clone and respawn this proxy endpoint
 		newProxyEndpoint := targetProxyEndpoint.Clone()
 		//Storage file use false as default, so disable removal = not enable remover
 		newProxyEndpoint.HeaderRewriteRules.DisableUserAgentHeaderRemoval = !enableUserAgentRemover
@@ -2841,7 +2802,7 @@ func HandleListSecondaryListeners(w http.ResponseWriter, r *http.Request) {
 
 	commonPorts := dynamicProxyRouter.GetCommonListeningPorts()
 
-	// Convert map to sorted array for better display
+	// Convert map to sorted array
 	var listeners []ListenerInfo
 	for addr, domains := range commonPorts {
 		listeners = append(listeners, ListenerInfo{
@@ -2850,7 +2811,7 @@ func HandleListSecondaryListeners(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Sort by address for consistent display
+	// Sort by address
 	sort.Slice(listeners, func(i, j int) bool {
 		return listeners[i].Address < listeners[j].Address
 	})

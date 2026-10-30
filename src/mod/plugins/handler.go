@@ -68,14 +68,12 @@ func (m *Manager) HandleAddPluginToGroup(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	//Add the plugin to the group
 	err = m.AddPluginToGroup(tag, pluginID)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
-	//Save the plugin groups to file
 	err = m.SavePluginGroupsToFile()
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
@@ -102,14 +100,12 @@ func (m *Manager) HandleRemovePluginFromGroup(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	//Remove the plugin from the group
 	err = m.RemovePluginFromGroup(tag, pluginID)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
-	//Save the plugin groups to file
 	err = m.SavePluginGroupsToFile()
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
@@ -130,14 +126,12 @@ func (m *Manager) HandleRemovePluginGroup(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	//Remove the plugin group
 	err = m.RemovePluginGroup(tag)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
-	//Save the plugin groups to file
 	err = m.SavePluginGroupsToFile()
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
@@ -262,7 +256,7 @@ func (m *Manager) HandleRebuildPlugin(w http.ResponseWriter, r *http.Request) {
 		// Send detailed error with build output
 		response := map[string]interface{}{
 			"error":        err.Error(),
-			"build_output": err.Error(), // The error already contains the build output
+			"build_output": err.Error(),
 		}
 		js, _ := json.Marshal(response)
 		w.Header().Set("Content-Type", "application/json")

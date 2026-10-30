@@ -8,14 +8,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Handler.go
-
-	Handler for web server options change
-	web server is directly listening to the TCP port
-	handlers in this script are for setting change only
-*/
-
 type StaticWebServerStatus struct {
 	ListeningPort               int
 	EnableDirectoryListing      bool
@@ -39,7 +31,7 @@ func (ws *WebServer) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
 		webdavRunning = ws.WebDAV.IsRunning()
 	}
 
-	// Get custom credentials username (not password for security)
+	// Get custom credentials username
 	customUsername := ""
 	ws.option.Sysdb.Read("webserv", "webdavCustomUsername", &customUsername)
 
@@ -112,7 +104,7 @@ func (ws *WebServer) SetDisableListenToAllInterface(w http.ResponseWriter, r *ht
 	// Update the option in the web server instance
 	ws.option.DisableListenToAllInterface = disableListen
 
-	// If the server is running and the setting is changed, we need to restart the server
+	// Restart the server if it is running
 	if ws.IsRunning() {
 		err = ws.Restart()
 		if err != nil {

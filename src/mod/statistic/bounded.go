@@ -6,16 +6,11 @@ import (
 	"sync/atomic"
 )
 
-// The runtime cap comes from CollectorOption.MaxEntriesPerStatMap (driven by
-// the -stats_max_entries CLI flag). 0 disables the cap entirely and uses the
-// upstream Load → check → Store path (see unboundedIncr in statistic.go).
+// The cap comes from CollectorOption.MaxEntriesPerStatMap (-stats_max_entries).
+// 0 disables it (unboundedIncr in statistic.go).
 //
-// When enabled, the cap is a soft cap: a trim runs when a new-key insert pushes
-// the map past it, dropping the 10% of entries with the lowest request counts
-// to make room. This bounds memory growth driven by high-cardinality request
-// inputs (many unique client IPs, varied User-Agent/Referer strings, or many
-// distinct URL paths) while preserving the most frequently observed entries —
-// the data the dashboards actually surface.
+// The cap is soft: when a new-key insert pushes the map past it, the 10% of
+// entries with the lowest request counts are dropped.
 //
 // Recommended value when enabling: 20000 (~32MB worst case across all 8 maps).
 
@@ -64,10 +59,7 @@ func newBoundedCounters() boundedCounters {
 // capN entries. New keys past the cap trigger a trim that drops the entries
 // with the lowest request counts down to ~90% of capN. Safe for concurrent use.
 func boundedIncr(m *sync.Map, b *boundedCounter, key string, capN int) {
-	// LoadOrStore atomically inserts {key: 1} if absent; otherwise returns
-	// the existing value. The new-key branch is race-free; the increment
-	// branch matches the pre-existing non-atomic Load+Store pattern in
-	// RecordRequest (fixing that read-modify-write race is out of scope).
+	// Increment; continue only for a new key
 	if !incrKey(m, key) {
 		return
 	}
@@ -77,10 +69,8 @@ func boundedIncr(m *sync.Map, b *boundedCounter, key string, capN int) {
 		return
 	}
 
-	// Try to acquire the trim lock without blocking. If another goroutine
-	// is already trimming, our insert lands and that goroutine trims again
-	// after it unlocks (the loop below), so inserts made during a trim
-	// cannot leave the map over the cap.
+	// Trim while over the cap; a goroutine that cannot take the trim lock
+	// leaves the trim to the one holding it
 	for int(b.size.Load()) > capN {
 		if !b.trimMu.TryLock() {
 			return
@@ -112,8 +102,7 @@ func evictLeastFrequent(m *sync.Map, b *boundedCounter, capN int) {
 		target = 1
 	}
 	if len(entries) <= target {
-		// Range observed fewer entries than expected (concurrent deletes
-		// from another path, or the size counter overshot). Reconcile.
+		// Fewer entries than expected: reconcile the size counter
 		b.size.Store(int64(len(entries)))
 		return
 	}

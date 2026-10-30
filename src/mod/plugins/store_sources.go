@@ -10,14 +10,8 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Plugin Store Sources
-
-	Zoraxy ships with a built-in list of official plugin store index URLs
-	(set in ManagerOptions.PluginStoreURLs on startup). Users can register
-	additional community plugin store index URLs, which are persisted
-	in the database and merged with the official ones on sync.
-*/
+// Plugin store sources: the official index URLs (ManagerOptions.PluginStoreURLs)
+// plus user-registered community index URLs stored in the database.
 
 const dbKeyCustomStoreURLs = "custom_store_urls"
 
@@ -123,10 +117,6 @@ func (m *Manager) RemoveStoreSource(sourceURL string) error {
 	}
 	return m.saveCustomStoreURLs(newURLs)
 }
-
-/*
-	Handlers for Plugin Store Sources
-*/
 
 // HandleListStoreSources lists all the registered plugin store sources
 func (m *Manager) HandleListStoreSources(w http.ResponseWriter, r *http.Request) {

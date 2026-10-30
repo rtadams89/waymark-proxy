@@ -1,13 +1,6 @@
 package auth
 
-/*
-	password.go: password hashing.
-
-	New and changed passwords are stored as bcrypt hashes. Older versions
-	stored an unsalted SHA-512 hex digest; those are still accepted, and
-	callers that can write the user record replace them with bcrypt after a
-	successful check (see PasswordMatches' upgrade result).
-*/
+// Password hashing with bcrypt; unsalted SHA-512 digests are also accepted.
 
 import (
 	"crypto/sha512"
@@ -38,9 +31,8 @@ func IsBcryptHash(stored string) bool {
 	return strings.HasPrefix(stored, "$2a$") || strings.HasPrefix(stored, "$2b$") || strings.HasPrefix(stored, "$2y$")
 }
 
-// PasswordMatches checks raw against a stored hash. upgrade is true when the
-// password matched an old-style hash that should be replaced with
-// HashPassword(raw).
+// PasswordMatches checks raw against a stored hash; upgrade is true when it
+// matched an unsalted SHA-512 digest.
 func PasswordMatches(stored, raw string) (ok bool, upgrade bool) {
 	if stored == "" {
 		return false, false
@@ -54,18 +46,13 @@ func PasswordMatches(stored, raw string) (ok bool, upgrade bool) {
 	return false, false
 }
 
-// legacyPasswordDigest is the unsalted SHA-512 digest used before 2.2.2. It
-// is only computed to check passwords stored that way.
+// legacyPasswordDigest returns the unsalted SHA-512 hex digest of raw.
 func legacyPasswordDigest(raw string) string {
 	h := sha512.Sum512([]byte(raw))
 	return hex.EncodeToString(h[:])
 }
 
-/*
-	Per-request checks (HTTP basic auth on proxy rules, WebDAV) run bcrypt
-	once per credential and then remember the result for a few minutes, so
-	browsers re-sending credentials on every request stay fast.
-*/
+/* Verified passwords are remembered for verifiedPasswordTTL per stored hash */
 
 const verifiedPasswordTTL = 5 * time.Minute
 const maxVerifiedPasswords = 1024
@@ -79,8 +66,8 @@ var verifiedPasswords sync.Map // stored hash -> verifiedPassword
 var verifiedPasswordCount int64
 var verifiedPasswordMu sync.Mutex
 
-// PasswordMatchesCached is PasswordMatches for checks repeated on every
-// request. It does not report upgrades.
+// PasswordMatchesCached is PasswordMatches with verified results cached; it
+// does not report upgrades.
 func PasswordMatchesCached(stored, raw string) bool {
 	if v, ok := verifiedPasswords.Load(stored); ok {
 		vp := v.(verifiedPassword)

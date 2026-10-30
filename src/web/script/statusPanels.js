@@ -1,16 +1,12 @@
 /*
-    statusPanels.js (custom fork)
-
     Lets each status page panel be turned on or off. Panels are located by
-    stable element ids inside them, so components/status.html only needs
-    this script included. Choices are saved server-side
+    stable element ids inside them. Choices are saved server-side
     (/api/custom/statusPanels) and apply in every browser.
 
     The server status banner (with Start / Stop) is always shown.
 */
 (function(){
-    // def: shown when the user has not chosen yet. GeoIP-based panels
-    // default to hidden for this fork's internal-only deployment.
+    // def: shown when the user has not chosen yet
     const PANELS = [
         { id: "flowDiagram",      group: "Overview",       label: "Traffic flow diagram",           def: true,  find: () => $("#trafficFlowDiagramWrapper").closest(".statusFlowCol") },
         { id: "networkIO",        group: "Overview",       label: "Realtime network input / output", def: true,  find: () => $("#status .statusNetCol") },
@@ -103,9 +99,8 @@
         </div>`;
         $("#serverstatus").closest(".standardContainer").after(html);
 
-        // index.html re-initializes every .ui.checkbox after the components
-        // load, which drops any onChange setting, so listen to the input's
-        // native change event instead (delegated, survives re-initialization)
+        // Listen to the input's native change event (delegated, survives
+        // re-initialization of .ui.checkbox)
         $(document).off("change.zrPanels").on("change.zrPanels", ".zrPanelToggle input", function(){
             if (settingState){
                 return; // programmatic "set checked" also fires change; only save real clicks
@@ -162,7 +157,7 @@
         #status .ui.grid > .column.zrFullWidth{ width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }
     `).appendTo("head");
 
-    // Apply defaults immediately (avoids a flash of hidden panels), then the saved choices
+    // Apply defaults immediately, then the saved choices
     apply();
     $.get("/api/custom/statusPanels", function(data){
         if (data && data.error == undefined && typeof data === "object"){

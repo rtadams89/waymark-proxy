@@ -17,8 +17,7 @@ import (
 //go:embed user.html
 var userPortalHTML []byte
 
-// handleUserPortal serves the user self-service portal page.
-// The user must already hold a valid SSO gateway session cookie.
+// handleUserPortal serves the user portal to users with a gateway session.
 func (gs *GatewayServer) handleUserPortal(w http.ResponseWriter, r *http.Request) {
 	if gs.ServeGatewayDisabled(w, r) {
 		return
@@ -148,8 +147,7 @@ func (gs *GatewayServer) handleChangePassword(w http.ResponseWriter, r *http.Req
 	utils.SendOK(w)
 }
 
-// handleSetupTOTP generates a new TOTP secret and returns the QR code.
-// The secret is stored as pending until the user confirms it with handleEnableTOTP.
+// handleSetupTOTP generates a pending TOTP secret and returns its QR code.
 func (gs *GatewayServer) handleSetupTOTP(w http.ResponseWriter, r *http.Request, username string) {
 	if r.Method != http.MethodPost {
 		utils.SendErrorResponse(w, "method not allowed")
@@ -184,7 +182,6 @@ func (gs *GatewayServer) handleSetupTOTP(w http.ResponseWriter, r *http.Request,
 		gs.router.pendingTOTPSetup.Delete(username)
 	})
 
-	// Render QR code PNG and base64-encode it for inline display
 	var qrDataURL string
 	if img, imgErr := key.Image(200, 200); imgErr == nil {
 		var buf bytes.Buffer

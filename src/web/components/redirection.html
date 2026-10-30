@@ -144,8 +144,7 @@
     */
 
     $(".checkbox").checkbox();
-    // Scope to this page's accordion only; .advanceSettings is reused by
-    // other webmin components loaded dynamically via ajax.
+    // Scope to this page's accordion only
     $("#redirectionAdvanceSettings").accordion();
     function resetForm() {
       document.getElementById("rurl").value = "";

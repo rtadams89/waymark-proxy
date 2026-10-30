@@ -9,20 +9,19 @@ import (
 	"time"
 )
 
-// CacheStatusHeader is added to responses for static files on cached rules:
-// HIT, REVALIDATED, MISS (fetched and stored) or BYPASS (fetched, not storable).
+// CacheStatusHeader is set on static file responses of cached rules: HIT,
+// REVALIDATED, MISS (fetched and stored) or BYPASS (fetched, not storable).
 const CacheStatusHeader = "X-Waymark-Cache"
 
-// BeginOptions carries request facts the proxy knows and the cache does not.
+// BeginOptions are request details from the proxy.
 type BeginOptions struct {
-	// The request's Authorization header holds credentials for Zoraxy's own
-	// basic auth (already checked), not for the upstream.
+	// The Authorization header holds the proxy's own basic auth credentials
 	AuthorizationIsZoraxys bool
 }
 
-// Session handles one request on a rule with caching on. It either served
-// the request from memory (Served), or it wraps the client's
-// ResponseWriter so the upstream's response can be stored on the way past.
+// Session handles one request on a rule with caching on: it serves the
+// request from memory, or wraps the client's ResponseWriter to store the
+// upstream's response.
 type Session struct {
 	store    *Store
 	cfg      *Config
@@ -40,7 +39,7 @@ type Session struct {
 	revalidate  *entry // stored copy being revalidated with a conditional request
 	wroteHeader bool
 	status      int
-	intercept   bool // the upstream answered our conditional request with 304
+	intercept   bool // the upstream answered the conditional request with 304
 	interceptH  http.Header
 	static      bool
 	capture     bool
@@ -48,8 +47,8 @@ type Session struct {
 	upstreamErr error
 }
 
-// Begin starts handling r for a rule. It returns nil when the request is not
-// a cache candidate (the proxy then works exactly as without caching).
+// Begin starts handling r for a rule; nil when the request is not a cache
+// candidate.
 func (s *Store) Begin(w http.ResponseWriter, r *http.Request, rule string, cfg *Config, opts BeginOptions) *Session {
 	if s == nil || !cfg.On() || r.URL == nil {
 		return nil
@@ -61,12 +60,12 @@ func (s *Store) Begin(w http.ResponseWriter, r *http.Request, rule string, cfg *
 		return nil
 	}
 	if r.Header.Get("Authorization") != "" && !opts.AuthorizationIsZoraxys {
-		return nil // per-user credentials for the upstream: never share
+		return nil // per-user credentials for the upstream
 	}
 	ext := strings.TrimPrefix(strings.ToLower(path.Ext(r.URL.Path)), ".")
 	extMatch := ext != "" && cfg.hasExtension(ext)
 	if ext != "" && !extMatch {
-		return nil // a page, API call or file type this rule does not cache
+		return nil // not a cached file type
 	}
 	if ext == "" && !cfg.MatchContentTypes {
 		return nil
@@ -87,13 +86,13 @@ func (s *Store) Begin(w http.ResponseWriter, r *http.Request, rule string, cfg *
 		return sess
 	}
 	if r.Method == http.MethodHead || r.Header.Get("Range") != "" {
-		return nil // only full GET responses are stored
+		return nil
 	}
 
 	up := r.Clone(r.Context())
 	if extMatch || stored != nil {
-		// Fetch the full file for the cache; the client's own conditional
-		// headers are answered from the stored copy instead
+		// Fetches the full file; client conditionals are answered from the
+		// stored copy
 		for _, h := range []string{"If-None-Match", "If-Modified-Since", "If-Range"} {
 			up.Header.Del(h)
 		}
@@ -124,8 +123,8 @@ func (c *Session) ServedStatus() int { return c.servedStatus }
 // client's.
 func (c *Session) UpstreamRequest() *http.Request { return c.up }
 
-// SetUpstreamResult records the proxy's outcome; a response is only stored
-// if the transfer completed without error. Safe on a nil Session.
+// SetUpstreamResult records the proxy's outcome; the response is stored only
+// if it completed without error.
 func (c *Session) SetUpstreamResult(statusCode int, err error) {
 	if c != nil {
 		c.upstreamErr = err
@@ -144,7 +143,7 @@ func (c *Session) WriteHeader(code int) {
 	c.status = code
 	h := c.w.Header()
 	if code == http.StatusNotModified && c.revalidate != nil {
-		// Unchanged: keep this from the client and serve the stored copy in Finish
+		// Unchanged: serves the stored copy in Finish
 		c.intercept = true
 		c.interceptH = h.Clone()
 		return
@@ -198,7 +197,7 @@ func (c *Session) Flush() {
 func (c *Session) Unwrap() http.ResponseWriter { return c.w }
 
 // Finish stores the captured response, or serves the stored copy after a
-// 304. Call it after the proxy has finished writing the response.
+// 304.
 func (c *Session) Finish() {
 	if c == nil || c.served {
 		return
@@ -213,7 +212,7 @@ func (c *Session) Finish() {
 		}
 		c.store.refresh(c.revalidate, c.interceptH, now.Add(freshnessLifetime(merged, now, c.defaultTTL())))
 		if notStorableReason(merged) != "" {
-			c.store.remove(c.revalidate) // still valid for this response, but no longer cacheable
+			c.store.remove(c.revalidate) // no longer cacheable
 		}
 		clear(c.w.Header())
 		c.store.serve(c.w, c.r, c.revalidate, "REVALIDATED", func(st *RuleStats) { st.Revalidated++ })

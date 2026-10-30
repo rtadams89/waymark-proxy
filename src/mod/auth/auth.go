@@ -1,10 +1,5 @@
 package auth
 
-/*
-
-	author: tobychui
-*/
-
 import (
 	"crypto/rand"
 	"errors"
@@ -18,7 +13,6 @@ import (
 )
 
 type AuthAgent struct {
-	//Session related
 	SessionName             string
 	SessionStore            *sessions.CookieStore
 	Database                *db.Database
@@ -26,7 +20,6 @@ type AuthAgent struct {
 	Logger                  *logger.Logger
 }
 
-// Constructor
 func NewAuthenticationAgent(sessionName string, key []byte, sysdb *db.Database, allowReg bool, systemLogger *logger.Logger, loginRedirectionHandler func(http.ResponseWriter, *http.Request)) *AuthAgent {
 	store := sessions.NewCookieStore(key)
 	store.Options.HttpOnly = true
@@ -37,7 +30,6 @@ func NewAuthenticationAgent(sessionName string, key []byte, sysdb *db.Database, 
 		panic(err)
 	}
 
-	//Create a new AuthAgent object
 	newAuthAgent := AuthAgent{
 		SessionName:             sessionName,
 		SessionStore:            store,
@@ -46,7 +38,6 @@ func NewAuthenticationAgent(sessionName string, key []byte, sysdb *db.Database, 
 		Logger:                  systemLogger,
 	}
 
-	//Return the authAgent
 	return &newAuthAgent
 }
 
@@ -69,57 +60,45 @@ func GetSessionKey(sysdb *db.Database, logger *logger.Logger) (string, error) {
 	return sessionKey, nil
 }
 
-// This function will handle an http request and redirect to the given login address if not logged in
+// HandleCheckAuth calls handler if the request is logged in, or the login
+// redirection handler.
 func (a *AuthAgent) HandleCheckAuth(w http.ResponseWriter, r *http.Request, handler func(http.ResponseWriter, *http.Request)) {
 	if a.CheckAuth(r) {
-		//User already logged in
 		handler(w, r)
 	} else {
-		//User not logged in
 		a.LoginRedirectionHandler(w, r)
 	}
 }
 
-// Handle login request, require POST username and password
+// HandleLogin logs in with the posted username and password.
 func (a *AuthAgent) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
-	//Get username from request using POST mode
 	username, err := utils.PostPara(r, "username")
 	if err != nil {
-		//Username not defined
 		a.Logger.PrintAndLog("auth", r.RemoteAddr+" trying to login with username: "+username, nil)
 		utils.SendErrorResponse(w, "Username not defined or empty.")
 		return
 	}
 
-	//Get password from request using POST mode
 	password, err := utils.PostPara(r, "password")
 	if err != nil {
-		//Password not defined
 		utils.SendErrorResponse(w, "Password not defined or empty.")
 		return
 	}
 
-	//Get rememberme settings
 	rememberme := false
 	rmbme, _ := utils.PostPara(r, "rmbme")
 	if rmbme == "true" {
 		rememberme = true
 	}
 
-	//Check the database and see if this user is in the database
 	passwordCorrect, rejectionReason := a.ValidateUsernameAndPasswordWithReason(username, password)
-	//The database contain this user information. Check its password if it is correct
 	if passwordCorrect {
-		//Password correct
-		// Set user as authenticated
 		a.LoginUserByRequest(w, r, username, rememberme)
 
-		//Print the login message to console
 		a.Logger.PrintAndLog("auth", username+" logged in.", nil)
 		utils.SendOK(w)
 	} else {
-		//Password incorrect
 		a.Logger.PrintAndLog("auth", username+" login request rejected: "+rejectionReason, nil)
 
 		utils.SendErrorResponse(w, rejectionReason)
@@ -132,12 +111,10 @@ func (a *AuthAgent) ValidateUsernameAndPassword(username string, password string
 	return succ
 }
 
-// validate the username and password, return reasons if the auth failed
 func (a *AuthAgent) ValidateUsernameAndPasswordWithReason(username string, password string) (bool, string) {
 	var passwordInDB string
 	err := a.Database.Read("auth", "passhash/"+username, &passwordInDB)
 	if err != nil {
-		//User not found or db exception
 		a.Logger.PrintAndLog("auth", username+" login with incorrect password", nil)
 		return false, "Invalid username or password"
 	}
@@ -147,7 +124,7 @@ func (a *AuthAgent) ValidateUsernameAndPasswordWithReason(username string, passw
 		return false, "Invalid username or password"
 	}
 	if upgrade {
-		// Replace the old unsalted hash now that the password is known
+		// Replaces the old unsalted hash
 		if newHash, err := HashPassword(password); err == nil {
 			if err := a.Database.Write("auth", "passhash/"+username, newHash); err != nil {
 				a.Logger.PrintAndLog("auth", "Could not upgrade the password hash of "+username, err)
@@ -157,7 +134,7 @@ func (a *AuthAgent) ValidateUsernameAndPasswordWithReason(username string, passw
 	return true, ""
 }
 
-// Login the user by creating a valid session for this user
+// LoginUserByRequest creates a session for username.
 func (a *AuthAgent) LoginUserByRequest(w http.ResponseWriter, r *http.Request, username string, rememberme bool) {
 	session, _ := a.SessionStore.Get(r, a.SessionName)
 
@@ -165,7 +142,6 @@ func (a *AuthAgent) LoginUserByRequest(w http.ResponseWriter, r *http.Request, u
 	session.Values["username"] = username
 	session.Values["rememberMe"] = rememberme
 
-	//Check if remember me is clicked. If yes, set the maxage to 1 week.
 	if rememberme {
 		session.Options = newSessionOptions(r, 3600*24*7) //One week
 	} else {
@@ -184,7 +160,7 @@ func newSessionOptions(r *http.Request, maxAge int) *sessions.Options {
 	}
 }
 
-// Handle logout, reply OK after logged out. WILL NOT DO REDIRECTION
+// HandleLogout logs out and replies OK.
 func (a *AuthAgent) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	username, err := a.GetUserName(w, r)
 	if err != nil {
@@ -194,7 +170,6 @@ func (a *AuthAgent) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	if username != "" {
 		a.Logger.PrintAndLog("auth", username+" logged out", nil)
 	}
-	// Revoke users authentication
 	err = a.Logout(w, r)
 	if err != nil {
 		utils.SendErrorResponse(w, "Logout failed")
@@ -215,19 +190,16 @@ func (a *AuthAgent) Logout(w http.ResponseWriter, r *http.Request) error {
 	return session.Save(r, w)
 }
 
-// Get the current session username from request
 func (a *AuthAgent) GetUserName(w http.ResponseWriter, r *http.Request) (string, error) {
 	if a.CheckAuth(r) {
-		//This user has logged in.
 		session, _ := a.SessionStore.Get(r, a.SessionName)
 		return session.Values["username"].(string), nil
 	} else {
-		//This user has not logged in.
 		return "", errors.New("user not logged in")
 	}
 }
 
-// Check if the user has logged in, return true / false in JSON
+// CheckLogin returns whether the request is logged in.
 func (a *AuthAgent) CheckLogin(w http.ResponseWriter, r *http.Request) {
 	if a.CheckAuth(r) {
 		utils.SendJSONResponse(w, "true")
@@ -236,60 +208,53 @@ func (a *AuthAgent) CheckLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handle new user register without confirmation email. Require POST username, password, group.
+// HandleRegisterWithoutEmail creates a user from the posted username and
+// password.
 func (a *AuthAgent) HandleRegisterWithoutEmail(w http.ResponseWriter, r *http.Request, callback func(string, string)) {
-	//Get username from request
 	newusername, err := utils.PostPara(r, "username")
 	if err != nil {
 		utils.SendErrorResponse(w, "Missing 'username' paramter")
 		return
 	}
 
-	//Get password from request
 	password, err := utils.PostPara(r, "password")
 	if err != nil {
 		utils.SendErrorResponse(w, "Missing 'password' paramter")
 		return
 	}
 
-	//Ok to proceed create this user
 	err = a.CreateUserAccount(newusername, password, "")
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
-	//Do callback if exists
 	if callback != nil {
 		callback(newusername, "")
 	}
 
-	//Return to the client with OK
 	utils.SendOK(w)
 	a.Logger.PrintAndLog("auth", "Admin account created: "+newusername, nil)
 }
 
-// Check authentication from request header's session value
+// CheckAuth reports whether the request's session is authenticated.
 func (a *AuthAgent) CheckAuth(r *http.Request) bool {
 	session, err := a.SessionStore.Get(r, a.SessionName)
 	if err != nil {
 		return false
 	}
 
-	// Check if user is authenticated
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		return false
 	}
 	return true
 }
 
-// Get the number of users in the system
 func (a *AuthAgent) GetUserCounts() int {
 	entries, _ := a.Database.ListTable("auth")
 	usercount := 0
 	for _, keypairs := range entries {
 		if strings.Contains(string(keypairs[0]), "passhash/") {
-			//This is a user registry
 			usercount++
 		}
 	}
@@ -300,7 +265,6 @@ func (a *AuthAgent) GetUserCounts() int {
 	return usercount
 }
 
-// Check if the given username exists
 func (a *AuthAgent) UserExists(username string) bool {
 	userpasswordhash := ""
 	err := a.Database.Read("auth", "passhash/"+username, &userpasswordhash)
@@ -322,9 +286,7 @@ func (a *AuthAgent) SetPassword(username string, password string) error {
 	return a.Database.Write("auth", "passhash/"+username, hashedPassword)
 }
 
-// Create user account
 func (a *AuthAgent) CreateUserAccount(newusername string, password string, email string) error {
-	//Check user already exists
 	if a.UserExists(newusername) {
 		return errors.New("user with same name already exists")
 	}

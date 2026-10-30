@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// IpTable is a rate limiter implementation using sync.Map with atomic int64
+// RequestCountPerIpTable counts requests per IP.
 type RequestCountPerIpTable struct {
 	table sync.Map
 }
@@ -55,12 +55,10 @@ func (h *ProxyHandler) handleRateLimitRouting(w http.ResponseWriter, r *http.Req
 }
 
 func (router *Router) handleRateLimit(w http.ResponseWriter, r *http.Request, pe *ProxyEndpoint) error {
-	//Resolve the client IP using the same trusted proxy gated logic as the access
-	//control check, so a header supplied address can neither break the limiter nor
-	//be spoofed to escape it
+	// Client IP from the same trusted-proxy aware resolver as access control
 	ip := router.GetClientIPForEndpoint(r, pe)
 	if ip == "" {
-		//Unable to resolve the client IP. Default allow passthrough
+		// Unresolved client IP: allow
 		return nil
 	}
 
@@ -70,8 +68,6 @@ func (router *Router) handleRateLimit(w http.ResponseWriter, r *http.Request, pe
 		w.WriteHeader(429)
 		return errors.New("rate limit exceeded")
 	}
-
-	// log.Println("Rate limit check", ip, ipTable.GetCount(ip))
 
 	return nil
 }

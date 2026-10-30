@@ -388,7 +388,6 @@
         let requireTLS = $("#vdirList").find(".RequireTLS")[0].checked;
         let skipValidation = $("#vdirList").find(".SkipCertValidations")[0].checked;
 
-        //console.log(mathingPath, newDomain, requireTLS, skipValidation);
 
         $.cjax({
             url: "/api/proxy/vdir/edit",
@@ -425,4 +424,4 @@
     }
 
     initVdirList();
-</script>
+</script>

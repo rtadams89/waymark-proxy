@@ -67,7 +67,7 @@ func TestBoundedIncrTrimsLowFrequencyEntries(t *testing.T) {
 }
 
 func TestNewIncrFnDispatch(t *testing.T) {
-	// maxEntries=0 selects the unbounded path (upstream behavior).
+	// maxEntries=0 selects the unbounded path.
 	unbounded := newIncrFn(0)
 	m1 := &sync.Map{}
 	b1 := newBoundedCounter(0)
@@ -94,7 +94,7 @@ func TestNewIncrFnDispatch(t *testing.T) {
 }
 
 func TestUnboundedIncrMatchesUpstreamPattern(t *testing.T) {
-	// unboundedIncr must reproduce Load → check → Store exactly.
+	// unboundedIncr does Load → check → Store.
 	m := &sync.Map{}
 	unboundedIncr(m, nil, "new-key")
 	v, ok := m.Load("new-key")
@@ -133,9 +133,7 @@ func TestBoundedIncrConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 
-	// Soft cap — concurrent inserts may briefly overshoot while a trim is in
-	// flight. Allow some slop; the important invariant is that we're nowhere
-	// near the unbounded writers*perWriter = 32,000.
+	// Soft cap: allow some overshoot from concurrent inserts
 	got := mapLen(m)
 	if got > capN+writers {
 		t.Fatalf("map size %d well above cap %d after %d concurrent inserts", got, capN, ctr.Load())

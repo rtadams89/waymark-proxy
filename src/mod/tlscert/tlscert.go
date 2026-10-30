@@ -21,7 +21,7 @@ type CertCache struct {
 }
 
 type HostSpecificTlsBehavior struct {
-	DisableSNI                       bool              //If SNI is enabled for this server name
+	DisableSNI                       bool              // If SNI is disabled for this server name
 	DisableLegacyCertificateMatching bool              //If legacy certificate matching is disabled for this server name
 	EnableAutoHTTPS                  bool              //If auto HTTPS is enabled for this server name
 	PreferredCertificate             map[string]string //Preferred certificate for this server name, if empty, use the first matching certificate
@@ -31,7 +31,7 @@ type Manager struct {
 	CertStore    string         //Path where all the certs are stored
 	LoadedCerts  []*CertCache   //A list of loaded certs
 	Logger       *logger.Logger //System wide logger for debug mesage
-	FallbackCert string         //Name of the fallback/default certificate (no file renaming)
+	FallbackCert string         // Name of the fallback/default certificate
 
 	/* External handlers */
 	hostSpecificTlsBehavior func(serverName string) (*HostSpecificTlsBehavior, error) // Function to get host specific TLS behavior, if nil, use global TLS options
@@ -53,8 +53,7 @@ func writeFileWithMode(baseDir, relativeName string, data []byte, mode os.FileMo
 		return err
 	}
 
-	// Custom fork: durable and atomic, with the exact mode (not reduced by the
-	// umask) — essential for private-key files (e.g. 0600)
+	// Durable and atomic, with the exact mode (not reduced by the umask)
 	return utils.WriteFileAtomic(resolvedPath, data, mode)
 }
 
@@ -119,8 +118,7 @@ func NewManager(certStore string, logger *logger.Logger) (*Manager, error) {
 	return &thisManager, nil
 }
 
-// Default host specific TLS behavior
-// This is used when no specific TLS behavior is defined for a server name
+// GetDefaultHostSpecificTlsBehavior returns the TLS behavior used when none is defined for a server name
 func GetDefaultHostSpecificTlsBehavior() *HostSpecificTlsBehavior {
 	return &HostSpecificTlsBehavior{
 		DisableSNI:                       false,
@@ -235,9 +233,7 @@ func (m *Manager) ListCerts() ([]string, error) {
 
 // Get a certificate from disk where its certificate matches with the helloinfo
 func (m *Manager) GetCert(helloInfo *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	//Look for the certificate by hostname
-	//Custom fork: without SNI (a client connecting to an IP address), by the
-	//address it connected to (selfsigned_custom.go)
+	// Look for the certificate by hostname, or without SNI by the address connected to
 	pubKey, priKey, err := m.GetCertificateByHostname(serverNameOrLocalIP(helloLocal{helloInfo.Conn}, helloInfo.ServerName))
 	if err != nil {
 		m.Logger.PrintAndLog("tls", "Failed to get certificate for "+helloInfo.ServerName, err)
@@ -278,9 +274,7 @@ func (m *Manager) GetCertificateByHostname(hostname string) (string, string, err
 		if !tlsBehavior.DisableLegacyCertificateMatching &&
 			utils.FileExists(filepath.Join(m.CertStore, hostname+".pem")) &&
 			utils.FileExists(filepath.Join(m.CertStore, hostname+".key")) {
-			//Legacy filename matching, use the file names directly
-			//This is the legacy method of matching certificates, it will match the file names directly
-			//This is used for compatibility with Zoraxy v2 setups
+			// Legacy matching by file name
 			pubKey = filepath.Join(m.CertStore, hostname+".pem")
 			priKey = filepath.Join(m.CertStore, hostname+".key")
 		} else if !tlsBehavior.DisableSNI &&
@@ -288,8 +282,6 @@ func (m *Manager) GetCertificateByHostname(hostname string) (string, string, err
 			//SNI scan match, find the first matching certificate
 			pubKey, priKey = m.GetCertByX509CNHostname(hostname)
 		} else if tlsBehavior.EnableAutoHTTPS {
-			//Get certificate from CA, WIP
-			//TODO: Implement AutoHTTPS
 		} else {
 			//Fallback to the configured fallback certificate
 			if m.DefaultCertExists() {

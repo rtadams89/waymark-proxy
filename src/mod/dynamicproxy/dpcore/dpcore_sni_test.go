@@ -20,8 +20,7 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
 )
 
-// sharedServerName returns the ServerName baked into the proxy's shared
-// transport at construction time (empty if none / not an *http.Transport).
+// sharedServerName returns the ServerName of the proxy's shared transport.
 func sharedServerName(p *dpcore.ReverseProxy) string {
 	tr, ok := p.Transport.(*http.Transport)
 	if !ok || tr.TLSClientConfig == nil {
@@ -30,22 +29,20 @@ func sharedServerName(p *dpcore.ReverseProxy) string {
 	return tr.TLSClientConfig.ServerName
 }
 
-// TestInitTimeSNI checks that a hostname upstream keeps a fixed shared SNI
-// (so connection pooling is preserved), while an IP upstream leaves it empty
-// because Go would drop an IP-literal SNI from the ClientHello (RFC 6066).
+// TestInitTimeSNI checks that a hostname upstream has a fixed shared SNI and
+// an IP upstream none.
 func TestInitTimeSNI(t *testing.T) {
 	cases := []struct {
 		name       string
 		rawURL     string
-		serverName string //value of DpcoreOptions.UpstreamTLSServerName
+		serverName string
 		wantSNI    string
 	}{
 		{"https hostname keeps fixed SNI", "https://backend.example.com:8443", "", "backend.example.com"},
 		{"https IP has no shared SNI", "https://10.10.251.5:443", "", ""},
 		{"http upstream has no TLS SNI", "http://backend.example.com", "", ""},
 
-		// An admin configured server name (the endpoint's "Overwrite Host Header"
-		// value) overrides the name derived from the upstream address.
+		// A configured server name overrides the upstream address
 		{"override wins over hostname upstream", "https://adguardhome:443", "adguard.example.com", "adguard.example.com"},
 		{"override gives IP upstream a fixed SNI", "https://10.10.251.5:443", "adguard.example.com", "adguard.example.com"},
 		{"override port is stripped", "https://adguardhome:443", "adguard.example.com:443", "adguard.example.com"},
@@ -70,11 +67,8 @@ func TestInitTimeSNI(t *testing.T) {
 	}
 }
 
-// TestIPUpstreamUsesRequestHostSNI is the regression test for the v3.3.4 SNI
-// change: an IP-addressed HTTPS upstream must still receive a valid SNI, derived
-// from the (proxied) request host, so an SNI-routed backend can present the right
-// cert. Before the fix, ServerName was the upstream IP, which Go omits entirely,
-// leaving the backend with no SNI.
+// TestIPUpstreamUsesRequestHostSNI checks that an IP-addressed HTTPS upstream
+// receives the request host as SNI.
 func TestIPUpstreamUsesRequestHostSNI(t *testing.T) {
 	var (
 		mu     sync.Mutex
@@ -91,7 +85,7 @@ func TestIPUpstreamUsesRequestHostSNI(t *testing.T) {
 			return nil, nil
 		},
 	}
-	srv.StartTLS() // listens on a 127.0.0.1:<port> address (an IP upstream)
+	srv.StartTLS()
 	defer srv.Close()
 
 	u, err := url.Parse(srv.URL)
@@ -99,7 +93,6 @@ func TestIPUpstreamUsesRequestHostSNI(t *testing.T) {
 		t.Fatalf("parse server url: %v", err)
 	}
 
-	// Skip cert validation: the test cert won't match the SNI we assert on.
 	p := dpcore.NewDynamicProxyCore(u, "", &dpcore.DpcoreOptions{IgnoreTLSVerification: true})
 
 	const frontHost = "frontdomain.example.com"
@@ -157,12 +150,9 @@ func newTestCert(t *testing.T, dnsName string) (tls.Certificate, *x509.CertPool)
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key, Leaf: leaf}, pool
 }
 
-// TestUpstreamTLSServerNameOverride covers the #1088 follow up: an upstream addressed
-// by a hostname its certificate does not cover (the reported case is a Docker service
-// name such as adguardhome:443 serving a cert for adguard.example.com). Without an
-// override the handshake must fail certificate verification; with the endpoint's
-// "Overwrite Host Header" value supplied as UpstreamTLSServerName it must succeed with
-// verification still enabled, and the backend must observe the overridden SNI.
+// TestUpstreamTLSServerNameOverride checks that an upstream whose name its
+// certificate does not cover fails verification, and succeeds with
+// UpstreamTLSServerName set to the certificate's name.
 func TestUpstreamTLSServerNameOverride(t *testing.T) {
 	const certName = "adguard.example.com"
 
@@ -190,15 +180,13 @@ func TestUpstreamTLSServerNameOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("split server url: %v", err)
 	}
-	// "localhost" resolves to the test server but is not covered by the certificate,
-	// standing in for the Docker service name in the report.
+	// "localhost" is not covered by the certificate
 	u, err := url.Parse("https://localhost:" + port)
 	if err != nil {
 		t.Fatalf("parse upstream url: %v", err)
 	}
 
-	// newProxy builds a proxy for the upstream above and trusts the test CA, so the
-	// only thing that can fail verification is a hostname mismatch.
+	// newProxy builds a proxy for the upstream trusting the test CA
 	newProxy := func(serverName string) *dpcore.ReverseProxy {
 		p := dpcore.NewDynamicProxyCore(u, "", &dpcore.DpcoreOptions{
 			UpstreamTLSServerName: serverName,
@@ -239,8 +227,7 @@ func TestUpstreamTLSServerNameOverride(t *testing.T) {
 		gotSNI = ""
 		mu.Unlock()
 
-		// The override must also be what the shared transport carries, so the SNI is
-		// fixed at init time and no per-request transport clone is needed.
+		// The override is the shared transport's server name
 		p := newProxy(certName)
 		if got := sharedServerName(p); got != certName {
 			t.Fatalf("shared ServerName = %q, want %q", got, certName)

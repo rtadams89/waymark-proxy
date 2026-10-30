@@ -11,14 +11,12 @@ import (
 
 func (s *Store) search(ip string) string {
 	if strings.Contains(ip, ",") {
-		//This is a CF proxied request. We only need the front part
-		//Example 219.71.102.145, 172.71.139.178
+		// Comma-separated list, e.g. 219.71.102.145, 172.71.139.178: use the first address
 		ip = strings.Split(ip, ",")[0]
 		ip = strings.TrimSpace(ip)
 	}
 
-	//Get the current dataset snapshot, it might be swapped out by a
-	//database update while this lookup is running
+	// Current dataset snapshot
 	dataset := s.dataset.Load()
 	if dataset == nil {
 		return ""
@@ -40,11 +38,6 @@ func (s *Store) search(ip string) string {
 		}
 	}
 
-	/*
-		if cc != "" {
-			s.geoipCache.Store(ip, cc)
-		}
-	*/
 	return cc
 }
 

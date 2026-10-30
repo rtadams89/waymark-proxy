@@ -9,15 +9,8 @@ import (
 	"time"
 )
 
-/*
-	Upgrade.go
-
-	This script handles generic HTTP protocol upgrades in dpcore,
-	e.g. Tailscale TS2021 "tailscale-control-protocol". WebSocket upgrades are
-	handled by the websocketproxy in a higher layer abstraction and never reach here.
-
-	Added in Zoraxy v3.3.5 by tobychui
-*/
+// Generic HTTP protocol upgrades (e.g. Tailscale TS2021); WebSocket upgrades
+// are handled by websocketproxy.
 
 // upgradeType returns the Upgrade header value if the Connection header requests an upgrade
 func upgradeType(header http.Header) string {
@@ -39,7 +32,7 @@ func headerContainsToken(header http.Header, key string, token string) bool {
 	return false
 }
 
-// isPrintableASCII checks a header value is safe to echo back into a status line
+// isPrintableASCII reports whether s contains only printable ASCII.
 func isPrintableASCII(s string) bool {
 	for _, c := range s {
 		if c < 0x20 || c > 0x7e {
@@ -49,7 +42,7 @@ func isPrintableASCII(s string) bool {
 	return s != ""
 }
 
-// restoreUpgradeHeaders re-adds the upgrade headers stripped by the hop-by-hop removal
+// restoreUpgradeHeaders sets the upgrade headers again.
 func restoreUpgradeHeaders(header http.Header, upgradeType string) {
 	header.Set("Connection", "Upgrade")
 	header.Set("Upgrade", upgradeType)
@@ -69,7 +62,7 @@ func (p *ReverseProxy) handleUpgradeResponse(rw http.ResponseWriter, reqUpType s
 		return http.StatusBadGateway, errors.New("destination switched to protocol " + resUpType + " when " + reqUpType + " was requested")
 	}
 
-	//For a 101 response the transport hands us the raw upstream connection
+	// The body of a 101 response is the upstream connection
 	backendConn, ok := res.Body.(io.ReadWriteCloser)
 	if !ok {
 		res.Body.Close()
@@ -77,14 +70,14 @@ func (p *ReverseProxy) handleUpgradeResponse(rw http.ResponseWriter, reqUpType s
 	}
 	defer backendConn.Close()
 
-	//HTTP/2 downstream cannot be hijacked, so an upgrade can never complete on it
+	// Fails on HTTP/2 client connections
 	clientConn, clientBuf, err := http.NewResponseController(rw).Hijack()
 	if err != nil {
 		return http.StatusBadGateway, errors.New("connection upgrade requires a hijackable connection: " + err.Error())
 	}
 	defer clientConn.Close()
 
-	//The client may have pipelined bytes before we hijacked, forward them first
+	// Forwards bytes the client sent before the hijack
 	if buffered := clientBuf.Reader.Buffered(); buffered > 0 {
 		if _, err := io.CopyN(backendConn, clientBuf, int64(buffered)); err != nil {
 			return http.StatusBadGateway, errors.New("failed to forward buffered client bytes: " + err.Error())
@@ -112,7 +105,7 @@ func (p *ReverseProxy) handleUpgradeResponse(rw http.ResponseWriter, reqUpType s
 func tunnelUpgradedConnection(clientConn net.Conn, backendConn io.ReadWriteCloser) {
 	timeout := upgradeTunnelTimeout
 
-	//The hijacked connection inherits the server's deadlines, clear or extend them
+	// Clears or extends the inherited deadlines
 	deadline := time.Time{}
 	if upgradeTunnelRefreshOnActivity {
 		deadline = time.Now().Add(timeout)
@@ -133,7 +126,7 @@ func tunnelUpgradedConnection(clientConn net.Conn, backendConn io.ReadWriteClose
 	go copyAndSignal(backendConn, clientConn, backendConn, clientConn)
 	go copyAndSignal(clientConn, backendConn, clientConn, backendConn)
 
-	//Either direction closing tears down the tunnel, the deferred Close calls unblock the other
+	// Ends when either direction closes
 	<-done
 }
 

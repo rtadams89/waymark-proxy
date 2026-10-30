@@ -24,7 +24,7 @@ type Target struct {
 	Upstream Upstream
 	Config   Config // validated
 	Label    string // "vdir /path" for a virtual directory backend, empty for a rule destination
-	RuleName string // how the rule is named in the log (custom fork); empty: RuleID
+	RuleName string // how the rule is named in the log; empty: RuleID
 }
 
 func (t Target) key() string { return t.RuleID + "\x00" + t.Upstream.Addr }
@@ -69,8 +69,7 @@ type state struct {
 	passive    []time.Time
 	cancel     context.CancelFunc
 	recovery   *time.Timer
-	// set when the upstream is disabled; cleared after each active check is
-	// reported, so a brief outage between two checks is not lost
+	// set when the upstream is disabled; cleared after each active check is reported
 	downSinceCheck bool
 }
 
@@ -272,7 +271,7 @@ func (k ErrorKind) String() string {
 }
 
 // Classify maps the proxy's (statusCode, err) for one request to an
-// ErrorKind. A client hanging up is not the upstream's fault.
+// ErrorKind; a client hanging up is not counted.
 func Classify(statusCode int, err error) (ErrorKind, string) {
 	if err == nil {
 		if statusCode >= 500 && statusCode <= 599 {
@@ -394,9 +393,7 @@ func (m *Manager) transitionLocked(st *state, up bool, reason string) []pendingN
 }
 
 // reconcileLocked computes whether an address may receive traffic: only if
-// every rule that health-checks it considers it healthy. The load balancer
-// tracks state per address, so one rule's verdict applies to all rules
-// sharing that backend.
+// every rule that health-checks it considers it healthy.
 func (m *Manager) reconcileLocked(addr string) (pendingNotify, bool) {
 	managed, online := false, true
 	var downRules []string

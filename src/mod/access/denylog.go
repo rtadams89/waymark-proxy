@@ -1,11 +1,7 @@
 package access
 
-/*
-	denylog.go (custom fork): log lines for connections an ACL refused on a
-	Layer 4 rule, summarised so a port scan cannot flood the log: the first
-	refusal of an address by a rule is logged at once, later ones at most
-	once a minute with how many there were.
-*/
+// Logs connections refused on Layer 4 rules: the first per address and
+// rule at once, later ones once a minute with a count.
 
 import (
 	"fmt"
@@ -23,8 +19,7 @@ type denyLogger struct {
 	entries map[string]*denyLogEntry
 }
 
-// LogL4Denied logs (summarised) a connection or packet refused on a Layer
-// 4 rule.
+// LogL4Denied logs a connection or packet refused on a Layer 4 rule.
 func (c *Controller) LogL4Denied(ruleName, proto, ip string, d Decision) {
 	if c == nil || c.Options == nil {
 		return

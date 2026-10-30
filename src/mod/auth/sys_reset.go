@@ -6,11 +6,10 @@ import (
 	"imuslab.com/zoraxy/mod/database"
 )
 
-/* Handle account reset by removing all users from the system */
+// ResetAccount removes all admin accounts.
 func ResetAccount(databaseBackend *string, databasePath *string) {
 	fmt.Println("Resetting admin account...")
 
-	//Initialize the database to access the auth table
 	backendType := database.GetRecommendedBackendType()
 	if *databaseBackend != "auto" {
 		switch *databaseBackend {
@@ -33,13 +32,11 @@ func ResetAccount(databaseBackend *string, databasePath *string) {
 	}
 	defer db.Close()
 
-	//Check if auth table exists
 	if !db.TableExists("auth") {
 		fmt.Println("No auth table found. Nothing to reset.")
 		return
 	}
 
-	//Drop the auth table to remove all users
 	err = db.DropTable("auth")
 	if err != nil {
 		fmt.Println("Error dropping auth table:", err)

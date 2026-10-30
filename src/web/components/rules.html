@@ -1,6 +1,5 @@
-<!-- Proxy Create Form. Custom fork: one Add Proxy Rule page for both kinds of
-     rule; the type chosen first shows the HTTP form (here) or the TCP / UDP
-     form (l4rules.html, loaded into #addRuleL4) -->
+<!-- Proxy Create Form: the type chosen first shows the HTTP form (here) or
+     the TCP / UDP form (l4rules.html, loaded into #addRuleL4) -->
 <style>
     #addRuleTypePicker .card{
         cursor: pointer;
@@ -91,7 +90,7 @@
                             Advanced Settings
                             </div>
                             <div class="content">
-                                <!-- Custom fork: the address the rule answers on (listenip_custom.go) -->
+                                <!-- The address the rule answers on -->
                                 <div class="field">
                                     <label>Listen On</label>
                                     <select id="newRuleListenIP"></select>
@@ -106,7 +105,7 @@
                                 <div class="field">
                                     <div class="ui checkbox">
                                         <input type="checkbox" id="enableUtm" checked>
-                                        <!-- Custom fork: this option now creates a health check (HTTP GET every 10s; fine-tune it in the rule editor) -->
+                                        <!-- Creates a health check (HTTP GET every 10s) -->
                                         <label>Enable health checks<br><small>Check destinations with HTTP GET every 10s, take them out of load balancing when they fail, and show them on Monitoring &gt; Health &amp; Uptime. Adjust under Destinations &rarr; Health Checks in the rule editor.</small>
                                         </label>
                                     </div>
@@ -197,7 +196,7 @@
                                             <div class="item" data-value="1">403 Forbidden</div>
                                             <div class="item" data-value="2">400 Bad Request</div>
                                             <div class="item" data-value="3">Drop Connection</div>
-                                            <div class="disabled item" data-value="4">Captcha Challenge</div> <!-- Work in progress -->
+                                            <div class="disabled item" data-value="4">Captcha Challenge</div>
                                         </div>
                                     </div>
                                     <small style="opacity:0.7;">Select how the system should respond when malicious or automated traffic is detected.</small>
@@ -479,8 +478,7 @@
                     if ($("#tls").checkbox("is checked")){
                         confirmBox("Proxy rule added. Get a TLS certificate for " + rootname.split(",").map(d => d.trim()).join(", ") + "?", function(choice){
                             if (choice == true){
-                                //Custom fork: the ACME tool on Certificates > ACME and Auto-Renew,
-                                //where the challenge type, DNS credentials and CA are chosen
+                                //Open the ACME tool on Certificates > ACME and Auto-Renew
                                 wmGetCertificate(rootname);
                             }else{
                                 msgbox("Proxy rule added");
@@ -641,9 +639,7 @@
 
     
 
-    //Update v3.0.0
-    //Since some proxy rules now contains wildcard characters
-    //all uuid are converted to hex code before use in DOM selector
+    //Proxy rule UUIDs are converted to hex before use in DOM selectors
 
     String.prototype.hexEncode = function(){
         var hex, i;
@@ -712,7 +708,7 @@
         if (window.refreshNewL4AccessList) refreshNewL4AccessList();
     }
 
-    /* Custom fork: rule type */
+    /* Rule type */
     function selectAddRuleType(type){
         $("#addRuleTypePicker .card").removeClass("selected");
         $(`#addRuleTypePicker .card[data-type='${type}']`).addClass("selected");
@@ -735,9 +731,7 @@
 
          $("#advanceNewProxyRules").accordion();
         if (!hasClickEvent($("#advanceNewProxyRules"))){
-            // Not sure why sometime the accordion events are not binding
-            // to the DOM element. This makes sure the element is binded
-            // correctly by checking it again after 300ms
+            // Bind the accordion again after 300ms
             $("#advanceNewProxyRules").accordion();
             $("#newProxyRuleAccessFilter").parent().dropdown();
             $("#mitigationAction").parent().dropdown();
@@ -751,7 +745,7 @@
  
    
 </script>
-<!-- Custom fork: the TCP / UDP (Layer 4) form -->
+<!-- The TCP / UDP (Layer 4) form -->
 <div id="addRuleL4" style="display: none;"></div>
 <script>
     $("#addRuleL4").load("./components/l4rules.html");

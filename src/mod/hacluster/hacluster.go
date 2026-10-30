@@ -1,15 +1,9 @@
-// Package hacluster (custom fork) is Waymark's side of an active/passive pair
-// run by keepalived.
-//
-// Waymark runs as an unprivileged user, so it never writes keepalived's
-// config. It writes a small settings file for this node (cluster.env) into
-// a folder it owns; a root-owned helper (deploy/waymark-ha-apply, started by
-// a systemd path unit) validates it, renders keepalived.conf from a fixed
-// template, tests it and reloads keepalived, then reports the result.
-//
-// keepalived in turn runs two root-owned scripts as the waymark user: a
-// health check that reads Waymark's heartbeat file, and a notify script that
-// records the node's role (MASTER, BACKUP, FAULT) for Waymark to read.
+// Package hacluster is Waymark's side of an active/passive pair run by
+// keepalived. It writes this node's settings file (cluster.env); a root-owned
+// helper (deploy/waymark-ha-apply) validates it, renders keepalived.conf,
+// tests it, reloads keepalived and reports the result. keepalived runs a
+// health check that reads Waymark's heartbeat file and a notify script that
+// records the node's role (MASTER, BACKUP, FAULT).
 package hacluster
 
 import (
@@ -60,8 +54,8 @@ type Config struct {
 	Preempt  bool   `json:"preempt"`  // take the floating IP back when a higher-priority node recovers
 	Nodes    []Node `json:"nodes"`
 
-	// Configuration sync (phase 2): standby nodes pull the active node's
-	// configuration over TLS, authenticated with the cluster key
+	// Configuration sync: standby nodes pull the active node's configuration
+	// over TLS, authenticated with the cluster key
 	SyncEnabled bool   `json:"syncEnabled"`
 	SyncPort    int    `json:"syncPort"`   // TCP port of each node's sync listener
 	ClusterKey  string `json:"clusterKey"` // 64 hex characters, the same on every node
@@ -93,8 +87,7 @@ func parseIPv4(s string) (net.IP, bool) {
 }
 
 // Validate returns a normalised copy, or an error naming the first problem.
-// A disabled config is still validated if it has nodes, so it can be saved
-// and enabled later.
+// A disabled config with nodes is validated too.
 func (c *Config) Validate() (*Config, error) {
 	if c == nil {
 		return nil, errors.New("no settings given")

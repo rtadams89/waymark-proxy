@@ -132,8 +132,7 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 	go func(results <-chan *zeroconf.ServiceEntry) {
 		for entry := range results {
 			if domainFilter == "" {
-				//This is a ArOZ Online Host
-				//Split the required information out of the text element
+				// Split the required information out of the text element
 				TEXT := entry.Text
 				properties := map[string]string{}
 				for _, v := range TEXT {
@@ -146,13 +145,12 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 				var macAddrs []string
 				val, ok := properties["mac_addr"]
 				if !ok || val == "" {
-					//No MacAddr found. Target node version too old
+					// No MacAddr found
 					macAddrs = []string{}
 				} else {
 					macAddrs = strings.Split(properties["mac_addr"], ",")
 				}
 
-				//log.Println(properties)
 				discoveredHost = append(discoveredHost, &NetworkHost{
 					HostName:     entry.HostName,
 					Port:         entry.Port,
@@ -168,8 +166,7 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 
 			} else {
 				if utils.StringInArray(entry.Text, "domain="+domainFilter) {
-					//This is generic scan request
-					//Split the required information out of the text element
+					// Split the required information out of the text element
 					TEXT := entry.Text
 					properties := map[string]string{}
 					for _, v := range TEXT {
@@ -182,13 +179,12 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 					var macAddrs []string
 					val, ok := properties["mac_addr"]
 					if !ok || val == "" {
-						//No MacAddr found. Target node version too old
+						// No MacAddr found
 						macAddrs = []string{}
 					} else {
 						macAddrs = strings.Split(properties["mac_addr"], ",")
 					}
 
-					//log.Println(properties)
 					discoveredHost = append(discoveredHost, &NetworkHost{
 						HostName:     entry.HostName,
 						Port:         entry.Port,

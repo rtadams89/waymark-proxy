@@ -68,16 +68,15 @@ func (w *webAuthnUser) WebAuthnCredentials() []webauthnlib.Credential {
 	return creds
 }
 
-// newWebAuthnFromRequest creates a WebAuthn instance configured for the origin of the current request.
-// RPID = bare hostname (no port); origin = scheme + host (with port if non-standard).
+// newWebAuthnFromRequest returns a WebAuthn instance with RPID = the
+// request's host name and origin = scheme + host.
 func newWebAuthnFromRequest(r *http.Request) (*webauthnlib.WebAuthn, error) {
 	host := r.Host
 	if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
-		host = strings.Split(fwdHost, ",")[0] // first value if comma-separated
+		host = strings.Split(fwdHost, ",")[0]
 		host = strings.TrimSpace(host)
 	}
 
-	// Strip port for RPID (bracket-safe for IPv6)
 	rpID := host
 	if i := strings.LastIndex(host, ":"); i > strings.LastIndex(host, "]") {
 		rpID = host[:i]
@@ -392,10 +391,9 @@ func (gs *GatewayServer) handlePasskeyAuthComplete(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Use a closure to capture the found user during the discoverable login handler.
 	var foundUser *User
 	credential, err := wa.FinishDiscoverableLogin(func(rawID, userHandle []byte) (webauthnlib.User, error) {
-		// Prefer userHandle (our stored user UUID) for O(1) lookup.
+		// Looks the user up by userHandle, or by credential ID
 		if len(userHandle) > 0 {
 			u, lookupErr := gs.router.getUserByID(string(userHandle))
 			if lookupErr == nil {
@@ -403,7 +401,6 @@ func (gs *GatewayServer) handlePasskeyAuthComplete(w http.ResponseWriter, r *htt
 				return &webAuthnUser{u: u}, nil
 			}
 		}
-		// Fall back to scanning all users by credential ID.
 		u, lookupErr := gs.router.getUserByCredentialID(rawID)
 		if lookupErr != nil {
 			return nil, fmt.Errorf("passkey not recognized")
@@ -434,7 +431,6 @@ func (gs *GatewayServer) handlePasskeyAuthComplete(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Update sign count and last-used timestamp in storage.
 	for i, c := range foundUser.PasskeyCredentials {
 		if bytes.Equal(c.ID, credential.ID) {
 			foundUser.PasskeyCredentials[i].SignCount = credential.Authenticator.SignCount
@@ -446,7 +442,6 @@ func (gs *GatewayServer) handlePasskeyAuthComplete(w http.ResponseWriter, r *htt
 	}
 	_ = gs.router.saveUser(foundUser, foundUser.Username)
 
-	// Validate host access using the redirect target.
 	redirectTarget := pending.RedirectTarget
 	parsedTarget, parseErr := url.Parse(redirectTarget)
 	if parseErr != nil {
@@ -475,7 +470,6 @@ func (gs *GatewayServer) handlePasskeyAuthComplete(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Issue a gateway session and cookie.
 	cookieDuration := gs.router.Options.CookieDuration
 	isSecure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 
@@ -499,8 +493,7 @@ func (gs *GatewayServer) handlePasskeyAuthComplete(w http.ResponseWriter, r *htt
 		MaxAge:   cookieDuration,
 	})
 
-	// Direct login: user accessed the gateway domain directly with no redirect target.
-	// Issue the session cookie and send them to the user-management panel.
+	// Direct login (no redirect target): sends the user to the user portal
 	if pending.IsDirectLogin {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

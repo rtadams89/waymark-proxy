@@ -9,7 +9,7 @@ import (
 const testDefaultFlushInterval = 100 * time.Millisecond
 
 // TestGetFlushInterval checks that streaming responses are detected from the
-// response rather than the request, see issue #1231.
+// response.
 func TestGetFlushInterval(t *testing.T) {
 	tests := []struct {
 		name     string

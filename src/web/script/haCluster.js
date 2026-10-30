@@ -1,11 +1,9 @@
 /*
-    haCluster.js (custom fork)
-
     Renders the HA cluster overview (every node's role, health, floating IP,
     configuration sync state and version) for the High Availability page
     and the status page panel. Data: the "cluster" list from /api/ha/status
-    or /api/ha/cluster. Other nodes' state comes over the configuration
-    sync connection, so it is only known while sync is on.
+    or /api/ha/cluster. Other nodes' state is only known while
+    configuration sync is on.
 */
 (function(){
     // Also escapes quotes: values go into title="..." and data-... attributes

@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <!-- Custom fork: per-rule active and passive health checks (mod/healthcheck).
-             Opened from the rule editor's Destinations tab as
-             snippet/healthChecks.html#{"ept":"host","ep":"<rule>"}, or for a Layer 4
-             proxy as snippet/healthChecks.html#{"ept":"l4","ep":"<uuid>","name":"<name>"} -->
+        <!-- Per-rule active and passive health checks, opened from the rule editor's
+             Destinations tab as snippet/healthChecks.html#{"ept":"host","ep":"<rule>"},
+             or for a Layer 4 proxy as snippet/healthChecks.html#{"ept":"l4","ep":"<uuid>","name":"<name>"} -->
         <meta charset="utf-8">
         <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
         <link rel="stylesheet" href="../script/semantic/semantic.min.css">
@@ -22,8 +21,7 @@
             #hcEvents .item{ font-size: 0.9em; }
             .hcMono{ font-family: monospace; word-break: break-all; }
             #hcStatusBody td.hcMono{ white-space: nowrap; word-break: normal; }
-            /* Only four options: show them all. In a narrow side panel Semantic UI
-               caps the menu at about three items and scrolls the first one away. */
+            /* Show all four options */
             #hcType .menu{ max-height: none !important; overflow-y: visible !important; }
             .hcL4Text, #hcType .hcL4Type{ display: none; }
         </style>
@@ -87,14 +85,14 @@
                                 <input type="text" name="hostHeader" placeholder="Leave empty to use the destination address" autocomplete="off">
                                 <div class="hcHint">For backends that route by hostname. Also used as the TLS server name for HTTPS destinations.</div>
                             </div>
-                            <!-- Custom fork: response body match -->
+                            <!-- Response body match -->
                             <div class="field hcGetOnly">
                                 <label>Response must contain <span class="hcHint">(optional)</span></label>
                                 <input type="text" name="bodyContains" placeholder='e.g. "status":"ok"' maxlength="256" autocomplete="off">
                                 <div class="hcHint">Healthy only if the first 64 KB of the response include this text. Catches apps that answer 200 with an error page.</div>
                             </div>
                         </div>
-                        <!-- Custom fork: Layer 4 send / expect checks -->
+                        <!-- Layer 4 send / expect checks -->
                         <div class="hcPayloadOnly">
                             <div class="field">
                                 <label>Send <span class="hcHint">(optional for TCP)</span></label>
@@ -172,7 +170,7 @@
                     </div>
                 </div>
 
-                <!-- Custom fork: virtual directory backends -->
+                <!-- Virtual directory backends -->
                 <div class="hcSection" id="hcVdirSection" style="display:none;">
                     <div class="ui checkbox" id="hcVdirToggle">
                         <input type="checkbox" name="includeVirtualDirs">
@@ -232,7 +230,7 @@
                 return new Date(ts*1000).toLocaleString();
             }
 
-            //Custom fork: Layer 4 proxy mode ({"ept":"l4"})
+            //Layer 4 proxy mode ({"ept":"l4"})
             let l4Mode = false;
             let l4Protocols = {tcp: true, udp: false};
 
@@ -368,7 +366,7 @@
             function renderStatus(data){
                 let body = $("#hcStatusBody");
                 body.empty();
-                //Custom fork: virtual directory backends
+                //Virtual directory backends
                 let vdirs = data.vdirs || [];
                 $("#hcVdirSection").toggle(vdirs.length > 0);
                 $("#hcVdirList").text(vdirs.map(v => v.path).join(", "));

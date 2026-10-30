@@ -1,15 +1,7 @@
-// Package capture (custom fork) records proxied traffic as it passes
-// through Waymark and writes it as a pcapng file.
-//
-// It is not a packet capture: the HTTP proxy and Layer 4 proxies hand it
-// the bytes they read and write, and pcapng.go turns those into packets.
-// So it needs no privileges, it can be limited to one proxy rule, and
-// HTTPS shows decrypted: Waymark terminates TLS, so what it records is the
-// plaintext. Both sides can be recorded: client to Waymark, and Waymark to
-// the upstream.
-//
-// Only one capture runs at a time. Every capture has a time limit and a
-// size limit, and files are deleted after the retention time.
+// Package capture records proxied traffic, as the proxies read and write
+// it, into pcapng files: HTTPS decrypted, on the client side, the upstream
+// side or both. One capture runs at a time, with a time and size limit;
+// files are deleted after the retention time.
 package capture
 
 import (
@@ -195,7 +187,7 @@ type Capture struct {
 	started time.Time
 	limit   int64
 	stopped atomic.Bool // no more packets are written
-	ending  atomic.Bool // stop has begun (only the first stop call finishes the file)
+	ending  atomic.Bool // stop has begun
 	reason  string
 	timer   *time.Timer
 	ipID    atomic.Uint32
@@ -436,8 +428,7 @@ func Active() *Capture {
 
 var fileNameRe = regexp.MustCompile(`^waymark-[a-z0-9-]{1,32}-\d{8}-\d{6}(-\d{1,3})?\.pcapng$`)
 
-// NewManager uses dir for capture files (created, readable only by
-// Waymark's user) and becomes the manager the proxies report to.
+// NewManager creates the capture manager using dir (mode 0700) for files.
 func NewManager(dir string, retention time.Duration, node func() string, logf func(string)) (*Manager, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
@@ -541,9 +532,7 @@ func (m *Manager) stop(c *Capture, reason string) {
 	}
 	c.timer.Stop()
 	m.active.CompareAndSwap(c, nil)
-	// Write what is still open, so the file ends tidily. New requests no
-	// longer find this capture (it is not active); writes past the size
-	// limit while flushing call stop again, which returns at once.
+	// Writes the exchanges still open
 	c.mu.Lock()
 	pending := make([]*httpExchange, 0, len(c.pending))
 	for ex := range c.pending {
@@ -639,8 +628,7 @@ func (m *Manager) Files() []FileInfo {
 	return out
 }
 
-// Path returns the full path of a stored capture, refusing anything that
-// is not a capture file name.
+// Path returns the full path of a stored capture file.
 func (m *Manager) Path(name string) (string, error) {
 	if !fileNameRe.MatchString(name) {
 		return "", errors.New("unknown capture file")

@@ -16,14 +16,8 @@ const (
 	RND_PORT_MAX = 6000
 )
 
-/*
-Check if the folder contains a valid plugin in either one of the forms
-
-1. Contain a file that have the same name as its parent directory, either executable or .exe on Windows
-2. Contain a start.sh or start.bat file
-
-Return the path of the plugin entry point if found
-*/
+// GetPluginEntryPoint returns the plugin entry point in folderpath: a file
+// named like the folder (executable, or .exe on Windows), or start.sh / start.bat.
 func (m *Manager) GetPluginEntryPoint(folderpath string) (string, error) {
 	info, err := os.Stat(folderpath)
 	if err != nil {

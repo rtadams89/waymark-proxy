@@ -38,15 +38,13 @@ func (router *Router) GetProxyEndpointFromHostname(hostname string) *ProxyEndpoi
 	return router.getProxyEndpoint(hostname, nil)
 }
 
-// getProxyEndpoint finds the rule for hostname. Custom fork: with local set
-// (the address the request arrived on), rules that only answer on another
-// address are skipped (listenip_custom.go).
+// getProxyEndpoint finds the rule for hostname. With local set, rules that
+// only answer on another address are skipped.
 func (router *Router) getProxyEndpoint(hostname string, local net.IP) *ProxyEndpoint {
 	var targetSubdomainEndpoint *ProxyEndpoint = nil
 	hostname = strings.ToLower(hostname)
 	ep, ok := router.ProxyEndpoints.Load(hostname)
 	if ok && ep.(*ProxyEndpoint).answersOn(local) {
-		//Exact hit
 		targetSubdomainEndpoint = ep.(*ProxyEndpoint)
 		if !targetSubdomainEndpoint.Disabled {
 			return targetSubdomainEndpoint
@@ -84,7 +82,6 @@ func (router *Router) getProxyEndpoint(hostname string, local net.IP) *ProxyEndp
 				}
 
 				if match {
-					//This alias match
 					matchProxyEndpoints = append(matchProxyEndpoints, ep)
 					return true
 				}
@@ -125,7 +122,7 @@ func (router *Router) rewriteURL(rooturl string, requestURL string) string {
 	rewrittenURL := requestURL
 	rewrittenURL = strings.TrimPrefix(rewrittenURL, strings.TrimSuffix(rooturl, "/"))
 
-	path, query, hasQuery := strings.Cut(rewrittenURL, "?") //Fixed #1216
+	path, query, hasQuery := strings.Cut(rewrittenURL, "?")
 	if strings.Contains(path, "//") {
 		path = strings.ReplaceAll(path, "//", "/")
 	}
@@ -136,9 +133,8 @@ func (router *Router) rewriteURL(rooturl string, requestURL string) string {
 	return path
 }
 
-// upstreamHostSwap check if this loopback to one of the proxy rule in the system. If yes, do a shortcut target swap
-// this prevents unnecessary external DNS lookup and connection, return true if swapped and request is already handled
-// by the loopback handler. Only continue if return is false
+// upstreamHostSwap serves the request directly when the upstream is one of
+// this proxy's own rules, and reports whether it did.
 func (h *ProxyHandler) upstreamHostSwap(w http.ResponseWriter, r *http.Request, selectedUpstream *loadbalance.Upstream, currentTarget *ProxyEndpoint) bool {
 	upstreamHostname := selectedUpstream.OriginIpOrDomain
 	if strings.Contains(upstreamHostname, ":") {
@@ -146,12 +142,10 @@ func (h *ProxyHandler) upstreamHostSwap(w http.ResponseWriter, r *http.Request, 
 	}
 	loopbackProxyEndpoint := h.Parent.GetProxyEndpointFromHostname(upstreamHostname)
 	if loopbackProxyEndpoint != nil && loopbackProxyEndpoint != currentTarget {
-		//This is a loopback request. Swap the target to the loopback target
-		//h.Parent.Option.Logger.PrintAndLog("http-proxy", "Detected a loopback request to self. Swap the target to "+loopbackProxyEndpoint.RootOrMatchingDomain, nil)
+		// Loopback to one of this proxy's rules
 		if loopbackProxyEndpoint.IsEnabled() {
 			h.hostRequest(w, r, loopbackProxyEndpoint)
 		} else {
-			//Endpoint disabled, return 521
 			serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 			h.Parent.logRequest(r, false, 521, "host-http", r.Host, upstreamHostname, currentTarget)
 		}
@@ -166,19 +160,19 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	r.Header.Set("X-Forwarded-Server", "waymark-"+h.Parent.Option.HostUUID)
 	reqHostname := r.Host
 
-	//Custom fork: maintenance mode
+	// Maintenance mode
 	if h.Parent.serveMaintenance(w, r, target) {
 		return
 	}
 
-	//Custom fork: health checks found every upstream down, answer with the error page
+	// All upstreams down
 	if h.allUpstreamsDown(target) {
 		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 		h.Parent.logRequest(r, false, 521, "host-http", reqHostname, "health-check-down", target)
 		return
 	}
 
-	//Custom fork: static file cache (answers hits, stores misses on the way past)
+	// Static file cache
 	cacheSession := h.assetCacheBegin(w, r, target)
 	if cacheSession != nil {
 		if cacheSession.Served() {
@@ -196,12 +190,11 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 		h.Parent.logRequest(r, false, 521, "subdomain-http", r.URL.Hostname(), r.Host, target)
 		return
 	}
-	//Custom fork: count the request in progress for least connections
+	// Count the request in progress for least connections
 	defer h.Parent.loadBalancer.Track(selectedUpstream.OriginIpOrDomain)()
 
 	/* Upstream Host Swap (use to detect loopback to self) */
 	if h.upstreamHostSwap(w, r, selectedUpstream, target) {
-		//Request handled by the loopback handler
 		return
 	}
 
@@ -234,7 +227,6 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 		PermissionPolicy:             headerRewriteOptions.PermissionPolicy,
 	})
 
-	//Handle the request reverse proxy
 	statusCode, err := selectedUpstream.ServeHTTP(w, r, &dpcore.ResponseRewriteRuleSet{
 		ProxyDomain:                    selectedUpstream.OriginIpOrDomain,
 		OriginalHost:                   reqHostname,
@@ -255,13 +247,12 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 		AltSvc:                         h.Parent.getAltSvcValue(),
 	})
 
-	//Custom fork: feed the outcome to passive health monitoring
+	// Passive health monitoring
 	if observer := h.Parent.Option.UpstreamResultObserver; observer != nil {
 		observer(target.RootOrMatchingDomain, selectedUpstream.OriginIpOrDomain, statusCode, err)
 	}
 	cacheSession.SetUpstreamResult(statusCode, err)
 
-	//validate the error
 	var dnsError *net.DNSError
 	upstreamHostname := selectedUpstream.OriginIpOrDomain
 	if err != nil {
@@ -276,7 +267,7 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 			serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 			h.Parent.logRequest(r, false, 521, "host-http", reqHostname, upstreamHostname, target)
 		}
-		return //Custom fork: log a failed request once, not a second time as a success
+		return
 	}
 
 	h.Parent.logRequest(r, true, statusCode, "host-http", reqHostname, upstreamHostname, target)
@@ -293,11 +284,9 @@ func (h *ProxyHandler) hostWebSocketRequest(w http.ResponseWriter, r *http.Reque
 	requestURL := r.URL.String()
 	wsRedirectionEndpoint := selectedUpstream.OriginIpOrDomain
 	if wsRedirectionEndpoint[len(wsRedirectionEndpoint)-1:] != "/" {
-		//Append / to the end of the redirection endpoint if not exists
 		wsRedirectionEndpoint = wsRedirectionEndpoint + "/"
 	}
 	if len(requestURL) > 0 && requestURL[:1] == "/" {
-		//Remove starting / from request URL if exists
 		requestURL = requestURL[1:]
 	}
 	u, _ := url.Parse("ws://" + wsRedirectionEndpoint + requestURL)
@@ -324,19 +313,19 @@ func (h *ProxyHandler) hostWebSocketRequest(w http.ResponseWriter, r *http.Reque
 
 // Handle vdir type request
 func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, target *VirtualDirectoryEndpoint) {
-	//Custom fork: maintenance mode covers the rule's virtual directories too
+	// Maintenance mode
 	if h.Parent.serveMaintenance(w, r, target.parent) {
 		return
 	}
 
-	//Custom fork: health checks found this virtual directory's backend down
+	// Virtual directory backend down
 	if h.vdirDown(target) {
 		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 		h.Parent.logRequest(r, false, 521, "vdir-http", r.Host, "health-check-down", target.parent)
 		return
 	}
 
-	//Custom fork: static file cache, keyed on the original (unrewritten) URL
+	// Static file cache, keyed on the unrewritten URL
 	cacheSession := h.assetCacheBegin(w, r, target.parent)
 	if cacheSession != nil {
 		if cacheSession.Served() {
@@ -374,8 +363,8 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 		h.Parent.logRequest(r, true, 101, "vdir-websocket", r.Host, target.Domain, target.parent)
 		wspHandler := websocketproxy.NewProxy(u, websocketproxy.Options{
 			SkipTLSValidation:              target.SkipCertValidations,
-			SkipOriginCheck:                true,                                       //You should not use websocket via virtual directory. But keep this to true for compatibility
-			CopyAllHeaders:                 target.parent.EnableWebsocketCustomHeaders, //Left this as default to prevent nginx user setting / as vdir
+			SkipOriginCheck:                true,
+			CopyAllHeaders:                 target.parent.EnableWebsocketCustomHeaders,
 			UserDefinedHeaders:             target.parent.HeaderRewriteRules.UserDefinedHeaders,
 			Logger:                         h.Parent.Option.Logger,
 			Timeout:                        target.parent.WebsocketTimeout,
@@ -410,7 +399,6 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 		PermissionPolicy:             headerRewriteOptions.PermissionPolicy,
 	})
 
-	//Handle the virtual directory reverse proxy request
 	statusCode, err := target.proxy.ServeHTTP(w, r, &dpcore.ResponseRewriteRuleSet{
 		ProxyDomain:                    target.Domain,
 		OriginalHost:                   reqHostname,
@@ -430,7 +418,7 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 		AltSvc:                         h.Parent.getAltSvcValue(),
 	})
 
-	//Custom fork: passive health monitoring and the static file cache
+	// Passive health monitoring and the static file cache
 	if observer := h.Parent.Option.UpstreamResultObserver; observer != nil {
 		observer(target.parent.RootOrMatchingDomain, target.Domain, statusCode, err)
 	}
@@ -440,40 +428,32 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 	if err != nil {
 		if errors.As(err, &dnsError) {
 			serveProxyRequestError(w, 404, h.Parent, ErrorTemplateHostError)
-			//log.Println(err.Error())
 			h.Parent.logRequest(r, false, 404, "vdir-http", reqHostname, target.Domain, target.parent)
 		} else {
 			serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
-			//log.Println(err.Error())
 			h.Parent.logRequest(r, false, 521, "vdir-http", reqHostname, target.Domain, target.parent)
 		}
-		return //Custom fork: log a failed request once, not a second time as a success
+		return
 	}
 	h.Parent.logRequest(r, true, statusCode, "vdir-http", reqHostname, target.Domain, target.parent)
 
 }
 
-// This logger collect data for the statistical analysis. For log to file logger, check the Logger and LogHTTPRequest handler
+// logRequest records the request in the log file and the statistics.
 func (router *Router) logRequest(r *http.Request, succ bool, statusCode int, forwardType string, originalHostname string, upstreamHostname string, endpoint *ProxyEndpoint) {
-	// Resolve the client IP once via the trusted-proxy aware resolver so that
-	// untrusted proxy headers (X-Forwarded-For, X-Real-IP, etc.) cannot be used
-	// to spoof the IP recorded in the log file or the statistics collector.
+	// Client IP from the trusted-proxy aware resolver
 	clientIP := router.GetClientIPForEndpoint(r, endpoint)
 
-	// Notes: endpoint can be nil if the request has been handled before a host name can be resolved
-	// e.g. Redirection matching rule
+	// endpoint is nil when the request was handled before a rule matched (e.g. a redirection rule)
 	if endpoint == nil || !endpoint.DisableLogging {
-		// log the http request to file
 		router.Option.Logger.LogHTTPRequest(r, forwardType, statusCode, originalHostname, upstreamHostname, clientIP)
 	}
 
 	if endpoint == nil || router.Option.StatisticCollector == nil {
-		// Cannot determine the endpoint for this request, or statistic collector is not set, skip statistic collection
 		return
 	}
 
 	if !endpoint.DisableStatisticCollection {
-		// Collect statistic from request
 
 		go func() {
 			countryISOCode := ""
@@ -500,20 +480,18 @@ func (router *Router) logRequest(r *http.Request, succ bool, statusCode int, for
 	}
 }
 
-// Serve error page with status code
-// Checks for custom templates in web directory before falling back to embedded content
+// serveProxyRequestError serves the error page for statusCode, using a custom
+// template from the web directory if present.
 func serveProxyRequestError(w http.ResponseWriter, statusCode int, router *Router, templateType ErrorTemplateType) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(statusCode)
 
-	// Get the embedded template and filename for this template type
 	embeddedContent, templateName := templateType.getTemplateContent()
 
 	// Try to load custom template from web directory
 	if router != nil && router.Option.WebDirectory != "" {
 		customTemplate, err := os.ReadFile(filepath.Join(router.Option.WebDirectory, "templates", templateName))
 		if err == nil {
-			// Custom template found, use it
 			w.Write(customTemplate)
 			return
 		}

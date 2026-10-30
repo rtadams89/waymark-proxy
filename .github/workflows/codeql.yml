@@ -1,5 +1,5 @@
-# CodeQL code scanning (advanced setup), replacing GitHub's default setup so
-# the paths in .github/codeql/codeql-config.yml can be excluded.
+# CodeQL code scanning (advanced setup) with the paths in
+# .github/codeql/codeql-config.yml excluded.
 #
 # Runs on pushes and pull requests to main, and weekly.
 

@@ -13,9 +13,8 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
 )
 
-// Custom fork: the "check certificate name against" modes. The upstream is
-// reached as "localhost" and serves a certificate for either that name or the
-// public host name, with verification on.
+// TestTLSNameModes checks the TLS name modes with an upstream reached as
+// "localhost" serving a certificate for that name or the public host name.
 func TestTLSNameModes(t *testing.T) {
 	const publicHost = "www.example.test"
 	cases := []struct {
@@ -23,7 +22,7 @@ func TestTLSNameModes(t *testing.T) {
 		certName string
 		mode     string
 		client   string // host name the client asked for
-		hostOver string // "Host" header override (TLSNameAuto uses it)
+		hostOver string // "Host" header override
 		wantOK   bool
 		wantSNI  string
 	}{
@@ -64,7 +63,7 @@ func TestTLSNameModes(t *testing.T) {
 			})
 			p.Transport.(*http.Transport).TLSClientConfig.RootCAs = pool
 
-			// Twice: the second request must reuse the cached per-name transport
+			// The second request uses the cached per-name transport
 			for i := 0; i < 2; i++ {
 				req := httptest.NewRequest(http.MethodGet, "http://"+tc.client+"/", nil)
 				status, err := p.ProxyHTTP(httptest.NewRecorder(), req, &dpcore.ResponseRewriteRuleSet{

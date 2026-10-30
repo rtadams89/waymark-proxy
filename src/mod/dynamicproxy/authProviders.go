@@ -11,26 +11,8 @@ import (
 )
 
 /*
-	authProviders.go
-
-	This script handle authentication providers
-*/
-
-/*
-Central Authentication Provider Router
-
-This function will route the request to the correct authentication provider
-if the return value is true, do not continue to the next handler
-
-handleAuthProviderRouting takes in 4 parameters:
-- sep: the ProxyEndpoint object
-- w: the http.ResponseWriter object
-- r: the http.Request object
-- h: the ProxyHandler object
-
-and return a boolean indicate if the request is written to http.ResponseWriter
-- true: the request is handled, do not write to http.ResponseWriter
-- false: the request is not handled (usually means auth ok), continue to the next handler
+handleAuthProviderRouting applies the rule's authentication provider;
+true means the response was written and the request must not continue.
 */
 func handleAuthProviderRouting(sep *ProxyEndpoint, w http.ResponseWriter, r *http.Request, h *ProxyHandler) bool {
 	requestHostname := r.Host
@@ -66,18 +48,16 @@ func handleAuthProviderRouting(sep *ProxyEndpoint, w http.ResponseWriter, r *htt
 		}
 	}
 
-	//No authentication provider, do not need to handle
 	return false
 }
 
 /* Basic Auth */
 func (h *ProxyHandler) handleBasicAuthRouting(w http.ResponseWriter, r *http.Request, pe *ProxyEndpoint) error {
-	//Wrapper for oop style
 	return handleBasicAuth(w, r, pe)
 }
 
-// basicAuthExceptionMatched reports whether the request is exempt from basic auth
-// by one of the configured exception rules.
+// basicAuthExceptionMatched reports whether an exception rule exempts the
+// request from basic auth.
 func basicAuthExceptionMatched(pe *ProxyEndpoint, r *http.Request) bool {
 	if pe == nil || pe.AuthenticationProvider == nil {
 		return false
@@ -90,7 +70,7 @@ func basicAuthExceptionMatched(pe *ProxyEndpoint, r *http.Request) bool {
 		exceptionType := exceptionRule.RuleType
 		switch exceptionType {
 		case AuthExceptionType_Paths:
-			//Path matching is case sensitive unless the rule opts out of it
+			// Case sensitive unless the rule says otherwise
 			matched := pathmatch.RequestPathWithinPrefix(requestTarget, exceptionRule.PathPrefix)
 			if exceptionRule.CaseInsensitive {
 				matched = pathmatch.RequestPathWithinPrefixFold(requestTarget, exceptionRule.PathPrefix)
@@ -99,9 +79,7 @@ func basicAuthExceptionMatched(pe *ProxyEndpoint, r *http.Request) bool {
 				return true
 			}
 		case AuthExceptionType_CIDR:
-			// By default, use the untrusted (RemoteAddr-only) IP to prevent header-spoofing bypass.
-			// Only trust proxy headers (X-Real-Ip, CF-Connecting-IP, etc.) when the rule
-			// was explicitly configured with UseTrustedProxy = true.
+			// Uses forwarded addresses only when the rule sets UseTrustedProxy
 			var requesterIp string
 			if exceptionRule.UseTrustedProxy {
 				requesterIp = netutils.GetRequesterIP(r)
@@ -110,32 +88,28 @@ func basicAuthExceptionMatched(pe *ProxyEndpoint, r *http.Request) bool {
 			}
 			if requesterIp != "" {
 				if requesterIp == exceptionRule.CIDR {
-					// This IP is excluded from basic auth
 					return true
 				}
 
 				wildcardMatch := netutils.MatchIpWildcard(requesterIp, exceptionRule.CIDR)
 				if wildcardMatch {
-					// This IP is excluded from basic auth
 					return true
 				}
 
 				cidrMatch := netutils.MatchIpCIDR(requesterIp, exceptionRule.CIDR)
 				if cidrMatch {
-					// This IP is excluded from basic auth
 					return true
 				}
 			}
 		default:
-			//Unknown exception type, skip this rule
 			continue
 		}
 	}
 	return false
 }
 
-// Handle basic auth logic
-// do not write to http.ResponseWriter if err return is not nil (already handled by this function)
+// handleBasicAuth checks basic auth; when it returns an error the response
+// has been written.
 func handleBasicAuth(w http.ResponseWriter, r *http.Request, pe *ProxyEndpoint) error {
 	if basicAuthExceptionMatched(pe, r) {
 		return nil
@@ -149,13 +123,11 @@ func handleBasicAuth(w http.ResponseWriter, r *http.Request, pe *ProxyEndpoint) 
 		return errors.New("unauthorized")
 	}
 
-	//Check for the credentials to see if there is one matching
 	matchingFound := false
 	for _, cred := range pe.AuthenticationProvider.BasicAuthCredentials {
 		if u == cred.Username && auth.PasswordMatchesCached(cred.PasswordHash, p) {
 			matchingFound = true
 
-			//Set the X-Remote-User header
 			r.Header.Set("X-Remote-User", u)
 			break
 		}
@@ -181,9 +153,8 @@ func (h *ProxyHandler) handleOAuth2Auth(w http.ResponseWriter, r *http.Request) 
 	return h.Parent.Option.OAuth2Router.HandleOAuth2Auth(w, r)
 }
 
-/* ZorxAuth */
+/* Waymark Auth */
 func (h *ProxyHandler) handleZorxAuth(w http.ResponseWriter, r *http.Request, sep *ProxyEndpoint) error {
-	// Check ZorxAuth exception rules before applying authentication
 	if sep != nil && sep.AuthenticationProvider != nil {
 		if zorxAuthExceptionMatched(sep.AuthenticationProvider.ZorxAuthExceptionRules, r) {
 			return nil
@@ -192,9 +163,8 @@ func (h *ProxyHandler) handleZorxAuth(w http.ResponseWriter, r *http.Request, se
 	return h.Parent.Option.ZorxAuthAgentRouter.HandleAuthRouting(w, r)
 }
 
-// zorxAuthExceptionMatched reports whether the request is exempt from ZorxAuth by
-// one of the configured exception rules. It takes the rule slice directly so it
-// can be exercised without a configured SSO agent.
+// zorxAuthExceptionMatched reports whether an exception rule exempts the
+// request from Waymark Auth.
 func zorxAuthExceptionMatched(rules []*ZorxAuthExceptionRule, r *http.Request) bool {
 	requestTarget := pathmatch.RequestTarget(r)
 	normalizedPath := pathmatch.CleanRequestPath(requestTarget)

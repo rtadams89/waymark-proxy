@@ -19,7 +19,7 @@ func (ws *WebServer) resolveFileDiskPath(requestPath string) string {
 
 }
 
-// File server middleware to handle directory listing (and future expansion)
+// fsMiddleware handles directory listing
 func (ws *WebServer) fsMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !ws.option.EnableDirectoryListing {

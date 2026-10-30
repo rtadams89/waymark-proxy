@@ -7,11 +7,9 @@ import (
 )
 
 // ipRange represents a single IP range with its country code
-// Memory: 8 bytes (startIP) + 2 bytes (ccIdx) = 10 bytes per IPv4 range
-// vs old trie: ~64 nodes * 40+ bytes per node = 2500+ bytes per IP
 type ipRange struct {
-	startIP uint64 // For IPv4: upper 32 bits unused. For IPv6: we use separate structure
-	ccIdx   uint16 // Index into country code table (max 65535 countries, we have ~250)
+	startIP uint64 // For IPv4: upper 32 bits unused
+	ccIdx   uint16 // Index into country code table
 }
 
 // ipRangeV6 represents an IPv6 range (needs 128-bit support)
@@ -21,8 +19,7 @@ type ipRangeV6 struct {
 	ccIdx       uint16
 }
 
-// trie is now a memory-efficient sorted range structure
-// Uses binary search for O(log n) lookup, similar to trie's O(32) for IPv4
+// trie is a sorted range structure searched with binary search
 type trie struct {
 	ranges    []ipRange   // Sorted by startIP
 	rangesV6  []ipRangeV6 // Sorted by startIP for IPv6
@@ -120,7 +117,6 @@ func (t *trie) build() {
 }
 
 // search finds the country code for an IP address using binary search
-// Time complexity: O(log n) where n is number of ranges
 func (t *trie) search(ipAddr string) string {
 	// Check reserved IP zones first
 	reservedZone := getReservedIPZone(ipAddr)

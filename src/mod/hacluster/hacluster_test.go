@@ -447,7 +447,7 @@ func TestHelperManagesKeepalived(t *testing.T) {
 		t.Fatalf("reload: %+v calls=%q", res, calls)
 	}
 
-	// HA off: keepalived stopped and disabled (never left running with no instance)
+	// HA off: keepalived stopped and disabled
 	l.save(l.settings(3, false, 140))
 	res, calls, _ = l.run()
 	if res.Status != "ok" || l.state() != "inactive" || !strings.Contains(calls, "disable --now keepalived") || !strings.Contains(res.Message, "stopped") {
@@ -497,7 +497,7 @@ func TestOutdatedInstalledFiles(t *testing.T) {
 		t.Fatal("missing files reported as readable")
 	}
 	b, _ := os.ReadFile("deploy/waymark-ha-apply")
-	// install.sh sets the service user; that alone is not a difference
+	// The service user set by install.sh is not a difference
 	b = []byte(strings.Replace(string(b), `OWNER="${HA_OWNER:-waymark}"`, `OWNER="${HA_OWNER:-proxy}"`, 1))
 	os.WriteFile(helper, b, 0755)
 	for _, n := range []string{"check", "notify"} {

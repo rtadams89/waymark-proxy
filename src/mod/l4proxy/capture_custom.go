@@ -1,14 +1,8 @@
 package l4proxy
 
-/*
-	capture_custom.go (custom fork)
-
-	Traffic capture for Layer 4 proxies (mod/capture): while a capture that
-	covers this rule is running, new TCP connections and UDP client sessions
-	are recorded on the client side (client to Waymark's listener), the
-	upstream side (Waymark to the upstream server), or both. Connections
-	that started before the capture are not recorded.
-*/
+// Traffic capture for Layer 4 proxies: while a capture covering this rule is
+// running, new TCP connections and UDP client sessions are recorded on the
+// client side, the upstream side, or both.
 
 import (
 	"net"

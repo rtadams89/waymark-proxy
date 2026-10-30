@@ -18,10 +18,9 @@ func normalizeDeployFile(b []byte) string {
 	return ownerLine.ReplaceAllString(s, `OWNER="${HA_OWNER:-}"`)
 }
 
-// OutdatedInstalledFiles compares the installed helper and keepalived
-// scripts with the ones built into this Waymark, and returns the names of
-// those that differ (they need the installer to be run again). ok is false
-// when the installed files could not be read.
+// OutdatedInstalledFiles returns the names of the installed helper and
+// keepalived scripts that differ from the ones built in. ok is false when the
+// installed files could not be read.
 func OutdatedInstalledFiles(helperPath, scriptsDir string) (outdated []string, ok bool) {
 	outdated = []string{}
 	for name, path := range map[string]string{

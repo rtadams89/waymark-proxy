@@ -7,37 +7,33 @@ import (
 	"time"
 )
 
-// Auto sniff of flush interval from header
+// getFlushInterval returns the flush interval for a response: -1 (immediate)
+// for streams, otherwise FlushInterval.
 func (p *ReverseProxy) getFlushInterval(req *http.Request, res *http.Response) time.Duration {
 	contentType := res.Header.Get("Content-Type")
 	if actualContentType, _, _ := mime.ParseMediaType(contentType); actualContentType == "text/event-stream" {
 		return -1
 	}
 
-	//An unknown response length means the upstream is streaming, e.g. chunked
-	//transfer encoding. See issue #1231.
+	// Unknown length: streaming
 	if res.ContentLength == -1 || p.isBidirectionalStream(req, res) {
 		return -1
 	}
 
-	// Fixed issue #235: Added auto detection for ollama / llm output stream
+	// Keep-alive connections
 	connectionHeader := req.Header["Connection"]
 	if len(connectionHeader) > 0 && strings.Contains(strings.Join(connectionHeader, ","), "keep-alive") {
 		return -1
 	}
 
-	//Cannot sniff anything. Use default value
 	return p.FlushInterval
 
 }
 
-// Check for bidirectional stream, copy from Caddy :D
+// isBidirectionalStream reports whether the request and response form a
+// bidirectional stream.
 func (p *ReverseProxy) isBidirectionalStream(req *http.Request, res *http.Response) bool {
-	// We have to check the encoding here; only flush headers with identity encoding.
-	// Non-identity encoding might combine with "encode" directive, and in that case,
-	// if body size larger than enc.MinLength, upper level encode handle might have
-	// Content-Encoding header to write.
-	// (see https://github.com/caddyserver/caddy/issues/3606 for use case)
+	// Only identity encoding qualifies
 	ae := req.Header.Get("Accept-Encoding")
 
 	return req.ProtoMajor == 2 &&

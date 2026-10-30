@@ -5,23 +5,17 @@ import (
 	"net/http"
 )
 
-/*
-	Special.go
-
-	This script handle special routing rules
-	by external modules
-*/
+// Special routing rules used by external modules
 
 type RoutingRule struct {
 	ID                     string //ID of the routing rule
 	Enabled                bool   //If the routing rule enabled
-	UseSystemAccessControl bool   //Pass access control check to system white/black list, set this to false to bypass white/black list
+	UseSystemAccessControl bool   // Apply the system access control; false bypasses it
 	MatchRule              func(r *http.Request) bool
 	RoutingHandler         func(http.ResponseWriter, *http.Request)
 }
 
-// Router functions
-// Check if a routing rule exists given its id
+// GetRoutingRuleById returns the routing rule with the given id.
 func (router *Router) GetRoutingRuleById(rrid string) (*RoutingRule, error) {
 	for _, rr := range router.routingRules {
 		if rr.ID == rrid {
@@ -36,7 +30,6 @@ func (router *Router) GetRoutingRuleById(rrid string) (*RoutingRule, error) {
 func (router *Router) AddRoutingRules(rr *RoutingRule) error {
 	_, err := router.GetRoutingRuleById(rr.ID)
 	if err == nil {
-		//routing rule with given id already exists
 		return errors.New("routing rule with same id already exists")
 	}
 
@@ -72,8 +65,7 @@ func (router *Router) GetMatchingRoutingRule(r *http.Request) *RoutingRule {
 	return nil
 }
 
-// Routing Rule functions
-// Check if a request object match the
+// IsMatch reports whether the request matches this routing rule.
 func (e *RoutingRule) IsMatch(r *http.Request) bool {
 	if !e.Enabled {
 		return false

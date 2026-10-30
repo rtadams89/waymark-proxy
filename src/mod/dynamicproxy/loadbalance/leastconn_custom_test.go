@@ -2,8 +2,8 @@ package loadbalance
 
 import "testing"
 
-// Custom fork: least connections picks by requests in progress per weight,
-// and uses backups (weight 0) only when there is nothing else.
+// TestPickLeastConn checks picking by requests in progress per weight, with
+// backups (weight 0) used last.
 func TestPickLeastConn(t *testing.T) {
 	m := &RouteManager{}
 	a := &Upstream{OriginIpOrDomain: "a:80", Weight: 2}

@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-// Custom fork: blocker UUIDs from API requests never reach the file system
-// unless they are well-formed UUIDs.
+// Blocker UUIDs that are not well-formed UUIDs are rejected.
 func TestBlockerFilenameRejectsTraversal(t *testing.T) {
 	dir := t.TempDir()
 	victim := filepath.Join(filepath.Dir(dir), "victim-file")

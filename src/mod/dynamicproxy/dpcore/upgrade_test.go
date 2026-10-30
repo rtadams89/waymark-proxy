@@ -92,8 +92,8 @@ func dialUpgrade(t *testing.T, addr string, upType string) (net.Conn, *bufio.Rea
 	return conn, br, strings.TrimSpace(statusLine)
 }
 
-// TestUpgradeTunnelsBidirectionally covers the TS2021 failure in issue #1290, where the
-// upgrade headers were stripped and the upstream was closed right after the 101 response.
+// TestUpgradeTunnelsBidirectionally checks that upgraded connections tunnel
+// data both ways.
 func TestUpgradeTunnelsBidirectionally(t *testing.T) {
 	tests := []struct {
 		name             string

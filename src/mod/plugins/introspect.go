@@ -19,11 +19,8 @@ func checkSupportHotRebuild(dir string) bool {
 	return !os.IsNotExist(errMakefile) || !os.IsNotExist(errMainGo)
 }
 
-/*
-LoadPluginSpec loads a plugin specification from the plugin directory
-Zoraxy will start the plugin binary or the entry point script
-with -introspect flag to get the plugin specification
-*/
+// LoadPluginSpec loads a plugin specification by running the plugin entry
+// point with the -introspect flag.
 func (m *Manager) LoadPluginSpec(pluginPath string) (*Plugin, error) {
 	pluginEntryPoint, err := m.GetPluginEntryPoint(pluginPath)
 	if err != nil {
@@ -48,7 +45,7 @@ func (m *Manager) LoadPluginSpec(pluginPath string) (*Plugin, error) {
 	}, nil
 }
 
-// GetPluginEntryPoint returns the plugin entry point
+// GetPluginSpec returns the plugin specification from the entry point
 func (m *Manager) GetPluginSpec(entryPoint string) (*zoraxyPlugin.IntroSpect, error) {
 	pluginSpec := zoraxyPlugin.IntroSpect{}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -63,7 +60,7 @@ func (m *Manager) GetPluginSpec(entryPoint string) (*zoraxyPlugin.IntroSpect, er
 		return nil, err
 	}
 
-	// Assuming the output is JSON and needs to be unmarshaled into pluginSpec
+	// Parse the JSON output into pluginSpec
 	err = json.Unmarshal(output, &pluginSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal plugin spec: %v", err)

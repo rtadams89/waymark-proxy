@@ -7,12 +7,6 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy"
 )
 
-/*
-  Routing Rule
-
-  This script handle special routing rules for some utilities functions
-*/
-
 // Register the system build-in routing rules into the core
 func registerBuildInRoutingRules() {
 	//Cloudflare email decoder

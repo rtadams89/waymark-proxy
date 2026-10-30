@@ -1,13 +1,6 @@
 package domainsniff
 
-/*
-	Domainsniff
-
-	This package contain codes that perform project / domain specific behavior in Zoraxy
-	If you want Zoraxy to handle a particular domain or open source project in a special way,
-	you can add the checking logic here.
-
-*/
+// Package domainsniff detects domain and application specific behavior.
 import (
 	"crypto/tls"
 	"encoding/json"
@@ -20,10 +13,9 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-// Check if a domain have TLS but it is self-signed or expired
-// Return false if sniff error
+// DomainIsSelfSigned reports whether a domain's TLS certificate fails
+// verification but completes an unverified handshake.
 func DomainIsSelfSigned(domain string) bool {
-	//Extract the domain from URl in case the user input the full URL
 	host, port, err := net.SplitHostPort(domain)
 	if err != nil {
 		host = domain
@@ -34,35 +26,29 @@ func DomainIsSelfSigned(domain string) bool {
 		domain = domain + ":443"
 	}
 
-	//Get the certificate
 	conn, err := net.Dial("tcp", domain)
 	if err != nil {
 		return false
 	}
 	defer conn.Close()
 
-	//Connect with TLS using secure verify
 	tlsConn := tls.Client(conn, nil)
 	err = tlsConn.Handshake()
 	if err == nil {
-		//This is a valid certificate
 		fmt.Println()
 		return false
 	}
 
-	//Connect with TLS using insecure skip verify
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 	}
 	tlsConn = tls.Client(conn, config)
 	err = tlsConn.Handshake()
-	//If the handshake is successful, this is a self-signed certificate
 	return err == nil
 }
 
-// Check if domain is served by a web server using HTTPS
+// DomainUsesTLS reports whether targetURL answers over HTTPS.
 func DomainUsesTLS(targetURL string) bool {
-	//Check if the site support https
 	httpsUrl := fmt.Sprintf("https://%s", targetURL)
 	httpUrl := fmt.Sprintf("http://%s", targetURL)
 
@@ -78,22 +64,11 @@ func DomainUsesTLS(targetURL string) bool {
 		return false
 	}
 
-	//If the site is not reachable, return false
 	return false
 }
 
-/*
-	WebSocket Header Sniff
-*/
-
-// Check if the requst is a special case where
-// user defined header shall not be passed over
-
-/*
-	Request Handlers
-*/
-//Check if site support TLS
-//Pass in ?selfsignchk=true to also check for self-signed certificate
+// HandleCheckSiteSupportTLS reports whether a site supports TLS, and with
+// selfsignchk also whether its certificate is self-signed.
 func HandleCheckSiteSupportTLS(w http.ResponseWriter, r *http.Request) {
 	targetURL, err := utils.PostPara(r, "url")
 	if err != nil {
@@ -101,10 +76,8 @@ func HandleCheckSiteSupportTLS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//If the selfsign flag is set, also chec for self-signed certificate
 	_, err = utils.PostBool(r, "selfsignchk")
 	if err == nil {
-		//Return the https and selfsign status
 		type result struct {
 			Protocol string `json:"protocol"`
 			SelfSign bool   `json:"selfsign"`

@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-// closedAfterEOF behaves like net/http's server request body once the
-// response has started: the read after EOF fails.
+// closedAfterEOF fails reads after EOF, like a closed server request body.
 type closedAfterEOF struct{ reads int }
 
 func (c *closedAfterEOF) Read(p []byte) (int, error) {

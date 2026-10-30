@@ -1,40 +1,23 @@
 package main
 
-/*
-	rollingupdate_custom.go (custom fork)
-
-	Rolling update: install the latest release on every node of an HA
-	cluster, one node at a time, from one button.
-
-	The active node runs it (a request made on a standby is passed to the
-	active node over the sync connection, action "rollingupdate"):
-
-	1. Checks the cluster first: every node answers, this node is the only
-	   active one, every other node is a healthy standby with keepalived
-	   running, and nothing else (an update, a switch-over) is going on.
-	2. Updates the standbys one at a time, lowest priority first. Each one
-	   installs the release itself (as the per-node Update button does) and
-	   must come back on the new version, healthy and as a standby, and stay
-	   that way for rollStableFor, before the next one starts.
-	3. Makes the updated standby with the highest priority active, the same
-	   way as Make active, and waits until this node has given up the
-	   floating IPs.
-	4. Updates this node, which restarts as a standby. With preempt on and
-	   this node's priority higher, it keeps reporting itself unhealthy until
-	   it restarts, so keepalived does not move the floating IPs back to it
-	   while it still runs the old version.
-
-	It stops at the first problem. This node is only updated once every
-	other node runs the new version and another node is active. Nodes that
-	already run the new version are skipped, so starting it again after
-	fixing a problem carries on where it stopped.
-
-	Progress is saved in .rolling-update.json next to the binary, so this
-	node can confirm the last step after it restarts. Every node reports
-	the progress it holds with its state over the sync connection, so the
-	HA page shows it on whichever node it is opened, including while this
-	node restarts.
-*/
+// Rolling update: installs the latest release on every node of an HA cluster,
+// one node at a time. The active node runs it (a request made on a standby is
+// passed to the active node over the sync connection, action "rollingupdate"):
+//
+//  1. Checks the cluster: every node answers, this node is the only active
+//     one, every other node is a healthy standby with keepalived running, and
+//     no update or switch-over is going on.
+//  2. Updates the standbys one at a time, lowest priority first. Each must
+//     come back on the new version, healthy and as a standby, and stay that
+//     way for rollStableFor before the next one starts.
+//  3. Makes the updated standby with the highest priority active and waits
+//     until this node has given up the floating IPs.
+//  4. Updates this node, which restarts as a standby. With preempt on and this
+//     node's priority higher, it reports itself unhealthy until it restarts.
+//
+// It stops at the first problem. Nodes already on the new version are skipped.
+// Progress is saved in .rolling-update.json next to the binary and reported by
+// every node with its state over the sync connection.
 
 import (
 	"encoding/json"
@@ -79,8 +62,6 @@ var (
 	rollStatePath   = rollStatePathDefault
 )
 
-// Set here rather than above: these refer back to code that starts a
-// rolling update, which Go does not allow in a variable's initial value.
 func init() {
 	rollFetch = haFetchNodeStates
 	rollFetchOne = rollFetchOneDefault
@@ -134,7 +115,7 @@ func (s *rollState) copy() *rollState {
 var roll struct {
 	mu        sync.Mutex
 	st        *rollState
-	holdUntil time.Time // report unhealthy until then (preempt, see the top)
+	holdUntil time.Time // report unhealthy until then (preempt)
 	holdWhy   string
 }
 
@@ -303,8 +284,7 @@ func rollPlan(states []haNodeState, target string) ([]rollStep, error) {
 		if k := s.Info.Keepalived; k != "active" && k != "unknown" && k != "" {
 			return nil, fmt.Errorf("keepalived is not running on %s (%s)", name, k)
 		}
-		// A standby restarts to load the configuration it copies, which would
-		// cut short its update; same-version standbys must be in sync first
+		// Same-version standbys must be in sync
 		if s.Info.Version == self0(states).Info.Version && s.Info.SyncStatus != "in-sync" {
 			detail := s.Info.SyncDetail
 			if detail == "" {
@@ -312,8 +292,7 @@ func rollPlan(states []haNodeState, target string) ([]rollStep, error) {
 			}
 			return nil, fmt.Errorf("%s has not finished copying the active node's configuration (%s); try again in a minute", name, detail)
 		}
-		// ... and have the latest configuration: a standby made active during
-		// the update would otherwise hand an older one back to this node
+		// ... and have the latest configuration
 		if s.Info.Version == self0(states).Info.Version && s.Info.Hash != "" {
 			if h := rollLocalHash(); h != "" && h != s.Info.Hash {
 				return nil, fmt.Errorf("%s has not copied the latest configuration changes yet; try again in a minute (or use Sync now)", name)
@@ -331,7 +310,7 @@ func rollPlan(states []haNodeState, target string) ([]rollStep, error) {
 		return nil, fmt.Errorf("this node is not healthy: %s", self.Info.HeartbeatReason)
 	}
 
-	// Lowest priority first: the likeliest failover target stays untouched longest
+	// Lowest priority first
 	sort.SliceStable(standbys, func(i, j int) bool { return standbys[i].Node.Priority < standbys[j].Node.Priority })
 	steps := []rollStep{}
 	needed := 0
@@ -571,8 +550,7 @@ func rollUpdateStandby(i int, cfg *hacluster.Config, key []byte, n hacluster.Nod
 		if err == nil {
 			break
 		}
-		// The node may be restarting to load the active node's configuration
-		// (it refuses, or does not answer, for a few seconds): ask again
+		// The node may be restarting to load the active node's configuration: ask again
 		retry := strings.Contains(err.Error(), "restarting to load the configuration") || strings.Contains(err.Error(), "could not ask")
 		if !retry || time.Since(asked) > rollAskRetryFor {
 			return err
@@ -639,7 +617,7 @@ func rollSwitch(i int, cfg *hacluster.Config, key []byte, target, self hacluster
 	rollSetStep(i, "running", "Making "+target.Name+" the active node")
 	if cfg.Preempt {
 		if self.Priority > target.Priority {
-			// Stay out of the way until this node runs the new version too
+			// Stay a standby until this node runs the new version
 			rollSetHold(rollMaxHold, "rolling update: stays a standby until it runs the new version")
 		}
 	}
@@ -824,8 +802,7 @@ func rollView() map[string]any {
 	if best == nil {
 		return nil
 	}
-	// current is false when it comes from a node that did not answer the last
-	// poll (for example the active node while it restarts for its own update)
+	// current is false when it comes from a node that did not answer the last poll
 	return map[string]any{"state": best, "reportedBy": from, "current": current}
 }
 

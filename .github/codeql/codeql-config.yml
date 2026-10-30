@@ -2,8 +2,7 @@
 name: Waymark CodeQL config
 
 paths-ignore:
-  # The Zoraxy plugin library: compiled into plugins, not run by Waymark, and
-  # kept identical to upstream so existing plugins keep working
+  # The Zoraxy plugin library (compiled into plugins, not run by Waymark)
   - src/mod/plugins/zoraxy_plugin
   # Vendored, minified third-party UI libraries
   - src/web/script/semantic

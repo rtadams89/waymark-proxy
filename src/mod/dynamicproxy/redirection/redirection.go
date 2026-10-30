@@ -16,7 +16,7 @@ import (
 )
 
 type RuleTable struct {
-	AllowRegex    bool     //Allow regular expression to be used in rule matching. Require up to O(n^m) time complexity
+	AllowRegex    bool     // Allow regular expressions in rule matching
 	CaseSensitive bool     //Force case sensitive URL matching
 	configPath    string   //The location where the redirection rules is stored
 	rules         sync.Map //Store map[string]*RedirectRule for this reverse proxy instance
@@ -43,7 +43,6 @@ func NewRuleTable(configPath string, allowRegex bool, caseSensitive bool, logger
 		CaseSensitive: caseSensitive,
 		Logger:        logger,
 	}
-	//Load all the rules from the config path
 	if !utils.FileExists(configPath) {
 		os.MkdirAll(configPath, 0775)
 	}
@@ -63,7 +62,7 @@ func NewRuleTable(configPath string, allowRegex bool, caseSensitive bool, logger
 		}
 
 		thisRule := RedirectRule{
-			Enabled: true, //Default to enabled when loading from file for backward compatibility
+			Enabled: true, // Default to enabled when loading from file
 		}
 
 		err = json.Unmarshal(b, &thisRule)
@@ -85,7 +84,6 @@ func NewRuleTable(configPath string, allowRegex bool, caseSensitive bool, logger
 }
 
 func (t *RuleTable) AddRedirectRule(redirectURL string, destURL string, forwardPathname bool, statusCode int, requireExactMatch bool, deviceType string) error {
-	// Create a new RedirectRule object with the given parameters
 	newRule := &RedirectRule{
 		Enabled:           true,
 		RedirectURL:       redirectURL,
@@ -97,13 +95,11 @@ func (t *RuleTable) AddRedirectRule(redirectURL string, destURL string, forwardP
 		parent:            t,
 	}
 
-	// Save the new rule to file
 	err := newRule.SaveChangeToFile()
 	if err != nil {
 		return err
 	}
 
-	// Store the RedirectRule object in the sync.Map
 	t.rules.Store(redirectURL, newRule)
 
 	return nil
@@ -128,16 +124,13 @@ func (t *RuleTable) EditRedirectRule(oldRedirectURL string, newRedirectURL strin
 		parent:            t,
 	}
 
-	//Remove the old rule
 	t.DeleteRedirectRule(oldRedirectURL)
 
-	// Save changes to file
 	err := newRule.SaveChangeToFile()
 	if err != nil {
 		return err
 	}
 
-	// Update the runtime map
 	t.rules.Store(newRedirectURL, newRule)
 
 	return nil
@@ -147,21 +140,17 @@ func (t *RuleTable) DeleteRedirectRule(redirectURL string) error {
 	// Convert the redirectURL to a valid filename by replacing "/" with "-" and "." with "_"
 	filename := utils.ReplaceSpecialCharacters(redirectURL) + ".json"
 
-	// Create the full file path by joining the t.configPath with the filename
 	filepath := path.Join(t.configPath, filename)
 
-	// Check if the file exists
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		return nil // File doesn't exist, nothing to delete
 	}
 
-	// Delete the file
 	if err := os.Remove(filepath); err != nil {
 		t.log("Error deleting file "+filepath, err)
 		return err
 	}
 
-	// Delete the key-value pair from the sync.Map
 	t.rules.Delete(redirectURL)
 	return nil
 }
@@ -189,7 +178,6 @@ func (t *RuleTable) ToggleEnableRedirectRule(redirectURL string, enabled bool) e
 	rule := ruleInterface.(*RedirectRule)
 	rule.Enabled = enabled
 
-	// Save changes to file
 	err := rule.SaveChangeToFile()
 	if err != nil {
 		return err
@@ -201,14 +189,12 @@ func (t *RuleTable) ToggleEnableRedirectRule(redirectURL string, enabled bool) e
 
 // Check if a given request URL matched any of the redirection rule
 func (t *RuleTable) MatchRedirectRule(requestedURL string) *RedirectRule {
-	// Iterate through all the keys in the rules map
 	var targetRedirectionRule *RedirectRule = nil
 	var maxMatch int = 0
 	t.rules.Range(func(key interface{}, value interface{}) bool {
 		rule := value.(*RedirectRule)
 		keyStr := key.(string)
 
-		// Skip disabled rules
 		if !rule.Enabled {
 			return true
 		}
@@ -217,7 +203,6 @@ func (t *RuleTable) MatchRedirectRule(requestedURL string) *RedirectRule {
 			//Regexp matching rule
 			matched, err := regexp.MatchString(keyStr, requestedURL)
 			if err != nil {
-				//Something wrong with the regex?
 				t.log("Unable to match regex", err)
 				return true
 			}
@@ -231,7 +216,6 @@ func (t *RuleTable) MatchRedirectRule(requestedURL string) *RedirectRule {
 		//Check matching based on exact match requirement
 		var matched bool
 		if rule.RequireExactMatch {
-			//Exact match required
 			if t.CaseSensitive {
 				matched = requestedURL == keyStr
 			} else {
@@ -255,7 +239,6 @@ func (t *RuleTable) MatchRedirectRule(requestedURL string) *RedirectRule {
 		}
 
 		if matched {
-			// This request URL matched the rule
 			if len(keyStr) > maxMatch {
 				maxMatch = len(keyStr)
 				targetRedirectionRule = rule

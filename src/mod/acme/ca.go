@@ -1,10 +1,6 @@
 package acme
 
-/*
-	CA.go
-
-	This script load CA definition from embedded ca.json
-*/
+// CA definitions loaded from the embedded ca.json.
 import (
 	_ "embed"
 	"encoding/json"
@@ -13,7 +9,6 @@ import (
 	"strings"
 )
 
-// CA definition, load from embeded json when startup
 type CaDef struct {
 	Production map[string]string
 	Test       map[string]string
@@ -35,9 +30,9 @@ func init() {
 	caDef = runtimeCaDef
 }
 
-// Get the CA ACME server endpoint and error if not found
+// loadCAApiServerFromName returns a CA's ACME directory URL.
 func loadCAApiServerFromName(caName string, acmeTestMode bool) (string, error) {
-	// handle BuyPass cert org section (Buypass AS-983163327)
+	// Buypass certificates name the organization "Buypass AS-983163327"
 	if strings.HasPrefix(caName, "Buypass AS") {
 		caName = "Buypass"
 	}

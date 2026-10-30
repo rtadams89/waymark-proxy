@@ -6,18 +6,10 @@ import (
 	"github.com/armon/go-radix"
 )
 
-/*
-	Static Forwarder
-
-	This file handles the dynamic proxy routing forwarding
-	request to plugin capture path that handles the matching
-	request path registered when the plugin started
-*/
+// Static forwarder: routes requests on a plugin's registered capture paths to the plugin
 
 func (m *Manager) UpdateTagsToPluginMaps() {
-	//build the tag to plugin pointer sync.Map
-	//Note: this can be invoked concurrently by multiple plugins exiting at the same time
-	//(e.g. on shutdown), so m.tagPluginMap itself must never be reassigned here.
+	// Build the tag to plugin pointer sync.Map in place (may run concurrently)
 	currentTags := make(map[string]bool)
 	for tag, pluginIds := range m.Options.PluginGroups {
 		currentTags[tag] = true
@@ -47,7 +39,7 @@ func (m *Manager) UpdateTagsToPluginMaps() {
 	m.tagPluginListMutex.Unlock()
 }
 
-// GenerateForwarderRadixTree generates the radix tree for static forwarders
+// GetForwarderRadixTreeFromPlugins generates the radix tree for static forwarders
 func (m *Manager) GetForwarderRadixTreeFromPlugins(pluginIds []string) *radix.Tree {
 	// Create a new radix tree
 	r := radix.New()

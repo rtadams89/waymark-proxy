@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Not sure why this test is not working, but at least this make the QA guy happy
 func TestHTTP1p1KeepAlive(t *testing.T) {
 	client := &http.Client{
 		Transport: &http.Transport{

@@ -32,8 +32,8 @@ func seconds(v string) (int64, bool) {
 	return n, true
 }
 
-// notStorableReason explains why a 200 response must not be stored in a
-// shared cache, or returns "" if it may be.
+// notStorableReason returns why a 200 response must not be stored in a
+// shared cache, or "".
 func notStorableReason(h http.Header) string {
 	cc := cacheControl(h)
 	switch {
@@ -66,10 +66,9 @@ func hasKey(m map[string]string, k string) bool {
 	return ok
 }
 
-// freshnessLifetime is how long a response stays fresh from now, following
-// RFC 9111 for a shared cache (s-maxage, then max-age, then Expires), with
-// defaultTTL when the response has none of them. The response's Age is
-// subtracted. A result <= 0 means it is already stale.
+// freshnessLifetime returns how long a response stays fresh from now
+// (s-maxage, then max-age, then Expires, else defaultTTL), minus its Age.
+// A result <= 0 means stale.
 func freshnessLifetime(h http.Header, now time.Time, defaultTTL time.Duration) time.Duration {
 	cc := cacheControl(h)
 	var lifetime time.Duration
@@ -90,7 +89,7 @@ func freshnessLifetime(h http.Header, now time.Time, defaultTTL time.Duration) t
 		explicit = true
 		exp, err := http.ParseTime(h.Get("Expires"))
 		if err != nil {
-			lifetime = 0 // invalid Expires means already expired
+			lifetime = 0 // invalid Expires: stale
 		} else {
 			date := now
 			if d, err := http.ParseTime(h.Get("Date")); err == nil {
@@ -108,8 +107,8 @@ func freshnessLifetime(h http.Header, now time.Time, defaultTTL time.Duration) t
 	return lifetime
 }
 
-// requestWantsFresh reports whether the client asked the cache to check with
-// the upstream (a hard reload sends Cache-Control: no-cache).
+// requestWantsFresh reports whether the client sent Cache-Control:
+// no-cache or max-age=0.
 func requestWantsFresh(r *http.Request) bool {
 	cc := cacheControl(r.Header)
 	if hasKey(cc, "no-cache") {

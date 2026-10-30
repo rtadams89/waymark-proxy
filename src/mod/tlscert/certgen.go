@@ -45,9 +45,7 @@ func (m *Manager) GenerateSelfSignedCertificate(cn string, sans []string, certFi
 		return err
 	}
 
-	// Resolve and validate both paths stay within the certificate store
-	// before touching the filesystem (certFile/keyFile are expected to
-	// already be sanitized by the caller, e.g. via domainToFilename).
+	// Resolve both paths within the certificate store
 	certPath, err := safeJoin(m.CertStore, certFile)
 	if err != nil {
 		m.Logger.PrintAndLog("tls", "Rejected unsafe certificate filename: "+certFile, err)

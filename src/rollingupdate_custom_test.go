@@ -278,7 +278,6 @@ func TestRollRunHappyPath(t *testing.T) {
 	}
 
 	// After the restart on the new version, the last step is confirmed
-	// (this test binary runs DISPLAY_VERSION, so pretend that is the new version)
 	savedHealthy := rollSelfHealthy
 	rollSelfHealthy = func() (bool, string) { return true, "" }
 	defer func() { rollSelfHealthy = savedHealthy }()

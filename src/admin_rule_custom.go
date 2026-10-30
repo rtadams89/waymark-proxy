@@ -1,31 +1,11 @@
 package main
 
 /*
-	admin_rule_custom.go (custom fork): the admin console rule.
-
-	Waymark keeps one HTTP proxy rule that serves its own admin console
-	(System "admin-console"). It is created on first start and kept up to
-	date:
-
-	- It answers on the required hosts: with HA on, every floating IP and
-	  node address and their DNS names (HA settings); with HA off, this
-	  node's address and DNS name (conf/admin_console.json, guessed on first
-	  start). Waymark adds and removes these itself (SystemHosts).
-	- Its destination is the admin console's own listener (-port).
-	- TLS uses a self-signed certificate for every host of the rule until
-	  another certificate is chosen for it.
-	- What could cut off access to the admin console is fixed: it cannot be
-	  disabled or deleted, and its destination, authentication, virtual
-	  directories, headers, health checks, maintenance mode and listening
-	  address are Waymark's. The main domain, extra aliases, certificate,
-	  ACL, client address trust, caching, logging and tags can be changed
-	  (admin_guard_custom.go enforces this in the API).
-
-	On an HA standby the rule comes from the active node with the rest of
-	the configuration, so it is only created and changed on the active node
-	(or a node that is not in a cluster).
-
-	-reset-admin-rule rebuilds the rule from scratch and exits.
+	The admin console rule: the HTTP proxy rule that serves Waymark's own
+	admin console. It is created on first start and kept answering on the
+	required hosts, sending to the admin console's listener, with fixed
+	settings that cannot be changed. It is only created and changed on the
+	active node or a node not in a cluster.
 */
 
 import (
@@ -55,8 +35,8 @@ import (
 
 const (
 	adminRuleSystem   = "admin-console"
-	adminCertName     = "waymark-admin-console" // conf/certs/<name>.pem and .key
-	adminSettingsFile = "admin_console.json"    // this node's address and DNS name when HA is off
+	adminCertName     = "waymark-admin-console"
+	adminSettingsFile = "admin_console.json"
 	adminCertValidity = 10 * 365 * 24 * time.Hour
 )
 
@@ -64,11 +44,9 @@ var resetAdminRuleFlag = flag.Bool("reset-admin-rule", false, "Custom fork: rebu
 
 var adminMu sync.Mutex
 
-/* This node's address and DNS name (HA off) */
-
 type adminConsoleSettings struct {
-	Address  string `json:"address"`  // this node's IPv4 address
-	Hostname string `json:"hostname"` // its DNS name (optional)
+	Address  string `json:"address"`
+	Hostname string `json:"hostname"`
 }
 
 func adminSettingsPath() string { return filepath.Join(CONF_FOLDER, adminSettingsFile) }
@@ -87,8 +65,8 @@ func writeAdminSettings(s adminConsoleSettings) error {
 	return utils.WriteFileAtomic(adminSettingsPath(), append(b, '\n'), 0644)
 }
 
-// adminSettings returns this node's settings; on first use they are
-// guessed and saved.
+// adminSettings returns this node's settings, guessing and saving them on
+// first use.
 func adminSettings() adminConsoleSettings {
 	if s, ok := readAdminSettings(); ok {
 		return s
@@ -115,12 +93,10 @@ func (s adminConsoleSettings) validate() (adminConsoleSettings, error) {
 	return s, nil
 }
 
-/* Best guesses */
-
-// adminGuessAddress is the IPv4 address this machine uses to reach other
-// networks (the default route), or its first non-loopback IPv4 address.
+// adminGuessAddress returns the IPv4 address of the default route, or the
+// first non-loopback IPv4 address.
 func adminGuessAddress() string {
-	if c, err := net.Dial("udp4", "192.0.2.1:9"); err == nil { // nothing is sent
+	if c, err := net.Dial("udp4", "192.0.2.1:9"); err == nil {
 		defer c.Close()
 		if a, ok := c.LocalAddr().(*net.UDPAddr); ok && !a.IP.IsLoopback() {
 			return a.IP.String()
@@ -134,9 +110,8 @@ func adminGuessAddress() string {
 	return ""
 }
 
-// adminGuessHostname is the DNS name for ip (reverse DNS), or this
-// machine's host name for one of its own addresses (not a floating IP it
-// happens to hold).
+// adminGuessHostname returns the reverse DNS name of ip, or this machine's
+// host name if ip is one of its own addresses.
 func adminGuessHostname(ip string) string {
 	if net.ParseIP(ip) == nil {
 		return ""
@@ -171,10 +146,8 @@ func adminGuessHostname(ip string) string {
 	return ""
 }
 
-/* What the rule must be */
-
-// adminRequiredHosts are the hosts the rule must answer on, DNS names
-// before addresses.
+// adminRequiredHosts returns the hosts the rule must answer on, DNS names
+// first.
 func adminRequiredHosts(cfg *hacluster.Config, s adminConsoleSettings) []string {
 	out, seen := []string{}, map[string]bool{}
 	add := func(hs ...string) {
@@ -199,8 +172,8 @@ func adminRequiredHosts(cfg *hacluster.Config, s adminConsoleSettings) []string 
 	return out
 }
 
-// adminDefaultRoot is the main domain Waymark picks: the primary floating
-// IP's DNS name or address with HA on, this node's otherwise.
+// adminDefaultRoot returns the primary floating IP's DNS name or address
+// with HA on, or this node's.
 func adminDefaultRoot(cfg *hacluster.Config, s adminConsoleSettings) string {
 	if cfg != nil && cfg.Enabled && len(cfg.Nodes) > 0 && cfg.VIP != "" {
 		if cfg.VIPHostname != "" {
@@ -217,8 +190,7 @@ func adminDefaultRoot(cfg *hacluster.Config, s adminConsoleSettings) string {
 	return ""
 }
 
-// adminDestination is the admin console's own listener, as the proxy
-// reaches it.
+// adminDestination returns the admin console listener's address.
 func adminDestination() string {
 	host, port, err := net.SplitHostPort(*webUIPort)
 	if err != nil {
@@ -242,9 +214,8 @@ func adminTLSAuto(t *tlscert.HostSpecificTlsBehavior) bool {
 	return true
 }
 
-// adminBuildRule returns the admin console rule as it must be: the
-// editable settings of existing (nil for a new rule) on Waymark's fixed
-// ones.
+// adminBuildRule returns the admin console rule with the editable settings
+// of existing (nil for a new rule) and the fixed settings.
 func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, defaultRoot, destination string) *dynamicproxy.ProxyEndpoint {
 	ep := dynamicproxy.GetDefaultProxyEndpoint()
 	ep.System = adminRuleSystem
@@ -254,7 +225,6 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 		isRequired[h] = true
 	}
 
-	// Main domain
 	switch {
 	case existing == nil:
 		ep.RootOrMatchingDomain, ep.SystemAutoRoot = defaultRoot, true
@@ -268,8 +238,8 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 	}
 	root := ep.RootOrMatchingDomain
 
-	// Aliases: the existing ones without hosts Waymark added that are no
-	// longer required, then every required host
+	// Aliases: existing ones minus no longer required system hosts, then all
+	// required hosts
 	wasSystem := map[string]bool{}
 	if existing != nil && existing.System == adminRuleSystem {
 		for _, h := range existing.SystemHosts {
@@ -289,7 +259,7 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 	}
 	if existing != nil {
 		if old := strings.ToLower(existing.RootOrMatchingDomain); old != root && !(wasSystem[old] && !isRequired[old]) {
-			addAlias(old) // a main domain that was replaced stays as an alias
+			addAlias(old)
 		}
 		for _, a := range existing.MatchingDomainAlias {
 			if wasSystem[strings.ToLower(a)] && !isRequired[strings.ToLower(a)] {
@@ -303,7 +273,6 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 	}
 	ep.MatchingDomainAlias = aliases
 
-	// Destination
 	ep.ActiveOrigins = []*loadbalance.Upstream{{
 		OriginIpOrDomain:         destination,
 		RequireTLS:               false,
@@ -311,7 +280,6 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 		Weight:                   1,
 	}}
 
-	// No health checks, caching on
 	ep.DisableUptimeMonitor = true
 	hc := healthcheck.DefaultConfig()
 	hc.ActiveEnabled, hc.PassiveEnabled = false, false
@@ -319,7 +287,7 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 	ep.AssetCache = assetcache.DefaultConfig()
 	ep.AssetCache.Enabled = true
 
-	// TLS: the self-signed certificate for every host until another is chosen
+	// Self-signed certificate for every host unless another is chosen
 	allHosts := append([]string{root}, aliases...)
 	if existing == nil || adminTLSAuto(existing.TlsOptions) {
 		ep.TlsOptions = &tlscert.HostSpecificTlsBehavior{DisableSNI: true, PreferredCertificate: map[string]string{}}
@@ -329,7 +297,7 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 	} else if existing.TlsOptions != nil {
 		t := *existing.TlsOptions
 		t.PreferredCertificate = map[string]string{}
-		for _, h := range allHosts { // drop hosts the rule no longer has
+		for _, h := range allHosts {
 			if c, ok := existing.TlsOptions.PreferredCertificate[h]; ok {
 				t.PreferredCertificate[h] = c
 			}
@@ -337,7 +305,6 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 		ep.TlsOptions = &t
 	}
 
-	// Editable settings carried over
 	if existing != nil {
 		if existing.AccessFilterUUID != "" {
 			ep.AccessFilterUUID = existing.AccessFilterUUID
@@ -360,8 +327,6 @@ func adminBuildRule(existing *dynamicproxy.ProxyEndpoint, required []string, def
 	return &ep
 }
 
-/* Runtime */
-
 func adminAllRules() []*dynamicproxy.ProxyEndpoint {
 	out := []*dynamicproxy.ProxyEndpoint{}
 	if dynamicProxyRouter == nil || dynamicProxyRouter.ProxyEndpoints == nil {
@@ -377,7 +342,6 @@ func adminAllRules() []*dynamicproxy.ProxyEndpoint {
 	return out
 }
 
-// adminRule is the admin console rule, or nil.
 func adminRule() *dynamicproxy.ProxyEndpoint {
 	for _, ep := range adminAllRules() {
 		if ep.System == adminRuleSystem {
@@ -387,8 +351,7 @@ func adminRule() *dynamicproxy.ProxyEndpoint {
 	return nil
 }
 
-// adminIsRuleHost reports whether host is the admin console rule's main
-// domain (how the API names a rule).
+// adminIsRuleHost reports whether host is the admin console rule's main domain.
 func adminIsRuleHost(host string) bool {
 	ep := adminRule()
 	return ep != nil && host != "" && strings.EqualFold(strings.TrimSpace(host), ep.RootOrMatchingDomain)
@@ -399,9 +362,8 @@ func adminEndpointJSON(ep *dynamicproxy.ProxyEndpoint) string {
 	return string(b)
 }
 
-// adminRuleReconcile creates or corrects the admin console rule.
-// Safe to call at any time; it changes nothing when the rule is as it
-// must be, and nothing on an HA standby.
+// adminRuleReconcile creates or corrects the admin console rule (not on an
+// HA standby).
 func adminRuleReconcile() {
 	adminMu.Lock()
 	defer adminMu.Unlock()
@@ -421,7 +383,7 @@ func adminRuleReconcile() {
 	}
 	want := adminBuildRule(existing, required, root, adminDestination())
 	if accessController != nil && !accessController.ACLExists(want.AccessFilterUUID) {
-		want.AccessFilterUUID = access.AllowAllID // an ACL that no longer exists
+		want.AccessFilterUUID = access.AllowAllID
 	}
 	if existing != nil && adminEndpointJSON(existing) == adminEndpointJSON(want) {
 		adminCertSync(want)
@@ -435,7 +397,7 @@ func adminRuleReconcile() {
 	SystemWideLogger.PrintAndLog("admin-rule", "Admin console rule "+action+": "+want.RootOrMatchingDomain+" (also "+strings.Join(want.MatchingDomainAlias, ", ")+") -> "+adminDestination(), nil)
 }
 
-// adminApply replaces old (nil: none) with want, in the router and on disk.
+// adminApply replaces old (nil for none) with want in the router and on disk.
 func adminApply(old, want *dynamicproxy.ProxyEndpoint) error {
 	if !validHostRuleName(want.RootOrMatchingDomain) {
 		return fmt.Errorf("%q cannot be a rule's host name", want.RootOrMatchingDomain)
@@ -462,8 +424,8 @@ func adminApply(old, want *dynamicproxy.ProxyEndpoint) error {
 	return nil
 }
 
-// adminCertSync (re)writes the self-signed certificate when the rule uses
-// it and it does not cover every host of the rule.
+// adminCertSync writes a new self-signed certificate when the rule uses it
+// and it does not cover every host.
 func adminCertSync(ep *dynamicproxy.ProxyEndpoint) {
 	if ep == nil || !adminTLSAuto(ep.TlsOptions) {
 		return
@@ -489,15 +451,12 @@ func initAdminRule() {
 	adminRuleReconcile()
 	go func() {
 		for range time.Tick(time.Minute) {
-			adminRuleReconcile() // picks up becoming the active node
+			adminRuleReconcile()
 		}
 	}()
 }
 
-/* -reset-admin-rule */
-
-// adminRuleResetAndExit rebuilds the rule on disk without starting
-// Waymark (it may be stopped or running; restart it afterwards).
+// adminRuleResetAndExit rebuilds the rule on disk and exits.
 func adminRuleResetAndExit() {
 	if _, err := readHAConfigFile(); err != nil {
 		fmt.Println("Cannot read the HA settings: " + err.Error())
@@ -545,10 +504,8 @@ func adminRuleResetAndExit() {
 	os.Exit(0)
 }
 
-/* API */
-
 // HandleAdminRule: GET describes the admin console rule; POST sets this
-// node's address and DNS name (HA off).
+// node's address and DNS name.
 func HandleAdminRule(w http.ResponseWriter, r *http.Request) {
 	cfg := haConfig()
 	haOn := cfg.Enabled && len(cfg.Nodes) > 0
@@ -598,8 +555,7 @@ func HandleAdminRule(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-// HandleDNSGuess returns the reverse DNS name of an IPv4 address, to
-// pre-fill the DNS name fields.
+// HandleDNSGuess returns the reverse DNS name of an IPv4 address.
 func HandleDNSGuess(w http.ResponseWriter, r *http.Request) {
 	ip := strings.TrimSpace(r.URL.Query().Get("ip"))
 	if p := net.ParseIP(ip); p == nil || p.To4() == nil {
@@ -610,7 +566,6 @@ func HandleDNSGuess(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-// adminConsolePort is the admin console's own port (from -port).
 func adminConsolePort() string {
 	if _, port, err := net.SplitHostPort(*webUIPort); err == nil {
 		return port

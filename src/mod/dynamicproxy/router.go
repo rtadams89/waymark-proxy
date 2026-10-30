@@ -12,17 +12,9 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Dynamic Proxy Router Functions
-
-	This script handle the proxy rules router spawning
-	and preparation
-*/
-
-// Prepare proxy route generate a proxy handler service object for your endpoint
+// PrepareProxyRoute starts the proxy handlers for the endpoint's origins and virtual directories.
 func (router *Router) PrepareProxyRoute(endpoint *ProxyEndpoint) (*ProxyEndpoint, error) {
 	for _, thisOrigin := range endpoint.ActiveOrigins {
-		//Create the proxy routing handler
 		err := thisOrigin.StartProxy(endpoint.upstreamTLSServerName())
 		if err != nil {
 			log.Println("Unable to setup destination " + thisOrigin.OriginIpOrDomain + ": " + err.Error())
@@ -36,14 +28,12 @@ func (router *Router) PrepareProxyRoute(endpoint *ProxyEndpoint) (*ProxyEndpoint
 	for _, vdir := range endpoint.VirtualDirectories {
 		domain := vdir.Domain
 		if len(domain) == 0 {
-			//invalid vdir
 			continue
 		}
 		if domain[len(domain)-1:] == "/" {
 			domain = domain[:len(domain)-1]
 		}
 
-		//Parse the web proxy endpoint
 		webProxyEndpoint := domain
 		if !strings.HasPrefix("http://", domain) && !strings.HasPrefix("https://", domain) {
 			//TLS is not hardcoded in proxy target domain
@@ -68,7 +58,6 @@ func (router *Router) PrepareProxyRoute(endpoint *ProxyEndpoint) (*ProxyEndpoint
 		vdir.parent = endpoint
 	}
 
-	// Initialize the exploit detector for this endpoint
 	endpoint.InitializeExploitDetector()
 
 	return endpoint, nil
@@ -78,15 +67,13 @@ func (router *Router) PrepareProxyRoute(endpoint *ProxyEndpoint) (*ProxyEndpoint
 func (router *Router) AddProxyRouteToRuntime(endpoint *ProxyEndpoint) error {
 	lookupHostname := strings.ToLower(endpoint.RootOrMatchingDomain)
 	if len(endpoint.ActiveOrigins) == 0 {
-		//There are no active origins. No need to check for ready
+		// No active origins
 		router.ProxyEndpoints.Store(lookupHostname, endpoint)
 		return nil
 	}
 	if !router.loadBalancer.UpstreamsReady(endpoint.ActiveOrigins) {
-		//This endpoint is not prepared
 		return errors.New("proxy endpoint not ready. Use PrepareProxyRoute before adding to runtime")
 	}
-	// Push record into running subdomain endpoints
 	router.ProxyEndpoints.Store(lookupHostname, endpoint)
 	return nil
 }
@@ -94,15 +81,13 @@ func (router *Router) AddProxyRouteToRuntime(endpoint *ProxyEndpoint) error {
 // Set given Proxy Route as Root. Call to PrepareProxyRoute before adding to runtime
 func (router *Router) SetProxyRouteAsRoot(endpoint *ProxyEndpoint) error {
 	if !router.loadBalancer.UpstreamsReady(endpoint.ActiveOrigins) {
-		//This endpoint is not prepared
 		return errors.New("proxy endpoint not ready. Use PrepareProxyRoute before adding to runtime")
 	}
-	// Push record into running root endpoints
 	router.Root = endpoint
 	return nil
 }
 
-// ProxyEndpoint remove provide global access by key
+// RemoveProxyEndpointByRootname removes the proxy endpoint with the given root name or matching domain.
 func (router *Router) RemoveProxyEndpointByRootname(rootnameOrMatchingDomain string) error {
 	targetEpt, err := router.LoadProxy(rootnameOrMatchingDomain)
 	if err != nil {
@@ -120,9 +105,9 @@ func (h *Router) GetProxyEndpointById(searchingDomain string, includeAlias bool)
 		proxy, ok := value.(*ProxyEndpoint)
 		if ok && (proxy.RootOrMatchingDomain == searchingDomain || (includeAlias && utils.StringInArray(proxy.MatchingDomainAlias, searchingDomain))) {
 			found = proxy
-			return false // stop iteration
+			return false
 		}
-		return true // continue iteration
+		return true
 	})
 	if found != nil {
 		return found, nil
@@ -141,16 +126,15 @@ func (h *Router) GetProxyEndpointByAlias(alias string) (*ProxyEndpoint, error) {
 		for _, thisAlias := range proxy.MatchingDomainAlias {
 			if ok && thisAlias == alias {
 				found = proxy
-				return false // stop iteration
+				return false
 			} else if ok && strings.HasPrefix(thisAlias, "*") {
-				//Check if the alias matches a wildcard alias
 				if strings.HasSuffix(alias, thisAlias[1:]) {
 					found = proxy
-					return false // stop iteration
+					return false
 				}
 			}
 		}
-		return true // continue iteration
+		return true
 	})
 	if found != nil {
 		return found, nil

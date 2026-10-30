@@ -87,8 +87,7 @@ func newHarness(t *testing.T) *harness {
 	return h
 }
 
-// do sends a request through the cache to the fake upstream, the same way
-// dynamicproxy's hostRequest does.
+// do sends a request through the cache to the fake upstream.
 func (h *harness) do(method, target string, hdr ...string) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(method, "http://app.test"+target, nil)
 	for i := 0; i+1 < len(hdr); i += 2 {
@@ -375,7 +374,7 @@ func TestBypassCases(t *testing.T) {
 	if h.up.count("/p.css") != 2 {
 		t.Fatalf("authorization bypass")
 	}
-	// ...unless they are Zoraxy's own basic auth
+	// ...unless they are the proxy's own basic auth
 	h.opts.AuthorizationIsZoraxys = true
 	h.do("GET", "/p.css", "Authorization", "Basic eDp5")
 	if r := h.do("GET", "/p.css", "Authorization", "Basic eDp5"); status(r) != "HIT" {

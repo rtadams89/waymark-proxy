@@ -354,7 +354,7 @@
         padding: 0 1em;
     }
 
-    /* Custom fork: on phones the labels wrap instead of widening the page */
+    /* On phones the labels wrap instead of widening the page */
     @media screen and (max-width: 768px) {
         #status .certOverviewItem{
             padding: 0 0.5em;
@@ -555,7 +555,7 @@
     </div>
 </div>
 
-<!-- Custom fork: HA cluster (script/statusHA.js, script/haCluster.js); shown only while HA is on -->
+<!-- HA cluster (script/statusHA.js, script/haCluster.js); shown only while HA is on -->
 <div class="standardContainer nobottom" id="zrHARow" style="display:none;">
     <div class="ui one column grid" style="margin: 0;">
         <div class="column" style="padding-left: 0; padding-right: 0;">
@@ -568,7 +568,7 @@
     </div>
 </div>
 
-<!-- Custom fork: upstream health (script/statusUpstreams.js) -->
+<!-- Upstream health (script/statusUpstreams.js) -->
 <div class="standardContainer nobottom" id="zrHealthRow">
     <div class="ui one column grid" style="margin: 0;">
         <div class="column" style="padding-left: 0; padding-right: 0;">
@@ -595,7 +595,7 @@
     </div>
 </div>
 
-<!-- Custom fork: static file cache (script/statusCache.js) -->
+<!-- Static file cache (script/statusCache.js) -->
 <div class="standardContainer nobottom" id="zrCacheRow">
     <div class="ui two column stackable grid" style="margin: 0;">
         <div class="column" style="padding-left: 0;">
@@ -825,10 +825,8 @@
         return mins + "m";
     }
 
-    //Render a "△x% vs yesterday" style delta into the given element.
-    //Once the increase passes 300% (i.e. today is more than 4x yesterday),
-    //percentages become an unreadable wall of digits (e.g. "1824600.0%"), so
-    //those are shown as a multiplier instead (e.g. "18246x") to stay human-friendly.
+    //Render a "△x% vs yesterday" style delta into the given element;
+    //increases past 300% are shown as a multiplier (e.g. "18246x")
     function renderTrendDelta(elementId, today, yesterday, invertColor=false){
         let element = $("#" + elementId);
         if (yesterday <= 0){
@@ -895,13 +893,7 @@
     }
 
     /*
-        Visitor Locations
-
-        Note: jsVectorMap's built-in series/scale system (series.regions[].scale)
-        indexes its scale array directly by the raw data value instead of
-        interpolating between two colors by a normalized min/max ratio, so it
-        cannot produce a continuous gradient here. Region colors are instead
-        computed and applied directly against the low-level map.regions API.
+        Visitor Locations (region colors are applied with the map.regions API)
     */
     let worldMap = undefined;
     let currentMapValues = {};
@@ -969,8 +961,7 @@
             $("#countryChartNoData").hide();
             $("#worldMapRow").show();
 
-            //Build the choropleth values, keyed by uppercase ISO2 code
-            //(the "local"/LAN pseudo-entry has no map region, so it is excluded here)
+            //Build the choropleth values, keyed by uppercase ISO2 code (without "local")
             let mapValues = {};
             entries.forEach(function(entry){
                 if (entry[0] != "local"){
@@ -1220,9 +1211,7 @@
                     data: [],
                     borderColor: lineColor,
                     borderWidth: 2,
-                    //Vertical gradient area fill: tinted at the line, fading to
-                    //transparent at the baseline. Rebuilt on every layout so it
-                    //tracks the (flexible) chart height.
+                    //Vertical gradient area fill, rebuilt on every layout
                     backgroundColor: function(context){
                         const chart = context.chart;
                         const { ctx, chartArea } = chart;
@@ -1375,11 +1364,10 @@
         }, 300);
     }
 
-    //jsVectorMap does not auto-resize its SVG on window/container resize
+    //Resize the map with the window
     window.addEventListener('resize', resizeWorldMap);
 
-    //Custom fork: only resize the map while it can be measured; a hidden map
-    //(another tab open) has no size, and resizing it set NaN transforms
+    //Only resize the map while it is visible
     function resizeWorldMap(){
         let el = document.getElementById("worldMap");
         if (worldMap != undefined && el && el.offsetWidth > 0 && el.offsetHeight > 0){
@@ -1387,7 +1375,7 @@
         }
     }
 </script>
-<!-- Custom fork: per-panel show/hide settings -->
+<!-- Per-panel show/hide settings -->
 <script src="script/statusPanels.js"></script>
 <script src="script/statusCache.js"></script>
 <script src="script/statusUpstreams.js"></script>

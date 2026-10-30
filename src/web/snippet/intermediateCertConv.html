@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <!-- Notes: This should be open in its original path-->
+        <!-- Opened at its original path -->
         <meta charset="utf-8">
         <link rel="stylesheet" href="../script/semantic/semantic.min.css">
         <script src="../script/jquery-3.6.0.min.js"></script>
@@ -55,7 +55,7 @@
                 if (filename == ""){
                     filename = "export.pem";
                 }
-                //Basically just concat both together. See https://github.com/tobychui/zoraxy/wiki/Import-your-own-certificate
+                //Concatenate both certificates
                 generateAndDownload(certificatesArray[0] + '\n' + certificatesArray[1], filename);   
             }
 

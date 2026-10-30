@@ -41,7 +41,7 @@ func (p *Plugin) AcceptDynamicRoute() bool {
 }
 
 func (p *Plugin) HandleDynamicRoute(w http.ResponseWriter, r *http.Request, clientIP string) bool {
-	//Make sure p.Spec.DynamicCaptureSniff and p.Spec.DynamicCaptureIngress are not empty and start with /
+	// Both capture paths must be set
 	if !p.AcceptDynamicRoute() {
 		return false
 	}
@@ -63,17 +63,14 @@ func (p *Plugin) HandleDynamicRoute(w http.ResponseWriter, r *http.Request, clie
 		return false
 	}
 
-	// Create an instance of CustomRequest with the original request's data
 	forwardReq := zoraxy_plugin.EncodeForwardRequestPayload(r, clientIP)
 
-	// Encode the custom request object into JSON
 	jsonData, err := json.Marshal(forwardReq)
 	if err != nil {
 		// Error when encoding the request, let the next plugin handle the request
 		return false
 	}
 
-	//Generate a unique request ID
 	uniqueRequestID := uuid.New().String()
 
 	req, err := http.NewRequest("POST", sniffURL.String(), bytes.NewBuffer(jsonData))

@@ -9,16 +9,16 @@ import (
 	"imuslab.com/zoraxy/mod/acme/acmedns"
 )
 
-// Preprocessor function to get DNS challenge provider by name
+// GetDnsChallengeProviderByName returns the DNS challenge provider configured
+// with the JSON credentials.
 func GetDnsChallengeProviderByName(dnsProvider string, dnsCredentials string, ppgTimeout int) (challenge.Provider, error) {
-	// Unpack the dnsCredentials (json string) to map
 	var dnsCredentialsMap map[string]any
 	err := json.Unmarshal([]byte(dnsCredentials), &dnsCredentialsMap)
 	if err != nil {
 		return nil, err
 	}
 
-	// Clear the PollingInterval and PropagationTimeout field and conert to int
+	// Removes PollingInterval and PropagationTimeout from the credentials
 	userDefinedPollingInterval := 2
 	if dnsCredentialsMap["PollingInterval"] != nil {
 		userDefinedPollingIntervalRaw := dnsCredentialsMap["PollingInterval"].(string)
@@ -35,7 +35,6 @@ func GetDnsChallengeProviderByName(dnsProvider string, dnsCredentials string, pp
 		delete(dnsCredentialsMap, "PropagationTimeout")
 		convertedPropagationTimeout, err := strconv.Atoi(userDefinedPropagationTimeoutRaw)
 		if err == nil {
-			// Overwrite the default propagation timeout if it is requeted from UI
 			userDefinedPropagationTimeout = convertedPropagationTimeout
 		}
 	}
@@ -48,11 +47,9 @@ func GetDnsChallengeProviderByName(dnsProvider string, dnsCredentials string, pp
 	var hostURL *url.URL = nil
 	for configTitle, configDataType := range providerConfigStructure {
 		if configDataType == "*url.URL" {
-			// Extract the hostURL from dnsCredentialsMap and delete it from the map
-			// Prevent Unmarshal error when try to unmarshal the json to provider config struct on *url.URL type (ex. powerdns Host field)
+			// Moves the first *url.URL field out of the credentials into hostURL
 			urlStrRaw := dnsCredentialsMap[configTitle]
 			if urlStrRaw == nil {
-				// If the url field is not provided, check next *url.URL field
 				continue
 			}
 			urlStr := urlStrRaw.(string)
@@ -61,19 +58,16 @@ func GetDnsChallengeProviderByName(dnsProvider string, dnsCredentials string, pp
 			if err != nil {
 				return nil, err
 			}
-			// Select first field
 			break
 		}
 	}
 
-	// Restructure dnsCredentials string from map
 	dnsCredentialsBytes, err := json.Marshal(dnsCredentialsMap)
 	if err != nil {
 		return nil, err
 	}
 	dnsCredentials = string(dnsCredentialsBytes)
 
-	// Using acmedns CICD pipeline generated datatype to optain the DNS provider
 	return acmedns.GetDNSProviderByJsonConfig(
 		dnsProvider,
 		dnsCredentials,

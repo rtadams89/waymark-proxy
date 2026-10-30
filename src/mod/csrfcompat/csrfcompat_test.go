@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// handler mirrors how main.go wires the middleware
+// newProtected returns a handler wrapped like in main.go.
 func newProtected() http.Handler {
 	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
 	return Protect([]byte("ignored"), CookieName("x"), Secure(false), Path("/"), SameSite(SameSiteLaxMode))(ok)

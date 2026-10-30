@@ -1,16 +1,11 @@
 package main
 
 /*
-	ha_custom.go (custom fork)
-
-	Active/passive pairs with keepalived (see mod/hacluster). Waymark:
-	- stores the cluster definition (shared by all nodes; synced in a
-	  later phase) and writes this node's settings file for the root
-	  helper, then reports the helper's result
-	- writes a heartbeat every 2 seconds while its proxy listener answers
-	  (TCP connect plus TLS handshake); keepalived's check script requires it
-	- reads the role keepalived reports, shows it in the UI, and holds
-	  automatic certificate renewal unless this node is the active one
+	Active/standby clusters with keepalived: stores the cluster settings,
+	writes this node's settings file for the root helper, writes a heartbeat
+	every 2 seconds while the proxy listener answers, reads the role
+	keepalived reports, and holds automatic certificate renewal unless this
+	node is active.
 */
 
 import (
@@ -42,7 +37,6 @@ var (
 	haStateDirFlag    = flag.String("ha-state-dir", hacluster.DefaultStateDir, "Custom fork: folder where the HA helper reports results (created by the HA installer)")
 )
 
-// HA settings: conf/ha.json
 const haConfigFile = "ha.json"
 
 func haConfigPath() string { return filepath.Join(CONF_FOLDER, haConfigFile) }
@@ -68,7 +62,7 @@ func writeHAConfigFile(cfg *hacluster.Config) error {
 	if err != nil {
 		return err
 	}
-	return utils.WriteFileAtomic(haConfigPath(), append(b, '\n'), 0600) // holds the cluster key
+	return utils.WriteFileAtomic(haConfigPath(), append(b, '\n'), 0600)
 }
 
 type haHeartbeat struct {
@@ -151,7 +145,7 @@ func haOwner() string {
 }
 
 // initHA starts the heartbeat and re-applies this node's settings if they
-// changed while Waymark was not running. Called once at startup.
+// changed.
 func initHA() {
 	ha.mu.Lock()
 	if ha.started {
@@ -174,7 +168,7 @@ func initHA() {
 	if cfg.Enabled {
 		if installed, _ := ha.rt.Installed(); installed {
 			go func() {
-				// Settings unchanged since the last apply? Then keepalived already has them
+				// Skips applying settings that are unchanged
 				current, _ := os.ReadFile(ha.rt.Dir + "/cluster.env")
 				want := cfg.Settings(haSelf(cfg), 0, haNodeName(cfg))
 				if stripApplyID(string(current)) != stripApplyID(want) {
@@ -217,11 +211,8 @@ func haNodeName(cfg *hacluster.Config) string {
 	return "node"
 }
 
-// haProbeListener connects to the proxy listener and, when it serves TLS,
-// completes a handshake (Waymark always has its built-in default
-// certificate). A bare connect-and-close would make the TLS server log a
-// handshake error every 2 seconds, and a finished handshake also shows the
-// listener is actually serving rather than only accepting connections.
+// haProbeListener connects to the proxy listener and completes a TLS
+// handshake when it serves TLS.
 func haProbeListener(addr string, useTLS bool, proxyProtocol bool) error {
 	conn, err := net.DialTimeout("tcp", addr, time.Second)
 	if err != nil {
@@ -230,7 +221,7 @@ func haProbeListener(addr string, useTLS bool, proxyProtocol bool) error {
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(2 * time.Second))
 	if proxyProtocol {
-		// The listener expects a PROXY protocol header first; v1 UNKNOWN is valid
+		// PROXY protocol v1 header
 		if _, err := conn.Write([]byte("PROXY UNKNOWN\r\n")); err != nil {
 			return err
 		}
@@ -238,15 +229,15 @@ func haProbeListener(addr string, useTLS bool, proxyProtocol bool) error {
 	if !useTLS {
 		return nil
 	}
-	tc := tls.Client(conn, &tls.Config{ServerName: "localhost", InsecureSkipVerify: true}) //Only checks that the listener answers
+	tc := tls.Client(conn, &tls.Config{ServerName: "localhost", InsecureSkipVerify: true})
 	if err := tc.Handshake(); err != nil {
 		return err
 	}
 	return tc.Close()
 }
 
-// haWriteHeartbeat checks that the proxy listener accepts connections and
-// records the result for keepalived's check script.
+// haWriteHeartbeat checks the proxy listener and writes the result for
+// keepalived's check script.
 func haWriteHeartbeat() {
 	ok, reason := true, ""
 	if dynamicProxyRouter == nil || !dynamicProxyRouter.Running {
@@ -258,7 +249,7 @@ func haWriteHeartbeat() {
 		}
 	}
 	if holding, why := haSwitchHolding(); holding && ok {
-		// Manual switch-over: report unhealthy so keepalived hands over (haswitch_custom.go)
+		// Reports unhealthy during a manual switch-over
 		ok, reason = false, why
 	}
 	now := time.Now()
@@ -285,8 +276,7 @@ func haApply(cfg *hacluster.Config) (hacluster.ApplyResult, error) {
 	if err := rt.WriteSettings(cfg.Settings(haSelf(cfg), applyID, haNodeName(cfg))); err != nil {
 		return hacluster.ApplyResult{}, fmt.Errorf("could not write HA settings: %w", err)
 	}
-	// The helper bounds each keepalived start to 20 seconds and may apply a
-	// newer save straight after, so allow for a slow start plus a restore
+	// Waits for up to two keepalived starts
 	res, err := rt.WaitForResult(applyID, 75*time.Second)
 	if err != nil {
 		return res, err
@@ -299,8 +289,8 @@ func haApply(cfg *hacluster.Config) (hacluster.ApplyResult, error) {
 	return res, nil
 }
 
-// haRenewalHold is acme.RenewalHold: automatic renewal runs only on the
-// node keepalived made active (or when HA is off or its state is unknown).
+// haRenewalHold holds automatic renewal unless this node is active (or HA
+// is off or its state is unknown).
 func haRenewalHold() (bool, string) {
 	cfg := haConfig()
 	if !cfg.Enabled {
@@ -317,9 +307,7 @@ func haRenewalHold() (bool, string) {
 	return false, ""
 }
 
-// haServiceState asks systemd whether a unit is running (active, inactive,
-// failed, ...). Read-only, so it works as the unprivileged waymark user.
-// Returns "unknown" when systemd can't be asked.
+// haServiceState returns a systemd unit's state, or "unknown".
 func haServiceState(unit string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -330,9 +318,8 @@ func haServiceState(unit string) string {
 	return "unknown"
 }
 
-// haEffectiveRole is the role keepalived last reported, except that a
-// keepalived systemd says is not running counts as STOP (the role file is
-// stale if keepalived was killed without running its stop notification).
+// haEffectiveRole returns the role keepalived last reported, or STOP when
+// keepalived is not running.
 func haEffectiveRole(rt *hacluster.Runtime) hacluster.Role {
 	role := rt.ReadRole()
 	if role.State != "STOP" {
@@ -342,8 +329,6 @@ func haEffectiveRole(rt *hacluster.Runtime) hacluster.Role {
 	}
 	return role
 }
-
-/* API */
 
 // HandleHAStatus returns the cluster settings and this node's live state.
 // GET /api/ha/status
@@ -441,7 +426,7 @@ func HandleHAConfig(w http.ResponseWriter, r *http.Request) {
 	ha.cfg = cfg
 	ha.mu.Unlock()
 	SystemWideLogger.PrintAndLog("ha", "HA settings saved", nil)
-	go adminRuleReconcile() // the admin console rule answers on the cluster's addresses
+	go adminRuleReconcile()
 	haSyncReconcileListener()
 
 	resp := map[string]any{"saved": true}

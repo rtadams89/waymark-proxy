@@ -1,13 +1,7 @@
 package plugins
 
-/*
-	Zoraxy Plugin Manager
-
-	This module is responsible for managing plugins
-	loading plugins from the disk
-	enable / disable plugins
-	and forwarding traffic to plugins
-*/
+// Plugin manager: loads plugins from disk, enables / disables them and
+// forwards traffic to them.
 
 import (
 	"encoding/json"
@@ -116,10 +110,8 @@ func (m *Manager) ReloadPluginFromDisk() {
 			m.LoadedPlugins[thisPlugin.Spec.ID] = thisPlugin
 			m.loadedPluginsMutex.Unlock()
 			versionNumber := strconv.Itoa(thisPlugin.Spec.VersionMajor) + "." + strconv.Itoa(thisPlugin.Spec.VersionMinor) + "." + strconv.Itoa(thisPlugin.Spec.VersionPatch)
-			//Check if the plugin is enabled
 			m.Log("Found plugin: "+thisPlugin.Spec.Name+" (v"+versionNumber+")", nil)
 
-			// The default state of the plugin is disabled, so no need to start it
 		}
 	}
 
@@ -151,7 +143,6 @@ func (m *Manager) LoadPluginsFromDisk() error {
 			m.Log("Loaded plugin: "+thisPlugin.Spec.Name, nil)
 
 			// If the plugin was enabled, start it now
-			//fmt.Println("Plugin enabled state", m.GetPluginPreviousEnableState(thisPlugin.Spec.ID))
 			if m.GetPluginPreviousEnableState(thisPlugin.Spec.ID) {
 				err = m.StartPlugin(thisPlugin.Spec.ID)
 				if err != nil {

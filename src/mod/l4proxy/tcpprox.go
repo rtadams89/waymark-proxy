@@ -30,11 +30,10 @@ func isValidPort(port string) bool {
 }
 
 func (c *ProxyRelayInstance) connCopy(conn1 net.Conn, conn2 net.Conn, wg *sync.WaitGroup, accumulator *int64) {
-	//Custom fork: always finish (an error used to skip wg.Done, so forward
-	//never returned) and close both sides, so the other copy ends too
+	// Always finish and close both sides, so the other copy ends too
 	defer wg.Done()
 	n, _ := io.Copy(conn1, conn2)
-	atomic.AddInt64(accumulator, n) //Add to accumulator
+	atomic.AddInt64(accumulator, n)
 	conn1.Close()
 	conn2.Close()
 	c.LogMsg("[←] close the connect at local:["+conn1.LocalAddr().String()+"] and remote:["+conn1.RemoteAddr().String()+"]", nil)
@@ -81,7 +80,7 @@ func (c *ProxyRelayInstance) accept(listener net.Listener) (net.Conn, error) {
 		return nil, err
 	}
 
-	// Check the connection against the rule's ACL (Custom fork: ACLs)
+	// Check the connection against the rule's ACL
 	if addr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
 		switch c.checkAccess(addr.IP.String(), "tcp") {
 		case access.ActionAllow:
@@ -135,7 +134,7 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 	}
 
 	targetAddress = strings.TrimSpace(targetAddress)
-	//Custom fork: read the settings once; connections outlive a restart
+	// Read the settings once
 	c.poolMu.RLock()
 	proxyProtocol, timeout := c.ProxyProtocolVersion, c.Timeout
 	c.poolMu.RUnlock()
@@ -160,7 +159,7 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 		}
 
 		go func(targetAddress string) {
-			//Custom fork: pick an upstream from the pool (pool_custom.go)
+			// Pick an upstream from the pool
 			target, targetAddress, err := c.dialUpstream(conn)
 			if err != nil {
 				c.LogMsg("[x] no destination for client ["+conn.RemoteAddr().String()+"]: "+err.Error(), nil)
@@ -170,7 +169,7 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 			c.LogMsg("[→] connect target address ["+targetAddress+"] success.", nil)
 			release := c.track(targetAddress, target)
 			defer release()
-			conn, target = c.captureTCP(conn, target, targetAddress) //Custom fork: traffic capture (capture_custom.go)
+			conn, target = c.captureTCP(conn, target, targetAddress) // traffic capture
 
 			if proxyProtocol != ProxyProtocolDisabled {
 				c.LogMsg("[+] write proxy protocol header to target address ["+targetAddress+"]", nil)

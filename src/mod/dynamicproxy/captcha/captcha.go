@@ -22,12 +22,8 @@ import (
 	"imuslab.com/zoraxy/mod/pathmatch"
 )
 
-/*
-	captcha.go
-
-	CAPTCHA verification and session management for gating access to endpoints.
-	Supports Cloudflare Turnstile and Google reCAPTCHA (v2 and v3).
-*/
+// CAPTCHA verification and sessions: Cloudflare Turnstile and Google
+// reCAPTCHA v2 and v3.
 
 //go:embed cloudflare_turnstile.html
 var cloudflareTurnstileTemplate string
@@ -70,7 +66,7 @@ type Config struct {
 	SessionDuration       int              `json:"SessionDuration"`
 	RecaptchaVersion      string           `json:"RecaptchaVersion"`      // v2 or v3
 	RecaptchaScore        float64          `json:"RecaptchaScore"`        // v3 only, 0.0-1.0
-	ProtectedPathPrefixes []string         `json:"ProtectedPathPrefixes"` // Empty means protect all paths on this endpoint
+	ProtectedPathPrefixes []string         `json:"ProtectedPathPrefixes"` // empty protects all paths
 	ExceptionRules        []*ExceptionRule `json:"ExceptionRules"`
 }
 
@@ -257,11 +253,8 @@ func VerifyGoogleRecaptchaToken(token, secretKey, remoteIP string, version strin
 	return true, nil
 }
 
-// CheckException checks if the request matches any exception rules.
-// clientIP must be resolved by the caller with the endpoint's trusted proxy
-// policy (see Router.GetClientIPForEndpoint). This package does not read
-// forwarding headers itself, so a direct client cannot claim an exempted
-// address by sending X-Real-Ip, X-Forwarded-For, etc.
+// CheckException reports whether the request matches an exception rule;
+// clientIP is the caller's resolved client address.
 func CheckException(r *http.Request, rules []*ExceptionRule, clientIP string) bool {
 	if len(rules) == 0 {
 		return false
@@ -289,9 +282,8 @@ func CheckException(r *http.Request, rules []*ExceptionRule, clientIP string) bo
 	return false
 }
 
-// ipMatchesRule reports whether ip is the single address or falls in the CIDR
-// range given by rule. Addresses are compared after parsing so that equivalent
-// notations (e.g. "::1" and "0:0:0:0:0:0:0:1") match the same rule.
+// ipMatchesRule reports whether ip equals the address or is in the CIDR
+// given by rule.
 func ipMatchesRule(ip net.IP, rule string) bool {
 	rule = strings.TrimSpace(rule)
 	if rule == "" {
@@ -330,15 +322,15 @@ func pathPrefixMatch(requestPath string, pathPrefix string) bool {
 		return false
 	}
 	if normalizedPrefix == "/" {
-		//All endpoints are protected if the prefix is "/"
+		// "/" protects all paths
 		return true
 	}
 
 	return pathmatch.RequestPathWithinPrefix(requestPath, normalizedPrefix)
 }
 
-// ShouldEnforcePath returns true when CAPTCHA should apply to the request path.
-// If no protected path prefixes are configured, CAPTCHA applies to all paths.
+// ShouldEnforcePath reports whether CAPTCHA applies to the request path (all
+// paths when no prefixes are set).
 func ShouldEnforcePath(requestPath string, config *Config) bool {
 	if config == nil || len(config.ProtectedPathPrefixes) == 0 {
 		return true
@@ -362,7 +354,6 @@ type TemplateData struct {
 
 // loadExternalTemplate tries to load an external template from the filesystem
 func loadExternalTemplate(webDir string, templateName string) (string, error) {
-	// Try both .html and .tmpl extensions
 	possiblePaths := []string{
 		filepath.Join(webDir, "templates", templateName+".html"),
 		filepath.Join(webDir, "templates", templateName+".tmpl"),
@@ -370,7 +361,6 @@ func loadExternalTemplate(webDir string, templateName string) (string, error) {
 
 	for _, path := range possiblePaths {
 		if _, err := os.Stat(path); err == nil {
-			// File exists, read it
 			content, err := os.ReadFile(path)
 			if err != nil {
 				return "", fmt.Errorf("failed to read external template: %w", err)
@@ -387,7 +377,6 @@ func RenderChallenge(w http.ResponseWriter, r *http.Request, config *Config, dom
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusForbidden)
 
-	// Prepare template data
 	data := TemplateData{
 		Domain:     domain,
 		SiteKey:    config.SiteKey,
@@ -397,17 +386,15 @@ func RenderChallenge(w http.ResponseWriter, r *http.Request, config *Config, dom
 	var templateContent string
 	var templateName string
 
-	// Determine which template to use based on provider
 	if config.Provider == ProviderCloudflare {
 		templateName = "captcha_cloudflare"
-		// Try to load external template first
+		// External template, else the embedded one
 		if webDir != "" {
 			external, err := loadExternalTemplate(webDir, templateName)
 			if err == nil {
 				templateContent = external
 			}
 		}
-		// Fall back to embedded template
 		if templateContent == "" {
 			templateContent = cloudflareTurnstileTemplate
 		}
@@ -419,34 +406,31 @@ func RenderChallenge(w http.ResponseWriter, r *http.Request, config *Config, dom
 
 		if version == "v2" {
 			templateName = "captcha_recaptcha_v2"
-			// Try to load external template first
+			// External template, else the embedded one
 			if webDir != "" {
 				external, err := loadExternalTemplate(webDir, templateName)
 				if err == nil {
 					templateContent = external
 				}
 			}
-			// Fall back to embedded template
 			if templateContent == "" {
 				templateContent = googleRecaptchaV2Template
 			}
 		} else {
 			templateName = "captcha_recaptcha_v3"
-			// Try to load external template first
+			// External template, else the embedded one
 			if webDir != "" {
 				external, err := loadExternalTemplate(webDir, templateName)
 				if err == nil {
 					templateContent = external
 				}
 			}
-			// Fall back to embedded template
 			if templateContent == "" {
 				templateContent = googleRecaptchaV3Template
 			}
 		}
 	}
 
-	// Parse and execute template
 	tmpl, err := template.New(templateName).Parse(templateContent)
 	if err != nil {
 		http.Error(w, "Failed to parse template", http.StatusInternalServerError)
@@ -462,16 +446,14 @@ func RenderChallenge(w http.ResponseWriter, r *http.Request, config *Config, dom
 	w.Write(buf.Bytes())
 }
 
-// HandleVerification processes CAPTCHA verification requests. clientIP is
-// forwarded to the provider as remoteip and must be resolved by the caller
-// with the endpoint's trusted proxy policy, same as CheckException.
+// HandleVerification verifies a CAPTCHA response and starts a session;
+// clientIP is sent to the provider as remoteip.
 func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, sessionStore *SessionStore, clientIP string) error {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return errors.New("invalid method")
 	}
 
-	// Parse form data - handle both regular forms and multipart forms
 	contentType := r.Header.Get("Content-Type")
 	if strings.Contains(contentType, "multipart/form-data") {
 		if err := r.ParseMultipartForm(1 << 20); err != nil { // 1 MB max
@@ -485,7 +467,7 @@ func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, 
 		}
 	}
 
-	// Try to get token from POST form first, then from regular form
+	// Token from the provider-specific form field
 	token := r.PostFormValue("cf-turnstile-response")
 	token = strings.TrimSpace(token)
 	if token == "" {
@@ -514,7 +496,6 @@ func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, 
 	var verified bool
 	var verifyErr error
 
-	// Verify based on provider
 	switch config.Provider {
 	case ProviderCloudflare:
 		verified, verifyErr = VerifyCloudflareToken(token, config.SecretKey, clientIP)
@@ -534,7 +515,6 @@ func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, 
 	}
 
 	if verifyErr != nil || !verified {
-		// Verification failed
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		errorMsg := "CAPTCHA verification failed"
@@ -548,7 +528,6 @@ func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, 
 		return fmt.Errorf("verification failed: %v", errorMsg)
 	}
 
-	// Create session
 	sessionID, err := generateSessionID()
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -561,7 +540,6 @@ func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, 
 	}
 	sessionStore.AddSession(sessionID, duration)
 
-	// Set cookie
 	cookie := &http.Cookie{
 		Name:     CookieName,
 		Value:    sessionID,
@@ -573,14 +551,13 @@ func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, 
 	}
 	http.SetCookie(w, cookie)
 
-	// Return success response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 	})
 
-	// Return error to stop request chain (response already written)
+	// The error stops the request chain; the response is written
 	return errors.New("response already written - captcha verified")
 }
 

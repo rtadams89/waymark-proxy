@@ -10,13 +10,6 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	Upstreams.go
-
-	This script handle upstream and load balancer
-	related API
-*/
-
 // List upstreams from a endpoint
 func ReverseProxyUpstreamList(w http.ResponseWriter, r *http.Request) {
 	endpoint, err := utils.GetPara(r, "ep")
@@ -96,7 +89,7 @@ func ReverseProxyUpstreamAdd(w http.ResponseWriter, r *http.Request) {
 	skipTlsValidation, _ := utils.PostBool(r, "tlsval")
 	bpwsorg, _ := utils.PostBool(r, "bpwsorg")
 	preactivate, _ := utils.PostBool(r, "active")
-	tlsVerifyName, _ := utils.PostPara(r, "tlsname") //Custom fork: certificate name check
+	tlsVerifyName, _ := utils.PostPara(r, "tlsname") // certificate name check
 	if !loadbalance.ValidTLSVerifyName(tlsVerifyName) {
 		utils.SendErrorResponse(w, "unknown certificate name check")
 		return
@@ -174,7 +167,7 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Deep copy the upstream so other request handling goroutine won't be effected
+	// Deep copy the upstream
 	newUpstream := targetUpstream.Clone()
 
 	//Overwrite the new value into the old upstream
@@ -183,7 +176,6 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
-	//Custom fork: the weight is now set in the upstream's edit form
 	if newUpstream.Weight < 0 || newUpstream.Weight > 100 {
 		utils.SendErrorResponse(w, "weight must be between 0 and 100")
 		return
@@ -257,9 +249,6 @@ func ReverseProxyUpstreamSetPriority(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	editingUpstream.Weight = weight
-	// The editing upstream is a pointer to the runtime object
-	// and the change of weight do not requre a respawn of the proxy object
-	// so no need to remove & re-prepare the upstream on weight changes
 
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {

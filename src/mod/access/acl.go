@@ -1,24 +1,10 @@
 package access
 
 /*
-	acl.go (custom fork): access control lists.
-
-	An ACL is an ordered list of rules, checked top down; the first rule
-	whose source matches the client's address decides (allow, deny or
-	drop). An address no rule matches is denied (the implicit last rule).
-
-	A rule's source is any address, an object, or one value: an IP address,
-	a CIDR, a range (10.0.0.10-10.0.0.50), an IPv4 wildcard (192.168.*.*)
-	or a country code. "Not" matches every address outside the source.
-
-	An object is a named list of such values, used as a source by any
-	number of rules and ACLs.
-
-	Built in, read-only: the "Allow all" ACL (one rule: any address,
-	allow), used by proxy rules without an ACL of their own, and the
-	"Private networks" object (private, loopback and link-local ranges and
-	this server's own public address, which is what the old "allow LAN and
-	loopback" option allowed).
+	Access control lists: ordered rules checked top down; the first rule
+	whose source matches the client's address allows, denies or drops, and
+	an address no rule matches is denied. Objects are named lists of source
+	values. Built in: the "Allow all" ACL and the "Private networks" object.
 */
 
 import (
@@ -32,8 +18,8 @@ import (
 const (
 	AllowAllID        = "allow-all"
 	PrivateNetworksID = "private-networks"
-	// LegacyDefaultID is the access rule proxy rules used before ACLs when
-	// they had none; it means Allow all unless an ACL with this ID exists.
+	// LegacyDefaultID is the ID of the old default access rule, resolved to
+	// Allow all unless an ACL with this ID exists.
 	LegacyDefaultID = "default"
 
 	MaxRules   = 500
@@ -55,7 +41,7 @@ const (
 const (
 	ActionAllow = "allow"
 	ActionDeny  = "deny" // HTTP: 403 page; TCP: connection closed; UDP: packet ignored
-	ActionDrop  = "drop" // HTTP: connection closed without a response; TCP: reset; UDP: packet ignored
+	ActionDrop  = "drop" // HTTP: connection closed or stream reset; TCP: reset; UDP: packet ignored
 )
 
 type Source struct {
@@ -83,7 +69,7 @@ type ACL struct {
 
 // Entry is one value of an object.
 type Entry struct {
-	Type    string `json:"type"` // ip, cidr, range, wildcard or country
+	Type    string `json:"type"` // ip, cidr, range, wildcard, country or object
 	Value   string `json:"value"`
 	Comment string `json:"comment,omitempty"`
 }
@@ -103,11 +89,10 @@ var (
 	wildcardPattern = regexp.MustCompile(`^(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)$`)
 )
 
-// ValidID reports whether id can name an ACL, rule or object (and a file).
+// ValidID reports whether id can name an ACL, rule or object.
 func ValidID(id string) bool { return idPattern.MatchString(id) }
 
-// DetectType guesses the type of a typed value: a country code, CIDR,
-// range, wildcard or single address.
+// DetectType returns the type of a value: country, cidr, wildcard, range or ip.
 func DetectType(value string) string {
 	v := strings.TrimSpace(value)
 	switch {
@@ -286,8 +271,7 @@ func builtInAllowAll() *ACL {
 	}
 }
 
-// privateRanges is the "Private networks" object (with this server's
-// public address, added when it is evaluated).
+// privateRanges are the ranges of the "Private networks" object.
 var privateRanges = []string{
 	"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "127.0.0.0/8",
 	"::1/128", "fc00::/7", "fe80::/10",

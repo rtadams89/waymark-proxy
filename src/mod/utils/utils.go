@@ -13,13 +13,6 @@ import (
 	"time"
 )
 
-/*
-	Common
-
-	Some commonly used functions in ArozOS
-
-*/
-
 // Response related
 func SendTextResponse(w http.ResponseWriter, msg string) {
 	w.Write([]byte(msg))
@@ -211,8 +204,7 @@ func ValidateListeningAddress(address string) bool {
 	return true
 }
 
-// SanitizeLogContent escapes special HTML characters in log content to prevent XSS attacks.
-// See #1028
+// SanitizeLogContent escapes special HTML characters in log content.
 func SanitizeLogContent(content string) string {
 	return html.EscapeString(content)
 }

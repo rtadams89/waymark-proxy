@@ -1,16 +1,8 @@
 package l4proxy
 
-/*
-	Instances.go
-
-	This file contains the methods to start, stop, and manage the proxy relay instances.
-
-	Custom fork: the run state (Running and the stop channels) and the rule
-	settings are guarded by poolMu, and lifeMu serialises Start and Stop.
-	Stop closes the stop channels (a close never blocks, even when a
-	listener already failed) and waits for the listeners to exit, so a
-	restart can bind the same address straight away.
-*/
+// Start, stop and manage the proxy relay instances. poolMu guards the run
+// state and rule settings, and lifeMu serialises Start and Stop. Stop closes
+// the stop channels and waits for the listeners to exit.
 
 import (
 	"errors"
@@ -93,7 +85,7 @@ func (c *ProxyRelayInstance) Start() error {
 	c.poolMu.Unlock()
 
 	c.parent.SaveConfigToDatabase()
-	c.parent.changed() //Custom fork: health checks follow running rules
+	c.parent.changed() // health checks follow running rules
 	return nil
 }
 
@@ -169,5 +161,5 @@ func (c *ProxyRelayInstance) Stop() {
 
 	//Update the running status
 	c.parent.SaveConfigToDatabase()
-	c.parent.changed() //Custom fork
+	c.parent.changed()
 }

@@ -14,13 +14,7 @@ import (
 	"imuslab.com/zoraxy/mod/database/dbinc"
 )
 
-/*
-	OpenWRT or RISCV backend
-
-	For OpenWRT or RISCV platform, we will use the filesystem as the database backend
-	as boltdb or leveldb is not supported on these platforms, including boltDB and LevelDB
-	in conditional compilation will create a build error on these platforms
-*/
+// Filesystem backend for OpenWrt and RISC-V.
 
 func newDatabase(dbfile string, backendType dbinc.BackendType) (*Database, error) {
 	dbRootPath := filepath.ToSlash(filepath.Clean(dbfile))
@@ -39,13 +33,11 @@ func newDatabase(dbfile string, backendType dbinc.BackendType) (*Database, error
 }
 
 func (d *Database) dump(filename string) ([]string, error) {
-	//Get all file objects from root
 	rootfiles, err := filepath.Glob(filepath.Join(d.Db.(string), "/*"))
 	if err != nil {
 		return []string{}, err
 	}
 
-	//Filter out the folders
 	rootFolders := []string{}
 	for _, file := range rootfiles {
 		if !isDirectory(file) {
@@ -152,7 +144,6 @@ func (d *Database) listTable(tableName string) ([][][]byte, error) {
 	var results [][][]byte = [][][]byte{}
 	for _, entry := range entries {
 		if !isDirectory(entry) {
-			//Read it
 			key := filepath.Base(entry)
 			key = strings.TrimSuffix(key, filepath.Ext(key))
 			key = strings.ReplaceAll(key, "-SLASH_SIGN-", "/")
@@ -172,7 +163,6 @@ func (d *Database) listTable(tableName string) ([][][]byte, error) {
 }
 
 func (d *Database) close() {
-	//Nothing to close as it is file system
 }
 
 func isDirectory(path string) bool {

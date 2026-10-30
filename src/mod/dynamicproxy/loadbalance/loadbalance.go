@@ -12,60 +12,49 @@ import (
 	"imuslab.com/zoraxy/mod/info/logger"
 )
 
-/*
-	Load Balancer
-
-	Handleing load balance request for upstream destinations
-*/
-
 type Options struct {
-	SessionKey           string       //Custom fork: signs sticky session cookies; shared by HA nodes (stickykey_custom.go)
-	UseActiveHealthCheck bool         //Use active health check, default to false
+	SessionKey           string // Signs sticky session cookies
+	UseActiveHealthCheck bool
 	Geodb                *geodb.Store //GeoIP resolver for checking incoming request origin country
 	Logger               *logger.Logger
 }
 
 type RouteManager struct {
 	SessionStore *sessions.CookieStore
-	OnlineStatus sync.Map //Store the online status notify by uptime monitor
-	Options      Options  //Options for the load balancer
+	OnlineStatus sync.Map // Online status reported by the uptime monitor
+	Options      Options
 
 	cacheTicker     *time.Ticker //Ticker for cache cleanup
 	cacheTickerStop chan bool    //Stop the cache cleanup
 
-	inflight sync.Map //Custom fork: destination address -> *atomic.Int64 requests in progress (leastconn_custom.go)
+	inflight sync.Map // destination address -> *atomic.Int64 requests in progress
 }
 
-/* Upstream or Origin Server */
 type Upstream struct {
 	//Upstream Proxy Configs
 	OriginIpOrDomain         string //Target IP address or domain name with port
-	RequireTLS               bool   //Require TLS connection
-	SkipCertValidations      bool   //Set to true to accept self signed certs
-	SkipWebSocketOriginCheck bool   //Skip origin check on websocket upgrade connections
-	//Custom fork: name the upstream's TLS certificate is checked against (and
-	//sent as SNI): "" automatic, "upstream" or "proxyhost" (dpcore.TLSName*)
+	RequireTLS               bool
+	SkipCertValidations      bool //Set to true to accept self signed certs
+	SkipWebSocketOriginCheck bool
+	// Name the upstream certificate is checked against and sent as SNI:
+	// "" automatic, "upstream" or "proxyhost"
 	TLSVerifyName string
 
 	//Load balancing configs
-	Weight int //Random weight for round robin, 0 for fallback only
+	Weight int // Random weight; 0 for fallback only
 
 	//HTTP Transport Config
-	MaxConn     int   //Maxmium concurrent requests to this upstream dpcore instance
+	MaxConn     int   // Maximum concurrent requests to this upstream
 	RespTimeout int64 //Response header timeout in milliseconds
 
-	//currentConnectionCounts atomic.Uint64 //Counter for number of client currently connected
 	proxy *dpcore.ReverseProxy
 }
 
-// Create a new load balancer
 func NewLoadBalancer(options *Options) *RouteManager {
 	if options.SessionKey == "" {
-		//No key passed in. Use a random one
 		options.SessionKey = uuid.New().String()
 	}
 
-	//Create a ticker for cache cleanup every 12 hours
 	cacheTicker := time.NewTicker(12 * time.Hour)
 	cacheTickerStop := make(chan bool)
 	go func() {
@@ -111,7 +100,6 @@ func GetUpstreamsAsString(upstreams []*Upstream) string {
 		targets = append(targets, upstream.String())
 	}
 	if len(targets) == 0 {
-		//No upstream
 		return "(no destination config)"
 	}
 	return strings.Join(targets, ", ")
@@ -126,14 +114,13 @@ func (m *RouteManager) Close() {
 	//Close the session store
 	m.SessionStore.MaxAge(0)
 
-	//Stop the cache cleanup
 	if m.cacheTicker != nil {
 		m.cacheTicker.Stop()
 	}
 	close(m.cacheTickerStop)
 }
 
-// Log Println, replace all log.Println or fmt.Println with this
+// println logs a load balancer message.
 func (m *RouteManager) println(message string, err error) {
 	m.Options.Logger.PrintAndLog("load-balancer", message, err)
 }

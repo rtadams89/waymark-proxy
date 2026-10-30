@@ -6,41 +6,7 @@ import (
 	"imuslab.com/zoraxy/mod/info/logger"
 )
 
-/*
-func TestTrieConstruct(t *testing.T) {
-	tt := geodb.NewTrie()
-	data := [][]string{
-		{"1.0.16.0", "1.0.31.255", "JP"},
-		{"1.0.32.0", "1.0.63.255", "CN"},
-		{"1.0.64.0", "1.0.127.255", "JP"},
-		{"1.0.128.0", "1.0.255.255", "TH"},
-		{"1.1.0.0", "1.1.0.255", "CN"},
-		{"1.1.1.0", "1.1.1.255", "AU"},
-		{"1.1.2.0", "1.1.63.255", "CN"},
-		{"1.1.64.0", "1.1.127.255", "JP"},
-		{"1.1.128.0", "1.1.255.255", "TH"},
-		{"1.2.0.0", "1.2.2.255", "CN"},
-		{"1.2.3.0", "1.2.3.255", "AU"},
-	}
-
-	for _, entry := range data {
-		startIp := entry[0]
-		endIp := entry[1]
-		cc := entry[2]
-		tt.Insert(startIp, cc)
-		tt.Insert(endIp, cc)
-	}
-
-	t.Log(tt.Search("1.0.16.20"), "== JP")  //JP
-	t.Log(tt.Search("1.2.0.122"), "== CN")  //CN
-	t.Log(tt.Search("1.2.1.0"), "== CN")    //CN
-	t.Log(tt.Search("1.0.65.243"), "== JP") //JP
-	t.Log(tt.Search("1.0.62.243"), "== CN") //CN
-}
-*/
-
 func TestResolveCountryCodeFromIP(t *testing.T) {
-	// Create a new store
 	store, err := NewGeoDb(nil, &StoreOptions{
 		AllowSlowIpv4LookUp:          false, //false to use fast geodb mode for ipv4 lookup
 		AllowSlowIpv6Lookup:          false, //false to use fast geodb mode for ipv6 lookup
@@ -109,8 +75,7 @@ func TestResolveCountryCodeFromIP(t *testing.T) {
 		}
 	}
 
-	// Test for issue #401
-	// Create 100 concurrent goroutines to resolve country code for random IP addresses in the test cases above
+	// Resolve country codes from 100 concurrent goroutines
 	for i := 0; i < 100; i++ {
 		go func() {
 			for _, testcase := range knownIpCountryMap {

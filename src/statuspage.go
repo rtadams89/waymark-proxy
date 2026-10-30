@@ -15,13 +15,8 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	statuspage.go
-
-	This script handles the data endpoints for the status page dashboard,
-	providing aggregated overview information (uptime, bandwidth, active
-	connections and traffic counters) and host system resource usage
-*/
+// Data endpoints for the status page dashboard: overview (uptime, bandwidth,
+// active connections, traffic counters) and host resource usage
 
 /* Bandwidth (Today) tracker */
 
@@ -50,22 +45,10 @@ type dashboardBandwidthRecord struct {
 	Tx   int64
 }
 
-/*
-dashboardBandwidthTracker accumulates the host-wide network traffic of the
-current local day for the status page.
-
-Note that the daily total is deliberately NOT derived by subtracting a stored
-baseline from the aggregated "all interfaces" counter. That aggregate is the
-sum over whichever interfaces happen to exist at sample time, so it is not
-monotonic: whenever an interface goes away (container teardown, VPN or
-ZeroTier reconnect, adapter reset) the aggregate drops and the subtraction
-underflows, which previously wiped the whole day's total back to zero.
-
-Instead every interface is tracked individually and only forward movement is
-accumulated, so a disappearing interface simply contributes nothing and the
-running total is preserved. The totals are reset only when the local calendar
-day changes.
-*/
+// dashboardBandwidthTracker accumulates the host-wide network traffic of the
+// current local day for the status page. Each interface is tracked
+// individually and only forward movement is accumulated; the totals reset
+// when the local calendar day changes.
 type dashboardBandwidthTracker struct {
 	mu       sync.Mutex
 	day      string                //Local calendar day that rxToday / txToday belong to
@@ -91,8 +74,7 @@ func initDashboardBandwidthTracker() {
 	dashboardBandwidth.day = today
 	dashboardBandwidth.lastSeen = map[string]nicCounter{}
 
-	//Restore the running total if the stored record belongs to today. A record
-	//from an earlier day is ignored so the new day starts from zero.
+	// Restore the running total if the stored record belongs to today
 	record := dashboardBandwidthRecord{}
 	if err := sysdb.Read(DASHBOARD_DB_TABLE, DASHBOARD_BANDWIDTH_KEY, &record); err == nil && record.Date == today {
 		dashboardBandwidth.rxToday = record.Rx
@@ -100,8 +82,7 @@ func initDashboardBandwidthTracker() {
 	}
 	dashboardBandwidth.mu.Unlock()
 
-	//Prime the per-interface snapshot. Every interface is unknown at this
-	//point so this first sample only records the baselines and adds nothing.
+	// Prime the per-interface snapshot (baselines only)
 	dashboardBandwidth.sample()
 
 	dashboardBandwidth.start()
@@ -147,16 +128,13 @@ func (t *dashboardBandwidthTracker) Close() {
 func (t *dashboardBandwidthTracker) sample() {
 	counters, err := gonet.IOCounters(true)
 	if err != nil {
-		//Skip this window. The counters are cumulative, so the next successful
-		//sample still accounts for the traffic that happened in between.
+		// Skip this window
 		return
 	}
 	t.accumulate(counters, time.Now())
 }
 
-// accumulate folds one set of per-interface counter readings into the running
-// totals. Split out from sample() so the logic can be tested with synthetic
-// counter readings.
+// accumulate folds one set of per-interface counter readings into the running totals.
 func (t *dashboardBandwidthTracker) accumulate(counters []gonet.IOCountersStat, now time.Time) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -171,14 +149,11 @@ func (t *dashboardBandwidthTracker) accumulate(counters []gonet.IOCountersStat, 
 
 		previous, seenBefore := t.lastSeen[counter.Name]
 		if !seenBefore {
-			//Newly appeared interface. Only record the baseline, as counting
-			//its whole history would show up as a one-off spike.
+			// Newly appeared interface: record the baseline only
 			continue
 		}
 
-		//Only count forward movement. A counter going backwards means that
-		//interface's counter was reset, so that window is skipped instead of
-		//being subtracted from the daily total.
+		// Only count forward movement; a counter going backwards skips that window
 		if reading.rx > previous.rx {
 			deltaRx += int64(reading.rx - previous.rx)
 		}
@@ -187,8 +162,7 @@ func (t *dashboardBandwidthTracker) accumulate(counters []gonet.IOCountersStat, 
 		}
 	}
 
-	//Interfaces that disappeared are simply absent from current, so they
-	//contribute nothing instead of underflowing the total.
+	// Interfaces that disappeared are absent from current
 	t.lastSeen = current
 
 	if deltaRx > 0 || deltaTx > 0 {
@@ -245,7 +219,7 @@ func getBandwidthToday() (int64, int64) {
 	dashboardBandwidth.mu.Lock()
 	defer dashboardBandwidth.mu.Unlock()
 
-	//Defensive rollover, in case the sampler has not ticked across midnight yet
+	// Roll over if the sampler has not ticked across midnight yet
 	dashboardBandwidth.rolloverIfNeeded(time.Now())
 
 	return dashboardBandwidth.rxToday, dashboardBandwidth.txToday
@@ -302,7 +276,7 @@ func HandleDashboardOverview(w http.ResponseWriter, r *http.Request) {
 		UniqueVisitors int
 	}
 	type Overview struct {
-		SystemUptime        int64 //Seconds since Zoraxy started
+		SystemUptime        int64 // Seconds since Waymark started
 		ProxyRunning        bool
 		TotalRequestToday   int64
 		ErrorRequestToday   int64
@@ -394,7 +368,7 @@ func HandleSystemResourceUsage(w http.ResponseWriter, r *http.Request) {
 		result.HostName = hostname
 	}
 
-	//Disk usage of the volume Zoraxy is running (and storing config) on
+	// Disk usage of the volume Waymark is running on
 	if wd, err := os.Getwd(); err == nil {
 		if du, err := disk.Usage(wd); err == nil {
 			result.DiskUsed = du.Used

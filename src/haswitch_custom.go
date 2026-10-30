@@ -1,27 +1,10 @@
 package main
 
 /*
-	haswitch_custom.go (custom fork)
-
-	Manual switch-over: make another node the active one from the web
-	interface.
-
-	Nothing here needs root or changes keepalived's settings. The active node
-	steps down by reporting itself unhealthy for a short while: its heartbeat
-	says "fail", keepalived's check script fails, keepalived moves this node
-	to FAULT and releases the floating IPs, and the healthy standby takes
-	them over. As soon as the chosen node reports itself active (or after
-	haSwitchHold at the latest), the heartbeat goes back to normal and this
-	node becomes a standby.
-
-	With "prefer the higher-priority node" (preempt) on, keepalived gives the
-	floating IPs back to a higher-priority node about 30 seconds after it is
-	healthy again, so a switch-over to a lower-priority node is temporary.
-
-	Either node can ask: the request is checked where it is made, then sent
-	to the active node over the authenticated sync connection (action
-	"switchover"), which checks it again and steps down. That is why
-	switching from the web interface needs configuration sync on.
+	Manual switch-over: the active node reports itself unhealthy until the
+	chosen node is active (or haSwitchHold passes), so keepalived moves the
+	floating IPs. Requests are checked, then sent to the active node over
+	the sync connection.
 */
 
 import (
@@ -39,7 +22,7 @@ import (
 )
 
 // haSwitchHold is the longest this node reports itself unhealthy while
-// handing over. keepalived notices a failed check after about 4 seconds.
+// handing over.
 const haSwitchHold = 45 * time.Second
 
 var haSwitch struct {
@@ -55,7 +38,7 @@ var haSwitch struct {
 // the reason written to the heartbeat.
 func haSwitchHolding() (bool, string) {
 	if holding, why := rollHolding(); holding {
-		return true, why // rollingupdate_custom.go
+		return true, why
 	}
 	haSwitch.mu.Lock()
 	defer haSwitch.mu.Unlock()
@@ -88,8 +71,7 @@ type haNodeState struct {
 	Err  error
 }
 
-// haFetchNodeStates asks every node for its state now (not the last poll),
-// so the decision is made on current information.
+// haFetchNodeStates asks every node for its current state.
 func haFetchNodeStates(cfg *hacluster.Config, key []byte) []haNodeState {
 	self := haSelf(cfg)
 	out := make([]haNodeState, len(cfg.Nodes))
@@ -110,9 +92,8 @@ func haFetchNodeStates(cfg *hacluster.Config, key []byte) []haNodeState {
 	return out
 }
 
-// haSwitchPlan checks that target can take over and returns the node that is
-// active now. The target must be reachable, a healthy standby with
-// keepalived running, and exactly one node must be active.
+// haSwitchPlan checks that target is a reachable, healthy standby with
+// keepalived running and exactly one node active, and returns the active node.
 func haSwitchPlan(cfg *hacluster.Config, key []byte, target string) (active haNodeState, err error) {
 	states := haFetchNodeStates(cfg, key)
 	var tgt *haNodeState
@@ -177,8 +158,8 @@ func haSwitchKey(cfg *hacluster.Config) ([]byte, error) {
 	return key, nil
 }
 
-// haSwitchover makes target the active node. Run on any node: when another
-// node is active, the request is forwarded to it.
+// haSwitchover makes target the active node, forwarding the request to the
+// active node when it is another node.
 func haSwitchover(target string) (string, error) {
 	cfg := haConfig()
 	key, err := haSwitchKey(cfg)
@@ -203,8 +184,7 @@ func haSwitchover(target string) (string, error) {
 	return out["message"], nil
 }
 
-// haSwitchAction is the "switchover" action other nodes call on the active
-// node. It checks the request again from here before stepping down.
+// haSwitchAction checks a forwarded switch-over request and steps down.
 func haSwitchAction(remote string, body []byte) (any, error) {
 	var in struct {
 		Target string `json:"target"`
@@ -232,8 +212,7 @@ func haSwitchAction(remote string, body []byte) (any, error) {
 	return map[string]string{"message": msg}, nil
 }
 
-// haStepDown starts handing over to target: report unhealthy until target
-// is active, then report normally again.
+// haStepDown reports unhealthy until target is active.
 func haStepDown(cfg *hacluster.Config, key []byte, target string) (string, error) {
 	var tnode hacluster.Node
 	for _, n := range cfg.Nodes {
@@ -252,7 +231,7 @@ func haStepDown(cfg *hacluster.Config, key []byte, target string) (string, error
 	haSwitch.message = "Handing over to " + target
 	haSwitch.mu.Unlock()
 	SystemWideLogger.PrintAndLog("ha", "Manual switch-over: handing the floating IPs to "+target, nil)
-	haWriteHeartbeat() // do not wait for the next 2-second beat
+	haWriteHeartbeat()
 
 	self := cfg.Nodes[haSelf(cfg)]
 	go func() {
@@ -270,7 +249,7 @@ func haStepDown(cfg *hacluster.Config, key []byte, target string) (string, error
 				}
 				haSwitchSet("done", msg)
 				SystemWideLogger.PrintAndLog("ha", "Manual switch-over: "+msg, nil)
-				go haSyncTick(false) // refresh the cluster view
+				go haSyncTick(false)
 				return
 			}
 		}
@@ -280,8 +259,6 @@ func haStepDown(cfg *hacluster.Config, key []byte, target string) (string, error
 	}()
 	return "Handing over to " + target + ": the floating IPs move in a few seconds", nil
 }
-
-/* API */
 
 // HandleHASwitchover makes another node active.
 // POST /api/ha/switchover  target=<node name>

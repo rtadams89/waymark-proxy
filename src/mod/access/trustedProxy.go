@@ -13,28 +13,20 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	TrustedProxy.go
-
-	Module to handle trusted proxy IPs
-*/
-
 //go:embed default_trusted_proxies.csv
 var defaultTrustedProxiesCSV string
 
-// Check if an IP is a trusted proxy (supports both single IPs and CIDRs)
+// IsTrustedProxy reports whether ip matches a trusted proxy IP or CIDR.
 func (c *Controller) IsTrustedProxy(ip string) bool {
 	parsedIP := net.ParseIP(ip)
 	if parsedIP == nil {
 		return false
 	}
 
-	// Fast path: exact IP match via direct map lookup - O(1)
 	if _, exists := c.TrustedProxies.Load(ip); exists {
 		return true
 	}
 
-	// Check pre-parsed CIDR ranges (avoids re-parsing on every request)
 	c.trustedCIDRMu.RLock()
 	defer c.trustedCIDRMu.RUnlock()
 	for _, cidr := range c.trustedCIDRs {
@@ -46,8 +38,7 @@ func (c *Controller) IsTrustedProxy(ip string) bool {
 	return false
 }
 
-// rebuildTrustedCIDRCache pre-parses all CIDR entries from the trusted proxy list
-// so IsTrustedProxy doesn't need to re-parse them on every request.
+// rebuildTrustedCIDRCache parses the CIDR entries of the trusted proxy list.
 func (c *Controller) rebuildTrustedCIDRCache() {
 	var cidrs []*net.IPNet
 	c.TrustedProxies.Range(func(key, value any) bool {
@@ -68,13 +59,11 @@ func (c *Controller) rebuildTrustedCIDRCache() {
 	c.trustedCIDRMu.Unlock()
 }
 
-// TrustedProxyExists checks if a trusted proxy entry exists by its exact IP/CIDR key
 func (c *Controller) TrustedProxyExists(ip string) bool {
 	_, exists := c.TrustedProxies.Load(ip)
 	return exists
 }
 
-// Add a trusted proxy by IP
 func (c *Controller) AddTrustedProxy(ip string, desc string) bool {
 	_, exists := c.TrustedProxies.Load(ip)
 	if !exists {
@@ -84,7 +73,6 @@ func (c *Controller) AddTrustedProxy(ip string, desc string) bool {
 	return !exists
 }
 
-// Remove a trusted proxy by IP
 func (c *Controller) RemoveTrustedProxy(ip string) bool {
 	_, exists := c.TrustedProxies.Load(ip)
 	if exists {
@@ -94,7 +82,6 @@ func (c *Controller) RemoveTrustedProxy(ip string) bool {
 	return exists
 }
 
-// List all trusted proxies
 func (c *Controller) ListTrustedProxies() []TrustedProxy {
 	var proxies []TrustedProxy
 	c.TrustedProxies.Range(func(key, value any) bool {
@@ -107,12 +94,12 @@ func (c *Controller) ListTrustedProxies() []TrustedProxy {
 	return proxies
 }
 
-// Load trusted proxies from file
+// LoadTrustedProxies loads the trusted proxies, creating the file from the
+// defaults if missing.
 func (c *Controller) LoadTrustedProxies() error {
 	trustedProxies := []TrustedProxy{}
 
 	if !utils.FileExists(c.Options.TrustedProxiesFile) {
-		// Load default trusted proxies from embedded CSV and create the config file
 		defaultProxies := loadDefaultTrustedProxiesFromCSV()
 		data, err := json.MarshalIndent(defaultProxies, "", "  ")
 		if err != nil {
@@ -122,7 +109,6 @@ func (c *Controller) LoadTrustedProxies() error {
 		if err != nil {
 			return err
 		}
-		// Load into memory
 		for _, proxy := range defaultProxies {
 			c.TrustedProxies.Store(proxy.IP, proxy)
 		}
@@ -130,7 +116,6 @@ func (c *Controller) LoadTrustedProxies() error {
 		return nil
 	}
 
-	//Load from file
 	data, err := os.ReadFile(c.Options.TrustedProxiesFile)
 	if err != nil {
 		return err
@@ -141,7 +126,6 @@ func (c *Controller) LoadTrustedProxies() error {
 		return err
 	}
 
-	// Load into memory
 	for _, proxy := range trustedProxies {
 		c.TrustedProxies.Store(proxy.IP, proxy)
 	}
@@ -150,13 +134,11 @@ func (c *Controller) LoadTrustedProxies() error {
 	return nil
 }
 
-// GetDefaultTrustedProxies returns the built-in default trusted proxy list
-// parsed from the embedded CSV, without modifying the running configuration.
+// GetDefaultTrustedProxies returns the default trusted proxy list.
 func (c *Controller) GetDefaultTrustedProxies() []TrustedProxy {
 	return loadDefaultTrustedProxiesFromCSV()
 }
 
-// loadDefaultTrustedProxiesFromCSV parses the embedded CSV and returns TrustedProxy slice
 func loadDefaultTrustedProxiesFromCSV() []TrustedProxy {
 	var proxies []TrustedProxy
 	scanner := bufio.NewScanner(strings.NewReader(defaultTrustedProxiesCSV))
@@ -173,7 +155,6 @@ func loadDefaultTrustedProxiesFromCSV() []TrustedProxy {
 	return proxies
 }
 
-// Save trusted proxies to file
 func (c *Controller) SaveTrustedProxies() error {
 	trustedProxies := c.ListTrustedProxies()
 	data, err := json.MarshalIndent(trustedProxies, "", "  ")
@@ -185,11 +166,9 @@ func (c *Controller) SaveTrustedProxies() error {
 	return err
 }
 
-// ClientIP returns the client's address for a request. With trustHeaders
-// (the proxy rule's "trust the client address from trusted proxies"), the
-// forwarded address (X-Real-IP, X-Forwarded-For and the like) is used when
-// the connection comes from a trusted proxy; otherwise the connection's
-// own address.
+// ClientIP returns the client's address: with trustHeaders, the forwarded
+// address when the connection comes from a trusted proxy; otherwise the
+// connection's address.
 func (c *Controller) ClientIP(r *http.Request, trustHeaders bool) string {
 	remoteIP := netutils.GetRequesterIPUntrusted(r)
 	if trustHeaders && c != nil && c.IsTrustedProxy(remoteIP) {

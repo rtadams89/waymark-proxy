@@ -1,19 +1,9 @@
 package dynamicproxy
 
 /*
-	listenip_custom.go (custom fork)
-
-	An HTTP rule can answer only on one address of this host, typically a
-	floating IP of the HA cluster (ProxyEndpoint.ListenIP). The HTTP(S)
-	listener still listens on every address; a request that arrived on
-	another address is routed as if the rule did not exist (another
-	matching rule, or the default site).
-
-	This is routing, not access control: use an access rule to limit who
-	can reach a site. When the address a request arrived on is not known
-	(for example over HTTP/3, whose listener reports only its wildcard
-	address), the rule answers. Additional listening addresses of a rule
-	are used as they are written.
+	A rule's ListenIP: the rule answers only requests that arrived on that
+	address, or whose arrival address is not known; other requests are
+	routed as if the rule did not exist.
 */
 
 import (
@@ -48,7 +38,7 @@ func requestLocalIP(r *http.Request) net.IP {
 }
 
 // answersOn reports whether the rule answers a request that arrived on
-// local (nil: not known).
+// local (nil when not known).
 func (ep *ProxyEndpoint) answersOn(local net.IP) bool {
 	if ep == nil || ep.ListenIP == "" || local == nil {
 		return true
@@ -57,8 +47,8 @@ func (ep *ProxyEndpoint) answersOn(local net.IP) bool {
 	return ip != nil && ip.Equal(local)
 }
 
-// GetProxyEndpointForRequest finds the rule for a request on the HTTP(S)
-// listener, by its host name and the address it arrived on.
+// GetProxyEndpointForRequest returns the rule for a request by host name and
+// arrival address.
 func (router *Router) GetProxyEndpointForRequest(r *http.Request) *ProxyEndpoint {
 	return router.getProxyEndpoint(requestHostname(r.Host), requestLocalIP(r))
 }

@@ -13,19 +13,18 @@ import (
 	"imuslab.com/zoraxy/mod/database/dbinc"
 )
 
-// Ensure the DB struct implements the Backend interface
 var _ dbinc.Backend = (*DB)(nil)
 
 type DB struct {
 	db               *leveldb.DB
-	Table            sync.Map      //For emulating table creation
-	batch            leveldb.Batch //Batch write
-	writeFlushTicker *time.Ticker  //Ticker for flushing data into disk
-	writeFlushStop   chan bool     //Stop channel for write flush ticker
+	Table            sync.Map // emulated tables
+	batch            leveldb.Batch
+	writeFlushTicker *time.Ticker
+	writeFlushStop   chan bool
 }
 
 func NewDB(path string) (*DB, error) {
-	//If the path is not a directory (e.g. /tmp/dbfile.db), convert the filename to directory
+	// A file path becomes a directory name
 	if filepath.Ext(path) != "" {
 		path = strings.ReplaceAll(path, ".", "_")
 	}
@@ -41,7 +40,7 @@ func NewDB(path string) (*DB, error) {
 		batch: leveldb.Batch{},
 	}
 
-	//Create a ticker to flush data into disk every 1 seconds
+	// Flushes batched writes every second
 	writeFlushTicker := time.NewTicker(1 * time.Second)
 	writeFlushStop := make(chan bool)
 	go func() {
@@ -49,7 +48,6 @@ func NewDB(path string) (*DB, error) {
 			select {
 			case <-writeFlushTicker.C:
 				if thisDB.batch.Len() == 0 {
-					//No flushing needed
 					continue
 				}
 				err = db.Write(&thisDB.batch, nil)
@@ -70,7 +68,6 @@ func NewDB(path string) (*DB, error) {
 }
 
 func (d *DB) NewTable(tableName string) error {
-	//Create a table entry in the sync.Map
 	d.Table.Store(tableName, true)
 	return nil
 }
@@ -130,9 +127,8 @@ func (d *DB) ListTable(tableName string) ([][][]byte, error) {
 	var result [][][]byte
 	for iter.Next() {
 		key := iter.Key()
-		//The key contains the table name as prefix. Trim it before returning
 		value := iter.Value()
-		// Copy key and value since LevelDB iterator reuses underlying buffers
+		// Copies key and value; the iterator reuses its buffers
 		keyCopy := []byte(strings.TrimPrefix(string(key), tableName+"/"))
 		valueCopy := make([]byte, len(value))
 		copy(valueCopy, value)
@@ -147,7 +143,6 @@ func (d *DB) ListTable(tableName string) ([][][]byte, error) {
 }
 
 func (d *DB) Close() {
-	//Write the remaining data in batch back into disk
 	d.writeFlushStop <- true
 	d.writeFlushTicker.Stop()
 	d.db.Write(&d.batch, nil)

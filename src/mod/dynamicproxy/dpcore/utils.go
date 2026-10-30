@@ -6,54 +6,35 @@ import (
 	"strings"
 )
 
-// replaceLocationHost rewrite the backend server's location header to a new URL based on the given proxy rules
-// If you have issues with tailing slash, you can try to fix them here (and remember to PR :D )
+// replaceLocationHost rewrites a backend Location URL to the requested host.
 func replaceLocationHost(urlString string, rrr *ResponseRewriteRuleSet, useTLS bool) (string, error) {
 	u, err := url.Parse(urlString)
 	if err != nil {
 		return "", err
 	}
 
-	//Update the schemetic if the proxying target is http
-	//but exposed as https to the internet via Zoraxy
+	// https when the client connection uses TLS
 	if useTLS {
 		u.Scheme = "https"
 	} else {
 		u.Scheme = "http"
 	}
 
-	//Issue #39: Check if it is location target match the proxying domain
-	//E.g. Proxy config: blog.example.com -> example.com/blog
-	//Check if it is actually redirecting to example.com instead of a new domain
-	//like news.example.com.
-	// The later check bypass apache screw up method of redirection header
-	// e.g. https://imuslab.com -> http://imuslab.com:443
+	// Leaves Locations to other hosts unchanged
 	if rrr.ProxyDomain != u.Host && u.Host != rrr.OriginalHost && !strings.Contains(u.Host, rrr.OriginalHost+":") {
-		//New location domain not matching proxy target domain.
-		//Do not modify location header
 		return urlString, nil
 	}
 
-	//Issue #626: Check if the location header is another subdomain with port
-	//E.g. Proxy config: blog.example.com -> 127.0.0.1:80
-	//Check if it is actually redirecting to (*.)blog.example.com:8080 instead of current domain
-	//like Location: http://x.blog.example.com:1234/
 	_, newLocationPort, err := net.SplitHostPort(u.Host)
 	if (newLocationPort == "80" || newLocationPort == "443") && err == nil {
-		//Port 80 or 443, some web server use this to switch between http and https
-		//E.g. http://example.com:80 -> https://example.com:443
-		//E.g. http://example.com:443 -> https://example.com:80
-		//That usually means the user have invalidly configured the web server to use port 80 or 443
-		//for http or https. We should not modify the location header in this case.
+		// Ports 80 and 443 are rewritten
 
 	} else if strings.Contains(u.Host, ":") && err == nil && u.Host != rrr.ProxyDomain {
-		//Other port numbers and different host from proxy target. Do not modify location header
+		// Other ports on another host are left unchanged
 		return urlString, nil
 	}
 
-	// Handle case where OriginalHost contains a path component (e.g., "proxy.example.com/blog")
-	// In this case, the path component must be prepended to the URL path rather than
-	// set as part of the host (which would cause URL encoding to escape the slash as %2F)
+	// A path in OriginalHost is prepended to the URL path
 	if idx := strings.IndexByte(rrr.OriginalHost, '/'); idx != -1 {
 		u.Host = rrr.OriginalHost[:idx]
 		u.Path = rrr.OriginalHost[idx:] + u.Path
@@ -62,12 +43,7 @@ func replaceLocationHost(urlString string, rrr *ResponseRewriteRuleSet, useTLS b
 	}
 
 	if strings.Contains(rrr.ProxyDomain, "/") {
-		//The proxy domain itself seems contain subpath.
-		//Trim it off from Location header to prevent URL segment duplicate
-		//E.g. Proxy config: blog.example.com -> example.com/blog
-		//Location Header: /blog/post?id=1
-		//Expected Location Header send to client:
-		// blog.example.com/post?id=1 instead of blog.example.com/blog/post?id=1
+		// Removes the proxy domain's subpath from the Location path
 
 		ProxyDomainURL := "http://" + rrr.ProxyDomain
 		if rrr.UseTLS {
@@ -75,7 +51,6 @@ func replaceLocationHost(urlString string, rrr *ResponseRewriteRuleSet, useTLS b
 		}
 		ru, err := url.Parse(ProxyDomainURL)
 		if err == nil {
-			//Trim off the subpath
 			u.Path = strings.TrimPrefix(u.Path, ru.Path)
 		}
 	}
@@ -83,27 +58,22 @@ func replaceLocationHost(urlString string, rrr *ResponseRewriteRuleSet, useTLS b
 	return u.String(), nil
 }
 
-// isExternalDomainName check and return if the hostname is external domain name (e.g. github.com)
-// instead of internal (like 192.168.1.202:8443 (ip address) or domains end with .local or .internal)
+// isExternalDomainName reports whether hostname is a domain name other than
+// an IP address or an internal TLD (.local, .internal, .localhost, .home.arpa).
 func isExternalDomainName(hostname string) bool {
 	host, _, err := net.SplitHostPort(hostname)
 	if err != nil {
-		//hostname doesnt contain port
 		ip := net.ParseIP(hostname)
 		if ip != nil {
-			//IP address, not a domain name
 			return false
 		}
 	} else {
-		//Hostname contain port, use hostname without port to check if it is ip
 		ip := net.ParseIP(host)
 		if ip != nil {
-			//IP address, not a domain name
 			return false
 		}
 	}
 
-	//Check if it is internal DNS assigned domains
 	internalDNSTLD := []string{".local", ".internal", ".localhost", ".home.arpa"}
 	for _, tld := range internalDNSTLD {
 		if strings.HasSuffix(strings.ToLower(hostname), tld) {

@@ -14,11 +14,7 @@ import (
 	"imuslab.com/zoraxy/mod/utils"
 )
 
-/*
-	ACME Wizard
-
-	This wizard help validate the acme settings and configurations
-*/
+// Checks of the ACME setup for the ACME wizard.
 
 func HandleGuidedStepCheck(w http.ResponseWriter, r *http.Request) {
 	stepNoStr, err := utils.GetPara(r, "step")
@@ -64,19 +60,16 @@ func HandleGuidedStepCheck(w http.ResponseWriter, r *http.Request) {
 
 		domain = strings.TrimSpace(domain)
 
-		// Check if the domain is reachable
 		reachable := isDomainReachable(domain)
 		if !reachable {
 			utils.SendErrorResponse(w, "domain is not reachable")
 			return
 		}
 
-		// Check http is setup correctly
 		httpServerReachable := isHTTPServerAvailable(domain)
 		js, _ := json.Marshal(httpServerReachable)
 		utils.SendJSONResponse(w, string(js))
 	} else if stepNo == 10 {
-		// Resolve public Ip address for tour
 		publicIp, err := getPublicIPAddress()
 		if err != nil {
 			utils.SendErrorResponse(w, err.Error())
@@ -89,18 +82,15 @@ func HandleGuidedStepCheck(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Step 1
 func isLocalhostListening() (isListening bool, err error) {
 	timeout := 2 * time.Second
 	isListening = false
-	// Check if localhost is listening on port 80 (HTTP)
 	conn, err := net.DialTimeout("tcp", "localhost:80", timeout)
 	if err == nil {
 		isListening = true
 		conn.Close()
 	}
 
-	// Check if localhost is listening on port 443 (HTTPS)
 	conn, err = net.DialTimeout("tcp", "localhost:443", timeout)
 	if err == nil {
 		isListening = true
@@ -114,7 +104,6 @@ func isLocalhostListening() (isListening bool, err error) {
 	return isListening, err
 }
 
-// Step 2
 func getPublicIPAddress() (string, error) {
 	resp, err := http.Get("http://checkip.amazonaws.com/")
 	if err != nil {
@@ -132,7 +121,7 @@ func getPublicIPAddress() (string, error) {
 
 func isHTTPServerAvailable(ipAddress string) bool {
 	client := http.Client{
-		Timeout: 5 * time.Second, // Timeout for the HTTP request
+		Timeout: 5 * time.Second,
 	}
 
 	urls := []string{
@@ -144,10 +133,9 @@ func isHTTPServerAvailable(ipAddress string) bool {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			fmt.Println(err, url)
-			continue // Ignore invalid URLs
+			continue
 		}
 
-		// Disable TLS verification to handle invalid certificates
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
@@ -155,18 +143,17 @@ func isHTTPServerAvailable(ipAddress string) bool {
 		resp, err := client.Do(req)
 		if err == nil {
 			resp.Body.Close()
-			return true // HTTP server is available
+			return true
 		}
 	}
 
-	return false // HTTP server is not available
+	return false
 }
 
-// Step 3
 func isDomainReachable(domain string) bool {
 	_, err := net.LookupHost(domain)
 	if err != nil {
-		return false // Domain is not reachable
+		return false
 	}
-	return true // Domain is reachable
+	return true
 }

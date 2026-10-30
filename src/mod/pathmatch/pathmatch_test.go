@@ -69,8 +69,7 @@ func TestRequestPathWithinPrefixPrefixForms(t *testing.T) {
 	}
 }
 
-// An unusable prefix must never widen into a match, otherwise a stray blank rule
-// would cover every request on the endpoint.
+// An empty or blank prefix matches nothing.
 func TestRequestPathWithinPrefixRejectsUnusablePrefix(t *testing.T) {
 	for _, prefix := range []string{"", " ", "\t", "\n", "   "} {
 		if RequestPathWithinPrefix("/anything/at/all", prefix) {

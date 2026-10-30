@@ -1,14 +1,8 @@
 package access
 
 /*
-	store.go (custom fork): loading and saving ACLs and objects.
-
-	conf/acl/<id>.json   one ACL each
-	conf/acl/objects.json all objects
-
-	Every save writes the whole ACL (or object list) atomically and bumps its
-	revision; a change based on an older revision is refused, so two
-	browser tabs cannot overwrite each other's changes.
+	Storage of ACLs (conf/acl/<id>.json) and objects (conf/acl/objects.json).
+	Saves bump the revision; changes based on an older revision are refused.
 */
 
 import (
@@ -55,7 +49,7 @@ func NewAccessController(options *Options) (*Controller, error) {
 	}
 
 	if options.PublicIpCheckInterval <= 0 {
-		options.PublicIpCheckInterval = 12 * 60 * 60 //12 hours
+		options.PublicIpCheckInterval = 12 * 60 * 60
 	}
 	c.ServerPublicIP = "127.0.0.1"
 	go func() {
@@ -147,8 +141,6 @@ func (c *Controller) saveObjectsLocked() error {
 	return utils.WriteFileAtomic(filepath.Join(c.Options.ConfigFolder, objectsFile), append(b, '\n'), 0644)
 }
 
-/* ACLs */
-
 func copyACL(a *ACL) *ACL {
 	n := *a
 	n.Rules = append([]Rule{}, a.Rules...)
@@ -182,7 +174,7 @@ func (c *Controller) GetACL(id string) (*ACL, error) {
 	return copyACL(a), nil
 }
 
-// CreateACL adds an empty ACL (everything denied until rules are added).
+// CreateACL adds an ACL with no rules.
 func (c *Controller) CreateACL(name, description string) (*ACL, error) {
 	name, err := checkName(name)
 	if err != nil {
@@ -204,8 +196,7 @@ func (c *Controller) CreateACL(name, description string) (*ACL, error) {
 	return copyACL(a), nil
 }
 
-// PrepareACL checks an ACL as it would be saved (normalised rules, the
-// revision it is based on) without saving it.
+// PrepareACL validates and normalizes an ACL for saving.
 func (c *Controller) PrepareACL(in *ACL) (*ACL, error) {
 	if in.ID == AllowAllID {
 		return nil, errors.New("the Allow all ACL cannot be changed")
@@ -255,7 +246,7 @@ func (c *Controller) SaveACL(a *ACL) error {
 	return nil
 }
 
-// DeleteACL removes an ACL (the caller checks it is not in use).
+// DeleteACL removes an ACL.
 func (c *Controller) DeleteACL(id string) error {
 	if id == AllowAllID {
 		return errors.New("the Allow all ACL cannot be deleted")
@@ -277,8 +268,6 @@ func (c *Controller) DeleteACL(id string) error {
 	c.compileLocked()
 	return nil
 }
-
-/* Objects */
 
 func copyObject(o *Object) *Object {
 	n := *o
@@ -313,8 +302,8 @@ func (c *Controller) GetObject(id string) (*Object, error) {
 	return copyObject(o), nil
 }
 
-// PrepareObject checks an object as it would be saved; an empty ID makes
-// a new one.
+// PrepareObject validates and normalizes an object for saving; an empty ID
+// creates a new one.
 func (c *Controller) PrepareObject(in *Object) (*Object, error) {
 	if in.ID == PrivateNetworksID {
 		return nil, errors.New("the Private networks object cannot be changed")
@@ -348,7 +337,7 @@ func (c *Controller) PrepareObject(in *Object) (*Object, error) {
 			return nil, fmt.Errorf("an object named %q already exists", name)
 		}
 	}
-	// Nested objects: they must exist, and must not contain this object
+	// Nested objects must exist and must not contain this object
 	for _, e := range out.Entries {
 		if e.Type != SourceObject {
 			continue
@@ -408,8 +397,8 @@ func objectHasCountry(objs map[string]*Object, id string, seen map[string]bool) 
 	return false
 }
 
-// ObjectUsesCountries reports whether an object needs Geo-IP: it has a
-// country entry, or an object nested in it does.
+// ObjectUsesCountries reports whether an object or one nested in it has a
+// country entry.
 func (c *Controller) ObjectUsesCountries(id string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -475,7 +464,7 @@ func (c *Controller) ObjectUsers(id string) []string {
 	return out
 }
 
-// DeleteObject removes an object no ACL uses.
+// DeleteObject removes an object.
 func (c *Controller) DeleteObject(id string) error {
 	if id == PrivateNetworksID {
 		return errors.New("the Private networks object cannot be deleted")
@@ -501,8 +490,8 @@ func (c *Controller) DeleteObject(id string) error {
 	return nil
 }
 
-// ACLsUsingCountries lists ACLs (by name) with a rule that needs a country
-// lookup (Geo-IP).
+// ACLsUsingCountries lists ACLs (by name) with an enabled rule that needs a
+// country.
 func (c *Controller) ACLsUsingCountries() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

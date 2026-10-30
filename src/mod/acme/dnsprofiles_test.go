@@ -100,8 +100,8 @@ func TestMergeKeepsSecretsWhenFieldLeftBlank(t *testing.T) {
 }
 
 func TestSummarizeNeverExposesStringValues(t *testing.T) {
-	// cloudflare: AuthToken/AuthEmail are strings, the timeouts are durations,
-	// and Mystery is not in the schema at all (so it must be treated as secret)
+	// AuthToken and AuthEmail are strings, the timeouts durations, and
+	// Mystery is not in the schema
 	fields, settings := summarizeDNSCredentials("cloudflare", `{"AuthToken":"secret","AuthEmail":"","PollingInterval":"2","PropagationTimeout":"600","Mystery":"x"}`)
 	if strings.Join(fields, ",") != "AuthToken,Mystery" {
 		t.Errorf("fieldsSet = %v, want [AuthToken Mystery]", fields)
@@ -145,7 +145,7 @@ func TestResolveUsesBoundProfile(t *testing.T) {
 		t.Fatalf("bound profile not used: %v %v %v", creds, source, err)
 	}
 
-	// A binding to a deleted profile must fail loudly, not silently fall back
+	// A binding to a deleted profile fails
 	a.Database.Delete(dnsProfileTable, profile.ID)
 	if _, _, _, err := a.resolveDNSCredentials("example.com"); err == nil {
 		t.Error("expected an error for a binding to a missing profile")

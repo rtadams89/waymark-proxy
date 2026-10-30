@@ -1,15 +1,7 @@
 package main
 
-/*
-	stickykey_custom.go (custom fork)
-
-	The key that signs sticky session cookies (load balancing). Zoraxy used
-	the host UUID, which is also sent to every upstream in the
-	X-Forwarded-Server header, so an upstream could forge the cookies.
-	The key is random, kept in the database (custom_fork table), and copied
-	to standby nodes by HA configuration sync, so after a failover the new
-	active node still accepts the cookies. Each node keeps its own host UUID.
-*/
+// The key that signs sticky session cookies: random, kept in the database
+// (custom_fork table) and copied to standby nodes by HA configuration sync.
 
 import (
 	"crypto/rand"

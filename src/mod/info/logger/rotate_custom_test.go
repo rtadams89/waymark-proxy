@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// Custom fork: rotation while other goroutines log must not lose lines or
-// write to a closed file, and every line has exactly one timestamp.
+// Rotation while other goroutines log loses no lines, never writes to a
+// closed file, and every line has exactly one timestamp.
 func TestRotateWhileLogging(t *testing.T) {
 	dir := t.TempDir()
 	l, err := NewLogger("wm", dir)

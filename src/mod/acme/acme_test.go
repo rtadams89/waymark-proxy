@@ -15,7 +15,6 @@ import (
 	"imuslab.com/zoraxy/mod/acme"
 )
 
-// Test if the issuer extraction is working
 func TestExtractIssuerNameFromPEM(t *testing.T) {
 	// Generate a test CA certificate with "Let's Encrypt" as the issuer organization
 	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

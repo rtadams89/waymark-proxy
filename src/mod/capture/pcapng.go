@@ -1,14 +1,9 @@
 package capture
 
 /*
-	pcapng.go: a minimal pcapng writer and packet builder.
-
-	Waymark does not capture packets from the network. It records the bytes
-	it reads and writes on its connections, and this file turns them into
-	IPv4/IPv6 packets with TCP or UDP headers (link type RAW), so the file
-	opens in Wireshark like an ordinary capture. Sequence numbers, the
-	handshake and the closing FINs are made up to match the data; window
-	sizes, retransmissions and timing below the application are not real.
+	Minimal pcapng writer and packet builder: recorded bytes become IPv4/IPv6
+	packets with TCP or UDP headers (link type RAW), with sequence numbers,
+	handshake and FINs generated to match the data.
 */
 
 import (
@@ -42,11 +37,8 @@ type pcapWriter struct {
 
 func pad4(n int) int { return (4 - n%4) % 4 }
 
-// Size limits (custom fork). Every length written into a pcapng block or an
-// IP, TCP or UDP header has to fit its field, so inputs are cut to these
-// limits before anything is allocated. Capture code stays far below them
-// (TCP data is split into segmentSize pieces, UDP reads at most 1500 bytes),
-// so they only guard against a future caller passing something huge.
+// Size limits that keep every written length within its field; inputs are
+// cut to them.
 const (
 	maxOptionValue  = 0xFFFF - 3  // option length is a uint16
 	maxComment      = 4096        // packet comments are one line of text
@@ -122,7 +114,7 @@ func (p *pcapWriter) packet(ts time.Time, data []byte, comment string) error {
 	if len(comment) > maxComment {
 		comment = comment[:maxComment]
 	}
-	body := make([]byte, 0, 64)                      // grows with append (no size arithmetic on input lengths)
+	body := make([]byte, 0, 64)
 	body = binary.LittleEndian.AppendUint32(body, 0) // interface 0
 	body = binary.LittleEndian.AppendUint32(body, uint32(us>>32))
 	body = binary.LittleEndian.AppendUint32(body, uint32(us))

@@ -1,16 +1,8 @@
 package dynamicproxy
 
-/*
-	maintenance_custom.go (custom fork)
-
-	Per-rule maintenance mode. While on, every request to the rule
-	(including its virtual directories) gets a 503 maintenance page with an
-	optional message and Retry-After, before health checks, the cache or
-	any upstream is involved. Health checks keep running, so the rule's
-	health is visible when maintenance ends.
-
-	The page can be replaced by <webroot>/templates/maintenance.html.
-*/
+// Per-rule maintenance mode: requests to the rule and its virtual directories
+// get a 503 maintenance page with an optional message and Retry-After.
+// <webroot>/templates/maintenance.html replaces the page.
 
 import (
 	_ "embed"

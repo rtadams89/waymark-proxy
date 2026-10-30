@@ -352,12 +352,10 @@
     const ZOOM_MIN = 0.25, ZOOM_MAX = 3.0, ZOOM_STEP = 0.15;
     let _firstLoad = true;
 
-    /* Layout orientation: "horizontal" (Internet on the left) or
-       "vertical" (Internet on top, upstreams at the bottom).
-       Defaults to vertical to fit the status page's tall left column.
-       Persisted in localStorage so the user's preference sticks. */
+    /* Layout orientation: "horizontal" (Internet on the left) or "vertical"
+       (Internet on top), default vertical, kept in localStorage. */
     let orientation = (function(){
-        //Custom fork: renamed from zoraxy_trafficflow_orientation; the old key is moved once
+        //Move the old zoraxy_trafficflow_orientation key once
         try {
             let saved = localStorage.getItem("waymark_trafficflow_orientation");
             if (saved === null && localStorage.getItem("zoraxy_trafficflow_orientation") !== null){
@@ -494,8 +492,7 @@
         });
         g.appendChild(circle);
 
-        // Custom fork: "clients" icon (a group of people) instead of a globe,
-        // since this proxy serves internal clients rather than the Internet
+        // "clients" icon (a group of people)
         const peopleG = svgEl("g", { fill: "rgba(255,255,255,0.9)", stroke: "none" });
         const person = (px, py, scale, opacity) => {
             const p = svgEl("g", { opacity });
@@ -510,8 +507,7 @@
         peopleG.appendChild(person(cx, cy + 3, 1, 1));
         g.appendChild(peopleG);
 
-        // Label — placed below the circle in horizontal mode, above it in
-        // vertical mode so it does not sit on top of the downward flow edges.
+        // Label: below the circle in horizontal mode, above it in vertical mode
         const labelY = (orientation === "vertical") ? (cy - r - 8) : (cy + r + 14);
         const label = svgEl("text", {
             x: cx, y: labelY,

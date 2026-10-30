@@ -49,7 +49,7 @@ func headerCookieRedact(r *http.Request, names []string, exclude bool) {
 
 func headerCopyExcluded(original, destination http.Header, excludedHeaders []string) {
 	for key, values := range original {
-		// We should never copy the headers in the below list.
+		// Skips doNotCopyHeaders
 		if stringInSliceFold(key, doNotCopyHeaders) {
 			continue
 		}
@@ -72,7 +72,7 @@ func headerCopyIncluded(original, destination http.Header, includedHeaders []str
 
 func headerCopyAll(original, destination http.Header) {
 	for key, values := range original {
-		// We should never copy the headers in the below list, even if they're in the list provided by a user.
+		// Skips doNotCopyHeaders
 		if stringInSliceFold(key, doNotCopyHeaders) {
 			continue
 		}
@@ -83,7 +83,7 @@ func headerCopyAll(original, destination http.Header) {
 
 func headerCopyIncludedExact(original, destination http.Header, keys []string) {
 	for key, values := range original {
-		// We should never copy the headers in the below list, even if they're in the list provided by a user.
+		// Skips doNotCopyHeaders
 		if stringInSliceFold(key, doNotCopyHeaders) {
 			continue
 		}
@@ -152,7 +152,7 @@ func rSetIPHeader(r, req *http.Request, headers ...string) {
 
 	ip := net.ParseIP(host)
 	if ip == nil {
-		// We should never leave a client supplied value in these headers when the address cannot be determined.
+		// Removes the headers when the address is unknown
 		for _, header := range headers {
 			req.Header.Del(header)
 		}
@@ -174,7 +174,7 @@ func rSetXForwardedHeaders(r, req *http.Request) {
 }
 
 func rSetXOriginalHeaders(r, req *http.Request) {
-	// The X-Forwarded-For header has larger support, so we include both.
+	// Sets both X-Original-IP and X-Forwarded-For
 	rSetIPHeader(r, req, HeaderXOriginalIP, HeaderXForwardedFor)
 
 	original := &url.URL{

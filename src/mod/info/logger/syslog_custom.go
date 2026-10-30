@@ -1,25 +1,21 @@
 package logger
 
-/*
-	syslog_custom.go (custom fork)
-
-	Sends log messages to remote syslog servers (see LogOutputs).
-
-	Each enabled server has its own queue and connection, so a slow or
-	unreachable server never holds up the proxy or the other servers:
-	messages are queued (up to syslogQueueSize per server) and dropped,
-	and counted, when the queue is full. TCP and TLS connections are
-	re-established with a growing delay (1 to 30 seconds) after a failure,
-	and the message being sent is retried once on the new connection.
-
-	Formats:
-	- rfc5424:  <PRI>1 TIMESTAMP HOST waymark PID MSGID - MESSAGE
-	- rfc3164:  <PRI>Mmm dd hh:mm:ss HOST waymark[PID]: MESSAGE
-	- json5424: an RFC 5424 header followed by the message as a JSON object
-	- json:     the JSON object alone (for collectors that take JSON lines)
-	MSGID is the stream ("system" or "traffic"). MESSAGE is the same text
-	as in the log file, without the timestamp.
-*/
+// Sends log messages to remote syslog servers (see LogOutputs).
+//
+// Each enabled server has its own queue (up to syslogQueueSize messages) and
+// connection; messages are dropped, and counted, when the queue is full. TCP
+// and TLS connections are re-established with a growing delay (1 to 30
+// seconds) after a failure, and the message being sent is retried once on the
+// new connection.
+//
+// Formats:
+//   - rfc5424:  <PRI>1 TIMESTAMP HOST waymark PID MSGID - MESSAGE
+//   - rfc3164:  <PRI>Mmm dd hh:mm:ss HOST waymark[PID]: MESSAGE
+//   - json5424: an RFC 5424 header followed by the message as a JSON object
+//   - json:     the JSON object alone
+//
+// MSGID is the stream ("system" or "traffic"). MESSAGE is the log file line
+// without the timestamp.
 
 import (
 	"crypto/tls"
@@ -170,7 +166,7 @@ func dialSyslog(d *SyslogDestination) (net.Conn, error) {
 			cfg.RootCAs = pool
 		}
 		if !d.TLSVerify {
-			cfg.InsecureSkipVerify = true //Chosen in the settings for servers with self-signed certificates
+			cfg.InsecureSkipVerify = true
 		}
 		conn, err := tls.DialWithDialer(dialer, "tcp", d.Address(), cfg)
 		if err != nil {
@@ -424,7 +420,7 @@ func TestSyslog(d SyslogDestination) error {
 		return fmt.Errorf("sending to %s failed: %v", d.Address(), err)
 	}
 	if d.Protocol == "udp" {
-		// A closed port often answers with ICMP unreachable; give it a moment to show
+		// Wait briefly for an ICMP unreachable
 		conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 		buf := make([]byte, 1)
 		if _, err := conn.Read(buf); err != nil {

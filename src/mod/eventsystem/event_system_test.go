@@ -73,7 +73,6 @@ func TestEventDeSerialization(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Serialize the event
 			jsonData, err := json.Marshal(test.event)
 			if err != nil {
 				t.Fatalf("Failed to serialize event: %v", err)
@@ -143,7 +142,6 @@ func TestEventEmission(t *testing.T) {
 		logger:        logger,
 	}
 
-	// Create a test listener
 	listenerID := ListenerID("testListener")
 	testListener := &TestListener{
 		id:             listenerID,
@@ -175,7 +173,6 @@ func TestEventEmission(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("Timeout waiting for event to be received by listener")
 	}
-	// Unregister the listener
 	if err := em.UnregisterSubscriber(listenerID); err != nil {
 		t.Fatalf("Failed to unregister subscriber: %v", err)
 	}
@@ -192,23 +189,21 @@ func TestEventEmissionToSpecificListener(t *testing.T) {
 		logger:        logger,
 	}
 
-	// Create a few test listeners
-	// listener1 and listener2 are plugins that will send events to each other
-	// moderator is a plugin that is subscribed to EventCustom, so it will receive all custom events
-	// otherListener is neither subscribed to EventCustom nor a recipient of any custom event, so it should not receive any events
+	// listener1 and listener2 send events to each other; moderator is
+	// subscribed to EventCustom; otherListener receives no events
 	listener1ID := ListenerID("pluginA")
 	listener1 := &TestListener{
 		id:             listener1ID,
 		receivedEvents: make(chan events.Event, 10),
 	}
-	em.RegisterSubscriberToEvent(listener1, events.EventAccessRuleCreated) // We need to register to some event to be a valid subscriber
+	em.RegisterSubscriberToEvent(listener1, events.EventAccessRuleCreated)
 
 	listener2ID := ListenerID("pluginB")
 	listener2 := &TestListener{
 		id:             listener2ID,
 		receivedEvents: make(chan events.Event, 10),
 	}
-	em.RegisterSubscriberToEvent(listener2, events.EventAccessRuleCreated) // We need to register to some event to be a valid subscriber
+	em.RegisterSubscriberToEvent(listener2, events.EventAccessRuleCreated)
 
 	moderatorID := ListenerID("moderator")
 	moderator := &TestListener{
@@ -222,7 +217,7 @@ func TestEventEmissionToSpecificListener(t *testing.T) {
 		id:             otherListenerID,
 		receivedEvents: make(chan events.Event, 10),
 	}
-	em.RegisterSubscriberToEvent(otherListener, events.EventAccessRuleCreated) // We need to register to some event to be a valid subscriber
+	em.RegisterSubscriberToEvent(otherListener, events.EventAccessRuleCreated)
 
 	// Send a custom event from listener1 to listener2
 	customEvent := &events.CustomEvent{
@@ -332,8 +327,7 @@ func TestEmissionToNonExistentListener(t *testing.T) {
 		receivedEvents: make(chan events.Event, 10),
 	}
 
-	// Create event manager with the test listener marked as subscribed to BlacklistToggledEvents,
-	// but not actually registered
+	// Event manager with the test listener marked as subscribed to BlacklistToggledEvents, but not registered
 	logger, err := logger.NewFmtLogger()
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
@@ -377,7 +371,7 @@ func TestEmissionToNonExistentListener(t *testing.T) {
 		t.Fatal("Listener was somehow registered")
 	}
 
-	// Since the listener was unregistered, it should not receive any events
+	// The unregistered listener receives no events
 	select {
 	case <-testListener.receivedEvents:
 		t.Fatal("Listener should not have received any events after being unregistered")

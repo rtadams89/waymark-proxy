@@ -106,12 +106,12 @@
         outline-offset: 2px;
     }
 
-    /* Timeout inputs, fixed width so browsers render them the same size */
+    /* Timeout inputs, fixed width */
     #globalsettings .ingressTimeoutGrid .ui.input > input{
         width: 8em;
     }
 </style>
-<!-- Listeners (previously Ingress) -->
+<!-- Listeners -->
 <div class="standardContainer">
     <h2>Listeners</h2>
     <p>The ports Waymark listens on for proxied traffic, HTTP to HTTPS redirection, and other inbound connection settings</p>
@@ -270,12 +270,10 @@
 </div>
 <script>
     let currentListeningPort = 80;
-    // Scope to this page's accordion only; .advanceSettings is reused by
-    // other webmin components loaded dynamically via ajax.
+    // Scope to this page's accordion only
     $("#statusAdvanceSettings").accordion();
 
-    //Custom fork: whether this page is reached through Waymark's own proxy
-    //(the admin console rule), to warn before PROXY protocol cuts it off
+    //Whether this page is reached through Waymark's own proxy (the admin console rule)
     let gsViaProxy = false;
     $.get("/api/proxy/requestIsProxied", function(data){ gsViaProxy = (data == true); });
 
@@ -393,7 +391,7 @@
                             if (data.error != undefined){
                                 msgbox(data.error, false, 8000);
 
-                                //Restore backend value to make sure the UI is always in sync
+                                //Restore backend value
                                 $.get("/api/proxy/useHttpsRedirect", function(data){
                                     if (data == true){
                                         $("#redirect").checkbox("set checked");
@@ -510,7 +508,7 @@
     }
     initDevelopmentMode();
 
-    //Set a toggle's state without firing change (checkbox("set checked") would re-trigger handlers)
+    //Set a toggle's state without firing change
     function setToggleStateSilently(selector, checked){
         $(selector).toggleClass("checked", checked).find("input[type='checkbox']").prop("checked", checked);
     }
@@ -723,7 +721,7 @@
     // Load secondary listeners on page load and refresh periodically
     loadSecondaryListeners();
     setInterval(function(){
-        //Custom fork: only while the Listeners page is on screen
+        //Only while the Listeners page is on screen
         if ($("#secondaryListenersTable").is(":visible") && !document.hidden){
             loadSecondaryListeners();
         }

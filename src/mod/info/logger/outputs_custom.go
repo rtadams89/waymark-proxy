@@ -1,18 +1,9 @@
 package logger
 
-/*
-	outputs_custom.go (custom fork)
-
-	Where Waymark's two log streams go:
-	- system: Waymark's own messages (startup, settings changes, errors,
-	  certificate renewal, HA, ...); also always printed to standard
-	  output, so systemd's journal keeps them
-	- traffic: one line per HTTP request handled by the proxy
-
-	Each stream can be written to the log file, sent to remote syslog
-	servers, both, or neither. Settings live in conf/log_outputs.json (see
-	LogOutputs); syslog delivery is in syslog_custom.go.
-*/
+// Where the two log streams go: system (Waymark's own messages, also always
+// printed to standard output) and traffic (one line per HTTP request). Each
+// stream can be written to the log file, sent to remote syslog servers, both,
+// or neither. Settings live in conf/log_outputs.json.
 
 import (
 	"crypto/x509"
@@ -62,8 +53,7 @@ type SyslogDestination struct {
 	TLSName   string `json:"tlsName"`   // name to check the certificate for; empty: Host
 }
 
-// DefaultLogOutputs writes both streams to the file and sends nothing to syslog
-// (what Waymark did before these settings existed).
+// DefaultLogOutputs writes both streams to the file and sends nothing to syslog.
 func DefaultLogOutputs() *LogOutputs {
 	return &LogOutputs{SystemToFile: true, TrafficToFile: true, Syslog: []SyslogDestination{}}
 }

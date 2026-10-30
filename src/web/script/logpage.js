@@ -1,11 +1,8 @@
 /*
-    logpage.js (custom fork)
-
     The Access Logs page (Monitoring) and the System Logs page (System):
     lines of Waymark's log file, read through /api/log/read, shown as a
     table, newest first. Both kinds of line are in the same file; access
     lines start with [router:...] and system lines contain [system:...].
-    What goes to the file is set on System > Logging.
 
     wmLogPage(rootSelector, "access" | "system") fills the page's
     .lpTools, .lpNotice, .lpCount and table.
@@ -126,7 +123,7 @@
             let search = (root.find(".lpSearch").val() || "").toLowerCase().trim();
             let level = root.find(".lpLevel").val();
             let shown = entries.filter(e => (!level || kind.level(e, level)) && (!search || kind.text(e).toLowerCase().includes(search)));
-            const MAX = 2000; // rows drawn at once; the browser slows down beyond this
+            const MAX = 2000; // rows drawn at once
             let body = shown.slice(0, MAX).map(kind.row).join("");
             if (error){
                 body = `<tr><td colspan="8"><i class="red times circle icon"></i>${esc(error)}</td></tr>`;

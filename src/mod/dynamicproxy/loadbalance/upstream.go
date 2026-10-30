@@ -11,11 +11,9 @@ import (
 	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
 )
 
-// StartProxy create and start a HTTP proxy using dpcore
-// Example of webProxyEndpoint: https://example.com:443 or http://192.168.1.100:8080
-// tlsServerName, if not empty, overrides the TLS SNI and certificate verification
-// hostname used when connecting to a HTTPS upstream. Pass an empty string to derive
-// it from the upstream address.
+// StartProxy creates the proxy for this upstream (e.g. https://example.com:443
+// or http://192.168.1.100:8080). A non-empty tlsServerName sets the TLS SNI and
+// certificate verification name.
 func (u *Upstream) StartProxy(tlsServerName string) error {
 	//Filter the tailing slash if any
 	domain := u.OriginIpOrDomain
@@ -35,7 +33,6 @@ func (u *Upstream) StartProxy(tlsServerName string) error {
 		}
 	}
 
-	//Create a new proxy agent for this upstream
 	path, err := url.Parse(domain)
 	if err != nil {
 		return err
@@ -83,8 +80,7 @@ func (u *Upstream) String() string {
 	return u.OriginIpOrDomain
 }
 
-// ValidTLSVerifyName reports whether v is a known TLS certificate name mode
-// (custom fork).
+// ValidTLSVerifyName reports whether v is a known TLS certificate name mode.
 func ValidTLSVerifyName(v string) bool {
 	switch v {
 	case dpcore.TLSNameAuto, dpcore.TLSNameUpstream, dpcore.TLSNameProxyHost:

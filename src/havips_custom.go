@@ -1,13 +1,9 @@
 package main
 
 /*
-	havips_custom.go (custom fork): floating IP details for the HA page.
-
-	- which floating IPs this node holds
-	- whether the installed root helper and keepalived scripts match this
-	  Waymark build (they only change when the installer is run again)
-	- Layer 4 proxies that listen on a floating IP: on the node that doesn't
-	  hold it, they can only start with net.ipv4.ip_nonlocal_bind=1
+	Floating IP details for the HA page: floating IPs held, whether the
+	installed root helper files match this build, and Layer 4 proxies
+	listening on a floating IP.
 */
 
 import (

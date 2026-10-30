@@ -7,13 +7,8 @@ import (
 	gonet "github.com/shirou/gopsutil/v4/net"
 )
 
-/*
-	Tests for the status page "Bandwidth (Today)" accumulator.
-
-	These exercise dashboardBandwidthTracker.accumulate() with synthetic
-	interface counter readings, covering the cases that previously wiped the
-	running total back to zero.
-*/
+// Tests for the status page "Bandwidth (Today)" accumulator, using synthetic
+// interface counter readings.
 
 func nicReading(name string, rx uint64, tx uint64) gonet.IOCountersStat {
 	return gonet.IOCountersStat{
@@ -38,8 +33,7 @@ func assertTotals(t *testing.T, tracker *dashboardBandwidthTracker, wantRx int64
 	}
 }
 
-// The first reading of an interface must only record a baseline, otherwise the
-// counter history from before Zoraxy started shows up as a one-off spike.
+// The first reading of an interface only records a baseline.
 func TestBandwidthFirstSampleOnlyBaselines(t *testing.T) {
 	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.Local)
 	tracker := newTestBandwidthTracker(now)
@@ -51,11 +45,7 @@ func TestBandwidthFirstSampleOnlyBaselines(t *testing.T) {
 	assertTotals(t, tracker, 500, 300, "after second sample")
 }
 
-// Regression test: an interface disappearing (container teardown, VPN
-// reconnect, adapter reset) makes the aggregated "all interfaces" counter drop.
-// The previous implementation subtracted a stored baseline from that aggregate,
-// saw a negative delta and rebased to zero, losing the whole day. Per-interface
-// accounting must keep the running total instead.
+// An interface disappearing keeps the running total.
 func TestBandwidthSurvivesDisappearingInterface(t *testing.T) {
 	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.Local)
 	tracker := newTestBandwidthTracker(now)
@@ -74,17 +64,14 @@ func TestBandwidthSurvivesDisappearingInterface(t *testing.T) {
 	}, now.Add(5*time.Second))
 	assertTotals(t, tracker, 2000, 2000, "after both interfaces advanced")
 
-	//veth7a2 disappears. The aggregate counter drops from 8000 to 2500, but
-	//only eth0's own +500 should be counted and the total must be preserved.
+	// veth7a2 disappears: only eth0's own +500 is counted
 	tracker.accumulate([]gonet.IOCountersStat{
 		nicReading("eth0", 2500, 2500),
 	}, now.Add(10*time.Second))
 	assertTotals(t, tracker, 2500, 2500, "after interface disappeared")
 }
 
-// A counter moving backwards on a still-present interface means that
-// interface's counter was reset. That window must be skipped rather than
-// subtracted from the daily total.
+// A counter moving backwards on a still-present interface skips that window.
 func TestBandwidthIgnoresCounterReset(t *testing.T) {
 	now := time.Date(2026, 7, 25, 10, 0, 0, 0, time.Local)
 	tracker := newTestBandwidthTracker(now)

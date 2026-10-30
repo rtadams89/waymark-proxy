@@ -13,8 +13,7 @@ import (
 
 var spoofableClientIPHeaders = []string{"X-Real-Ip", "CF-Connecting-IP", "Fastly-Client-IP", "X-Forwarded-For"}
 
-// newTestCaptchaRouter builds a test router with a CAPTCHA session store, using
-// the same access controller setup as the rate limit tests
+// newTestCaptchaRouter builds a test router with a CAPTCHA session store.
 func newTestCaptchaRouter(t *testing.T, trustProxyHeaders bool, trustedProxies ...string) *Router {
 	t.Helper()
 	router := newTestRateLimitRouter(t, trustProxyHeaders, trustedProxies...)
@@ -42,8 +41,7 @@ func newTestCaptchaEndpoint(exceptionCIDR string) *ProxyEndpoint {
 	}
 }
 
-// A direct client must not be able to skip the challenge by claiming an
-// exempted address in a forwarding header (#1321)
+// A forwarding header from a direct client does not match a CIDR exception.
 func TestHandleCaptchaGating_SpoofedHeaderDoesNotMatchCIDRException(t *testing.T) {
 	for _, headerName := range spoofableClientIPHeaders {
 		t.Run(headerName, func(t *testing.T) {
@@ -62,8 +60,8 @@ func TestHandleCaptchaGating_SpoofedHeaderDoesNotMatchCIDRException(t *testing.T
 	}
 }
 
-// Trusting proxy headers on the access rule is not enough. The direct peer
-// must also be in the trusted proxy list.
+// A forwarding header from a peer not in the trusted proxy list does not
+// match a CIDR exception.
 func TestHandleCaptchaGating_UntrustedPeerHeaderDoesNotMatchCIDRException(t *testing.T) {
 	for _, headerName := range spoofableClientIPHeaders {
 		t.Run(headerName, func(t *testing.T) {
@@ -77,8 +75,7 @@ func TestHandleCaptchaGating_UntrustedPeerHeaderDoesNotMatchCIDRException(t *tes
 	}
 }
 
-// CDN fronted deployments that opted in to trusted proxy headers keep their
-// IP exceptions working
+// A forwarding header from a trusted proxy matches a CIDR exception.
 func TestHandleCaptchaGating_TrustedProxyHeaderMatchesCIDRException(t *testing.T) {
 	router := newTestCaptchaRouter(t, true, "104.16.0.0/13")
 	r := newTestRequest("104.16.5.1:443", map[string]string{"CF-Connecting-IP": "10.1.2.3"})
@@ -103,9 +100,8 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-// stubCaptchaProvider replaces the default HTTP client transport for the
-// duration of the test and returns a pointer to the form values that were
-// sent to the CAPTCHA provider's verification API
+// stubCaptchaProvider replaces the default HTTP transport during the test
+// and returns the form values sent to the provider.
 func stubCaptchaProvider(t *testing.T) *url.Values {
 	t.Helper()
 	sent := &url.Values{}
@@ -135,8 +131,7 @@ func newTestCaptchaVerifyRequest(remoteAddr string, headers map[string]string) *
 	return r
 }
 
-// The remoteip reported to the CAPTCHA provider must be the resolved client IP,
-// not an address chosen by the client in a forwarding header (#1321)
+// The remoteip sent to the provider is the resolved client IP.
 func TestHandleCaptchaGating_VerificationSendsResolvedRemoteIP(t *testing.T) {
 	for _, headerName := range spoofableClientIPHeaders {
 		t.Run(headerName, func(t *testing.T) {
@@ -171,8 +166,7 @@ func TestHandleCaptchaGating_VerificationSendsTrustedProxyClientIP(t *testing.T)
 	}
 }
 
-// trustEP sets the proxy rule's "trust forwarded addresses" as the test's
-// router was built (Custom fork: per proxy rule).
+// trustEP sets the rule's forwarded-address trust for the test.
 func trustEP(t *testing.T, ep *ProxyEndpoint) *ProxyEndpoint {
 	ep.TrustProxyHeaders = rlTrust[t.Name()]
 	return ep

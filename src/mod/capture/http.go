@@ -1,24 +1,12 @@
 package capture
 
 /*
-	http.go: recording HTTP requests through the reverse proxy.
-
-	Begin wraps the request and response at the top of the proxy handler
-	(client side); UpstreamRequest wraps the request Waymark sends to the
-	upstream and its response (upstream side). Each request/response is
-	written as its own TCP conversation once it has finished, in HTTP/1.1
-	form whatever version was used on the wire (HTTP/2 and HTTP/3 requests
-	get a made-up client port, as several share one connection), with:
-
-	- Content-Length set to the body bytes kept (bodies are cut at the
-	  configured limit; an X-Waymark-Capture header says so)
-	- HTTPS decrypted, shown on port 80 so Wireshark decodes it as HTTP; the
-	  first packet's comment gives the real addresses and ports
-	- optionally Authorization, Proxy-Authorization, Cookie and Set-Cookie
-	  values replaced with [redacted]
-
-	Protocol upgrades (WebSocket) record the request and the 101 response
-	only; the tunnel after it is not captured.
+	Recording of HTTP requests: Begin wraps the client side, UpstreamRequest
+	the upstream side. Each exchange is written as its own TCP conversation
+	in HTTP/1.1 form when finished: bodies cut at the configured limit,
+	HTTPS shown on port 80 with the real addresses in a comment, and
+	optionally credentials redacted. Upgraded connections record the request
+	and the 101 response only.
 */
 
 import (
@@ -179,9 +167,9 @@ func (rw *recorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // Unwrap lets http.ResponseController reach the real ResponseWriter.
 func (rw *recorder) Unwrap() http.ResponseWriter { return rw.ResponseWriter }
 
-// Begin starts recording an HTTP request if a capture wants it. It returns
-// the writer and request to use, and a function to call when the request
-// has been handled (nil when nothing is recorded).
+// Begin starts recording an HTTP request if a capture wants it, and returns
+// the writer and request to use and a function to call when done (nil when
+// not recorded).
 func Begin(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request, func()) {
 	c := Active()
 	if c == nil {
@@ -228,9 +216,8 @@ func (s stringAddr) String() string  { return string(s) }
 
 func passthrough(res *http.Response, err error) *http.Response { return res }
 
-// UpstreamRequest starts recording the request the proxy sends upstream,
-// if its client request is being recorded. Call the returned function with
-// the upstream's response.
+// UpstreamRequest starts recording the upstream request if its client
+// request is recorded; call the returned function with the response.
 func UpstreamRequest(req *http.Request) (*http.Request, func(*http.Response, error) *http.Response) {
 	ex, _ := req.Context().Value(ctxKey{}).(*httpExchange)
 	if ex == nil || !ex.c.SideUpstream() || ex.c.stopped.Load() {
@@ -265,11 +252,11 @@ func UpstreamRequest(req *http.Request) (*http.Request, func(*http.Response, err
 		ex.mu.Lock()
 		up.status, up.respHeader, up.respStart, up.h2 = res.StatusCode, res.Header.Clone(), time.Now(), res.ProtoMajor >= 2
 		if up.remote.IP == nil {
-			// No connection details (e.g. a custom transport): show the upstream host
+			// Without connection details: shows the upstream host
 			up.remote = Endpoint{IP: net.IPv4zero, Port: 80}
 		}
 		ex.mu.Unlock()
-		// An upgrade turns the body into a raw tunnel; leave it untouched
+		// Upgrade responses are not wrapped
 		if res.StatusCode == http.StatusSwitchingProtocols || res.Body == nil || res.Body == http.NoBody {
 			if res.StatusCode == http.StatusSwitchingProtocols {
 				ex.mu.Lock()

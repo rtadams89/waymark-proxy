@@ -49,7 +49,7 @@ $.cjax = function(payload){
     $.ajax(payload);
 }
 
-// Custom fork: the ACL shown for a rule. aclMap: id -> /api/acl/list row.
+// The ACL shown for a rule. aclMap: id -> /api/acl/list row.
 // Allow all is shown only in the details column (inTable).
 function aclNameLabel(aclMap, id, inTable){
     if (id == "" || id == undefined) id = "allow-all";

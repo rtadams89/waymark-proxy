@@ -29,25 +29,21 @@ type LogFile struct {
 	Filename string
 	Fullpath string
 	Filesize int64
-	Modified int64 //Custom fork: last write (Unix seconds), so the newest file can be shown first
+	Modified int64 // last write (Unix seconds)
 }
 
 func NewLogViewer(option *ViewerOption) *Viewer {
 	return &Viewer{option: option}
 }
 
-/*
-	Log Request Handlers
-*/
-//List all the log files in the log folder. Return in map[string]LogFile format
+// HandleListLog lists all the log files in the log folder.
 func (v *Viewer) HandleListLog(w http.ResponseWriter, r *http.Request) {
 	logFiles := v.ListLogFiles(false)
 	js, _ := json.Marshal(logFiles)
 	utils.SendJSONResponse(w, string(js))
 }
 
-// Read log of a given catergory and filename
-// Require GET varaible: file and catergory
+// HandleReadLog reads a log of a given category and filename.
 func (v *Viewer) HandleReadLog(w http.ResponseWriter, r *http.Request) {
 	filename, err := utils.GetPara(r, "file")
 	if err != nil {
@@ -112,15 +108,10 @@ func (v *Viewer) HandleReadLog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Sanitize log content to prevent XSS attacks
 	content = utils.SanitizeLogContent(content)
 
 	utils.SendTextResponse(w, content)
 }
-
-/*
-	Log Access Functions
-*/
 
 func (v *Viewer) ListLogFiles(showFullpath bool) map[string][]*LogFile {
 	result := map[string][]*LogFile{}
@@ -129,7 +120,6 @@ func (v *Viewer) ListLogFiles(showFullpath bool) map[string][]*LogFile {
 			catergory := filepath.Base(filepath.Dir(path))
 			logList, ok := result[catergory]
 			if !ok {
-				//this catergory hasn't been scanned before.
 				logList = []*LogFile{}
 			}
 
@@ -144,7 +134,7 @@ func (v *Viewer) ListLogFiles(showFullpath bool) map[string][]*LogFile {
 			}
 
 			filename := filepath.Base(path)
-			filename = strings.TrimSuffix(filename, ".log") //to handle cases where the filename ends of .log.gz
+			filename = strings.TrimSuffix(filename, ".log")
 
 			logList = append(logList, &LogFile{
 				Title:    strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)),
@@ -220,11 +210,9 @@ func (v *Viewer) senatizeLogFilenameInput(filename string) string {
 }
 
 func (v *Viewer) LoadLogFile(filename string) (string, error) {
-	// filename might be in (no extension), .log or .log.gz format
-	// so we trim those first before proceeding
+	// filename may have no extension, .log or .log.gz
 	logFilepath := v.senatizeLogFilenameInput(filename)
 	if utils.FileExists(logFilepath) {
-		//Load it
 		content, err := v.readLogFileContent(logFilepath)
 		if err != nil {
 			return "", err

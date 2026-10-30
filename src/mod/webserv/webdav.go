@@ -13,12 +13,7 @@ import (
 	"imuslab.com/zoraxy/mod/netutils"
 )
 
-/*
-	WebDAV Server
-
-	This module provides a WebDAV server for managing files
-	in the static web server directory
-*/
+// WebDAV server for managing files in the static web server directory
 
 type WebDAVServer struct {
 	server    *http.Server

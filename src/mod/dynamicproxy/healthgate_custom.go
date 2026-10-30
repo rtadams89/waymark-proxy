@@ -1,17 +1,7 @@
 package dynamicproxy
 
-/*
-	healthgate_custom.go (custom fork)
-
-	On rules with health checks, the checks decide which upstreams receive
-	traffic, whatever the number of upstreams:
-	- if every upstream is down, visitors get the 521 error page at once
-	  instead of waiting on a dead server (upstream Zoraxy always keeps
-	  forwarding to a rule's only upstream)
-	- the legacy "disable auto fallback" option is ignored, so a failed
-	  upstream is always taken out of the pool
-	Rules without health checks behave exactly as upstream Zoraxy.
-*/
+// Health check gating: with health checks on, a rule whose upstreams are all
+// down answers with the 521 error page, and auto fallback is always on.
 
 // allUpstreamsDown reports whether health checks have taken every upstream
 // of this rule out of load balancing.
@@ -27,13 +17,13 @@ func (h *ProxyHandler) allUpstreamsDown(target *ProxyEndpoint) bool {
 	return true
 }
 
-// autoFallbackOff is the disableAutoFallback value for load balancing.
+// autoFallbackOff reports whether auto fallback is off (only without health checks).
 func autoFallbackOff(target *ProxyEndpoint) bool {
 	return target.DisableAutoFallback && !target.HealthCheck.Enabled()
 }
 
-// vdirDown reports whether health checks have taken a virtual directory's
-// backend out of service (only when the rule checks its virtual directories).
+// vdirDown reports whether health checks took a virtual directory's backend
+// out of service.
 func (h *ProxyHandler) vdirDown(target *VirtualDirectoryEndpoint) bool {
 	rule := target.parent
 	if rule == nil || !rule.HealthCheck.Enabled() || !rule.HealthCheck.IncludeVirtualDirs || h.Parent.loadBalancer == nil {

@@ -1,20 +1,13 @@
 // Package assetcache is a shared in-memory cache for static files served
-// through proxy rules (custom fork).
+// through proxy rules.
 //
-// Only static file types are cached: URLs whose extension is in a rule's
-// list, and (optionally) extensionless URLs whose response has a static
-// content type such as image/* or text/css. Pages and API responses always go
-// to the upstream.
-//
-// Freshness follows the upstream's Cache-Control / Expires headers. When the
-// upstream sends neither, the rule's default lifetime applies. Responses
-// marked no-store, no-cache or private, responses that set cookies, and
-// partial responses are never stored. Expired files that carry an ETag or
-// Last-Modified are revalidated with a conditional request instead of being
-// downloaded again.
-//
-// All rules share one memory budget; the least recently used files are
-// evicted when it is full.
+// Static files are URLs whose extension is in a rule's list, and optionally
+// extensionless URLs with a static content type. Freshness follows the
+// upstream's Cache-Control / Expires headers, or the rule's default
+// lifetime. Responses marked no-store, no-cache or private, responses that
+// set cookies, and partial responses are not stored. Expired files with an
+// ETag or Last-Modified are revalidated. All rules share one memory budget
+// with least recently used eviction.
 package assetcache
 
 import (
@@ -30,7 +23,7 @@ type Config struct {
 	Extensions        []string `json:"extensions"`        // lowercase, without the dot
 	MatchContentTypes bool     `json:"matchContentTypes"` // also cache extensionless URLs with a static content type
 	DefaultTTLSeconds int      `json:"defaultTTLSeconds"` // used when the upstream sends no freshness headers
-	MaxFileMB         int      `json:"maxFileMB"`         // larger responses are passed through, not stored
+	MaxFileMB         int      `json:"maxFileMB"`         // larger responses are not stored
 }
 
 // DefaultExtensions are the file types cached unless a rule changes the list.
@@ -56,7 +49,7 @@ const (
 	maxFileMBCap  = 1024
 )
 
-// DefaultConfig is what a rule starts with before caching is turned on.
+// DefaultConfig returns the default cache settings (caching off).
 func DefaultConfig() *Config {
 	return &Config{
 		Enabled:           false,
@@ -69,7 +62,7 @@ func DefaultConfig() *Config {
 
 var extPattern = regexp.MustCompile(`^[a-z0-9]{1,16}$`)
 
-// Validate returns a normalised copy of c, or an error describing the first
+// Validate returns a normalized copy of c, or an error for the first
 // invalid setting.
 func (c *Config) Validate() (*Config, error) {
 	if c == nil {

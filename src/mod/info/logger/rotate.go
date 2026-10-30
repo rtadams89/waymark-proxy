@@ -98,10 +98,8 @@ func (l *Logger) ArchiveLog(filename string) error {
 
 // Execute log rotation
 func (l *Logger) RotateLog() error {
-	//Custom fork: hold the logger lock while the file is swapped, so no
-	//write goes to a closed file, and keep logging (reopen the current file)
-	//if the rename fails. Compression and cleanup run after the lock is
-	//released.
+	// Hold the logger lock while the file is swapped; reopen the current file
+	// if the rename fails. Compression and cleanup run after the lock is released.
 	mu := l.lock()
 	mu.Lock()
 	if l.RotateOption == nil || !l.RotateOption.Enabled || l.CurrentLogFile == "" {
@@ -124,8 +122,7 @@ func (l *Logger) RotateLog() error {
 		return err
 	}
 
-	//Custom fork: a log file that is not open (file logging is off) is
-	//rotated but not created again; it is opened when a line is written
+	// A log file that is not open is rotated but not created again
 	wasOpen := l.file != nil
 	if l.file != nil {
 		if err := l.file.Close(); err != nil {
@@ -250,8 +247,7 @@ func compressFile(filename string) error {
 }
 
 // uniqueBackupPath names a backup <base>.<timestamp>.log, adding -2, -3 ...
-// when that name (or its .gz) exists, so two rotations within one second
-// do not overwrite each other (custom fork).
+// when that name (or its .gz) exists.
 func uniqueBackupPath(dir, base, timestamp string) string {
 	for i := 1; ; i++ {
 		name := fmt.Sprintf("%s.%s.log", base, timestamp)

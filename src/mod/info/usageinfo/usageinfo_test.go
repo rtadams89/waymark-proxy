@@ -6,9 +6,6 @@ import (
 )
 
 // TestGetCPUUsage tests the top-level GetCPUUsage function.
-// On Linux/FreeBSD/Darwin it reads /proc/stat (Linux) or uses platform commands.
-// On non-Linux platforms the /proc/stat path does not exist so the function
-// gracefully returns 0 without error.
 func TestGetCPUUsage(t *testing.T) {
 	if runtime.GOOS != "linux" && runtime.GOOS != "freebsd" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 		t.Skip("GetCPUUsage not implemented on this platform")
@@ -52,9 +49,8 @@ func TestGetCPUUsageUsingProcStat(t *testing.T) {
 	}
 }
 
-// TestGetCPUUsageUsingProcStatNotAvailable validates that GetCPUUsageUsingProcStat
-// returns a meaningful error when the underlying /proc/stat file is unavailable
-// (i.e., on non-Linux platforms).
+// TestGetCPUUsageUsingProcStatNotAvailable checks that GetCPUUsageUsingProcStat
+// returns an error when /proc/stat is unavailable.
 func TestGetCPUUsageUsingProcStatNotAvailable(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		t.Skip("skipping non-Linux /proc/stat unavailability test on Linux")

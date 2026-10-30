@@ -90,7 +90,7 @@ type Store struct {
 	lru       *list.List // front = most recently used
 	byKey     map[string][]*entry
 	stats     map[string]*RuleStats
-	totals    map[string]*Totals // custom fork: all-time counters, kept across purges (and restarts, by the caller)
+	totals    map[string]*Totals // all-time counters, kept across purges
 	today     DayStats
 	yesterday DayStats
 	now       func() time.Time
@@ -203,8 +203,7 @@ func (s *Store) rollDayLocked() {
 	s.today = DayStats{Date: today}
 }
 
-// Totals are a rule's counters for all time: unlike RuleStats they are not
-// reset by Purge. The caller saves and restores them across restarts.
+// Totals are a rule's all-time counters, not reset by Purge.
 type Totals struct {
 	Hits        int64 `json:"hits"`
 	Revalidated int64 `json:"revalidated"`
@@ -230,7 +229,7 @@ func (s *Store) AllTotals() map[string]Totals {
 	return out
 }
 
-// RestoreTotals adds saved all-time counters (after a restart).
+// RestoreTotals adds saved all-time counters.
 func (s *Store) RestoreTotals(saved map[string]Totals) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -249,7 +248,7 @@ func (s *Store) RestoreTotals(saved map[string]Totals) {
 	}
 }
 
-// ForgetTotals drops a rule's all-time counters (the rule was removed).
+// ForgetTotals drops a rule's all-time counters.
 func (s *Store) ForgetTotals(rule string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -264,8 +263,7 @@ func (s *Store) Daily() (today, yesterday DayStats) {
 	return s.today, s.yesterday
 }
 
-// RestoreDaily loads saved daily counters (after a restart). Counters for
-// days other than today and yesterday are ignored.
+// RestoreDaily loads saved daily counters for today and yesterday.
 func (s *Store) RestoreDaily(saved []DayStats) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -339,7 +337,7 @@ func (s *Store) refresh(e *entry, header http.Header, expires time.Time) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e.elem == nil {
-		return false // evicted meanwhile
+		return false
 	}
 	for _, k := range []string{"Cache-Control", "Expires", "Etag", "Last-Modified", "Vary"} {
 		if vals := header.Values(k); len(vals) > 0 {
@@ -420,8 +418,8 @@ func headerSize(h http.Header) int64 {
 	return n
 }
 
-// varyHeaders lists the request headers a response varies on. A compressed
-// response varies on Accept-Encoding even if the upstream forgot to say so.
+// varyHeaders lists the request headers a response varies on, including
+// Accept-Encoding for compressed responses.
 func varyHeaders(h http.Header) []string {
 	names := []string{}
 	seen := map[string]bool{}

@@ -2,9 +2,8 @@ package forward
 
 import "testing"
 
-// TestRequestPathWithinPrefix verifies the hardened path matching used by Ignored Paths. The
-// boundary and path-traversal cases are security relevant: a false positive would skip
-// authentication on a path the operator did not intend to expose.
+// TestRequestPathWithinPrefix tests prefix matching, including boundary and
+// path traversal cases.
 func TestRequestPathWithinPrefix(t *testing.T) {
 	const outpost = "/outpost.goauthentik.io"
 
@@ -36,9 +35,8 @@ func TestRequestPathWithinPrefix(t *testing.T) {
 	}
 }
 
-// TestAuthRouterIsIgnoredPath verifies multi-prefix matching, that empty/whitespace entries
-// are skipped, that traversal cannot escape a configured prefix, and that an empty list never
-// bypasses authentication.
+// TestAuthRouterIsIgnoredPath tests multiple prefixes, empty entries,
+// traversal and an empty list.
 func TestAuthRouterIsIgnoredPath(t *testing.T) {
 	ar := &AuthRouter{
 		options: &AuthRouterOptions{
