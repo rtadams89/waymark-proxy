@@ -66,7 +66,7 @@ func NewACME(
 	port string, database *database.Database,
 	logger *logger.Logger, testMode bool, keyFileMode os.FileMode, publicFileMode os.FileMode,
 ) *ACMEHandler {
-	return &ACMEHandler{
+	a := &ACMEHandler{
 		Port:           port,
 		Database:       database,
 		Logger:         logger,
@@ -74,6 +74,8 @@ func NewACME(
 		KeyFileMode:    keyFileMode,
 		PublicFileMode: publicFileMode,
 	}
+	installLegoLogger(a)
+	return a
 }
 
 func (a *ACMEHandler) Logf(message string, err error) {
@@ -86,9 +88,34 @@ func (a *ACMEHandler) writeFileWithMode(filename string, data []byte, mode os.Fi
 
 // ObtainCert obtains a certificate for the specified domains.
 func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email string, caName string, caUrl string, skipTLS bool, useDNS bool, propagationTimeout int, dnsServers string, disableRecursiveNssCheck bool, disableAuthoritativeNssCheck bool) (bool, error) {
+	return a.obtainCert("", domains, certificateName, email, caName, caUrl, skipTLS, useDNS, propagationTimeout, dnsServers, disableRecursiveNssCheck, disableAuthoritativeNssCheck)
+}
+
+// obtainCert is ObtainCert with its messages also written to the progress
+// log progressID (none when empty).
+func (a *ACMEHandler) obtainCert(progressID string, domains []string, certificateName string, email string, caName string, caUrl string, skipTLS bool, useDNS bool, propagationTimeout int, dnsServers string, disableRecursiveNssCheck bool, disableAuthoritativeNssCheck bool) (bool, error) {
+	logf := func(message string, err error) {
+		a.Logf(message, err)
+		if progressID == "" {
+			return
+		}
+		if err != nil {
+			AddProgress(progressID, "error", message+": "+err.Error())
+		} else {
+			AddProgress(progressID, "info", message)
+		}
+	}
+
+	if !obtainMu.TryLock() {
+		logf("Waiting for another certificate request to finish", nil)
+		obtainMu.Lock()
+	}
+	defer obtainMu.Unlock()
+	setActiveProgress(progressID)
+	defer setActiveProgress("")
 	ctx := context.TODO()
 
-	a.Logf("Obtaining certificate for: "+strings.Join(domains, ", "), nil)
+	logf("Obtaining certificate for: "+strings.Join(domains, ", "), nil)
 
 	// Defaults to Let's Encrypt
 	if caName == "" {
@@ -96,19 +123,19 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 	}
 
 	if caName == "custom" {
-		a.Logf("Using Custom ACME "+caUrl+" for CA Directory URL", nil)
+		logf("Using Custom ACME "+caUrl+" for CA Directory URL", nil)
 	} else if caUrl == "" {
 		// Loads the CA URL from ca.json
 		caLinkOverwrite, err := loadCAApiServerFromName(caName, a.TestMode)
 		if err == nil {
 			caUrl = caLinkOverwrite
-			a.Logf("Using "+caLinkOverwrite+" for CA Directory URL", nil)
+			logf("Using "+caLinkOverwrite+" for CA Directory URL", nil)
 		} else {
 			caUrl, _ = loadCAApiServerFromName("Let's Encrypt", a.TestMode)
-			a.Logf("Using Default ACME "+caUrl+" for CA Directory URL", nil)
+			logf("Using Default ACME "+caUrl+" for CA Directory URL", nil)
 		}
 	} else {
-		a.Logf("Using "+caUrl+" for CA Directory URL", nil)
+		logf("Using "+caUrl+" for CA Directory URL", nil)
 	}
 
 	// Reuses a stored account for this CA, or generates a new key
@@ -121,11 +148,11 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 			Registration: loadedReg,
 		}
 		accountLoaded = true
-		a.Logf("Reusing existing ACME account for "+caUrl, nil)
+		logf("Reusing existing ACME account for "+caUrl, nil)
 	} else {
 		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
-			a.Logf("Private key generation failed", err)
+			logf("Private key generation failed", err)
 			return false, err
 		}
 		adminUser = ACMEUser{
@@ -138,7 +165,7 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 	config.CADirURL = caUrl
 
 	if skipTLS {
-		a.Logf("Ignoring TLS/SSL Verification Error for ACME Server", nil)
+		logf("Ignoring TLS/SSL Verification Error for ACME Server", nil)
 		config.HTTPClient.Transport = &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
@@ -155,7 +182,7 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 
 	client, err := lego.NewClient(config)
 	if err != nil {
-		a.Logf("Failed to spawn new ACME client from current config", err)
+		logf("Failed to spawn new ACME client from current config", err)
 		return false, err
 	}
 
@@ -178,7 +205,7 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 
 	// Keeps at least one NS propagation check enabled
 	if disableAuthoritativeNssCheck && disableRecursiveNssCheck {
-		a.Logf("DisableAuthoritativeNssCheck requires recursive NSs check to be enabled; forcing DisableRecursiveNssCheck = false", nil)
+		logf("DisableAuthoritativeNssCheck requires recursive NSs check to be enabled; forcing DisableRecursiveNssCheck = false", nil)
 		disableRecursiveNssCheck = false
 	}
 
@@ -191,21 +218,21 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 		// From the credential set bound to the certificate
 		dnsProvider, dnsCredentials, credSource, err := a.resolveDNSCredentials(certificateName)
 		if err != nil {
-			a.Logf("Resolve DNS credentials failed", err)
+			logf("Resolve DNS credentials failed", err)
 			return false, err
 		}
-		a.Logf("Using "+credSource+" for the DNS challenge", nil)
+		logf("Using "+credSource+" for the DNS challenge", nil)
 
 		provider, err := GetDnsChallengeProviderByName(dnsProvider, dnsCredentials, propagationTimeout)
 		if err != nil {
-			a.Logf("Unable to resolve DNS challenge provider", err)
+			logf("Unable to resolve DNS challenge provider", err)
 			return false, err
 		}
 
 		opts := &dns01.Options{}
 
 		if len(dnsNameservers) > 0 && dnsNameservers[0] != "" {
-			a.Logf("Using DNS servers: "+strings.Join(dnsNameservers, ", "), nil)
+			logf("Using DNS servers: "+strings.Join(dnsNameservers, ", "), nil)
 			opts.RecursiveNameservers = dnsNameservers
 		} else {
 			opts.RecursiveNameservers = defaultNameservers
@@ -222,13 +249,13 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 		}
 		err = client.Challenge.SetDNS01Provider(provider, dnsOpts...)
 		if err != nil {
-			a.Logf("Failed to resolve DNS01 Provider", err)
+			logf("Failed to resolve DNS01 Provider", err)
 			return false, err
 		}
 	} else {
 		err = client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", a.Port))
 		if err != nil {
-			a.Logf("Failed to resolve HTTP01 Provider", err)
+			logf("Failed to resolve HTTP01 Provider", err)
 			return false, err
 		}
 	}
@@ -238,7 +265,7 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 	if accountLoaded {
 		reg = adminUser.Registration
 	} else if client.GetServerMetadata().ExternalAccountRequired {
-		a.Logf("External Account Required for this ACME Provider", nil)
+		logf("External Account Required for this ACME Provider", nil)
 		// External account binding (KID and HMAC)
 
 		if !a.Database.TableExists("acme") {
@@ -254,17 +281,17 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 		var hmacEncoded string
 		err := a.Database.Read("acme", config.CADirURL+"_kid", &kid)
 		if err != nil {
-			a.Logf("Failed to read kid from database", err)
+			logf("Failed to read kid from database", err)
 			return false, err
 		}
 
 		err = a.Database.Read("acme", config.CADirURL+"_hmacEncoded", &hmacEncoded)
 		if err != nil {
-			a.Logf("Failed to read HMAC from database", err)
+			logf("Failed to read HMAC from database", err)
 			return false, err
 		}
 
-		a.Logf("EAB Credential retrieved: "+kid+" / "+hmacEncoded, nil)
+		logf("EAB credentials loaded for key ID "+kid, nil)
 		if kid != "" && hmacEncoded != "" {
 			reg, err = client.Registration.RegisterWithExternalAccountBinding(ctx, registration.RegisterEABOptions{
 				TermsOfServiceAgreed: true,
@@ -273,13 +300,13 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 			})
 		}
 		if err != nil {
-			a.Logf("Register with external account binder failed", err)
+			logf("Register with external account binder failed", err)
 			return false, err
 		}
 	} else {
 		reg, err = client.Registration.Register(ctx, registration.RegisterOptions{TermsOfServiceAgreed: true})
 		if err != nil {
-			a.Logf("Unable to register client", err)
+			logf("Unable to register client", err)
 			return false, err
 		}
 	}
@@ -288,9 +315,9 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 	// Stores a newly registered account
 	if !accountLoaded && reg != nil {
 		if serr := a.saveACMEAccount(config.CADirURL, &adminUser); serr != nil {
-			a.Logf("Failed to persist ACME account (may hit account create limits, try a different IP)", serr)
+			logf("Failed to persist ACME account (may hit account create limits, try a different IP)", serr)
 		} else {
-			a.Logf("Persisted ACME account for reuse on "+config.CADirURL, nil)
+			logf("Persisted ACME account for reuse on "+config.CADirURL, nil)
 		}
 	}
 
@@ -300,20 +327,26 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 		KeyType: certcrypto.RSA2048,
 	}
 
+	challengeType := "HTTP-01"
+	if useDNS {
+		challengeType = "DNS-01"
+	}
+	logf("Requesting the certificate from the CA using the "+challengeType+" challenge", nil)
 	certificates, err := client.Certificate.Obtain(ctx, request)
 	if err != nil {
-		a.Logf("Obtain certificate failed", err)
+		logf("Obtain certificate failed", err)
 		return false, err
 	}
 
+	logf("Certificate issued; saving it as "+certificateName, nil)
 	err = a.writeFileWithMode("./conf/certs/"+certificateName+".pem", certificates.Certificate, a.PublicFileMode)
 	if err != nil {
-		a.Logf("Failed to write public key to disk", err)
+		logf("Failed to write public key to disk", err)
 		return false, err
 	}
 	err = a.writeFileWithMode("./conf/certs/"+certificateName+".key", certificates.PrivateKey, a.KeyFileMode)
 	if err != nil {
-		a.Logf("Failed to write private key to disk", err)
+		logf("Failed to write private key to disk", err)
 		return false, err
 	}
 
@@ -330,13 +363,13 @@ func (a *ACMEHandler) ObtainCert(domains []string, certificateName string, email
 
 	certInfoBytes, err := json.Marshal(certInfo)
 	if err != nil {
-		a.Logf("Marshal certificate renew config failed", err)
+		logf("Marshal certificate renew config failed", err)
 		return false, err
 	}
 
 	err = a.writeFileWithMode("./conf/certs/"+certificateName+".json", certInfoBytes, a.PublicFileMode)
 	if err != nil {
-		a.Logf("Failed to write certificate renew config to file", err)
+		logf("Failed to write certificate renew config to file", err)
 		return false, err
 	}
 
@@ -413,6 +446,22 @@ func (a *ACMEHandler) HandleGetExpiredDomains(w http.ResponseWriter, r *http.Req
 
 // HandleRenewCertificate obtains a certificate for the posted domains.
 func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Request) {
+	// progressId (optional) names the progress log of this request
+	progressID, _ := utils.PostPara(r, "progressId")
+	if !validProgressID(progressID) {
+		progressID = ""
+	}
+	var requestErr error
+	fail := func(msg string) {
+		requestErr = errors.New(msg)
+		utils.SendErrorResponse(w, msg)
+	}
+	defer func() {
+		if progressID != "" {
+			FinishProgress(progressID, requestErr)
+		}
+	}()
+
 	domainPara, err := utils.PostPara(r, "domains")
 
 	cleanedDomains := []string{}
@@ -420,7 +469,7 @@ func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Requ
 		for _, d := range strings.Split(domainPara, ",") {
 			nd, err := netutils.NormalizeDomain(d)
 			if err != nil {
-				utils.SendErrorResponse(w, err.Error())
+				fail(err.Error())
 				return
 			}
 			cleanedDomains = append(cleanedDomains, nd)
@@ -428,24 +477,24 @@ func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
+		fail(err.Error())
 		return
 	}
 
 	filename, err := utils.PostPara(r, "filename")
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
+		fail(err.Error())
 		return
 	}
 	filename = strings.ReplaceAll(filename, "*", "_")
 	if !isValidCertName(filename) {
-		utils.SendErrorResponse(w, "invalid certificate name")
+		fail("invalid certificate name")
 		return
 	}
 
 	email, err := utils.PostPara(r, "email")
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
+		fail(err.Error())
 		return
 	}
 
@@ -478,7 +527,7 @@ func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Requ
 		if err == nil {
 			propagationTimeout, err = strconv.Atoi(ppgTimeout)
 			if err != nil {
-				utils.SendErrorResponse(w, "Invalid propagation timeout value")
+				fail("Invalid propagation timeout value")
 				return
 			}
 			if propagationTimeout < 60 {
@@ -523,9 +572,10 @@ func (a *ACMEHandler) HandleRenewCertificate(w http.ResponseWriter, r *http.Requ
 	disableRecursiveNssCheck, _ := utils.PostBool(r, "disable_recursive_nss_check")
 	disableAuthoritativeNssCheck, _ := utils.PostBool(r, "disable_authoritative_nss_check")
 
-	result, err := a.ObtainCert(cleanedDomains, filename, email, ca, caUrl, skipTLS, dns, propagationTimeout, dnsServersString, disableRecursiveNssCheck, disableAuthoritativeNssCheck)
+	AddProgress(progressID, "info", "Certificate names: "+strings.Join(cleanedDomains, ", "))
+	result, err := a.obtainCert(progressID, cleanedDomains, filename, email, ca, caUrl, skipTLS, dns, propagationTimeout, dnsServersString, disableRecursiveNssCheck, disableAuthoritativeNssCheck)
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
+		fail(err.Error())
 		return
 	}
 	utils.SendJSONResponse(w, strconv.FormatBool(result))

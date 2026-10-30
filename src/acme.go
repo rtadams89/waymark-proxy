@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -122,12 +123,15 @@ func acmeRegisterSpecialRoutingRule() {
 func AcmeCheckAndHandleRenewCertificate(w http.ResponseWriter, r *http.Request) {
 	requireRestoreHttpsRedirect := false
 	requireRestorePort80 := false
+	progressID, _ := utils.PostPara(r, "progressId")
+	acme.AddProgress(progressID, "info", "Certificate request started")
 	dnsPara, _ := utils.PostBool(r, "dns")
 	if !dnsPara {
 		switch dynamicProxyRouter.Option.Port {
 		case 443:
 			if !dynamicProxyRouter.Option.ListenOnPort80 {
 				SystemWideLogger.PrintAndLog("acme", "Temporarily enabling port 80 listener to handle ACME request ", nil)
+				acme.AddProgress(progressID, "info", "Turning on the port 80 listener for the HTTP-01 challenge (restored afterwards)")
 				dynamicProxyRouter.UpdatePort80ListenerState(true)
 				requireRestorePort80 = true
 				time.Sleep(2 * time.Second)
@@ -135,6 +139,7 @@ func AcmeCheckAndHandleRenewCertificate(w http.ResponseWriter, r *http.Request) 
 
 			if !dynamicProxyRouter.Option.ForceHttpsRedirect {
 				SystemWideLogger.Println("Temporary enabling HTTP to HTTPS redirect for ACME certificate renew requests")
+				acme.AddProgress(progressID, "info", "Turning on the HTTP to HTTPS redirect for the HTTP-01 challenge (restored afterwards)")
 				dynamicProxyRouter.UpdateHttpToHttpsRedirectSetting(true)
 				requireRestoreHttpsRedirect = true
 			}
@@ -142,7 +147,10 @@ func AcmeCheckAndHandleRenewCertificate(w http.ResponseWriter, r *http.Request) 
 		case 80:
 
 		default:
-			utils.SendErrorResponse(w, "ACME renew only support web server listening on port 80 (http) or 443 (https)")
+			msg := "ACME renew only support web server listening on port 80 (http) or 443 (https)"
+			acme.AddProgress(progressID, "error", msg)
+			acme.FinishProgress(progressID, errors.New(msg))
+			utils.SendErrorResponse(w, msg)
 			return
 		}
 	}

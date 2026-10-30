@@ -9,6 +9,20 @@
       <script src="../script/semantic/semantic.min.js"></script>
       <script src="../script/utils.js"></script>
       <style>
+        #obtainProgress .progressLog{
+          max-height: 280px;
+          overflow-y: auto;
+          margin-top: 0.6em;
+          font-family: monospace;
+          font-size: 0.85em;
+          line-height: 1.45;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        #obtainProgress .progressTime{ opacity: 0.55; margin-right: 0.6em; }
+        #obtainProgress .progressLine.warning{ color: #c78e00; }
+        #obtainProgress .progressLine.error{ color: #db2828; }
+        #obtainProgress .progressElapsed{ float: right; opacity: 0.7; }
         .disabled.table{
           opacity: 0.5;
           pointer-events: none;
@@ -139,10 +153,16 @@
       </div>
     </div>
     <button id="obtainButton" class="ui basic button" type="submit"><i class="yellow refresh icon"></i> Get Certificate</button>
+    <div id="obtainProgress" class="ui segment" style="display:none;">
+      <i id="obtainProgressIcon" class="notched circle loading icon"></i>
+      <b id="obtainProgressTitle">Requesting the certificate</b>
+      <span id="obtainProgressElapsed" class="progressElapsed"></span>
+      <div id="obtainProgressLog" class="progressLog"></div>
+    </div>
   </div>
   <div class="ui divider"></div>
   <small>First time setting up HTTPS?<br>Try out our <a href="../tools/https.html" target="_blank">wizard</a></small>
-  <button class="ui basic button"  style="float: right;" onclick="parent.hideSideWrapper();"><i class="remove icon"></i> Cancel</button>
+  <button id="acmeCancelButton" class="ui basic button"  style="float: right;" onclick="parent.hideSideWrapper();"><i class="remove icon"></i> Cancel</button>
   <br><br><br><br>
   </div>
 
@@ -342,31 +362,132 @@
     }
     initDomainFileList();
 
-    // Button click event handler for obtaining certificate
-    $("#obtainButton").click(function() {
+    /* Certificate request progress */
+
+    let obtainInProgress = false;
+    let obtainProgressID = "";
+    let obtainProgressNext = 0;
+    let obtainProgressStarted = 0;
+    let obtainProgressPoller = null;
+    let obtainElapsedTimer = null;
+
+    function newProgressID(){
+      if (window.crypto && typeof crypto.randomUUID == "function"){
+        return crypto.randomUUID();
+      }
+      return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    }
+
+    function formatElapsed(ms){
+      let total = Math.max(0, Math.floor(ms / 1000));
+      let m = Math.floor(total / 60), sec = total % 60;
+      return m > 0 ? m + "m " + String(sec).padStart(2, "0") + "s" : sec + "s";
+    }
+
+    function addProgressLine(timeMs, level, message){
+      let line = $("<div>").addClass("progressLine").addClass(level);
+      line.append($("<span>").addClass("progressTime").text("+" + formatElapsed(timeMs - obtainProgressStarted)));
+      line.append($("<span>").text(message));
+      let log = $("#obtainProgressLog");
+      let atBottom = log[0].scrollHeight - log.scrollTop() - log.outerHeight() < 30;
+      log.append(line);
+      if (atBottom){
+        log.scrollTop(log[0].scrollHeight);
+      }
+    }
+
+    function startObtainProgress(){
+      obtainInProgress = true;
+      obtainProgressID = "";
+      obtainProgressNext = 0;
+      obtainProgressStarted = Date.now();
+      parent.lockSideWrapper("A certificate request is in progress. This window stays open until it finishes.");
       $("#obtainButton").addClass("loading").addClass("disabled");
-      updateCertificateEAB(function(succ){
-        if (succ){
-          //Continue to next step
-          updateCertificateDNS(function(succ){
-            if (succ){
-              obtainCertificate(function(succ){
-                $("#obtainButton").removeClass("loading").removeClass("disabled");
-              });
-            }else{
-              $("#obtainButton").removeClass("loading").removeClass("disabled");
-              console.log("update Certificate DNS process halted");
-            }
-          });
-        }else{
-          console.log("Update Certificate EAB process halted");
-          $("#obtainButton").removeClass("loading").removeClass("disabled");
+      $("#acmeCancelButton").addClass("disabled");
+      $("#obtainProgressIcon").attr("class", "notched circle loading icon");
+      $("#obtainProgressTitle").text("Requesting the certificate");
+      $("#obtainProgressLog").empty();
+      $("#obtainProgress").show();
+      $("#obtainProgress")[0].scrollIntoView({behavior: "smooth", block: "center"});
+      $("#obtainProgressElapsed").text("0s");
+      obtainElapsedTimer = setInterval(function(){
+        $("#obtainProgressElapsed").text(formatElapsed(Date.now() - obtainProgressStarted));
+      }, 1000);
+      addProgressLine(Date.now(), "info", "Saving the request settings");
+    }
+
+    // Fetches new progress lines; done(state) gets the server's progress state
+    function pollObtainProgress(done=undefined){
+      if (obtainProgressID == ""){
+        if (done != undefined){ done(null); }
+        return;
+      }
+      $.ajax({
+        url: "/api/acme/obtainCert/progress",
+        method: "GET",
+        data: {id: obtainProgressID, from: obtainProgressNext},
+        success: function(data){
+          if (data.error != undefined && data.entries == undefined){
+            if (done != undefined){ done(null); }
+            return;
+          }
+          (data.entries || []).forEach(e => addProgressLine(e.time, e.level, e.message));
+          obtainProgressNext = data.next;
+          if (done != undefined){ done(data); }
+        },
+        error: function(){
+          if (done != undefined){ done(null); }
         }
       });
-      
-      
+    }
+
+    function finishObtainProgress(succ, message=""){
+      clearInterval(obtainProgressPoller);
+      clearInterval(obtainElapsedTimer);
+      obtainProgressPoller = null;
+      // One last fetch so the final lines are shown
+      pollObtainProgress(function(){
+        if (succ){
+          $("#obtainProgressIcon").attr("class", "green check circle icon");
+          $("#obtainProgressTitle").text("Certificate issued");
+        }else{
+          $("#obtainProgressIcon").attr("class", "red times circle icon");
+          $("#obtainProgressTitle").text("Certificate request failed");
+          if (message != ""){
+            addProgressLine(Date.now(), "error", message);
+          }
+        }
+        $("#obtainProgressElapsed").text(formatElapsed(Date.now() - obtainProgressStarted));
+        obtainInProgress = false;
+        parent.unlockSideWrapper();
+        $("#obtainButton").removeClass("loading").removeClass("disabled");
+        $("#acmeCancelButton").removeClass("disabled");
+      });
+    }
+
+    // Button click event handler for obtaining certificate
+    $("#obtainButton").click(function() {
+      if (obtainInProgress){
+        return;
+      }
+      startObtainProgress();
+      updateCertificateEAB(function(succ){
+        if (!succ){
+          finishObtainProgress(false, "Saving the EAB credentials failed");
+          return;
+        }
+        updateCertificateDNS(function(succ){
+          if (!succ){
+            finishObtainProgress(false, "Saving the DNS challenge settings failed");
+            return;
+          }
+          obtainCertificate(function(succ, message){
+            finishObtainProgress(succ, message);
+          });
+        });
+      });
     });
-    
+
     //On CA change in dropdown
     $("input[name=ca]").on('change', function() {
       if(this.value == "Custom ACME Server") {
@@ -418,7 +539,6 @@
         filename = domains;
       }else if (filename == "" && domains.includes(",")){
         parent.msgbox("Filename cannot be empty for certs containing multiple domains.", false, 5000);
-        $("#obtainButton").removeClass("loading").removeClass("disabled");
         return;
       }
 
@@ -459,8 +579,6 @@
         }
         return;
       }
-
-      console.log(caURL + " " + kid + " " + hmac);
 
       $.ajax({
         url: "/api/acme/autoRenew/setEAB",
@@ -567,7 +685,7 @@
     // profileId: a credential set id, or "http"
     function assignDnsCredentialSet(profileId, callback=undefined){
       var filename = getFilename();
-      if (filename == '') {
+      if (!filename) {
         parent.msgbox("Domain to renew cannot be empty", false, 5000);
         if (callback != undefined){ callback(false); }
         return;
@@ -595,17 +713,15 @@
     function obtainCertificate(callback=undefined) {
       var domains = $("#domainsInput").val();
       var filename = getFilename();
-      if (filename == '') {
-        if (callback != undefined){
-          parent.msgbox("Domain to obtain certificate cannot be empty", false)
-          callback(false);
-        }
+      if (!filename) {
+        parent.msgbox("Domain to obtain certificate cannot be empty", false);
+        if (callback != undefined){callback(false, "No domain or file name was given");}
         return;
       }
       var email = $("#caRegisterEmail").val();
       if (email == ""){
         parent.msgbox("ACME renew email is not set", false)
-        if (callback != undefined){callback(false);}
+        if (callback != undefined){callback(false, "The ACME email address is not set");}
         return;
       }
 
@@ -622,6 +738,9 @@
       var disableRecursiveNss = $("#disableRecursiveNssCheckbox")[0].checked;
       var disableAuthoritativeNss = $("#disableAuthoritativeNssCheckbox")[0].checked;
 
+      obtainProgressID = newProgressID();
+      obtainProgressPoller = setInterval(pollObtainProgress, 1000);
+
       $.ajax({
         url: "/api/acme/obtainCert",
         method: "GET",
@@ -635,29 +754,41 @@
           dns: dns,
           dnsServers: dnsServers,
           disable_recursive_nss_check: disableRecursiveNss,
-          disable_authoritative_nss_check: disableAuthoritativeNss
+          disable_authoritative_nss_check: disableAuthoritativeNss,
+          progressId: obtainProgressID
         },
         success: function(response) {
-          $("#obtainButton").removeClass("loading").removeClass("disabled");
           if (response.error) {
-            console.log("Error:", response.error);
-            // Show error message
             parent.msgbox(response.error, false, 12000);
             if (callback != undefined){callback(false);}
           } else {
-            console.log("Certificate renewed successfully");
-            // Show success message
             parent.msgbox("Certificate renewed successfully");
-            // Renew the parent certificate list
             parent.initManagedDomainCertificateList();
-
             if (callback != undefined){callback(true);}
           }
         },
-        error: function(error) {
-          $("#obtainButton").removeClass("loading").removeClass("disabled");
-          console.log("Failed to renewed certificate:", error);
-          if (callback != undefined){callback(false);}
+        error: function() {
+          // The connection ended, but the request may still be running:
+          // follows the progress log until the server reports it finished
+          addProgressLine(Date.now(), "warning", "Lost the connection to the request; following its progress instead");
+          let waitForServer = setInterval(function(){
+            pollObtainProgress(function(state){
+              if (state == null || !state.found){
+                clearInterval(waitForServer);
+                if (callback != undefined){callback(false, "The request's progress is no longer available");}
+              }else if (state.done){
+                clearInterval(waitForServer);
+                if (state.error == undefined || state.error == ""){
+                  parent.msgbox("Certificate renewed successfully");
+                  parent.initManagedDomainCertificateList();
+                  if (callback != undefined){callback(true);}
+                }else{
+                  parent.msgbox(state.error, false, 12000);
+                  if (callback != undefined){callback(false);}
+                }
+              }
+            });
+          }, 3000);
         }
       });
     }

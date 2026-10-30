@@ -10,6 +10,16 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.6
+
+**ACME: certificate request progress**
+- The certificate request window shows the request's progress as it runs: each step (account, challenge, validation, issuing, saving) with the time since the start, warnings and the error if it fails, and a running timer.
+- While a request runs, the window stays open: clicking outside it or Cancel does not close it, other side panels do not replace it, and leaving the page asks first. It can be closed again when the request finishes.
+- If the connection drops during a long request, the window keeps following the request until the server reports the result.
+- lego's messages go to the system log instead of only to the console.
+- Certificate requests run one at a time; a request that has to wait for another (such as an automatic renewal) says so.
+- The EAB HMAC key is no longer written to the system log or the browser console.
+
 ## 2.19.5
 
 **Security fixes from code scanning**

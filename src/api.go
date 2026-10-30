@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 
+	"imuslab.com/zoraxy/mod/acme"
 	"imuslab.com/zoraxy/mod/acme/acmedns"
 	"imuslab.com/zoraxy/mod/acme/acmewizard"
 	"imuslab.com/zoraxy/mod/auth"
@@ -243,6 +244,7 @@ func RegisterACMEAndAutoRenewerAPIs(authRouter *auth.RouterDef) {
 	/* ACME Core */
 	authRouter.HandleFunc("/api/acme/listExpiredDomains", acmeHandler.HandleGetExpiredDomains)
 	authRouter.HandleFunc("/api/acme/obtainCert", AcmeCheckAndHandleRenewCertificate)
+	authRouter.HandleFunc("/api/acme/obtainCert/progress", acme.HandleObtainProgress)
 	/* Auto Renewer */
 	authRouter.HandleFunc("/api/acme/autoRenew/enable", acmeAutoRenewer.HandleAutoRenewEnable)
 	authRouter.HandleFunc("/api/acme/autoRenew/ca", HandleACMEPreferredCA)

@@ -660,7 +660,26 @@
                 Toggles for side wrapper
             */
 
+            //While set, the side window stays open and this message explains why
+            let sideWrapperLockMessage = "";
+            function lockSideWrapper(message){
+                sideWrapperLockMessage = message || "Wait for the current task to finish";
+            }
+            function unlockSideWrapper(){
+                sideWrapperLockMessage = "";
+            }
+            window.addEventListener("beforeunload", function(e){
+                if (sideWrapperLockMessage != ""){
+                    e.preventDefault();
+                    e.returnValue = "";
+                }
+            });
+
             function showSideWrapper(scriptpath="", extendedMode=false){
+                if (sideWrapperLockMessage != ""){
+                    msgbox(sideWrapperLockMessage, false);
+                    return;
+                }
                 if (scriptpath != ""){
                     $(".sideWrapper iframe").attr("src", scriptpath);
                 }
@@ -681,6 +700,10 @@
             }
 
             function hideSideWrapper(discardFrameContent = false){
+                if (sideWrapperLockMessage != ""){
+                    msgbox(sideWrapperLockMessage, false);
+                    return;
+                }
                 if ($("#httprpEditModal").length && $("#httprpEditModal").is(":visible")) {
                     //HTTP Proxy Rule editor side wrapper implementation
                     $("#httprpEditModal .editor_side_wrapper").hide();
