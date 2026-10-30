@@ -11,7 +11,15 @@
 
 Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It terminates TLS for your sites, gets and renews certificates, routes each hostname to one or more destination servers, proxies TCP and UDP services, and can run as an active/standby cluster that shares floating IP addresses. Everything is managed from a web UI; there are no configuration files to edit.
 
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png">
+  <img src="docs/screenshots/overview.png" alt="Waymark status dashboard: listener status, request and bandwidth totals, a live traffic flow diagram from clients through proxy rules to destinations, and realtime network graphs">
+</picture>
+</p>
+
 - [Why Waymark](#why-waymark)
+- [Screenshots](#screenshots)
 - [How it compares](#how-it-compares)
 - [Features](#features)
 - [Requirements](#requirements)
@@ -35,6 +43,35 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 - **Everything else in the same web UI:** certificates (ACME with HTTP or DNS challenges and reusable DNS credential sets), load balancing, SSO, redirects, maintenance mode, a live status dashboard, sending logs to syslog servers, and installing updates with automatic roll back.
 - **Hardened and focused.** Waymark runs as an unprivileged user; the only root component is a small helper that checks every HA setting before writing keepalived's config. Passwords are stored with bcrypt, and code scanning (CodeQL) and `govulncheck` run on every change. There are no network scanners, web terminals or forward proxies built in: it is a reverse proxy and nothing else.
 - **One binary, no dependencies** beyond keepalived for HA: no database server, no containers required.
+
+## Screenshots
+
+### Proxy rules
+
+HTTP, TCP and UDP rules in one list, with each rule's ACL, destinations, health, load balancing, caching and tags.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/proxy-rules-dark.png">
+  <img src="docs/screenshots/proxy-rules.png" alt="Proxy Rules page listing HTTP, TCP and UDP rules with their ACLs, destinations, health status, load balancing, caching and tags">
+</picture>
+
+### Access control
+
+An ACL is checked top down like a firewall rule set. Each rule shows its hit count, and the test box shows which rule decides for any address.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/acl-editor-dark.png">
+  <img src="docs/screenshots/acl-editor.png" alt="ACL editor showing ordered allow and deny rules with sources, comments, hit counts and an address test box">
+</picture>
+
+### Reusable objects
+
+Objects are named lists of addresses, ranges and countries, and can contain other objects. The page shows which ACLs and objects use each one.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/objects-dark.png">
+  <img src="docs/screenshots/objects.png" alt="Objects page listing address objects, including an object that contains two others, and the ACLs that use them">
+</picture>
 
 ## How it compares
 

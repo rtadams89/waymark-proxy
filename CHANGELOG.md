@@ -10,6 +10,12 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.4
+
+**Docs: screenshots in the README**
+- The README shows the status dashboard, proxy rules, the ACL editor and the objects page, in light and dark versions that follow the reader's GitHub theme. The images are in `docs/screenshots/`.
+- No code changes.
+
 ## 2.19.3
 
 **Security: golang.org/x/net updated to 0.62.0**
