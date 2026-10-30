@@ -250,67 +250,56 @@ func ImportConfigFromZip(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Upload file is not a zip file", http.StatusInternalServerError)
 		return
 	}
-	targetDir := CONF_FOLDER
-	if utils.FileExists(targetDir) {
-		// Move the old config folder aside
-		os.Rename(CONF_FOLDER, CONF_FOLDER+".old_"+strconv.Itoa(int(time.Now().Unix())))
-	}
-
-	err = os.MkdirAll(targetDir, os.ModePerm)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to create target directory: %v", err), http.StatusInternalServerError)
-		return
-	}
-
 	zipReader, err := zip.NewReader(file, handler.Size)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to open zip file: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	// Checks every entry and works out where it goes before anything changes
+	type restoreEntry struct {
+		file *zip.File
+		dest string
+	}
+	entries := []restoreEntry{}
 	restoreDatabase := false
-
 	for _, zipFile := range zipReader.File {
-		rc, err := zipFile.Open()
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to open file in zip: %v", err), http.StatusInternalServerError)
-			return
-		}
-		defer rc.Close()
-
-		// Sanitize the file name (zip-slip)
-		cleanedName := filepath.Clean(filepath.FromSlash(zipFile.Name))
-		cleanedNameSlash := filepath.ToSlash(cleanedName)
-		fmt.Println("Restoring: " + cleanedNameSlash)
-		if cleanedNameSlash == "sys.db" {
-			sysdb.Close()
-			restoreDatabase = true
-		} else if !strings.HasPrefix(cleanedNameSlash, "conf/") {
-			http.Error(w, "Invalid zip file structure or version too old", http.StatusInternalServerError)
-			return
-		}
-
-		// Verify the path stays within the target directory
-		absTargetDir, _ := filepath.Abs(targetDir)
-		absFilePath, _ := filepath.Abs(cleanedName)
-		if cleanedNameSlash != "sys.db" && !strings.HasPrefix(absFilePath, absTargetDir+string(os.PathSeparator)) {
+		if strings.Contains(zipFile.Name, "..") {
 			http.Error(w, "Invalid file path in zip", http.StatusBadRequest)
 			return
 		}
-
-		if !utils.FileExists(filepath.Dir(cleanedName)) {
-			os.MkdirAll(filepath.Dir(cleanedName), 0775)
+		name := filepath.ToSlash(filepath.Clean(filepath.FromSlash(zipFile.Name)))
+		if name == "sys.db" {
+			entries = append(entries, restoreEntry{zipFile, *path_database})
+			restoreDatabase = true
+			continue
 		}
-
-		newFile, err := os.Create(cleanedName)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to create file: %v", err), http.StatusInternalServerError)
+		rel, ok := strings.CutPrefix(name, "conf/")
+		if !ok || rel == "" || filepath.IsAbs(rel) {
+			http.Error(w, "Invalid zip file structure or version too old", http.StatusInternalServerError)
 			return
 		}
-		defer newFile.Close()
+		if zipFile.FileInfo().IsDir() {
+			continue
+		}
+		entries = append(entries, restoreEntry{zipFile, filepath.Join(CONF_FOLDER, filepath.FromSlash(rel))})
+	}
 
-		_, err = io.Copy(newFile, rc)
-		if err != nil {
+	if utils.FileExists(CONF_FOLDER) {
+		// Move the old config folder aside
+		os.Rename(CONF_FOLDER, CONF_FOLDER+".old_"+strconv.Itoa(int(time.Now().Unix())))
+	}
+	if err := os.MkdirAll(CONF_FOLDER, os.ModePerm); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to create target directory: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if restoreDatabase {
+		sysdb.Close()
+	}
+
+	for _, e := range entries {
+		SystemWideLogger.Println("Restoring: " + filepath.ToSlash(e.file.Name))
+		if err := restoreZipEntry(e.file, e.dest); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to extract file from zip: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -329,6 +318,27 @@ func ImportConfigFromZip(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+}
+
+// restoreZipEntry writes the content of f to dest, creating its folder.
+func restoreZipEntry(f *zip.File, dest string) error {
+	if err := os.MkdirAll(filepath.Dir(dest), 0775); err != nil {
+		return err
+	}
+	rc, err := f.Open()
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, rc); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
 }
 
 func handleLoggerConfig(w http.ResponseWriter, r *http.Request) {

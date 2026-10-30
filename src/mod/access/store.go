@@ -121,6 +121,9 @@ func (c *Controller) objectsWithBuiltIns() map[string]*Object {
 }
 
 func (c *Controller) saveACLLocked(a *ACL) error {
+	if !ValidID(a.ID) {
+		return errors.New("invalid ACL ID")
+	}
 	b, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
 		return err
@@ -250,6 +253,9 @@ func (c *Controller) SaveACL(a *ACL) error {
 func (c *Controller) DeleteACL(id string) error {
 	if id == AllowAllID {
 		return errors.New("the Allow all ACL cannot be deleted")
+	}
+	if !ValidID(id) {
+		return errors.New("invalid ACL ID")
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

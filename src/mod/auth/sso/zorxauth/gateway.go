@@ -221,14 +221,10 @@ func (gs *GatewayServer) handleAuthPage(w http.ResponseWriter, r *http.Request) 
 			}
 
 			sessionId := gs.router.generateValidationCodeForSession(username)
-			parsedTarget, parseErr := url.Parse(redirectURL)
-			if parseErr == nil && parsedTarget.Host != "" {
+			if parsedTarget, ok := gs.router.sessionTarget(redirectURL); ok {
 				host := parsedTarget.Hostname()
 				port := parsedTarget.Port()
 				targetProtocol := parsedTarget.Scheme
-				if targetProtocol == "" {
-					targetProtocol = "http"
-				}
 				hostWithPort := host
 				if port != "" {
 					hostWithPort = host + ":" + port
@@ -323,9 +319,16 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		redirectTarget = protocolScheme + "://" + r.Host + "/user" // user portal
 	}
 
-	parsedTarget, err := url.Parse(redirectTarget)
-
-	if err != nil || parsedTarget.Host == "" {
+	var parsedTarget *url.URL
+	targetOK := false
+	if isDirectLogin {
+		if u, err := url.Parse(redirectTarget); err == nil && u.Host != "" {
+			parsedTarget, targetOK = u, true
+		}
+	} else {
+		parsedTarget, targetOK = gs.router.sessionTarget(redirectTarget)
+	}
+	if !targetOK {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{

@@ -102,6 +102,10 @@ type AuthRouter struct {
 	Database *database.Database
 	Options  *AuthRouterOptions
 
+	// IsServedHost reports whether a host name belongs to one of this
+	// proxy's rules. Session codes are only sent to such hosts.
+	IsServedHost func(host string) bool `json:"-"`
+
 	/* Internal */
 	sessionIdStore      sync.Map //sessionId -> userID
 	gatewaySessionStore sync.Map //sessionId -> *GatewaySession

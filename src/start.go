@@ -193,6 +193,9 @@ func startupSequence() {
 	})
 
 	zorxAuthRouter = zorxauth.NewAuthRouter(sysdb, SystemWideLogger)
+	zorxAuthRouter.IsServedHost = func(host string) bool {
+		return dynamicProxyRouter != nil && dynamicProxyRouter.GetProxyEndpointFromHostname(host) != nil
+	}
 
 	//Create a statistic collector
 	statisticCollector, err = statistic.NewStatisticCollector(statistic.CollectorOption{

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -59,6 +60,10 @@ func HandleGuidedStepCheck(w http.ResponseWriter, r *http.Request) {
 		}
 
 		domain = strings.TrimSpace(domain)
+		if u, err := url.Parse("//" + domain); err != nil || u.Host != domain || u.Port() != "" || u.User != nil || domain == "" {
+			utils.SendErrorResponse(w, "invalid domain")
+			return
+		}
 
 		reachable := isDomainReachable(domain)
 		if !reachable {
@@ -116,7 +121,7 @@ func getPublicIPAddress() (string, error) {
 		return "", err
 	}
 
-	return string(ip), nil
+	return strings.TrimSpace(string(ip)), nil
 }
 
 func isHTTPServerAvailable(ipAddress string) bool {
@@ -125,14 +130,14 @@ func isHTTPServerAvailable(ipAddress string) bool {
 	}
 
 	urls := []string{
-		"http://" + ipAddress + ":80",
-		"https://" + ipAddress + ":443",
+		(&url.URL{Scheme: "http", Host: net.JoinHostPort(ipAddress, "80")}).String(),
+		(&url.URL{Scheme: "https", Host: net.JoinHostPort(ipAddress, "443")}).String(),
 	}
 
-	for _, url := range urls {
-		req, err := http.NewRequest("GET", url, nil)
+	for _, target := range urls {
+		req, err := http.NewRequest("GET", target, nil)
 		if err != nil {
-			fmt.Println(err, url)
+			fmt.Println(err, target)
 			continue
 		}
 

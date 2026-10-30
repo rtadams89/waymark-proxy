@@ -83,3 +83,9 @@ func isExternalDomainName(hostname string) bool {
 
 	return true
 }
+
+// isLocalPath reports whether location is a path on the same host: it starts
+// with "/" but not with "//" or "/\".
+func isLocalPath(location string) bool {
+	return strings.HasPrefix(location, "/") && !strings.HasPrefix(location, "//") && !strings.HasPrefix(location, "/\\")
+}

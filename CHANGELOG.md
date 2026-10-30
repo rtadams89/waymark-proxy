@@ -10,6 +10,19 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.5
+
+**Security fixes from code scanning**
+- SSO: the login gateway only sends a session code to an http(s) address whose host is one of Waymark's proxy rules. Before, a user with no host restrictions could be sent, with a fresh session code, to any host named in the `redirect` parameter. This applies to password, 2FA and passkey logins and to users who are already signed in.
+- SSO: redirects after setting a session reject targets starting with `//` or `/\`.
+- Proxy: a destination's `Location: //host/...` header is no longer treated as a path inside a virtual directory.
+- ACLs page: the Duplicate and Delete buttons no longer break, or run script, when an ACL name contains a quote.
+- Config restore: every entry in the zip is checked before anything changes, entries with `..` are refused, `conf/` files go to the configured config folder and `sys.db` to the configured database path, and folders in the zip are created instead of failing the restore.
+- ACL and SSO group policy IDs are checked before they are used in file names; a group policy file with an invalid ID is skipped at start with a log message.
+- Certificate download and "set default certificate" use the same name check as certificate removal, and the download file name is quoted correctly.
+- The TLS check for a destination and the ACME wizard's reachability check only accept a host name or address (with a port for the TLS check). A path in the TLS check is ignored.
+- The ACME wizard's public address check trims the newline from the address it looks up.
+
 ## 2.19.4
 
 **Docs: screenshots in the README**

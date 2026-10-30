@@ -153,8 +153,8 @@
                     a.users.slice(0, 6).map(u => `<span class="ui mini basic label">${u.type == "l4" ? "L4 " : ""}${esc(u.name)}</span>`).join(" ") +
                     (a.users.length > 6 ? ` <small>and ${a.users.length - 6} more</small>` : "");
                 let actions = `<button class="ui basic mini button" onclick="wmOpenACL('${esc(a.id)}');"><i class="${a.builtIn ? "eye" : "edit"} icon"></i> ${a.builtIn ? "View" : "Edit"}</button>` +
-                    `<button class="ui basic mini icon button" title="Duplicate" onclick="aclDuplicate('${esc(a.id)}', '${esc(a.name).replace(/'/g, "\\'")}');"><i class="copy icon"></i></button>` +
-                    (a.builtIn ? "" : `<button class="ui basic mini icon button" title="Delete" onclick="aclDelete('${esc(a.id)}', '${esc(a.name).replace(/'/g, "\\'")}');"><i class="red trash icon"></i></button>`);
+                    `<button class="ui basic mini icon button" title="Duplicate" data-id="${esc(a.id)}" data-name="${esc(a.name)}" onclick="aclDuplicate(this.dataset.id, this.dataset.name);"><i class="copy icon"></i></button>` +
+                    (a.builtIn ? "" : `<button class="ui basic mini icon button" title="Delete" data-id="${esc(a.id)}" data-name="${esc(a.name)}" onclick="aclDelete(this.dataset.id, this.dataset.name);"><i class="red trash icon"></i></button>`);
                 return `<tr>
                     <td><i class="ui ${a.builtIn ? "grey" : "green"} hand paper icon"></i> <b>${esc(a.name)}</b> ${a.builtIn ? `<span class="ui mini basic label">built in</span>` : ""}
                         ${a.usesCountries ? `<i class="ui grey globe icon" title="Uses countries (GeoIP)"></i>` : ""}

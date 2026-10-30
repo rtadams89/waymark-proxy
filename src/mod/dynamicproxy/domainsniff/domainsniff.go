@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 // DomainIsSelfSigned reports whether a domain's TLS certificate fails
 // verification but completes an unverified handshake.
 func DomainIsSelfSigned(domain string) bool {
+	if !validHostPort(domain) {
+		return false
+	}
 	host, port, err := net.SplitHostPort(domain)
 	if err != nil {
 		host = domain
@@ -47,10 +51,20 @@ func DomainIsSelfSigned(domain string) bool {
 	return err == nil
 }
 
-// DomainUsesTLS reports whether targetURL answers over HTTPS.
+// validHostPort reports whether s is a host name or IP address, optionally
+// with a port, and nothing else.
+func validHostPort(s string) bool {
+	u, err := url.Parse("//" + s)
+	return err == nil && u.User == nil && u.Host == s && u.Hostname() != ""
+}
+
+// DomainUsesTLS reports whether targetURL (host or host:port) answers over HTTPS.
 func DomainUsesTLS(targetURL string) bool {
-	httpsUrl := fmt.Sprintf("https://%s", targetURL)
-	httpUrl := fmt.Sprintf("http://%s", targetURL)
+	if !validHostPort(targetURL) {
+		return false
+	}
+	httpsUrl := (&url.URL{Scheme: "https", Host: targetURL}).String()
+	httpUrl := (&url.URL{Scheme: "http", Host: targetURL}).String()
 
 	client := http.Client{Timeout: 5 * time.Second}
 
@@ -72,6 +86,15 @@ func DomainUsesTLS(targetURL string) bool {
 func HandleCheckSiteSupportTLS(w http.ResponseWriter, r *http.Request) {
 	targetURL, err := utils.PostPara(r, "url")
 	if err != nil {
+		utils.SendErrorResponse(w, "invalid url given")
+		return
+	}
+	// Host and port only; a path is not needed to detect TLS
+	targetURL = strings.TrimSpace(targetURL)
+	if i := strings.IndexAny(targetURL, "/?#"); i >= 0 {
+		targetURL = targetURL[:i]
+	}
+	if !validHostPort(targetURL) {
 		utils.SendErrorResponse(w, "invalid url given")
 		return
 	}

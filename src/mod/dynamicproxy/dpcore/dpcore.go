@@ -508,7 +508,7 @@ func (p *ReverseProxy) ProxyHTTP(rw http.ResponseWriter, req *http.Request, rrr 
 			if err == nil {
 				locationRewrite = lr
 			}
-		} else if strings.HasPrefix(originLocation, "/") && rrr.PathPrefix != "" {
+		} else if isLocalPath(originLocation) && rrr.PathPrefix != "" {
 			// Relative to the virtual directory prefix
 			trimmedPrefix := strings.TrimSuffix(rrr.PathPrefix, "/")
 			// Keeps a Location that already starts with the prefix

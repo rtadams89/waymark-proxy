@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -50,6 +51,11 @@ func (ar *AuthRouter) groupPolicyFolder() string {
 	return filepath.Join(base, GROUP_POLICY_FOLDER)
 }
 
+// groupPolicyIDPattern matches the IDs that can be used as file names.
+var groupPolicyIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+func validGroupPolicyID(id string) bool { return groupPolicyIDPattern.MatchString(id) }
+
 func (ar *AuthRouter) groupPolicyFilePath(id string) string {
 	return filepath.Join(ar.groupPolicyFolder(), id+GROUP_POLICY_FILE_EXT)
 }
@@ -87,7 +93,10 @@ func (ar *AuthRouter) loadGroupPoliciesFromDisk() {
 			continue
 		}
 
-		if gp.ID == "" {
+		if !validGroupPolicyID(gp.ID) {
+			if ar.Logger != nil {
+				ar.Logger.PrintAndLog("waymark-auth", "Skipped group policy file "+entry.Name()+": invalid ID", nil)
+			}
 			continue
 		}
 
@@ -101,6 +110,9 @@ func (ar *AuthRouter) loadGroupPoliciesFromDisk() {
 }
 
 func (ar *AuthRouter) saveGroupPolicyToDisk(gp *GroupPolicy) error {
+	if !validGroupPolicyID(gp.ID) {
+		return errors.New("invalid group policy ID")
+	}
 	folder := ar.groupPolicyFolder()
 	if err := os.MkdirAll(folder, 0755); err != nil {
 		return err
@@ -115,6 +127,9 @@ func (ar *AuthRouter) saveGroupPolicyToDisk(gp *GroupPolicy) error {
 }
 
 func (ar *AuthRouter) deleteGroupPolicyFromDisk(id string) error {
+	if !validGroupPolicyID(id) {
+		return errors.New("invalid group policy ID")
+	}
 	fp := ar.groupPolicyFilePath(id)
 	if _, err := os.Stat(fp); os.IsNotExist(err) {
 		return nil

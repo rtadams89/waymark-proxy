@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -43,7 +44,11 @@ func (m *Manager) HandleCertDownload(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "invalid certname given")
 		return
 	}
-	certname = filepath.Base(certname)
+	certname, err = sanitizeCertDomain(certname)
+	if err != nil {
+		utils.SendErrorResponse(w, "invalid certname given")
+		return
+	}
 
 	// check if the cert exists
 	pubKey := filepath.Join(filepath.Join(m.CertStore), certname+".key")
@@ -70,7 +75,7 @@ func (m *Manager) HandleCertDownload(w http.ResponseWriter, r *http.Request) {
 		defer os.Remove(zipFileName) // Clean up the zip file after serving
 
 		// Serve the zip file
-		w.Header().Set("Content-Disposition", "attachment; filename=\""+certname+"_export.zip\"")
+		w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": certname + "_export.zip"}))
 		w.Header().Set("Content-Type", "application/zip")
 		http.ServeFile(w, r, zipFileName)
 	} else {
@@ -88,7 +93,11 @@ func (m *Manager) SetCertAsDefault(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	certname = filepath.Base(certname)
+	certname, err = sanitizeCertDomain(certname)
+	if err != nil {
+		utils.SendErrorResponse(w, "invalid certname given")
+		return
+	}
 
 	pubKey := filepath.Join(m.CertStore, certname+".pem")
 	priKey := filepath.Join(m.CertStore, certname+".key")

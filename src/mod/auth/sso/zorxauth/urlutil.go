@@ -125,6 +125,24 @@ func unwrapNestedRedirectTarget(candidate, host string) string {
 	return candidate
 }
 
+// sessionTarget parses raw as an http(s) URL without user info whose host
+// is served by this proxy.
+func (ar *AuthRouter) sessionTarget(raw string) (*url.URL, bool) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.User != nil || u.Hostname() == "" {
+		return nil, false
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return nil, false
+	}
+	if ar.IsServedHost == nil || !ar.IsServedHost(u.Hostname()) {
+		return nil, false
+	}
+	u.Scheme = scheme
+	return u, true
+}
+
 func hostnameOnly(hostport string) string {
 	host, _, err := net.SplitHostPort(hostport)
 	if err != nil {
@@ -156,7 +174,7 @@ func sameHostRedirect(raw string, r *http.Request) string {
 			!strings.EqualFold(u.Hostname(), hostnameOnly(r.Host)) {
 			return "/"
 		}
-	} else if !strings.HasPrefix(raw, "/") {
+	} else if !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") || strings.HasPrefix(raw, "/\\") {
 		return "/"
 	}
 	// Path and query only, leading slashes and backslashes collapsed

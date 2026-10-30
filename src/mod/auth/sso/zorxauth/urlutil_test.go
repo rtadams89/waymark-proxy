@@ -1,6 +1,7 @@
 package zorxauth
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -242,7 +243,7 @@ func TestSameHostRedirect(t *testing.T) {
 		"https://app.example.com.evil/":               "/",
 		"https://user@app.example.com/":               "/",
 		"//evil.example.net/":                         "/",
-		"/\\evil.example.net/":                        "/evil.example.net/",
+		"/\\evil.example.net/":                        "/",
 		"javascript:alert(1)":                         "/",
 		"dash":                                        "/",
 		"":                                            "/",
@@ -251,5 +252,39 @@ func TestSameHostRedirect(t *testing.T) {
 		if got := sameHostRedirect(in, r); got != want {
 			t.Errorf("%q: got %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestSessionTarget(t *testing.T) {
+	ar := &AuthRouter{IsServedHost: func(h string) bool { return h == "app.example.com" }}
+	cases := map[string]bool{
+		"https://app.example.com/dash":      true,
+		"HTTP://app.example.com:8443/x?y=1": true,
+		"https://evil.example.net/":         false,
+		"https://app.example.com.evil/":     false,
+		"https://user@app.example.com/":     false,
+		"//app.example.com/":                false,
+		"javascript://app.example.com/%0a":  false,
+		"/dash":                             false,
+		"":                                  false,
+	}
+	for in, want := range cases {
+		u, ok := ar.sessionTarget(in)
+		if ok != want {
+			t.Errorf("%q: got %v, want %v", in, ok, want)
+		}
+		if ok && u.Scheme != "http" && u.Scheme != "https" {
+			t.Errorf("%q: scheme %q not normalised", in, u.Scheme)
+		}
+	}
+	if _, ok := (&AuthRouter{}).sessionTarget("https://app.example.com/"); ok {
+		t.Error("a router without IsServedHost must reject every target")
+	}
+}
+
+func TestAuthRouterMarshalsWithServedHostCheck(t *testing.T) {
+	ar := &AuthRouter{IsServedHost: func(string) bool { return true }}
+	if _, err := json.Marshal(ar); err != nil {
+		t.Fatalf("AuthRouter must stay JSON encodable: %v", err)
 	}
 }

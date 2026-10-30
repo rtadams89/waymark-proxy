@@ -443,8 +443,16 @@ func (gs *GatewayServer) handlePasskeyAuthComplete(w http.ResponseWriter, r *htt
 	_ = gs.router.saveUser(foundUser, foundUser.Username)
 
 	redirectTarget := pending.RedirectTarget
-	parsedTarget, parseErr := url.Parse(redirectTarget)
-	if parseErr != nil {
+	var parsedTarget *url.URL
+	targetOK := false
+	if pending.IsDirectLogin {
+		if u, err := url.Parse(redirectTarget); err == nil {
+			parsedTarget, targetOK = u, true
+		}
+	} else {
+		parsedTarget, targetOK = gs.router.sessionTarget(redirectTarget)
+	}
+	if !targetOK {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{
