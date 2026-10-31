@@ -6,8 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/microcosm-cc/bluemonday"
-
 	"imuslab.com/zoraxy/mod/utils"
 )
 
@@ -32,9 +30,8 @@ func handleAddTrustedProxy(w http.ResponseWriter, r *http.Request) {
 
 	desc, _ := utils.PostPara(r, "desc")
 
-	p := bluemonday.StrictPolicy()
 	ip = strings.TrimSpace(ip)
-	desc = p.Sanitize(desc)
+	desc = cleanTrustedProxyDesc(desc)
 
 	added := accessController.AddTrustedProxy(ip, desc)
 	if !added {
@@ -90,10 +87,9 @@ func handleUpdateTrustedProxy(w http.ResponseWriter, r *http.Request) {
 
 	desc, _ := utils.PostPara(r, "desc")
 
-	p := bluemonday.StrictPolicy()
 	originalIP = strings.TrimSpace(originalIP)
 	newIP = strings.TrimSpace(newIP)
-	desc = p.Sanitize(desc)
+	desc = cleanTrustedProxyDesc(desc)
 
 	if originalIP != newIP {
 		if accessController.TrustedProxyExists(newIP) {
@@ -128,8 +124,6 @@ func handleBulkUpdateTrustedProxies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := bluemonday.StrictPolicy()
-
 	type entry struct {
 		ip   string
 		desc string
@@ -147,7 +141,7 @@ func handleBulkUpdateTrustedProxies(w http.ResponseWriter, r *http.Request) {
 		}
 		desc := ""
 		if len(parts) == 2 {
-			desc = p.Sanitize(strings.TrimSpace(parts[1]))
+			desc = cleanTrustedProxyDesc(parts[1])
 		}
 		entries = append(entries, entry{ip: ip, desc: desc})
 	}

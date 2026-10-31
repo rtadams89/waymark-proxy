@@ -255,7 +255,7 @@
     // Opens an ACL in the editor, from anywhere (the proxy rule editor too)
     window.wmOpenACL = function(id){
         if (typeof closeHttpRuleEditor == "function" && $("#httprpEditModalWrapper").is(":visible")) closeHttpRuleEditor();
-        if (typeof closeL4Editor == "function" && $("#l4EditModalWrapper").is(":visible")) closeL4Editor();
+        if (typeof closeL4ProxyEditor == "function" && $("#l4EditModalWrapper").is(":visible")) closeL4ProxyEditor();
         openTabById("access");
         wmConfirmDiscard("#aclEditor", function(){
             if (!id){

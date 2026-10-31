@@ -14,7 +14,7 @@ Waymark Proxy ("Waymark") is a reverse proxy for homelabs and small networks. It
 <p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png">
-  <img src="docs/screenshots/overview.png" alt="Waymark status dashboard: listener status, request and bandwidth totals, a live traffic flow diagram from clients through proxy rules to destinations, and realtime network graphs">
+  <img src="docs/screenshots/overview.png" alt="Waymark status dashboard: a live traffic flow diagram from clients through proxy rules to destinations, realtime network graphs, and request, visitor, bandwidth and error totals">
 </picture>
 </p>
 
@@ -138,7 +138,7 @@ Traefik and Caddy are excellent when your configuration lives in files or contai
 - **Traffic capture** (**Monitoring > Traffic Capture**): record HTTP and Layer 4 proxy traffic as a pcapng file for Wireshark, filtered by rule, host or client, on the client side, the destination side or both. HTTPS is shown decrypted, with an option to hide credentials.
 - **Logs where you want them.** System logs and traffic (request) logs can each go to the log file, to up to 8 syslog servers (UDP, TCP or TLS; RFC 5424, RFC 3164 or JSON), to both, or to neither.
 - **Maintenance mode** per rule: visitors get a "Down for maintenance" page (HTTP 503 with `Retry-After`) with your message.
-- **A status dashboard** with panels you can show or hide, including destination health, cache hit rate and memory, and the HA cluster.
+- **A status dashboard** with panels you can show, hide, move and resize (saved for every browser and synced across HA nodes), including destination health, cache hit rate and memory, the HA cluster and each node's traffic and resource use.
 - **GeoIP lookups can be turned off**, saving about 170 MB of memory when you don't use country rules.
 - **Also included:** redirects, virtual directories, custom headers, a static web server with WebDAV, and plugins with a plugin store.
 

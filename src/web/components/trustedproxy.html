@@ -77,7 +77,7 @@
 (function(){
     function proxyListToCsv(proxies) {
         if (!proxies || proxies.length === 0) return '';
-        return proxies.map(function(p){ return p.IP + ', ' + htmlDecodeEntities(p.Desc || ''); }).join('\n');
+        return proxies.map(function(p){ return p.IP + ', ' + (p.Desc || ''); }).join('\n');
     }
 
     function initTrustedProxyTable(){
@@ -92,8 +92,7 @@
             } else {
                 $.each(data, function(index, proxy) {
                     let ip = proxy.IP;
-                    // The server stores descriptions HTML-encoded
-                    let desc = htmlDecodeEntities(proxy.Desc || '');
+                    let desc = proxy.Desc || '';
                     let icon = ip.includes('/') ? "shield alternate green icon" : "shield alternate blue icon";
                     $('#trustedProxyTable').append(`
                         <tr class="trustedProxyItem" data-ip="${encodeURIComponent(ip)}">

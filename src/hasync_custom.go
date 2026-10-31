@@ -494,6 +494,25 @@ func haSyncTick(force bool) (string, bool) {
 		SystemWideLogger.PrintAndLog("ha-sync", msg, nil)
 		return msg, false
 	}
+	// Changes only to files that are read again when they change (the
+	// status page layout) are applied now, without restarting Waymark
+	if local, err := hacluster.BuildContent(CONF_FOLDER, sysdb); err == nil {
+		if live, ok := hacluster.LiveChanges(local, &snap.Content); ok {
+			err := hacluster.ApplyLiveEntries(CONF_FOLDER, &snap.Content, live)
+			if err == nil {
+				writeSyncFileAtomic(haSyncAppliedFile, haSyncApplied{Hash: snap.Hash, From: m.node.Name, Time: time.Now().Unix()})
+				haSync.mu.Lock()
+				haSync.seenHash = ""
+				haSync.mu.Unlock()
+				SystemWideLogger.PrintAndLog("ha-sync", "Applied "+strings.Join(live, ", ")+" from active node "+m.node.Name+" ("+shortHash(snap.Hash)+") without a restart", nil)
+				msg := "In sync with " + m.node.Name
+				haSyncSetStatus("in-sync", msg)
+				return msg, false
+			}
+			SystemWideLogger.PrintAndLog("ha-sync", "Applying "+strings.Join(live, ", ")+" without a restart failed; restarting instead", err)
+		}
+	}
+
 	if err := writeSyncFileAtomic(haSyncPendingFile, map[string]any{"from": m.node.Name, "snapshot": snap}); err != nil {
 		msg := "Could not stage the configuration: " + err.Error()
 		haSyncSetStatus("error", msg)

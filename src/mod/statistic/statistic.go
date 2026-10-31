@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/microcosm-cc/bluemonday"
 	"imuslab.com/zoraxy/mod/database"
 )
 
@@ -289,9 +288,10 @@ func (c *Collector) RecordRequest(ri RequestInfo) {
 
 	c.incr(d.RequestClientIp, d.bounded.RequestClientIp, ri.IpAddr)
 
-	//Record the referer, without any HTML in it
+	//Record the referer as sent (the UI escapes it when it shows it).
+	//Before 2.19.10 referers were stored HTML-encoded.
 	if ri.Referer != "" {
-		c.incr(d.Referer, d.bounded.Referer, truncateStatKey(refererPolicy.Sanitize(ri.Referer)))
+		c.incr(d.Referer, d.bounded.Referer, truncateStatKey(ri.Referer))
 	} else {
 		c.incr(d.Referer, d.bounded.Referer, "")
 	}
@@ -314,9 +314,6 @@ func (c *Collector) RecordRequest(ri RequestInfo) {
 	// Record the upstream hostname (the selected load balancer upstream)
 	c.incr(d.UpstreamHostnames, d.bounded.UpstreamHostnames, ri.Upstream)
 }
-
-// refererPolicy strips HTML from referers (built once, safe for concurrent use).
-var refererPolicy = bluemonday.StripTagsPolicy()
 
 // ScheduleResetRealtimeStats saves and rolls over the summary every midnight
 func (c *Collector) ScheduleResetRealtimeStats() chan bool {

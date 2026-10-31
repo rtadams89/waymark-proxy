@@ -121,7 +121,9 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 
 	resolver, err := zeroconf.NewResolver(zcoption)
 	if err != nil {
-		log.Fatalln("Failed to initialize resolver:", err.Error())
+		// e.g. no IPv6 on the host: skip this scan instead of exiting
+		log.Println("[mDNS] Cannot scan:", err.Error())
+		return []*NetworkHost{}
 	}
 
 	entries := make(chan *zeroconf.ServiceEntry)
@@ -209,7 +211,8 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 	defer cancel()
 	err = resolver.Browse(ctx, "_http._tcp", "local.", entries)
 	if err != nil {
-		log.Fatalln("Failed to browse:", err.Error())
+		log.Println("[mDNS] Cannot scan:", err.Error())
+		return []*NetworkHost{}
 	}
 
 	//Update the master scan record

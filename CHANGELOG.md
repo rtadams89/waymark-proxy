@@ -10,6 +10,30 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.10
+
+**Security headers on the admin console**
+- The admin console sends a Content-Security-Policy, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`. Scripts, styles, frames and connections may only come from the console itself (app store icons may load from https sites), other sites cannot embed the console, forms cannot post elsewhere and plugins (`object`) are blocked. The UI still uses inline scripts, so the policy allows those. Plugin pages (`/plugin.ui/`) keep their own headers.
+
+**Text is stored as typed**
+- Trusted proxy descriptions and visitor referers are saved as plain text; the UI escapes them when it shows them. Before, the server saved them HTML-encoded, so a description could gain `&amp;` each time it was edited. Existing trusted proxy descriptions are converted once at startup (the conversion is recorded, and synced to the other HA nodes with the list). Referers recorded before this version keep their encoding and are still shown correctly.
+- The HTML sanitizer dependency (bluemonday) is no longer needed and is removed.
+
+**HA: status page layout applies without a restart**
+- When the only change on the active node is the status page layout (`conf/ui.json`), standby nodes apply it straight away. Before, any change made a standby restart Waymark to load it; other changes still do.
+
+**Fixes**
+- Waymark no longer exits at startup on hosts without IPv6 when mDNS is on (the default): an mDNS scan that cannot start is logged and skipped. Before, it stopped the whole process.
+- Opening an ACL from the TCP / UDP rule editor closes the editor (it called a function that did not exist).
+- App store data is escaped in attributes too.
+
+**Tests**
+- The UI tests sign in like a user: on a fresh instance the first test creates the admin account on the sign-in page, checks that a password mismatch and a wrong password are shown under the form, and signs in. CI no longer starts Waymark with `-noauth`.
+- New tests: the TCP / UDP rule editor's Save and unsaved-change warning, the HA page's unsaved settings, the admin console's security headers, and signing out. Any Content-Security-Policy violation fails the run.
+
+**README**
+- New screenshots of the status page, proxy rules, ACL editor and objects (light and dark).
+
 ## 2.19.9
 
 **Security: names and values are escaped everywhere they are shown**

@@ -450,7 +450,7 @@
             endStop = sortedEntries.length;
         }
         for (var i = 0; i < endStop; i++) {
-            // Referers are stored HTML-encoded (tags removed)
+            // Referers recorded before 2.19.10 were stored HTML-encoded
             let referer = htmlDecodeEntities(sortedEntries[i][0]);
             try { referer = decodeURIComponent(referer); } catch (e) {}
             if (sortedEntries[i][0] == ""){

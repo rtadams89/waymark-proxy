@@ -663,7 +663,7 @@
   }
 
   function asEscapeHtml(text) {
-    return $("<div>").text(text === undefined || text === null ? "" : String(text)).html();
+    return htmlEscape(text === undefined || text === null ? "" : String(text));
   }
 
   function asGetIconSrc(app) {

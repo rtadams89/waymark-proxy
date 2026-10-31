@@ -1,17 +1,22 @@
 // Browser tests of the Waymark admin UI.
 //
-// Run against a fresh instance started with -noauth, e.g.
-//   ./waymark -noauth -port :8000 -mdns=false -default_inbound_port 8443
+// Run against a fresh instance (no admin account yet), e.g.
+//   ./waymark -port :8000 -mdns=false -default_inbound_port 8443
 //   BASE_URL=http://127.0.0.1:8000 npm test
 //
-// The tests create what they need (a proxy rule, an ACL, a trusted proxy)
-// and remove it again. Any page error or native browser dialog fails the run.
+// The first test creates the admin account on the sign-in page (ADMIN_USER,
+// ADMIN_PASSWORD; on an instance that has one already, give its
+// credentials). The tests create what they need (rules, an ACL, a trusted
+// proxy) and remove it again. Any page error, native browser dialog or
+// Content-Security-Policy violation fails the run.
 
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 
 const BASE = process.env.BASE_URL || "http://127.0.0.1:8000";
+const ADMIN_USER = process.env.ADMIN_USER || "uitest";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ui-test-password-1";
 const results = [];
 let page, browser;
 const pageErrors = [];
@@ -60,8 +65,39 @@ async function main() {
     page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     page.on("pageerror", e => pageErrors.push(e.message));
     page.on("dialog", d => { pageErrors.push("native " + d.type() + " dialog: " + d.message()); d.dismiss(); });
-    await page.goto(BASE + "/", { waitUntil: "networkidle" });
-    await sleep(2000);
+    page.on("console", m => { if (/Content.Security.Policy/i.test(m.text())) pageErrors.push("CSP: " + m.text()); });
+    // Violations in frames too
+    await page.addInitScript(() => document.addEventListener("securitypolicyviolation", e => console.error("Content-Security-Policy violation: " + e.violatedDirective + " " + e.blockedURI)));
+
+    await test("sign-in page: creates the admin account, shows errors under the form, signs in", async () => {
+        await page.goto(BASE + "/", { waitUntil: "networkidle" });
+        await sleep(1000);
+        assert(page.url().includes("login"), "the console opened without signing in: " + page.url());
+        const register = await page.evaluate(() => $("#regsiterbtn").is(":visible"));
+        if (register) {
+            await page.fill("#username", ADMIN_USER);
+            await page.fill("#magic", ADMIN_PASSWORD);
+            await page.fill("#repeatMagic", ADMIN_PASSWORD + "x");
+            await page.click("#regsiterbtn");
+            await sleep(500);
+            assert(await page.evaluate(() => $("#errmsg").is(":visible") && $("#errmsg").text().includes("do not match")), "a password mismatch is not shown under the form");
+            await page.fill("#repeatMagic", ADMIN_PASSWORD);
+            await page.click("#regsiterbtn");
+            await page.waitForLoadState("networkidle");
+            await sleep(1500);
+        }
+        await page.fill("#username", ADMIN_USER);
+        await page.fill("#magic", ADMIN_PASSWORD + "-wrong");
+        await page.click("#loginbtn");
+        await sleep(1200);
+        assert(await page.evaluate(() => $("#errmsg").is(":visible") && $("#errmsg").text().trim().length > 0), "a wrong password is not shown under the form");
+        await page.fill("#magic", ADMIN_PASSWORD);
+        await page.click("#loginbtn");
+        await page.waitForFunction(() => typeof openTabById == "function", null, { timeout: 15000 });
+        await page.waitForLoadState("networkidle");
+        await sleep(2000);
+        assert(!page.url().includes("login"), "still on the sign-in page");
+    });
 
     const TABS = ["status", "httprp", "rules", "redirectset", "setroot", "access", "aclobjects", "trustproxy", "sso",
         "cert", "acme", "dnscreds", "utm", "stats", "logs", "capture", "globalsettings", "ha", "webserv",
@@ -186,16 +222,60 @@ async function main() {
         assert(await ev(() => $("#redirectionRuleList, body").find("td:contains('onerror')").length) > 0, "the URL is not shown as text");
         assert(!(await ev(() => window.__wmXss)), "the URL ran as HTML");
         await api("/api/redirect/delete", { redirectUrl: evil });
-        // Trusted proxy descriptions are stored HTML-encoded and shown decoded
+        // Trusted proxy descriptions are stored and shown as typed
         r = await api("/api/trustedproxy/add", { ip: "198.51.100.77", desc: `Lab "1" & <img src=x onerror="window.__wmXss=1">` });
         assert(!r || r.error == undefined, "could not add the trusted proxy: " + JSON.stringify(r));
         await openTab("trustproxy");
         await ev(() => window.initTrustedProxyTable());
         await sleep(1500);
         const shown = await ev(() => $(".trustedProxyItem[data-ip='198.51.100.77'] .proxy-desc-display").text().trim());
-        assert(shown == `Lab "1" &`, "the description is shown as " + JSON.stringify(shown));
+        assert(shown == `Lab "1" & <img src=x onerror="window.__wmXss=1">`, "the description is shown as " + JSON.stringify(shown));
         assert(!(await ev(() => window.__wmXss)), "the description ran as HTML");
         await api("/api/trustedproxy/remove", { ip: "198.51.100.77" });
+    });
+
+    await test("TCP / UDP rule editor: one Save, and closing with changes asks first", async () => {
+        const r = await api("/api/l4proxy/config/add", { name: "UI test L4", listenAddr: ":18999", proxyAddr: "127.0.0.1:9", useTCP: true, useUDP: false, timeout: 10, proxyProtocolVersion: 0, enableLogging: false, accessRuleUUID: "allow-all" });
+        assert(r && r.error == undefined, "could not create the test rule: " + JSON.stringify(r));
+        await openTab("httprp");
+        await ev(() => typeof initL4ProxyList == "function" && initL4ProxyList(true));
+        await page.waitForFunction(id => $(`tr.l4Row[uuid="${id}"]`).length > 0, r, { timeout: 10000 });
+        await ev(id => editL4Proxy(id), r);
+        await page.waitForFunction(() => $("#l4EditModalWrapper").is(":visible"), null, { timeout: 5000 });
+        await sleep(1500);
+        assert(!(await ev(() => wmHasUnsavedChanges("#l4EditModalWrapper"))), "the editor reports changes right after opening");
+        await ev(() => { let i = $("#l4EditModalContentWindow input[type=text]:visible").filter(function () { return $(this).closest("[data-wm-untracked]").length == 0; }).first(); i.val(i.val() + "1").trigger("input"); });
+        await sleep(300);
+        assert(await ev(() => $("#l4EditModal .l4EditSaveBtn").hasClass("wmUnsaved")), "the editor's Save button is not highlighted");
+        await ev(() => closeL4ProxyEditor());
+        await sleep(300);
+        assert(await dialogShown(), "closing the editor did not ask");
+        await discard();
+        await sleep(600);
+        assert(!(await ev(() => $("#l4EditModalWrapper").is(":visible"))), "the editor stayed open after Discard");
+        await api("/api/l4proxy/config/delete", { uuid: r });
+    });
+
+    await test("high availability page: unsaved settings are kept until Save and apply", async () => {
+        await openTab("ha");
+        await sleep(1500);
+        assert(!(await ev(() => wmHasUnsavedChanges("#ha"))), "the HA page reports changes when nothing changed");
+        await ev(() => $("#haRouterId").val("77").trigger("input"));
+        await sleep(200);
+        assert(await ev(() => $("#haSaveBtn").hasClass("wmUnsaved")), "Save and apply is not highlighted");
+        await ev(() => openTabById("status"));
+        await sleep(300);
+        assert(await dialogShown(), "leaving the HA page did not ask");
+        await discard();
+        await sleep(1500);
+        await openTab("ha");
+        assert(await ev(() => $("#haRouterId").val()) != "77", "Discard kept the change");
+    });
+
+    await test("admin console sends its security headers", async () => {
+        const h = await ev(() => fetch("/", { credentials: "same-origin" }).then(r => ({ csp: r.headers.get("content-security-policy") || "", xfo: r.headers.get("x-frame-options") || "", nosniff: r.headers.get("x-content-type-options") || "" })));
+        assert(h.csp.includes("frame-ancestors 'self'") && h.csp.includes("object-src 'none'"), "Content-Security-Policy missing or incomplete: " + h.csp);
+        assert(h.xfo == "SAMEORIGIN" && h.nosniff == "nosniff", "X-Frame-Options / X-Content-Type-Options missing");
     });
 
     await test("status panels: move, resize, hide; kept after a reload", async () => {
@@ -217,6 +297,13 @@ async function main() {
         await sleep(1200);
         const saved = await ev(() => $.get("/api/custom/statusPanels"));
         assert(saved.order.length == 0 && Object.keys(saved.visible).length == 0 && Object.keys(saved.sizes).length == 0, "Reset did not clear the layout");
+    });
+
+    await test("signing out returns to the sign-in page", async () => {
+        await ev(() => logout());
+        await page.waitForURL(/login/, { timeout: 10000 });
+        const body = await page.evaluate(() => fetch("/api/proxy/list?type=host").then(r => r.text()));
+        assert(!body.trim().startsWith("["), "the API still returns data after signing out");
     });
 
     await browser.close();

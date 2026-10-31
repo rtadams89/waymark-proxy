@@ -179,6 +179,7 @@ func startupSequence() {
 	if err != nil {
 		panic(err)
 	}
+	migrateTrustedProxyDescriptions(accessController, sysdb)
 
 	//Create authentication providers
 	forwardAuthRouter = forward.NewAuthRouter(&forward.AuthRouterOptions{

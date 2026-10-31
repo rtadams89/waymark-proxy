@@ -146,7 +146,7 @@ func main() {
 		SystemWideLogger.Println(SYSTEM_NAME + " started. Visit control panel at http://" + *webUIPort)
 	}
 
-	err = http.ListenAndServe(*webUIPort, entryMux)
+	err = http.ListenAndServe(*webUIPort, adminSecurityHeaders(entryMux))
 
 	if err != nil {
 		log.Fatal(err)
