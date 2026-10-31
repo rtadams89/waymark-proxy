@@ -207,23 +207,23 @@
 
 
             function getPluginInfo(pluginId){
-            $.get(`/api/plugins/info?plugin_id=${pluginId}`, function(data){
+            $.get(`/api/plugins/info?plugin_id=${encodeURIComponent(pluginId)}`, function(data){
                 let authorContact = data.Spec.author_contact;
                 if(!authorContact.startsWith('http')){
                 authorContact = `mailto:${authorContact}`;
                 }
                 let versionString = `v${data.Spec.version_major}.${data.Spec.version_minor}.${data.Spec.version_patch}`;
                 $(".plugin_name").text(data.Spec.name);
-                $("#plugin_image").attr("src", `/api/plugins/icon?plugin_id=${data.Spec.id}`);
+                $("#plugin_image").attr("src", `/api/plugins/icon?plugin_id=${encodeURIComponent(data.Spec.id)}`);
                 $("#plugin_version").text(versionString);
-                $("#plugin_author").html(`<a href="${authorContact}" target="_blank">${data.Spec.author}</a>`);
+                $("#plugin_author").html(`<a href="${safeHref(authorContact)}" target="_blank">${htmlEscape(data.Spec.author)}</a>`);
                 $("#plugin_enabled").html(data.Enabled?`<i class="ui green check icon"></i>`:`<i class="ui red times icon"></i>`);
                 $("#plugin_assigned_port").text(data.AssignedPort);
                 $("#plugin_root_dir").text(data.RootDir + "/");
                 $("#plugin_description").text(data.Spec.description);
                 $("#plugin_category").text(data.Spec.type == 0 ? "Router" : "Utilities");
-                $("#plugin_url").html(`<a href="${data.Spec.url}" target="_blank">${data.Spec.url}</a>`);
-                $("#plugin_contact").html(`<a href="${authorContact}" target="_blank">${data.Spec.author_contact}</a>`);
+                $("#plugin_url").html(`<a href="${safeHref(data.Spec.url)}" target="_blank">${htmlEscape(data.Spec.url)}</a>`);
+                $("#plugin_contact").html(`<a href="${safeHref(authorContact)}" target="_blank">${htmlEscape(data.Spec.author_contact)}</a>`);
                 $("#plugin_info_modal").modal('show');
 
                 //Update the developer insights (empty paths are not registered)
@@ -233,7 +233,7 @@
                 }
                 let capturePathsList = '<div class="ui list">';
                 registeredStaticCapturePaths.forEach(function(path) {
-                    capturePathsList += `<div class="item">${path.capture_path}</div>`;
+                    capturePathsList += `<div class="item">${htmlEscape(path.capture_path)}</div>`;
                 });
                 capturePathsList += '</ul>';
                 $("#registered_static_capture_paths").html(capturePathsList);
@@ -274,9 +274,9 @@
                     let endpointRows = '';
                     apiEndpoints.forEach(function(endpoint) {
                         endpointRows += `<tr>
-                            <td>${endpoint.endpoint}</td>
-                            <td>${endpoint.method}</td>
-                            <td>${endpoint.reason}</td>
+                            <td>${htmlEscape(endpoint.endpoint)}</td>
+                            <td>${htmlEscape(endpoint.method)}</td>
+                            <td>${htmlEscape(endpoint.reason)}</td>
                         </tr>`;
                     });
                     $("#plugin_permitted_api_endpoints").html(endpointRows);
@@ -290,8 +290,8 @@
                 let eventRows = '';
                 Object.keys(subscriptionsEvents).forEach(function(eventType) {
                     eventRows += `<tr>
-                        <td>${eventType}</td>
-                        <td>${subscriptionsEvents[eventType] || "No comment"}</td>
+                        <td>${htmlEscape(eventType)}</td>
+                        <td>${htmlEscape(subscriptionsEvents[eventType] || "No comment")}</td>
                         </tr>`;
                     });
                     $("#plugin_subscriptions_events").html(eventRows);

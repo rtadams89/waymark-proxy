@@ -1,8 +1,8 @@
 # Waymark Proxy build.
 #
 # - Every push to main, every pull request into main, and manual runs: vet,
-#   test, govulncheck, and a linux/amd64 build uploaded as a workflow
-#   artifact (kept 30 days).
+#   test, govulncheck, browser tests of the admin UI (test/ui), and a
+#   linux/amd64 build uploaded as a workflow artifact (kept 30 days).
 # - Pushing a version tag vMAJOR.MINOR.PATCH (e.g. v1.0.0): the same, then a
 #   GitHub Release with the binary and its SHA-256 checksum. The tag must
 #   match PRODUCT_VERSION in src/version_custom.go, or the release is refused.
@@ -56,6 +56,63 @@ jobs:
       - name: Vulnerability check (govulncheck)
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
         working-directory: src
+
+  # Browser tests of the admin UI against a fresh instance (test/ui)
+  ui:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          # Newest 1.26 patch release
+          go-version: "1.26.x"
+          check-latest: true
+          cache-dependency-path: src/go.sum
+
+      - name: Build
+        run: go build -o "$RUNNER_TEMP/waymark" .
+        working-directory: src
+
+      # Node.js comes with the runner image
+      - name: Install Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+        working-directory: test/ui
+
+      - name: Start Waymark
+        run: |
+          mkdir -p "$RUNNER_TEMP/wm"
+          cd "$RUNNER_TEMP/wm"
+          nohup "$RUNNER_TEMP/waymark" -noauth -port :8000 -mdns=false -default_inbound_port 8443 > waymark.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fs -o /dev/null http://127.0.0.1:8000/; then exit 0; fi
+            sleep 1
+          done
+          echo "::error::Waymark did not start"
+          cat waymark.log
+          exit 1
+
+      - name: UI tests
+        run: npm test
+        working-directory: test/ui
+        env:
+          BASE_URL: http://127.0.0.1:8000
+
+      - name: Upload screenshots and log
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: ui-test-failure
+          path: |
+            test/ui/*.png
+            ${{ runner.temp }}/wm/waymark.log
+          retention-days: 7
+          if-no-files-found: ignore
 
   build:
     needs: test
@@ -114,7 +171,7 @@ jobs:
 
   release:
     if: github.ref_type == 'tag'
-    needs: build
+    needs: [build, ui]
     runs-on: ubuntu-latest
     permissions:
       contents: write

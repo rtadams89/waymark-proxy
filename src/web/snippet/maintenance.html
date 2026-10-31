@@ -76,7 +76,7 @@
             let defaultMessage = "";
 
             function notify(msg, ok=true, ms=undefined){
-                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { alert(msg); }
+                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { wmAlert(msg, null, {error: true}); }
             }
             function ago(ts){
                 let s = Math.max(0, Math.round(Date.now()/1000 - ts));

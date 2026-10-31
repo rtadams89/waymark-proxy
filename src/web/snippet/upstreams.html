@@ -186,7 +186,7 @@
                     success: function(data){
                         if (data.error != undefined){
                             //This endpoint not exists?
-                            alert(data.error);
+                            wmAlert(data.error, null, {error: true});
                             return;
                         }else{
                             $("#upstreamTable").html("");
@@ -234,7 +234,7 @@
 
                                     let upstreamLink = `${upstream.RequireTLS?"https://":"http://"}${upstream.OriginIpOrDomain}`;
 
-                                    upstreams += `<a href="${upstreamLink}" target="_blank">${upstream.OriginIpOrDomain} ${tlsIcon}</a><br>`;
+                                    upstreams += `<a href="${htmlEscape(upstreamLink)}" target="_blank">${htmlEscape(upstream.OriginIpOrDomain)} ${tlsIcon}</a><br>`;
                                 });
 
                                 if (data.ActiveOrigins.length == 0){
@@ -574,27 +574,27 @@
                 let originalSettings = $(targetDOM).attr("data-payload");
                 originalSettings = JSON.parse(decodeURIComponent(originalSettings));
                 let UpstreamKey = originalSettings.OriginIpOrDomain;
-                if (!confirm("Confirm removing destination " + UpstreamKey + "?")){
-                    return;
-                }
-                //Remove the upstream
-                $.cjax({
-                    url: "/api/proxy/upstream/remove",
-                    method: "POST",
-                    data: {
-                        ep: editingEndpoint.ep,
-                        origin: originalSettings.OriginIpOrDomain, //Original ip or domain as key
-                    },
-                    success: function(data){
-                        if (data.error != undefined){
-                            parent.msgbox(data.error, false);
+                wmConfirm("Confirm removing destination " + UpstreamKey + "?", function(ok){
+                    if (!ok){ return; }
+                    //Remove the upstream
+                    $.cjax({
+                        url: "/api/proxy/upstream/remove",
+                        method: "POST",
+                        data: {
+                            ep: editingEndpoint.ep,
+                            origin: originalSettings.OriginIpOrDomain, //Original ip or domain as key
+                        },
+                        success: function(data){
+                            if (data.error != undefined){
+                                parent.msgbox(data.error, false);
 
-                        }else{
-                            parent.msgbox("Destination deleted");
-                            initOriginList();
+                            }else{
+                                parent.msgbox("Destination deleted");
+                                initOriginList();
+                            }
                         }
-                    }
-                })
+                    })
+                });
             }
 
             if (window.location.hash.length > 1){

@@ -49,21 +49,22 @@ type haSyncApplied struct {
 
 // haSyncPeerInfo is a node's state as reported to the other nodes.
 type haSyncPeerInfo struct {
-	Node            string     `json:"node"`
-	Role            string     `json:"role"`
-	Version         string     `json:"version"`
-	Hash            string     `json:"hash"`
-	HeartbeatOK     bool       `json:"heartbeatOk"`
-	HeartbeatReason string     `json:"heartbeatReason"`
-	VIPHeld         bool       `json:"vipHeld"`    // holds the primary floating IP
-	VIPsHeld        int        `json:"vipsHeld"`   // how many floating IPs it holds
-	Keepalived      string     `json:"keepalived"` // systemd state
-	SyncStatus      string     `json:"syncStatus"`
-	SyncDetail      string     `json:"syncDetail"`
-	Started         int64      `json:"started"`     // when Waymark started
-	UpdatePhase     string     `json:"updatePhase"` // downloading, verifying, restarting, error
-	UpdateMessage   string     `json:"updateMessage"`
-	Rolling         *rollState `json:"rolling,omitempty"` // the rolling update it runs or ran last
+	Node            string       `json:"node"`
+	Role            string       `json:"role"`
+	Version         string       `json:"version"`
+	Hash            string       `json:"hash"`
+	HeartbeatOK     bool         `json:"heartbeatOk"`
+	HeartbeatReason string       `json:"heartbeatReason"`
+	VIPHeld         bool         `json:"vipHeld"`    // holds the primary floating IP
+	VIPsHeld        int          `json:"vipsHeld"`   // how many floating IPs it holds
+	Keepalived      string       `json:"keepalived"` // systemd state
+	SyncStatus      string       `json:"syncStatus"`
+	SyncDetail      string       `json:"syncDetail"`
+	Started         int64        `json:"started"`     // when Waymark started
+	UpdatePhase     string       `json:"updatePhase"` // downloading, verifying, restarting, error
+	UpdateMessage   string       `json:"updateMessage"`
+	Rolling         *rollState   `json:"rolling,omitempty"` // the rolling update it runs or ran last
+	Stats           *haNodeStats `json:"stats,omitempty"`   // traffic and resource figures (2.19.9 and later)
 }
 
 // haPeerStatus is the last poll of another node.
@@ -230,7 +231,7 @@ func haLocalInfo() haSyncPeerInfo {
 		Node: haNodeName(cfg), Role: haEffectiveRole(haRuntime()).State, Version: DISPLAY_VERSION,
 		HeartbeatOK: hb.OK, HeartbeatReason: hb.Reason, VIPHeld: haVIPHeld(cfg), VIPsHeld: haCountFloatingIPsHeld(cfg),
 		Keepalived: haServiceState("keepalived"), SyncStatus: st, SyncDetail: detail, Started: bootTime,
-		Rolling: rollPeerState(),
+		Rolling: rollPeerState(), Stats: haCurrentNodeStats(),
 	}
 }
 
@@ -624,6 +625,9 @@ func haClusterView() []map[string]any {
 			row["started"] = info.Started
 			row["updatePhase"] = info.UpdatePhase
 			row["updateMessage"] = info.UpdateMessage
+			if info.Stats != nil {
+				row["stats"] = info.Stats
+			}
 		}
 		out = append(out, row)
 	}

@@ -41,15 +41,16 @@
             */
 
             function handleExportAsJSON(){
-                window.open(`/api/analytic/exportRange?start=${startDate}&end=${endDate}&format=json`, 'download');
+                window.open(`/api/analytic/exportRange?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}&format=json`, 'download');
             }
 
             function handleExportAsCSV(){
-                window.open(`/api/analytic/exportRange?start=${startDate}&end=${endDate}&format=csv`, 'download');
+                window.open(`/api/analytic/exportRange?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}&format=csv`, 'download');
             }
 
             function handleResetStats(){
-                if (confirm("Confirm remove statistics from " + startDate + " to " + endDate +"?")){
+                wmConfirm("Confirm remove statistics from " + startDate + " to " + endDate +"?", function(ok){
+                    if (!ok) return;
                     $.cjax({
                         url: "/api/analytic/resetRange?start=" + startDate + "&end=" + endDate,
                         method: "DELETE",
@@ -62,7 +63,7 @@
                             }
                         }
                     })
-                }
+                });
             }
 
             /*
@@ -77,12 +78,12 @@
 
                         //Check if they are valid dates
                         if (!isValidDateFormat(startDate)){
-                            alert("Start date is not a valid date: " + startDate);
+                            wmAlert("Start date is not a valid date: " + startDate, null, {error: true});
                             return
                         }
 
                         if (!isValidDateFormat(endDate)){
-                            alert("End date is not a valid date: " + endDate);
+                            wmAlert("End date is not a valid date: " + endDate, null, {error: true});
                             return
                         }
 
@@ -93,7 +94,7 @@
 
                         $("#daterange").html(htmlEscape(startDate) + ` <i class="arrow right icon" style="margin-right: 0;"></i> ` + htmlEscape(endDate));
                     }catch(ex){
-                        alert("Invalid usage: Invalid date range given");
+                        wmAlert("Invalid usage: Invalid date range given", null, {error: true});
                     }
                 }
             }

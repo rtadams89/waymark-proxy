@@ -233,11 +233,11 @@
                 if (list.length <= 1){
                     return;
                 }
-                if (!confirm("Confirm removing destination " + list[i].address + "?")){
-                    return;
-                }
-                list.splice(i, 1);
-                save(list);
+                wmConfirm("Confirm removing destination " + list[i].address + "?", function(ok){
+                    if (!ok){ return; }
+                    list.splice(i, 1);
+                    save(list);
+                });
             }
 
             function addDestination(){

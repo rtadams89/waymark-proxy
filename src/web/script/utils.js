@@ -13,6 +13,35 @@ function htmlEscape(value) {
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+// htmlDecodeEntities turns the character references in text the server
+// stored HTML-encoded (e.g. "&#34;") back into characters; the result is
+// plain text, to be escaped again when it is put into HTML
+function htmlDecodeEntities(value) {
+    const named = {amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: "\u00a0"};
+    return String(value == undefined ? "" : value).replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, function(m, ref){
+        if (ref[0] == "#"){
+            let code = ref[1] == "x" || ref[1] == "X" ? parseInt(ref.substr(2), 16) : parseInt(ref.substr(1), 10);
+            return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+        }
+        let c = named[ref.toLowerCase()];
+        return c === undefined ? m : c;
+    });
+}
+
+// jsArg makes a value safe as a JavaScript string argument inside an HTML
+// event attribute: onclick="fn(${jsArg(name)})". The browser decodes the
+// HTML entities first, which leaves a quoted JavaScript string.
+function jsArg(value) {
+    return htmlEscape(JSON.stringify(value == undefined ? "" : String(value)));
+}
+
+// safeHref returns an escaped link target, or "#" for anything but http(s)
+// and mailto links (e.g. a javascript: URL from plugin metadata)
+function safeHref(url) {
+    url = String(url == undefined ? "" : url).trim();
+    return /^(https?:\/\/|mailto:)/i.test(url) ? htmlEscape(url) : "#";
+}
+
 function abbreviateNumber(value) {
     var newValue = value;
     var suffixes = ["", "k", "m", "b", "t"];
@@ -93,15 +122,17 @@ var wmTrackedAreas = [];
         .ui.button.wmUnsaved i.icon{ color: #fff !important; }
         .wmUnsavedNote{ display: none; color: #c78e00; font-size: 0.9em; margin: 0 0.6em; white-space: nowrap; }
         .wmUnsavedNote.wmShow{ display: inline-block; }
-        #wmUnsavedDialog{ position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.45); display: none; }
-        #wmUnsavedDialog .wmDialogBox{
+        #wmDialog{ position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.45); display: none; }
+        #wmDialog .wmDialogBox{
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -30%);
             width: min(440px, 92vw); padding: 1.4em; border-radius: 0.6em;
             background: var(--theme_bg_primary, #fff); color: var(--text_color, #222);
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
         }
-        #wmUnsavedDialog h3{ margin-top: 0; }
-        #wmUnsavedDialog .wmDialogButtons{ text-align: right; margin-top: 1.2em; }
+        #wmDialog h3{ margin-top: 0; }
+        #wmDialog .wmDialogMessage{ white-space: pre-line; }
+        #wmDialog .wmDialogInput{ margin-top: 0.6em; }
+        #wmDialog .wmDialogButtons{ text-align: right; margin-top: 1.2em; }
     `;
     let style = document.createElement("style");
     style.id = "wmUnsavedStyle";
@@ -132,7 +163,9 @@ function wmFieldValue(el){
 // without a field (e.g. rows of a list that is saved with the area)
 function wmFieldValues(root){
     let r = $(root)[0];
-    let values = wmFields(root).map(el => (el.name || el.className || el.id || el.tagName) + "=" + JSON.stringify(wmFieldValue(el)));
+    // Keyed by position and id or name, not class names (which widgets
+    // like Semantic UI's checkbox change when they start)
+    let values = wmFields(root).map((el, i) => i + ":" + (el.id || el.name || el.tagName) + "=" + JSON.stringify(wmFieldValue(el)));
     $(r).find("[data-wm-value]").each(function(){
         let untracked = $(this).closest("[data-wm-untracked]")[0];
         if (untracked && untracked !== r && $.contains(r, untracked)) return;
@@ -281,13 +314,8 @@ function wmConfirmDiscard(scope, proceed){
         proceed();
         return;
     }
-    let top = window;
-    try {
-        if (window.parent && window.parent !== window && typeof window.parent.wmShowUnsavedDialog == "function"){
-            top = window.parent;
-        }
-    } catch(e) {}
-    top.wmShowUnsavedDialog(function(discard){
+    // The dialog opens in the top window (wmDialog)
+    wmShowUnsavedDialog(function(discard){
         if (discard){
             wmDiscardChanges(scope);
             proceed();
@@ -295,29 +323,125 @@ function wmConfirmDiscard(scope, proceed){
     });
 }
 
-function wmShowUnsavedDialog(callback){
-    let dialog = $("#wmUnsavedDialog");
+/*
+    Dialogs (instead of the browser's alert, confirm and prompt, which look
+    different and block the page)
+
+    wmDialog(opts, callback) shows one dialog at a time, in the top window
+    when this is a same-origin frame. opts:
+      title, message (text), icon (Semantic icon classes),
+      buttons  [{label, value, cls}] from left to right; the last has focus
+      input    {value, placeholder, maxlength} for a text box
+      cancel   the value given for Escape or a click outside (default false)
+    callback(value, inputText)
+*/
+function wmTopWindow(){
+    try {
+        if (window.parent && window.parent !== window && typeof window.parent.wmDialog == "function"){
+            return window.parent;
+        }
+    } catch(e) {}
+    return window;
+}
+
+function wmDialog(opts, callback){
+    let top = wmTopWindow();
+    if (top !== window){
+        top.wmDialog(opts, callback);
+        return;
+    }
+    callback = typeof callback == "function" ? callback : function(){};
+    let dialog = $("#wmDialog");
     if (dialog.length == 0){
-        dialog = $(`<div id="wmUnsavedDialog" role="dialog" aria-modal="true" aria-labelledby="wmUnsavedTitle">
+        dialog = $(`<div id="wmDialog" role="dialog" aria-modal="true" aria-labelledby="wmDialogTitle">
             <div class="wmDialogBox">
-                <h3 id="wmUnsavedTitle"><i class="orange exclamation triangle icon"></i>Unsaved changes</h3>
-                <p>Some changes have not been saved. Leaving now discards them.</p>
-                <div class="wmDialogButtons">
-                    <button class="ui basic button wmKeepEditing">Keep editing</button>
-                    <button class="ui red button wmDiscard">Discard changes</button>
-                </div>
+                <h3 id="wmDialogTitle"></h3>
+                <p class="wmDialogMessage"></p>
+                <div class="ui fluid input wmDialogInput"><input type="text"></div>
+                <div class="wmDialogButtons"></div>
             </div>
         </div>`).appendTo("body");
     }
-    let finish = function(discard){
+    let cancel = opts.cancel === undefined ? false : opts.cancel;
+    let title = dialog.find("#wmDialogTitle").empty();
+    if (opts.icon) title.append($("<i>").attr("class", opts.icon + " icon"));
+    title.append(document.createTextNode(opts.title || ""));
+    title.toggle(!!(opts.title || opts.icon));
+    dialog.find(".wmDialogMessage").text(opts.message || "").toggle(!!opts.message);
+    let input = dialog.find(".wmDialogInput input");
+    dialog.find(".wmDialogInput").toggle(!!opts.input);
+    if (opts.input){
+        input.val(opts.input.value || "").attr("placeholder", opts.input.placeholder || "").attr("maxlength", opts.input.maxlength || null);
+    }
+    let finish = function(value){
         dialog.hide();
-        $(document).off("keydown.wmUnsaved");
-        callback(discard);
+        $(document).off("keydown.wmDialog");
+        callback(value, opts.input ? input.val() : undefined);
     };
-    dialog.find(".wmKeepEditing").off("click").on("click", () => finish(false));
-    dialog.find(".wmDiscard").off("click").on("click", () => finish(true));
-    dialog.off("click").on("click", function(e){ if (e.target === this) finish(false); });
-    $(document).off("keydown.wmUnsaved").on("keydown.wmUnsaved", function(e){ if (e.key == "Escape") finish(false); });
+    let box = dialog.find(".wmDialogButtons").empty();
+    (opts.buttons || [{label: "OK", value: true}]).forEach(function(b){
+        $("<button>").addClass("ui button " + (b.cls || "basic")).text(b.label).on("click", () => finish(b.value)).appendTo(box);
+    });
+    dialog.off("click").on("click", function(e){ if (e.target === this) finish(cancel); });
+    $(document).off("keydown.wmDialog").on("keydown.wmDialog", function(e){
+        if (e.key == "Escape") finish(cancel);
+        if (e.key == "Enter" && opts.input && document.activeElement === input[0]) finish(opts.buttons ? opts.buttons[opts.buttons.length - 1].value : true);
+    });
     dialog.show();
-    dialog.find(".wmKeepEditing").focus();
+    if (opts.input){
+        input.trigger("focus").trigger("select");
+    }else{
+        box.find("button").last().trigger("focus");
+    }
 }
+
+// Asks a yes/no question: callback(true) if confirmed. opts: title,
+// okText, danger (red button), cancelText
+function wmConfirm(message, callback, opts={}){
+    wmDialog({
+        title: opts.title || "",
+        icon: opts.danger ? "orange exclamation triangle" : "",
+        message: message,
+        buttons: [
+            {label: opts.cancelText || "Cancel", value: false},
+            {label: opts.okText || "OK", value: true, cls: opts.danger ? "red" : "green"}
+        ]
+    }, function(v){ if (typeof callback == "function") callback(v === true); });
+}
+
+// Shows a message with an OK button. opts: title, error (red icon)
+function wmAlert(message, callback, opts={}){
+    wmDialog({
+        title: opts.title || (opts.error ? "Error" : ""),
+        icon: opts.error ? "red times circle" : "",
+        message: String(message),
+        buttons: [{label: "OK", value: true, cls: "basic"}],
+        cancel: true
+    }, function(){ if (typeof callback == "function") callback(); });
+}
+
+// Asks for a line of text: callback(text), or callback(null) if cancelled
+function wmPrompt(message, defaultValue, callback, opts={}){
+    wmDialog({
+        title: opts.title || "",
+        message: message,
+        input: {value: defaultValue || "", placeholder: opts.placeholder || "", maxlength: opts.maxlength},
+        buttons: [
+            {label: "Cancel", value: false},
+            {label: opts.okText || "OK", value: true, cls: "green"}
+        ]
+    }, function(v, text){ if (typeof callback == "function") callback(v === true ? text : null); });
+}
+
+function wmShowUnsavedDialog(callback){
+    wmDialog({
+        title: "Unsaved changes",
+        icon: "orange exclamation triangle",
+        message: "Some changes have not been saved. Leaving now discards them.",
+        buttons: [
+            {label: "Keep editing", value: false, cls: "basic wmKeepEditing"},
+            {label: "Discard changes", value: true, cls: "red wmDiscard"}
+        ]
+    }, function(v){ callback(v === true); });
+}
+

@@ -1,0 +1,12 @@
+{
+  "name": "waymark-ui-tests",
+  "private": true,
+  "description": "Browser tests of the Waymark admin UI (run by CI against a fresh instance)",
+  "type": "module",
+  "scripts": {
+    "test": "node ui.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Virtual directories of one proxy rule (or of the default site), opened in a side panel -->
+        <meta charset="utf-8">
+        <meta name="zoraxy.csrf.Token" content="{{.csrfToken}}">
+        <link rel="stylesheet" href="../script/semantic/semantic.min.css">
+        <script src="../script/jquery-3.6.0.min.js"></script>
+        <script src="../script/semantic/semantic.min.js"></script>
+        <script src="../script/utils.js"></script>
+    </head>
+    <body>
+        <link rel="stylesheet" href="../darktheme.css">
+        <script src="../script/darktheme.js"></script>
+        <br>
+        <div class="ui container">
+            <div class="ui header">
+                <div class="content">
+                    Virtual Directories
+                    <div class="sub header">Send requests under a path of <code class="epname"></code> to another destination</div>
+                </div>
+            </div>
+            <div class="ui divider"></div>
+            <div style="width: 100%; overflow-x: auto;">
+                <table class="ui celled unstackable compact table">
+                    <thead>
+                        <tr>
+                            <th>Path</th>
+                            <th>Destination</th>
+                            <th style="min-width: 6.5em;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="vdirList">
+                        <tr><td colspan="3"><i class="ui loading circle notch icon"></i> Loading</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="ui divider"></div>
+            <h4>Add a Virtual Directory</h4>
+            <div id="vdirAddForm" class="ui form">
+                <div class="field">
+                    <label>Path</label>
+                    <input type="text" id="vdirPath" placeholder="/mysite/">
+                    <small>Requests whose path starts with this go to the destination below, e.g. <code>/mysite/</code> matches <code><span class="epname"></span>/mysite/*</code></small>
+                </div>
+                <div class="field">
+                    <label>Destination (IP address or domain name, with port)</label>
+                    <input type="text" id="vdirDomain" placeholder="192.168.0.101:8000">
+                </div>
+                <div class="field">
+                    <div class="ui checkbox">
+                        <input type="checkbox" id="vdirReqTls">
+                        <label>The destination uses TLS (https)</label>
+                    </div>
+                </div>
+                <div class="field">
+                    <div class="ui checkbox">
+                        <input type="checkbox" id="vdirSkipVerify">
+                        <label>Do not check the destination's certificate<br><small>For self-signed or expired certificates (not recommended)</small></label>
+                    </div>
+                </div>
+                <button id="vdirAddBtn" class="ui basic button" onclick="addVdir(); return false;"><i class="green add icon"></i> Add Virtual Directory</button>
+            </div>
+            <div class="ui divider"></div>
+            <button class="ui basic button" style="float: right;" onclick="parent.hideSideWrapper(true);"><i class="remove icon"></i> Close</button>
+            <br><br><br>
+        </div>
+        <script>
+            // Payload in the hash: {ept: "host" | "root", ep: <rule's matching domain>}
+            let editing = {ept: "host", ep: ""};
+            try {
+                editing = Object.assign(editing, JSON.parse(decodeURIComponent(window.location.hash.substr(1))));
+            } catch (e) {}
+            $(".epname").text(editing.ept == "root" ? "the default site" : editing.ep);
+            let vdirs = [];
+
+            function notify(msg, ok=true){
+                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok); } else { wmAlert(msg, null, {error: !ok}); }
+            }
+
+            function apiData(extra){
+                // The API names the rule "endpoint" when adding and "path" otherwise
+                return Object.assign({type: editing.ept}, extra);
+            }
+
+            function tlsIcon(v){
+                if (!v.RequireTLS) return "";
+                return v.SkipCertValidations ? `<i class="yellow lock icon" title="TLS without certificate checks"></i>` : `<i class="green lock icon" title="TLS"></i>`;
+            }
+
+            function loadVdirs(){
+                let url = editing.ept == "root" ? "/api/proxy/vdir/list?type=root" : "/api/proxy/vdir/list?type=host&ep=" + encodeURIComponent(editing.ep);
+                $.get(url, function(data){
+                    if (data == null || data.error != undefined){
+                        notify(data ? data.error : "The virtual directories could not be loaded", false);
+                        return;
+                    }
+                    vdirs = data;
+                    renderVdirs();
+                });
+            }
+
+            function renderVdirs(){
+                let body = $("#vdirList").empty();
+                if (vdirs.length == 0){
+                    body.append(`<tr><td colspan="3"><i class="green check circle icon"></i> No virtual directories</td></tr>`);
+                    return;
+                }
+                vdirs.forEach(function(v, i){
+                    body.append(`<tr class="vdirRow" data-index="${i}">
+                        <td><code>${htmlEscape(v.MatchingPath)}</code></td>
+                        <td class="vdirDest">${htmlEscape(v.Domain)} ${tlsIcon(v)}</td>
+                        <td class="center aligned vdirActions">
+                            <button class="ui circular mini basic icon button" title="Edit" onclick="editVdir(${i});"><i class="edit icon"></i></button>
+                            <button class="ui circular mini red basic icon button" title="Delete" onclick="deleteVdir(${i});"><i class="trash icon"></i></button>
+                        </td>
+                    </tr>`);
+                });
+            }
+
+            // A row being edited is saved with its save button
+            function editVdir(i){
+                let v = vdirs[i];
+                let row = $(`#vdirList .vdirRow[data-index="${i}"]`);
+                if ($("#vdirList .vdirEditing").length) return;
+                row.addClass("vdirEditing");
+                row.find(".vdirDest").html(`
+                    <div class="ui mini fluid input"><input type="text" class="vdirEditDomain"></div>
+                    <div class="ui checkbox" style="margin-top: 0.4em;"><input type="checkbox" class="vdirEditTls"><label>Uses TLS</label></div><br>
+                    <div class="ui checkbox" style="margin-top: 0.4em;"><input type="checkbox" class="vdirEditSkip"><label>Do not check the certificate</label></div>`);
+                row.find(".vdirEditDomain").val(v.Domain);
+                row.find(".vdirEditTls").prop("checked", !!v.RequireTLS);
+                row.find(".vdirEditSkip").prop("checked", !!v.SkipCertValidations);
+                row.find(".vdirActions").html(`
+                    <button class="ui circular mini basic icon button vdirSaveBtn" title="Save" onclick="saveVdir(${i});"><i class="green save icon"></i></button>
+                    <button class="ui circular mini basic icon button" title="Cancel" onclick="loadVdirs();"><i class="remove icon"></i></button>`);
+                row.find(".ui.checkbox").checkbox();
+                wmTrackChanges(row, {saveButton: row.find(".vdirSaveBtn")}).reset();
+            }
+
+            function saveVdir(i){
+                let v = vdirs[i];
+                let row = $(`#vdirList .vdirRow[data-index="${i}"]`);
+                $.cjax({
+                    url: "/api/proxy/vdir/edit",
+                    method: "POST",
+                    data: apiData({
+                        path: editing.ept == "root" ? "" : editing.ep,
+                        vdir: v.MatchingPath,
+                        domain: row.find(".vdirEditDomain").val().trim(),
+                        reqTLS: row.find(".vdirEditTls")[0].checked,
+                        skipValid: row.find(".vdirEditSkip")[0].checked
+                    }),
+                    success: function(data){
+                        if (data.error != undefined){ notify(data.error, false); return; }
+                        notify("Virtual directory updated");
+                        loadVdirs();
+                    }
+                });
+            }
+
+            function deleteVdir(i){
+                let v = vdirs[i];
+                wmConfirm("Delete the virtual directory " + v.MatchingPath + "?", function(ok){
+                    if (!ok) return;
+                    $.cjax({
+                        url: "/api/proxy/vdir/del",
+                        method: "POST",
+                        data: apiData({ path: editing.ept == "root" ? "" : editing.ep, vdir: v.MatchingPath }),
+                        success: function(data){
+                            if (data.error != undefined){ notify(data.error, false); return; }
+                            notify("Virtual directory deleted");
+                            loadVdirs();
+                        }
+                    });
+                }, {okText: "Delete", danger: true});
+            }
+
+            // The add form is kept until "Add Virtual Directory"
+            $(".ui.checkbox").checkbox();
+            let vdirAddArea = wmTrackChanges("#vdirAddForm", {saveButton: "#vdirAddBtn"});
+            vdirAddArea.reset();
+
+            function addVdir(){
+                let path = $("#vdirPath").val().trim();
+                let domain = $("#vdirDomain").val().trim();
+                $("#vdirPath").parent().toggleClass("error", path == "");
+                $("#vdirDomain").parent().toggleClass("error", domain == "");
+                if (path == "" || domain == "") return;
+                $.cjax({
+                    url: "/api/proxy/vdir/add",
+                    method: "POST",
+                    data: apiData({
+                        endpoint: editing.ept == "root" ? "root" : editing.ep,
+                        path: path,
+                        domain: domain,
+                        reqTLS: $("#vdirReqTls")[0].checked,
+                        skipValid: $("#vdirSkipVerify")[0].checked
+                    }),
+                    success: function(data){
+                        if (data.error != undefined){ notify(data.error, false); return; }
+                        notify("Virtual directory added");
+                        $("#vdirPath, #vdirDomain").val("");
+                        $("#vdirReqTls, #vdirSkipVerify").prop("checked", false);
+                        vdirAddArea.reset();
+                        loadVdirs();
+                    }
+                });
+            }
+
+            // Fills in the TLS options from the destination
+            $("#vdirDomain").on("change", function(){
+                let target = $(this).val().trim();
+                if (target == "") return;
+                $.cjax({
+                    url: "/api/proxy/tlscheck?selfsignchk=true",
+                    method: "POST",
+                    data: {url: target},
+                    success: function(data){
+                        if (!data || data.error != undefined) return;
+                        if (data.protocol == "https"){
+                            $("#vdirReqTls").prop("checked", true);
+                            $("#vdirSkipVerify").prop("checked", !!data.selfsign);
+                        }else if (data.protocol == "http"){
+                            $("#vdirReqTls").prop("checked", false);
+                        }
+                    }
+                });
+            });
+
+            loadVdirs();
+        </script>
+    </body>
+</html>

@@ -323,9 +323,9 @@
             //Render an on or off state as a circular check or cross icon
             function stateIcon(enabled, tooltip){
                 if (enabled){
-                    return `<i class="green check circle icon" title="${tooltip}"></i>`;
+                    return `<i class="green check circle icon" title="${htmlEscape(tooltip)}"></i>`;
                 }
-                return `<i class="red times circle icon" title="${tooltip}"></i>`;
+                return `<i class="red times circle icon" title="${htmlEscape(tooltip)}"></i>`;
             }
 
             //Render a placeholder for a state that does not apply to this rule type
@@ -368,10 +368,10 @@
                                 }
                                 $("#exclusionPaths").append(` <tr>
                                     <td>${exceptionTypeToString(rule.RuleType)}</td>
-                                    <td>${rule.PathPrefix || rule.CIDR }</td>
+                                    <td>${htmlEscape(rule.PathPrefix || rule.CIDR )}</td>
                                     <td>${caseBadge}</td>
                                     <td>${trustProxyBadge}</td>
-                                    <td><button class="ui red basic mini circular icon button" onclick="removeExceptionPath(this);" etype="${rule.RuleType}" prefix="${rule.PathPrefix || rule.CIDR}"><i class="ui red times icon"></i></button></td>
+                                    <td><button class="ui red basic mini circular icon button" onclick="removeExceptionPath(this);" etype="${htmlEscape(rule.RuleType)}" prefix="${htmlEscape(rule.PathPrefix || rule.CIDR)}"><i class="ui red times icon"></i></button></td>
                                 </tr>`);
                             })
                         }   
@@ -398,7 +398,7 @@
                         password = `<span style="color: #c9c9c9;"><i class="eye slash outline icon"></i> Hidden<span>`;
                     }
                     var row = '<tr>' +
-                        '<td>' + username + '</td>' +
+                        '<td>' + htmlEscape(username) + '</td>' +
                         '<td>' + password + '</td>' +
                         '<td><button class="ui basic tiny circular button" onclick="removeCredentialFromEditingList(' + i + ');"><i class="red remove icon"></i> Remove</button></td>' +
                         '</tr>';

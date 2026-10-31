@@ -4,43 +4,58 @@
     (/api/custom/statusPanels, stored in conf/ui.json, which HA config sync
     copies to the other nodes) and apply in every browser.
 
-    Customize mode: drag a panel (or use its arrow buttons) to move it and
-    its eye button to hide or show it. Every change is saved at once.
+    Customize mode: drag a panel (or use its arrow buttons) to move it, its
+    width buttons to make it narrower or wider, and its eye button to hide
+    or show it. Every change is saved at once.
 */
 (function(){
     // def: shown when the user has not chosen yet. The default order is the
     // order of the tiles in components/status.html.
+    // sizes: the widths a panel offers (its default is data-size in the markup)
+    const CARD = ["quarter", "third", "half"];
+    const WIDE = ["half", "full"];
+    const DETAIL = ["third", "half", "full"];
     const PANELS = [
-        { id: "flowDiagram",        group: "Overview",      label: "Traffic flow diagram",            def: true },
-        { id: "networkIO",          group: "Overview",      label: "Realtime network input / output", def: true },
-        { id: "visitorLocations",   group: "Overview",      label: "Visitor locations (GeoIP map)",   def: false },
-        { id: "cardTotalRequests",  group: "Summary cards", label: "Total requests",                  def: true },
-        { id: "cardUniqueVisitors", group: "Summary cards", label: "Unique visitors",                 def: true },
-        { id: "cardBandwidth",      group: "Summary cards", label: "Bandwidth",                       def: true },
-        { id: "cardErrorRate",      group: "Summary cards", label: "Error rate",                      def: true },
-        { id: "cardActiveConns",    group: "Summary cards", label: "Active connections",              def: true },
-        { id: "cardProxyHosts",     group: "Summary cards", label: "Proxy rules",                     def: true },
-        { id: "cardUpstreams",      group: "Summary cards", label: "Destination servers",             def: true },
-        { id: "cardCountries",      group: "Summary cards", label: "Countries (GeoIP)",               def: false },
-        { id: "haCluster",          group: "Details",       label: "High availability cluster (when HA is on)", def: true },
-        { id: "upstreamHealth",     group: "Details",       label: "Destination health",              def: true },
-        { id: "cacheToday",         group: "Details",       label: "Static file cache (today)",       def: true },
-        { id: "cacheMemory",        group: "Details",       label: "Cache memory use",                def: true },
-        { id: "topPaths",           group: "Details",       label: "Top requested paths",             def: true },
-        { id: "requestMethods",     group: "Details",       label: "Request methods",                 def: true },
-        { id: "tlsOverview",        group: "Details",       label: "SSL / TLS overview",              def: true },
-        { id: "systemResources",    group: "Details",       label: "System resources and uptime",     def: true }
+        { id: "flowDiagram",        group: "Overview",      label: "Traffic flow diagram",            def: true,  sizes: ["half", "twothirds", "full"] },
+        { id: "networkIO",          group: "Overview",      label: "Realtime network input / output", def: true,  sizes: ["third", "half", "full"] },
+        { id: "visitorLocations",   group: "Overview",      label: "Visitor locations (GeoIP map)",   def: false, sizes: WIDE },
+        { id: "cardTotalRequests",  group: "Summary cards", label: "Total requests",                  def: true,  sizes: CARD },
+        { id: "cardUniqueVisitors", group: "Summary cards", label: "Unique visitors",                 def: true,  sizes: CARD },
+        { id: "cardBandwidth",      group: "Summary cards", label: "Bandwidth",                       def: true,  sizes: CARD },
+        { id: "cardErrorRate",      group: "Summary cards", label: "Error rate",                      def: true,  sizes: CARD },
+        { id: "cardActiveConns",    group: "Summary cards", label: "Active connections",              def: true,  sizes: CARD },
+        { id: "cardProxyHosts",     group: "Summary cards", label: "Proxy rules",                     def: true,  sizes: CARD },
+        { id: "cardUpstreams",      group: "Summary cards", label: "Destination servers",             def: true,  sizes: CARD },
+        { id: "cardCountries",      group: "Summary cards", label: "Countries (GeoIP)",               def: false, sizes: CARD },
+        { id: "haCluster",          group: "Details",       label: "High availability (when HA is on)", def: true, sizes: WIDE },
+        { id: "clusterStats",       group: "Details",       label: "Cluster nodes (when HA is on)",   def: true,  sizes: WIDE },
+        { id: "upstreamHealth",     group: "Details",       label: "Destination health",              def: true,  sizes: WIDE },
+        { id: "cacheToday",         group: "Details",       label: "Static file cache (today)",       def: true,  sizes: DETAIL },
+        { id: "cacheMemory",        group: "Details",       label: "Cache memory use",                def: true,  sizes: DETAIL },
+        { id: "topPaths",           group: "Details",       label: "Top requested paths",             def: true,  sizes: DETAIL },
+        { id: "requestMethods",     group: "Details",       label: "Request methods",                 def: true,  sizes: DETAIL },
+        { id: "tlsOverview",        group: "Details",       label: "SSL / TLS overview",              def: true,  sizes: DETAIL },
+        { id: "systemResources",    group: "Details",       label: "System resources and uptime",     def: true,  sizes: DETAIL }
     ];
+    const SIZE_LABELS = { quarter: "¼", third: "⅓", half: "½", twothirds: "⅔", full: "Full" };
+    const SIZE_TITLES = { quarter: "A quarter of the row", third: "A third of the row", half: "Half the row", twothirds: "Two thirds of the row", full: "The whole row" };
     const DEFAULT_ORDER = PANELS.map(p => p.id);
 
     let visible = {};   // panel id -> true/false (only panels the user changed)
     let order = [];     // saved panel order (may miss panels added later)
+    let sizes = {};     // panel id -> width (only panels the user changed)
+    let defaultSizes = {}; // panel id -> width in the markup
     let customizing = false;
     let dragged = null;
 
     function panel(id){ return PANELS.find(p => p.id == id); }
     function grid(){ return $("#zrPanelGrid"); }
     function tile(id){ return grid().children(".zrTile").filter(function(){ return $(this).attr("data-panel") == id; }); }
+
+    function sizeOf(p){
+        let s = sizes[p.id];
+        return (s && p.sizes.includes(s)) ? s : defaultSizes[p.id];
+    }
 
     function isEnabled(p){
         return Object.prototype.hasOwnProperty.call(visible, p.id) ? visible[p.id] === true : p.def;
@@ -87,6 +102,8 @@
         }
         PANELS.forEach(function(p){
             let t = tile(p.id);
+            if (t.length && sizeOf(p)) t.attr("data-size", sizeOf(p));
+            t.find(".zrTileSizeBtn").each(function(){ $(this).toggleClass("active", $(this).attr("data-size") == sizeOf(p)); });
             t.toggleClass("zrPanelHidden", !isEnabled(p));
             t.find(".zrTileVisBtn i").attr("class", isEnabled(p) ? "eye icon" : "eye slash icon");
             t.find(".zrTileVisBtn").attr("title", isEnabled(p) ? "Hide this panel" : "Show this panel");
@@ -104,7 +121,7 @@
             $.cjax({
                 url: "/api/custom/statusPanels",
                 method: "POST",
-                data: { panels: JSON.stringify(visible), order: JSON.stringify(order) },
+                data: { panels: JSON.stringify(visible), order: JSON.stringify(order), sizes: JSON.stringify(sizes) },
                 success: function(data){
                     if (data && data.error != undefined && typeof msgbox === "function"){
                         msgbox(data.error, false);
@@ -123,6 +140,16 @@
         save();
     }
 
+    function setSize(id, size){
+        if (size == defaultSizes[id]){
+            delete sizes[id];
+        }else{
+            sizes[id] = size;
+        }
+        apply();
+        save();
+    }
+
     function orderChanged(){
         order = currentOrder();
         save();
@@ -137,9 +164,11 @@
             if (t.children(".zrTileOverlay").length) return;
             let p = panel(t.attr("data-panel"));
             if (!p) return;
+            let sizeBtns = p.sizes.map(sz => `<button class="ui mini basic button zrTileSizeBtn" data-size="${sz}" title="Width: ${SIZE_TITLES[sz]}">${SIZE_LABELS[sz]}</button>`).join("");
             t.append(`<div class="zrTileOverlay" draggable="true" title="Drag to move">
                 <span class="zrTileName"><i class="grip vertical icon"></i>${htmlEscape(p.label)}</span>
                 <span class="zrTileButtons">
+                    <span class="ui mini buttons zrTileSizes">${sizeBtns}</span>
                     <button class="ui mini basic icon button zrTileMoveBtn" data-dir="-1" title="Move earlier"><i class="arrow left icon"></i></button>
                     <button class="ui mini basic icon button zrTileMoveBtn" data-dir="1" title="Move later"><i class="arrow right icon"></i></button>
                     <button class="ui mini basic icon button zrTileVisBtn"><i class="eye icon"></i></button>
@@ -176,6 +205,10 @@
             }
             orderChanged();
             $(this).trigger("focus");
+        });
+        g.on("click", ".zrTileSizeBtn", function(e){
+            e.preventDefault();
+            setSize($(this).closest(".zrTile").attr("data-panel"), $(this).attr("data-size"));
         });
         g.on("click", ".zrTileVisBtn", function(e){
             e.preventDefault();
@@ -242,7 +275,7 @@
         let html = `<div class="standardContainer nobottom" id="zrPanelSettings" style="display:none;">
             <div class="dashboard-card">
                 <h4>Customize panels</h4>
-                <p class="cardSubtitle">Drag a panel below, or use its arrows, to move it. Turn panels on or off here or with their eye button. Changes are saved at once for every browser and copied to the other nodes by HA config sync.</p>
+                <p class="cardSubtitle">Drag a panel below, or use its arrows, to move it, and its width buttons to resize it. Turn panels on or off here or with their eye button. Changes are saved at once for every browser and copied to the other nodes by HA config sync.</p>
                 <div class="ui three column stackable grid">`;
         Object.keys(groups).forEach(g => {
             html += `<div class="column"><b>${g}</b>`;
@@ -270,6 +303,7 @@
         $("#zrPanelReset").on("click", function(){
             visible = {};
             order = [];
+            sizes = {};
             apply();
             save();
         });
@@ -295,17 +329,22 @@
             border-radius: 0.5em; padding: 0.3em 0.6em; font-weight: 600;
             box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
-        #status .zrTileOverlay .zrTileButtons{ white-space: nowrap; }
+        #status .zrTileOverlay .zrTileButtons{ white-space: nowrap; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.2em; }
+        #status .zrTileOverlay .zrTileSizes{ margin-right: 0.3em; }
+        #status .zrTileOverlay .zrTileSizes .button{ padding: 0.5em 0.6em !important; }
+        #status .zrTileOverlay .zrTileSizes .button.active{ background: var(--theme_green, #21ba45) !important; color: #fff !important; }
         #status .zrTileOverlay .zrTileButtons .button{ background: var(--theme_bg_primary) !important; margin: 0 0 0 0.2em; }
         #status .zrTile.zrDragging{ opacity: 0.35; }
     `).appendTo("head");
 
+    grid().children(".zrTile").each(function(){ defaultSizes[$(this).attr("data-panel")] = $(this).attr("data-size"); });
     apply();
     bindCustomizeEvents();
     $.get("/api/custom/statusPanels", function(data){
         if (data && data.error == undefined && typeof data === "object"){
             visible = (data.visible && typeof data.visible === "object") ? data.visible : {};
             order = Array.isArray(data.order) ? data.order : [];
+            sizes = (data.sizes && typeof data.sizes === "object") ? data.sizes : {};
         }
         renderSettings();
         apply();

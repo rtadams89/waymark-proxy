@@ -218,9 +218,9 @@
             let formDirty = false;
             let hcArea = wmTrackChanges("#hcForm", {saveButton: "#hcSaveBtn"});
 
-            function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html(); }
+            function esc(s){ return htmlEscape(s); }
             function notify(msg, ok=true, ms=undefined){
-                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { alert(msg); }
+                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { wmAlert(msg, null, {error: true}); }
             }
             function ago(ts){
                 if (!ts) return "";

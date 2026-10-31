@@ -246,7 +246,7 @@
 				if (parent !== undefined && parent.msgbox !== undefined){
 					parent.msgbox(message, isSuccess);
 				}else{
-					alert(message);
+					wmAlert(message, null, {error: true});
 				}
 			}
 
@@ -476,22 +476,22 @@
 
 			function disableUserTOTP(){
 				const username = $('#editOriginalUsername').val();
-				if (!confirm('Disable 2FA for user "' + username + '"? The user will no longer need a TOTP code to sign in.')){
-					return;
-				}
-				$.cjax({
-					url: '/api/sso/zorxauth/users/disable2fa',
-					method: 'POST',
-					data: { username: username },
-					success: function(data){
-						if (data.error !== undefined){
-							notify(data.error, false);
-							return;
+				wmConfirm('Disable 2FA for user "' + username + '"? The user will no longer need a TOTP code to sign in.', function(ok){
+					if (!ok){ return; }
+					$.cjax({
+						url: '/api/sso/zorxauth/users/disable2fa',
+						method: 'POST',
+						data: { username: username },
+						success: function(data){
+							if (data.error !== undefined){
+								notify(data.error, false);
+								return;
+							}
+							notify('2FA disabled for ' + username);
+							$('#disable2faBtn').hide();
+							loadUsers();
 						}
-						notify('2FA disabled for ' + username);
-						$('#disable2faBtn').hide();
-						loadUsers();
-					}
+					});
 				});
 			}
 
@@ -590,24 +590,24 @@
 			function deleteUser(buttonObject){
 				const row = $(buttonObject).closest('.userRow');
 				const username = row.attr('data-username');
-				if (!confirm('Delete user "' + username + '"?')){
-					return;
-				}
+				wmConfirm('Delete user "' + username + '"?', function(ok){
+					if (!ok){ return; }
 
-				$.cjax({
-					url: '/api/sso/zorxauth/users/delete',
-					method: 'POST',
-					data: {
-						username: username
-					},
-					success: function(data){
-						if (data.error !== undefined){
-							notify(data.error, false);
-							return;
+					$.cjax({
+						url: '/api/sso/zorxauth/users/delete',
+						method: 'POST',
+						data: {
+							username: username
+						},
+						success: function(data){
+							if (data.error !== undefined){
+								notify(data.error, false);
+								return;
+							}
+							notify('User deleted');
+							loadUsers();
 						}
-						notify('User deleted');
-						loadUsers();
-					}
+					});
 				});
 			}
 
@@ -779,22 +779,22 @@
 				const row = $(btn).closest('.gpRow');
 				const name = row.attr('data-name');
 				const id = row.attr('data-id');
-				if (!confirm('Delete group policy "' + name + '"? Users assigned to this policy will fall back to their own allowed hosts.')){
-					return;
-				}
+				wmConfirm('Delete group policy "' + name + '"? Users assigned to this policy will fall back to their own allowed hosts.', function(ok){
+					if (!ok){ return; }
 
-				$.cjax({
-					url: '/api/sso/zorxauth/grouppolicy/delete',
-					method: 'POST',
-					data: { id: id },
-					success: function(data){
-						if (data.error !== undefined){
-							notify(data.error, false);
-							return;
+					$.cjax({
+						url: '/api/sso/zorxauth/grouppolicy/delete',
+						method: 'POST',
+						data: { id: id },
+						success: function(data){
+							if (data.error !== undefined){
+								notify(data.error, false);
+								return;
+							}
+							notify('Group policy deleted');
+							loadGroupPolicies(function(){ loadUsers(); });
 						}
-						notify('Group policy deleted');
-						loadGroupPolicies(function(){ loadUsers(); });
-					}
+					});
 				});
 			}
 		</script>

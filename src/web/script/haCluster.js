@@ -7,7 +7,7 @@
 */
 (function(){
     // Also escapes quotes: values go into title="..." and data-... attributes
-    function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html().replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+    function esc(s){ return htmlEscape(s); }
     function since(ts){
         if (!ts) return "";
         let s = Math.max(0, Math.round(Date.now() / 1000 - ts));

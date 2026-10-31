@@ -525,7 +525,7 @@
     function renderBulkVdirResult(data) {
         function line(label, arr) {
             if (!arr || arr.length == 0) { return ''; }
-            return '<div><b>' + label + ' (' + arr.length + '):</b> ' + arr.join(', ') + '</div>';
+            return '<div><b>' + label + ' (' + arr.length + '):</b> ' + arr.map(htmlEscape).join(', ') + '</div>';
         }
         var html = '';
         html += line('Created', data.created);
@@ -888,25 +888,25 @@
         Logout all users handler.
     */
     function logoutAllUsers() {
-        if (!confirm("Are you sure you want to logout ALL users? This will terminate all active sessions and cannot be undone.")) {
-            return;
-        }
+        wmConfirm("Are you sure you want to logout ALL users? This will terminate all active sessions and cannot be undone.", function(ok){
+            if (!ok){ return; }
 
-        $.cjax({
-            url: '/api/sso/zorxauth/users/logoutAll',
-            method: 'POST',
-            success: function(data) {
-                if (data.error !== undefined) {
-                    msgbox(data.error, false);
-                    return;
+            $.cjax({
+                url: '/api/sso/zorxauth/users/logoutAll',
+                method: 'POST',
+                success: function(data) {
+                    if (data.error !== undefined) {
+                        msgbox(data.error, false);
+                        return;
+                    }
+                    msgbox('All users have been logged out successfully', true);
+                    console.log('All users logged out:', data);
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('Error logging out all users:', textStatus, errorThrown);
+                    msgbox('Error logging out all users, check console', false);
                 }
-                msgbox('All users have been logged out successfully', true);
-                console.log('All users logged out:', data);
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Error logging out all users:', textStatus, errorThrown);
-                msgbox('Error logging out all users, check console', false);
-            }
+            });
         });
     }
 </script>

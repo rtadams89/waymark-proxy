@@ -8,7 +8,7 @@
     .lpTools, .lpNotice, .lpCount and table.
 */
 (function(){
-    function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html().replace(/"/g, "&quot;"); }
+    function esc(s){ return htmlEscape(s); }
     // The API returns HTML-escaped text; turn it back into plain text
     function unescapeHTML(s){ let t = document.createElement("textarea"); t.innerHTML = s; return t.value; }
     function fmtSize(n){

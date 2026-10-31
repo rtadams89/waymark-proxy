@@ -631,7 +631,7 @@
             var password = credential.password.replace(/./g, '*'); // Replace each character with '*'
 
             var row = '<tr>' +
-                '<td>' + username + '</td>' +
+                '<td>' + htmlEscape(username) + '</td>' +
                 '<td>' + password + '</td>' +
                 '<td><button class="ui basic button" onclick="removeCredential(' + i + ');"><i class="red remove icon"></i> Remove</button></td>' +
                 '</tr>';

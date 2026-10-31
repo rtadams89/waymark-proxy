@@ -286,7 +286,8 @@
         Statistics Operations
     */
     function handleResetAllStats(){
-        if (confirm("Confirm remove ALL statistics from the system? This action is irreversible.")){
+        wmConfirm("Confirm remove ALL statistics from the system? This action is irreversible.", function(ok){
+            if (!ok) return;
             $.cjax({
                 url: "/api/analytic/resetAll",
                 method: "POST",
@@ -298,6 +299,6 @@
                     }
                 }
             })
-        }
+        });
     }
 

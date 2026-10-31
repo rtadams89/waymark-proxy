@@ -525,6 +525,13 @@
                 <div id="zrHABox"></div>
             </div>
     </div>
+    <div class="zrTile" id="zrClusterStatsRow" style="display:none;" data-panel="clusterStats" data-size="full">
+        <div class="dashboard-card dbstatCard" id="zrClusterStatsCard">
+                <h4>Cluster Nodes</h4>
+                <p class="cardSubtitle">Traffic today and resource use of each node (needs configuration sync on)</p>
+                <div id="zrClusterStatsBox" style="overflow-x: auto;"></div>
+            </div>
+    </div>
     <div class="zrTile" id="zrHealthRow" data-panel="upstreamHealth" data-size="full">
         <div class="dashboard-card dbstatCard" id="zrHealthCard">
                 <h4>Destination Health</h4>
@@ -626,7 +633,6 @@
                         <div class="certOverviewValue" id="certExpired">-</div>
                     </div>
                 </div>
-                <button class="ui fluid basic small button" style="margin-top: 1em;" onclick="openTabById('cert');">Manage Certificates</button>
             </div>
     </div>
     <div class="zrTile" data-panel="systemResources" data-size="half">
@@ -911,7 +917,7 @@
             top5.forEach(function(entry){
                 let isoCode = entry[0].toLowerCase();
                 let countryName = getCountryName(entry[0]);
-                let flagIcon = `<i class="${isoCode} flag"></i>`;
+                let flagIcon = `<i class="${htmlEscape(isoCode)} flag"></i>`;
                 if (countryName == "" || isoCode == "local"){
                     countryName = "LAN / Reserved";
                     flagIcon = `<i class="home icon"></i>`;

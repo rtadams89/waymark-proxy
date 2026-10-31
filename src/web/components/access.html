@@ -223,27 +223,30 @@
     };
 
     window.aclDuplicate = function(id, name){
-        let newName = prompt("Name of the copy", name + " (copy)");
-        if (!newName) return;
-        $.cjax({
-            url: "/api/acl/duplicate", method: "POST", data: {id: id, name: newName},
-            success: function(d){
-                if (d.error != undefined){ msgbox(d.error, false, 5000); return; }
-                msgbox("ACL copied");
-                aclLoadList();
-            }
-        });
+        wmPrompt("Name of the copy", name + " (copy)", function(newName){
+            if (!newName) return;
+            $.cjax({
+                url: "/api/acl/duplicate", method: "POST", data: {id: id, name: newName},
+                success: function(d){
+                    if (d.error != undefined){ msgbox(d.error, false, 5000); return; }
+                    msgbox("ACL copied");
+                    aclLoadList();
+                }
+            });
+        }, {title: "Duplicate ACL", okText: "Duplicate", maxlength: 64});
     };
 
     window.aclDelete = function(id, name){
-        if (!confirm("Delete the ACL " + name + "?")) return;
-        $.cjax({
-            url: "/api/acl/delete", method: "POST", data: {id: id},
-            success: function(d){
-                if (d.error != undefined){ msgbox(d.error, false, 6000); return; }
-                msgbox("ACL deleted");
-                aclLoadList();
-            }
+        wmConfirm("Delete the ACL " + name + "?", function(ok){
+            if (!ok){ return; }
+            $.cjax({
+                url: "/api/acl/delete", method: "POST", data: {id: id},
+                success: function(d){
+                    if (d.error != undefined){ msgbox(d.error, false, 6000); return; }
+                    msgbox("ACL deleted");
+                    aclLoadList();
+                }
+            });
         });
     };
 
@@ -437,8 +440,10 @@
     };
 
     window.aclDeleteRule = function(i){
-        if (!confirm("Delete rule #" + (i + 1) + "?")) return;
-        saveRules(rules => rules.splice(i, 1), "Rule deleted");
+        wmConfirm("Delete rule #" + (i + 1) + "?", function(ok){
+            if (!ok){ return; }
+            saveRules(rules => rules.splice(i, 1), "Rule deleted");
+        });
     };
 
     window.aclRename = function(){

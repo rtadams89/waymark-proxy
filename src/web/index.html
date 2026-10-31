@@ -66,9 +66,6 @@
                             <a class="item" tag="rules" tab_group="proxy" highlight="httprp" style="display: none;">
                                 <i class="simplistic plus square icon"></i> Add Proxy Rule
                             </a>
-                            <a class="item" tag="vdir" tab_group="proxy" highlight="httprp" style="display: none;">
-                                <i class="simplistic folder icon"></i> Virtual Directories
-                            </a>
                             <a class="item" tag="redirectset" tab_group="proxy">
                                 <i class="simplistic level up alternate icon"></i> Redirects
                             </a>
@@ -219,7 +216,6 @@
                 <div id="globalsettings" class="functiontab" target="globalsettings.html"></div>
 
                 <!-- Virtual Directory Tab -->
-                <div id="vdir" class="functiontab" target="vdir.html"></div>
 
                 <!-- Subdomain Proxy -->
                 <div id="httprp" class="functiontab" target="httprp.html"></div>
@@ -366,7 +362,7 @@
                 }else if (loadingComponents == 0){
                     callback();
                 }else{
-                    alert("Missing component. Please check if your installation is complete.")
+                    wmAlert("Missing component. Please check if your installation is complete.", null, {error: true})
                 }
             }
 
@@ -537,7 +533,7 @@
                     targetBtn = getTabButtonById(tabID);
                 }
                 if (targetBtn == undefined){
-                    alert("Invalid tabid given");
+                    msgbox("That page does not exist", false);
                     return;
                 }
                 if (window.innerWidth < 750){

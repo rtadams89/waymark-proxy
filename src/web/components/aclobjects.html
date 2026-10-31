@@ -160,14 +160,17 @@
 
     window.objDelete = function(id){
         let o = all[id];
-        if (!o || !confirm("Delete the object " + o.name + "?")) return;
-        $.cjax({
-            url: "/api/acl/object/delete", method: "POST", data: {id: id},
-            success: function(d){
-                if (d.error != undefined){ msgbox(d.error, false, 6000); return; }
-                msgbox("Object deleted");
-                objLoadList();
-            }
+        if (!o) return;
+        wmConfirm("Delete the object " + o.name + "?", function(ok){
+            if (!ok){ return; }
+            $.cjax({
+                url: "/api/acl/object/delete", method: "POST", data: {id: id},
+                success: function(d){
+                    if (d.error != undefined){ msgbox(d.error, false, 6000); return; }
+                    msgbox("Object deleted");
+                    objLoadList();
+                }
+            });
         });
     };
 

@@ -179,7 +179,7 @@ sudo sysctl --system</pre></div>
         let haLoaded = false;
         let haStatus = null;
 
-        function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html(); }
+        function esc(s){ return htmlEscape(s); }
         function ago(ts){
             if (!ts) return "";
             let s = Math.max(0, Math.round(Date.now()/1000 - ts));
@@ -491,16 +491,18 @@ sudo sysctl --system</pre></div>
             if (c.preempt && target && activeCfg && target.priority < activeCfg.priority){
                 text += "\n\nPreempt is on and " + active.name + " has the higher priority, so it takes the floating IPs back about 30 seconds later. Turn preempt off to keep " + name + " active.";
             }
-            if (!confirm(text)) return;
-            actionMsg("Asking the active node to hand over to " + name + "...", true);
-            $.cjax({
-                url: "/api/ha/switchover", method: "POST", data: { target: name }, timeout: 30000,
-                success: function(d){
-                    if (d.error != undefined){ actionMsg(d.error, false); return; }
-                    actionMsg(d.message, true);
-                    setTimeout(function(){ haLoad(false); }, 1500);
-                },
-                error: function(){ actionMsg("Request failed", false); }
+            wmConfirm(text, function(ok){
+                if (!ok){ return; }
+                actionMsg("Asking the active node to hand over to " + name + "...", true);
+                $.cjax({
+                    url: "/api/ha/switchover", method: "POST", data: { target: name }, timeout: 30000,
+                    success: function(d){
+                        if (d.error != undefined){ actionMsg(d.error, false); return; }
+                        actionMsg(d.message, true);
+                        setTimeout(function(){ haLoad(false); }, 1500);
+                    },
+                    error: function(){ actionMsg("Request failed", false); }
+                });
             });
         };
 
@@ -516,18 +518,20 @@ sudo sysctl --system</pre></div>
                 text += "\n\n" + name + " is the active node: the floating IPs move to the standby while it restarts. To choose when that happens, use Make active on the other node first.";
             }
             if (upd.major) text += "\n\n" + v + " is a new major version: read its release notes first.";
-            if (!confirm(text)) return;
-            let req = self ? { url: "/api/update/install", data: { version: v } } : { url: "/api/update/peer", data: { node: name, version: v } };
-            actionMsg("Starting the update on " + name + "...", true);
-            $.cjax({
-                url: req.url, method: "POST", data: req.data, timeout: 60000,
-                success: function(d){
-                    if (d.error != undefined){ actionMsg(d.error, false); return; }
-                    actionMsg(d.message, true);
-                    if (self && window.updWaitForRestart){ updWaitForRestart(); }
-                    setTimeout(function(){ haLoad(false); }, 2000);
-                },
-                error: function(){ actionMsg("Request failed", false); }
+            wmConfirm(text, function(ok){
+                if (!ok){ return; }
+                let req = self ? { url: "/api/update/install", data: { version: v } } : { url: "/api/update/peer", data: { node: name, version: v } };
+                actionMsg("Starting the update on " + name + "...", true);
+                $.cjax({
+                    url: req.url, method: "POST", data: req.data, timeout: 60000,
+                    success: function(d){
+                        if (d.error != undefined){ actionMsg(d.error, false); return; }
+                        actionMsg(d.message, true);
+                        if (self && window.updWaitForRestart){ updWaitForRestart(); }
+                        setTimeout(function(){ haLoad(false); }, 2000);
+                    },
+                    error: function(){ actionMsg("Request failed", false); }
+                });
             });
         };
 
@@ -574,12 +578,18 @@ sudo sysctl --system</pre></div>
         };
 
         window.haNewKey = function(){
-            if ($("#haClusterKey").val().trim() != "" && !confirm("Replace the cluster key? Sync stops until the new key is on every node.")) return;
-            // Made in the browser
-            let b = new Uint8Array(32);
-            window.crypto.getRandomValues(b);
-            let k = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
-            $("#haClusterKey").val(k).attr("type", "text");
+            let wmGo = function(){
+                // Made in the browser
+                let b = new Uint8Array(32);
+                window.crypto.getRandomValues(b);
+                let k = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+                $("#haClusterKey").val(k).attr("type", "text");
+            };
+            if ($("#haClusterKey").val().trim() != ""){
+                wmConfirm("Replace the cluster key? Sync stops until the new key is on every node.", function(ok){ if (ok) wmGo(); });
+                return;
+            }
+            wmGo();
         };
 
         window.haLoad = function(fill){

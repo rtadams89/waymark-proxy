@@ -76,7 +76,7 @@
                     success: function(data){
                         if (data.error != undefined){
                             //This endpoint not exists?
-                            alert(data.error);
+                            wmAlert(data.error, null, {error: true});
                             return;
                         }else{
                             $("#inlineEditTable").html("");
@@ -154,12 +154,12 @@
             function renderAliasList(){
                 $("#inlineEditTable").html("");
                 aliasList.forEach(aliasDomain => {
-                    let domainLink = `<a href="//${aliasDomain}" target="_blank">${aliasDomain}</a>`
+                    let domainLink = `<a href="//${htmlEscape(aliasDomain)}" target="_blank">${htmlEscape(aliasDomain)}</a>`
                     if (aliasDomain.includes("*")){
                         //This is a wildcard hostname
-                        domainLink = aliasDomain;
+                        domainLink = htmlEscape(aliasDomain);
                     }
-                    let removeCell = `<button class="ui basic mini circular icon button" onclick="removeAliasDomain('${aliasDomain}');"><i class="red trash icon"></i></button>`;
+                    let removeCell = `<button class="ui basic mini circular icon button" onclick="removeAliasDomain(${jsArg(aliasDomain)});"><i class="red trash icon"></i></button>`;
                     if (requiredHosts.includes(aliasDomain.toLowerCase())){
                         removeCell = `<span class="ui mini basic label" title="An address or DNS name of this node or cluster: Waymark keeps it so the admin console stays reachable"><i class="lock icon"></i> Required</span>`;
                     }

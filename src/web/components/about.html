@@ -35,10 +35,6 @@
                         <td class="version"></td>
                     </tr>
                     <tr>
-                        <td>Based on</td>
-                        <td class="upstreamBase"></td>
-                    </tr>
-                    <tr>
                         <td>Build</td>
                         <td class="development"></td>
                     </tr>
@@ -60,26 +56,20 @@
             <p><a href="https://github.com/rtadams89/waymark-proxy" target="_blank"><i class="code icon"></i>Complete source code</a> · <a href="https://github.com/rtadams89/waymark-proxy/blob/main/LICENSE" target="_blank"><i class="file alternate outline icon"></i>License text</a> · <a href="https://github.com/tobychui/zoraxy" target="_blank"><i class="github icon"></i>Zoraxy</a></p>
         </div>
         <div class="ui divider"></div>
-        <!-- Financial Supporters -->
-        <h3><i class="heart red icon"></i> Zoraxy's Financial Supporters</h3>
-        <p>Waymark Proxy is built on Zoraxy, which is made possible by the generosity of its supporters. Thank you to everyone who has donated to keep Zoraxy free and open source.</p>
-        <div class="ui basic segment">
-            <div id="supportersList" class="ui">
-                <div class="ui active centered inline loader" style="margin: 2em 0;"></div>
-            </div>
-        </div>
-        <div class="ui divider"></div>
-        <!-- Privacy Notice -->
-        <div class="ui info message">
-            <i class="info circle icon"></i>
-            <strong>Privacy Notice:</strong> If you would prefer not to have your name displayed here, please open a pull request on the
-            <a href="https://github.com/tobychui/zoraxy" target="_blank">Zoraxy GitHub repository</a>
-            and edit the <code>src/web/script/supporters.txt</code> file — you may replace your name with a pseudonym or any text you like.
-            We fully respect your privacy and will merge such requests promptly.
-        </div>
+        <!-- Zoraxy's financial supporters, folded away -->
+        <details id="aboutSupporters">
+            <summary>Zoraxy's financial supporters <span class="supporterCount"></span></summary>
+            <p>Waymark Proxy is built on Zoraxy, which its supporters' donations keep free and open source.</p>
+            <p id="supportersList" class="supporterNames">Loading</p>
+        </details>
     </div>
     <br>
 </div>
+<style>
+    #aboutSupporters summary{ cursor: pointer; color: var(--text_color_secondary); }
+    #aboutSupporters p{ margin-top: 0.6em; }
+    #aboutSupporters .supporterNames{ color: var(--text_color_secondary); font-size: 0.9em; line-height: 1.6; }
+</style>
 <script>
     $("#aboutLicense .year").text(new Date().getFullYear());
     $.get("/api/info/x", function(data){
@@ -114,14 +104,11 @@
         $("#zoraxyinfo .uuid").text(data.NodeUUID);
         $("#zoraxyinfo .development").text(data.Development?"Development":"Release");
         $("#zoraxyinfo .version").text(data.Version);
-        $.get("/api/info/brand", function(b){ if (b && b.upstreamBase){ $("#zoraxyinfo .upstreamBase").text("Zoraxy " + b.upstreamBase); } });
         $(".zrversion").text("v." + data.Version); //index footer
         $("#zoraxyinfo .boottime").text(timeConverter(data.BootTime) + ` ( ${secondsToDhms(parseInt(Date.now()/1000) - data.BootTime)} ago)`);
     });
 
-    /*
-        Financial Supporters
-    */
+    // Zoraxy's financial supporters (script/supporters.txt), as one line of text
     function loadSupporters() {
         $.get("/script/supporters.txt", function(raw) {
             var names = [];
@@ -133,27 +120,14 @@
             });
 
             var container = $("#supportersList");
-            container.empty();
-
             if (names.length === 0) {
-                container.html('<p style="color: grey;">No supporters listed yet.</p>');
+                container.text("No supporters listed.");
                 return;
             }
-
-            var html = '<div style="display: flex; flex-wrap: wrap; gap: 0.6em; padding: 0.5em 0;">';
-            names.forEach(function(name) {
-                html += '<div class="ui black label" style="font-size: 1em; padding: 0.6em 1em;">'
-                    + '<i class="heart red icon" style="color: #db2828 !important; background-color: transparent !important;"></i>'
-                    + $('<span>').text(name).html()
-                    + '</div>';
-            });
-            html += '</div>';
-            html += '<p style="margin-top: 1.2em; color: grey; font-size: 0.9em;">'
-                + names.length + ' generous supporter' + (names.length !== 1 ? 's' : '') + ' and counting &mdash; thank you!'
-                + '</p>';
-            container.html(html);
+            $("#aboutSupporters .supporterCount").text("(" + names.length + ")");
+            container.text(names.join(", "));
         }).fail(function() {
-            $("#supportersList").html('<p style="color: grey;">Unable to load supporters list.</p>');
+            $("#supportersList").text("The supporters list could not be loaded.");
         });
     }
 

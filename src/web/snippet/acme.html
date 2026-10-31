@@ -163,7 +163,6 @@
     </div>
   </div>
   <div class="ui divider"></div>
-  <small>First time setting up HTTPS?<br>Try out our <a href="../tools/https.html" target="_blank">wizard</a></small>
   <button id="acmeCancelButton" class="ui basic button"  style="float: right;" onclick="parent.hideSideWrapper();"><i class="remove icon"></i> Cancel</button>
   <br><br><br><br>
   </div>
@@ -314,7 +313,7 @@
           }
         }
        
-        var domainCell = $('<td class="' + domainClass  +'">').html(domains.join("<br>"));
+        var domainCell = $('<td class="' + domainClass  +'">').html(domains.map(htmlEscape).join("<br>"));
         row.append(domainCell);
 
         var srcFileCell = $('<td>').text(srcfile);
@@ -322,8 +321,8 @@
         
         // Create the auto-renew checkbox cell
         let domainsEncoded = encodeURIComponent(JSON.stringify(domains));
-        var checkboxCell = $(`<td domain="${domainsEncoded}" srcfile="${srcfile}">`);
-        var checkbox = $(`<input name="${srcfile}">`).attr('type', 'checkbox');
+        var checkboxCell = $(`<td domain="${domainsEncoded}" srcfile="${htmlEscape(srcfile)}">`);
+        var checkbox = $(`<input>`).attr('name', srcfile).attr('type', 'checkbox');
         checkboxCell.append(checkbox);
         row.append(checkboxCell);
         

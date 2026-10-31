@@ -126,6 +126,9 @@ func AcmeCheckAndHandleRenewCertificate(w http.ResponseWriter, r *http.Request) 
 	progressID, _ := utils.PostPara(r, "progressId")
 	acme.AddProgress(progressID, "info", "Certificate request started")
 	dnsPara, _ := utils.PostBool(r, "dns")
+	if !dnsPara && !dynamicProxyRouter.Running {
+		acme.AddProgress(progressID, "warning", "The HTTP proxy is not running, so nothing answers the HTTP-01 challenge on port 80. Start the proxy (save its port in Listeners) or use a DNS challenge.")
+	}
 	if !dnsPara {
 		switch dynamicProxyRouter.Option.Port {
 		case 443:

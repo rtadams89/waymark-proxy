@@ -205,7 +205,7 @@
         let loStatus = [];
         let loMax = 8;
 
-        function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html().replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+        function esc(s){ return htmlEscape(s); }
         function ago(ts){
             if (!ts) return "";
             let s = Math.max(0, Math.round(Date.now() / 1000 - ts));
@@ -368,20 +368,25 @@
                 trafficToFile: $("#loFileTraffic").is(":checked"),
                 syslog: $("#loSyslogList .loSyslog").map(function(){ return read($(this)); }).get()
             };
-            if (!o.systemToFile && !o.syslog.some(s => s.enabled && s.system) &&
-                !confirm("System logs will only go to standard output (the systemd journal), not to the log file or a syslog server. Save anyway?")) return;
-            $("#loSaveBtn").addClass("loading disabled");
-            $.cjax({
-                url: "/api/logger/outputs", method: "POST", data: { outputs: JSON.stringify(o) },
-                success: function(d){
-                    if (d.error != undefined){ showMsg(d.error, false); return; }
-                    showMsg("Saved and applied", true);
-                    setTimeout(function(){ loLoad(true); }, 300);
-                    setTimeout(function(){ $("#loMsg").fadeOut(); }, 4000);
-                },
-                error: function(){ showMsg("Request failed", false); },
-                complete: function(){ $("#loSaveBtn").removeClass("loading disabled"); }
-            });
+            let wmGo = function(){
+                $("#loSaveBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/logger/outputs", method: "POST", data: { outputs: JSON.stringify(o) },
+                    success: function(d){
+                        if (d.error != undefined){ showMsg(d.error, false); return; }
+                        showMsg("Saved and applied", true);
+                        setTimeout(function(){ loLoad(true); }, 300);
+                        setTimeout(function(){ $("#loMsg").fadeOut(); }, 4000);
+                    },
+                    error: function(){ showMsg("Request failed", false); },
+                    complete: function(){ $("#loSaveBtn").removeClass("loading disabled"); }
+                });
+            };
+            if (!o.systemToFile && !o.syslog.some(s => s.enabled && s.system)){
+                wmConfirm("System logs will only go to standard output (the systemd journal), not to the log file or a syslog server. Save anyway?", function(ok){ if (ok) wmGo(); });
+                return;
+            }
+            wmGo();
         };
 
         function loTest(c, btn){

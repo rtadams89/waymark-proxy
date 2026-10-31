@@ -491,42 +491,42 @@
         if (config == null){
             return;
         }
-        if (!confirm("Confirm removing Layer 4 rule " + (config.Name || config.ListeningAddress) + "?")){
-            return;
-        }
-        let remove = function(){
-            $.cjax({
-                url: "/api/l4proxy/config/delete",
-                method: "POST",
-                data: {uuid: uuid},
-                success: function(data){
-                    if (data.error != undefined){
-                        msgbox(data.error, false, 6000);
-                    }else{
-                        msgbox("Layer 4 rule deleted");
-                    }
-                    initL4ProxyList();
-                }
-            });
-        };
-        if (config.Running){
-            //A running proxy is stopped first
-            $.cjax({
-                url: "/api/l4proxy/config/stop",
-                method: "POST",
-                data: {uuid: uuid},
-                success: function(data){
-                    if (data.error != undefined){
-                        msgbox(data.error, false, 6000);
+        wmConfirm("Confirm removing Layer 4 rule " + (config.Name || config.ListeningAddress) + "?", function(ok){
+            if (!ok){ return; }
+            let remove = function(){
+                $.cjax({
+                    url: "/api/l4proxy/config/delete",
+                    method: "POST",
+                    data: {uuid: uuid},
+                    success: function(data){
+                        if (data.error != undefined){
+                            msgbox(data.error, false, 6000);
+                        }else{
+                            msgbox("Layer 4 rule deleted");
+                        }
                         initL4ProxyList();
-                        return;
                     }
-                    remove();
-                }
-            });
-        }else{
-            remove();
-        }
+                });
+            };
+            if (config.Running){
+                //A running proxy is stopped first
+                $.cjax({
+                    url: "/api/l4proxy/config/stop",
+                    method: "POST",
+                    data: {uuid: uuid},
+                    success: function(data){
+                        if (data.error != undefined){
+                            msgbox(data.error, false, 6000);
+                            initL4ProxyList();
+                            return;
+                        }
+                        remove();
+                    }
+                });
+            }else{
+                remove();
+            }
+        });
     }
 
     //Start or stop a Layer 4 proxy from its slider

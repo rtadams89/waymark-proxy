@@ -137,7 +137,7 @@
                     tags = tags.filter(tag => !existingTags.has(tag));
                     $('#existingTagsMenu').empty();
                     tags.forEach(tag => {
-                        $('#existingTagsMenu').append(`<div class="item" data-value="${tag}">${tag}</div>`);
+                        $('#existingTagsMenu').append(`<div class="item" data-value="${htmlEscape(tag)}">${htmlEscape(tag)}</div>`);
                     });
                     $('#existingTagsDropdown').dropdown();
 

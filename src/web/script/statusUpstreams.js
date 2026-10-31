@@ -5,7 +5,7 @@
     long), and rules in maintenance mode.
 */
 (function(){
-    function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html(); }
+    function esc(s){ return htmlEscape(s); }
 
     function duration(ts){
         let s = Math.max(0, Math.round(Date.now() / 1000 - ts));

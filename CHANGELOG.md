@@ -10,6 +10,35 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.9
+
+**Security: names and values are escaped everywhere they are shown**
+- Values from the server are now escaped wherever the UI puts them into the page, including links and buttons. Before, several pages inserted them as HTML, so a quote or `<` in a value broke the row, and a crafted value could run script in the admin console. This covered visitor referers, user agents and paths on the Statistics page (which come from the internet), plugin names, descriptions and links (from third-party plugin metadata), redirect URLs, trusted proxy descriptions, aliases, certificate names, uptime monitor names, custom header names and values, basic-auth exceptions and others.
+- Values used in a button's click handler (certificate file names, plugin IDs, trusted proxy addresses, aliases, destination IDs) are passed as JavaScript strings, not pasted into the code.
+- Links from plugin metadata and uptime monitors open only http(s) and mailto addresses.
+- The escape helpers that left quotes alone (and so did not protect attribute values) now escape them.
+
+**Dialogs**
+- Every confirmation, error and text prompt uses Waymark's own dialog instead of the browser's `alert`, `confirm` and `prompt`, which looked different and blocked the page. Deleting rules, objects, certificates, users and so on asks in the Waymark dialog, which names what is being deleted.
+- The sign-in page shows its errors under the form instead of in pop-ups.
+
+**Status page**
+- **Cluster Nodes** panel (while HA is on): each node's role, proxy state, requests and errors today, bandwidth today, open connections, CPU, memory and uptime, side by side. Nodes send these figures with the HA status over the authenticated sync connection, so configuration sync must be on; a node running an older version shows "figures not available".
+- Panels can be resized: in Customize, each panel has width buttons (for example ¼ ⅓ ½ for the summary cards, ½ ⅔ Full for the traffic flow diagram). Widths are saved and synced with the rest of the layout.
+- The SSL / TLS Overview panel no longer has a Manage Certificates button.
+
+**About page**
+- The "Based on" line is gone from the system information.
+- Zoraxy's financial supporters are folded away under one line and listed as plain text. The privacy notice, which was about Zoraxy's repository, is removed.
+
+**Removed leftovers**
+- The hidden Virtual Directories page. A rule's virtual directories now open in a side panel of the rule editor, like its other sections, with inline editing and unsaved-change tracking. The default site's virtual directories are on Default Site (shown in reverse proxy mode).
+- The HTTPS setup wizard (`tools/https.html`) and its link in the ACME window: it called the certificate API with GET, which has not worked since the API takes POST, and it needed files that are not shipped.
+- When a certificate request needs the HTTP-01 challenge while the HTTP proxy is not running, the request's progress now says so.
+
+**Tests**
+- Browser tests of the admin UI (`test/ui`, Playwright) run in CI on every push and pull request against a freshly built instance: every page opens without errors or unsaved changes, unsaved-change warnings and Discard, the rule editor's Save, side panel closing, Waymark dialogs, escaping, and the status panel layout. A release waits for them to pass.
+
 ## 2.19.8
 
 **Status page**

@@ -1008,9 +1008,9 @@
                     //Generate alias domain list
                     let aliasDomains = ``;
                     if (subd.MatchingDomainAlias != undefined && subd.MatchingDomainAlias.length > 0){
-                        aliasDomains = `<small class="aliasDomains" eptuuid="${subd.RootOrMatchingDomain}" style="color: #636363;">Alias: `;
+                        aliasDomains = `<small class="aliasDomains" eptuuid="${htmlEscape(subd.RootOrMatchingDomain)}" style="color: #636363;">Alias: `;
                         subd.MatchingDomainAlias.forEach(alias => {
-                            aliasDomains += `<a href="${httpProto}${alias}${hostnameRedirectPort}" target="_blank">${alias}</a>, `;
+                            aliasDomains += `<a href="${httpProto}${htmlEscape(alias)}${hostnameRedirectPort}" target="_blank">${htmlEscape(alias)}</a>, `;
                         });
                         aliasDomains = aliasDomains.substr(0, aliasDomains.length - 2);
                         aliasDomains += `</small><br>`;
@@ -1067,18 +1067,18 @@
                     let isAdminRule = (subd.System == "admin-console");
                     let enableCell = isAdminRule ? `<span title="Serves this admin console; always on" style="opacity: 0.7;"><i class="lock icon"></i></span>` :
                         `<div class="ui toggle tiny fitted checkbox" style="margin-bottom: -0.5em; margin-right: 0.4em;" title="Enable / Disable Rule">
-                                <input type="checkbox" class="enableToggle" name="active" ${enableChecked} eptuuid="${subd.RootOrMatchingDomain}" onchange="handleProxyRuleToggle(this);">
+                                <input type="checkbox" class="enableToggle" name="active" ${enableChecked} eptuuid="${htmlEscape(subd.RootOrMatchingDomain)}" onchange="handleProxyRuleToggle(this);">
                                 <label></label>
                             </div>`;
                     let adminBadge = isAdminRule ? ` <span class="ui mini basic label" title="Waymark keeps this rule working: it answers on this node's (or cluster's) addresses and DNS names and sends requests to the admin console">Admin console</span>` : "";
                     let deleteBtn = isAdminRule ? "" : `<button title="Remove Proxy Rule" class="ui circular mini red basic icon button inlineEditActionBtn" onclick='deleteEndpoint("${(subd.RootOrMatchingDomain).hexEncode()}")'><i class="trash icon"></i></button>`;
-                    $("#proxyRulesList").append(`<tr eptuuid="${subd.RootOrMatchingDomain}" payload="${subdData}" class="subdEntry httpRow" data-sortkey="${htmlEscape(String(subd.RootOrMatchingDomain).toLowerCase())}">
+                    $("#proxyRulesList").append(`<tr eptuuid="${htmlEscape(subd.RootOrMatchingDomain)}" payload="${subdData}" class="subdEntry httpRow" data-sortkey="${htmlEscape(String(subd.RootOrMatchingDomain).toLowerCase())}">
                         <td class="collapsing ignoremw" datatype="enable">
                             ${enableCell}
                         </td>
                         <td data-label="type" datatype="type" data-sort-value="http"><span class="ruleTypeLabel http" title="HTTP rule: picked by host name on the HTTP(S) listener">HTTP</span></td>
                         <td data-label="" editable="true" datatype="inbound">
-                            <a href="${httpProto}${subd.RootOrMatchingDomain}${hostnameRedirectPort}" target="_blank">${subd.RootOrMatchingDomain}</a> ${inboundTlsIcon}${adminBadge}<br>
+                            <a href="${httpProto}${htmlEscape(subd.RootOrMatchingDomain)}${hostnameRedirectPort}" target="_blank">${htmlEscape(subd.RootOrMatchingDomain)}</a> ${inboundTlsIcon}${adminBadge}<br>
                             ${aliasDomains}
                             <small class="accessRuleNameUnderHost" ruleid="${htmlEscape(subd.AccessFilterUUID || "allow-all")}"></small>
                         </td>
@@ -1141,7 +1141,7 @@
         if (newAliasDomainList != undefined && newAliasDomainList.length > 0){
             aliasDomains = `Alias: `;
             newAliasDomainList.forEach(alias => {
-                aliasDomains += `<a href="//${alias}" target="_blank">${alias}</a>, `;
+                aliasDomains += `<a href="//${htmlEscape(alias)}" target="_blank">${htmlEscape(alias)}</a>, `;
             });
             aliasDomains = aliasDomains.substr(0, aliasDomains.length - 2);
             $(targetEle).html(aliasDomains);
@@ -1337,15 +1337,15 @@
                 // Add primary domain entry
                 resolveList.append(`
                     <tr>
-                        <td>${primaryDomain}</td>
-                        <td class="certificateDropdown" domain="${primaryDomain}">${certMap[primaryDomain] || "Fallback Certificate"}</td>
+                        <td>${htmlEscape(primaryDomain)}</td>
+                        <td class="certificateDropdown" domain="${htmlEscape(primaryDomain)}">${htmlEscape(certMap[primaryDomain] || "Fallback Certificate")}</td>
                     </tr>
                 `);
                 aliasDomains.forEach(alias => {
                     resolveList.append(`
                         <tr>
-                            <td>${alias}</td>
-                            <td class="certificateDropdown" domain="${alias}">${certMap[alias] || "Fallback Certificate"}</td>
+                            <td>${htmlEscape(alias)}</td>
+                            <td class="certificateDropdown" domain="${htmlEscape(alias)}">${htmlEscape(certMap[alias] || "Fallback Certificate")}</td>
                         </tr>
                     `);
                 });
@@ -1487,7 +1487,8 @@
     //Generic functions for delete rp endpoints 
     function deleteEndpoint(epoint){
         epoint = decodeURIComponent(epoint).hexDecode();
-        if (confirm("Confirm remove proxy for :" + epoint + "?")){
+        wmConfirm("Confirm remove proxy for :" + epoint + "?", function(ok){
+            if (!ok) return;
             $.cjax({
                 url: "/api/proxy/del",
                 method: "POST",
@@ -1502,7 +1503,7 @@
                     }
                 }
             })
-        }
+        });
     }
 
     
@@ -1524,9 +1525,13 @@
     }
 
 
+    //Open the virtual directories of this rule in the side panel
     function quickEditVdir(uuid){
-        openTabById("vdir");
-        $("#vdirBaseRoutingRule").parent().dropdown("set selected", uuid);
+        let payload = encodeURIComponent(JSON.stringify({
+            ept: "host",
+            ep: uuid
+        }));
+        showEditorSideWrapper("snippet/vdirEditor.html?t=" + Date.now() + "#" + payload);
     }
 
     //Open the health check settings for this rule
@@ -1600,8 +1605,8 @@
                     row.find("td[datatype='vdir'] .item").each(function(){
                         let t = $(this).text().trim();
                         if (t.startsWith(path) && t.endsWith(s.upstream)){
-                            let why = (s.reason || "Failed its health checks").replace(/"/g, "&quot;");
-                            $(this).append(`<i class="red heartbeat icon hcUpstreamDown" style="margin-left: 0.3em;" title="Down: ${why}"></i>`);
+                            let why = s.reason || "Failed its health checks";
+                            $(this).append(`<i class="red heartbeat icon hcUpstreamDown" style="margin-left: 0.3em;" title="Down: ${htmlEscape(why)}"></i>`);
                         }
                     });
                 });
@@ -1769,8 +1774,8 @@
                     <i class="angle double right blue icon"></i>
                     <div class="content">
                         <div class="description">
-                            ${port}
-                            <button class="ui mini red basic icon button removeListeningPortBtn" style="float: right; margin-left: 0.5em;" data-port="${port}">
+                            ${htmlEscape(port)}
+                            <button class="ui mini red basic icon button removeListeningPortBtn" style="float: right; margin-left: 0.5em;" data-port="${htmlEscape(port)}">
                                 <i class="trash icon"></i>
                             </button>
                         </div>
@@ -1784,13 +1789,14 @@
         // Bind remove button events
         editor.find(".removeListeningPortBtn").off("click").on("click", function(){
             let portToRemove = $(this).attr("data-port");
-            if (confirm("Remove listening address " + portToRemove + "?")) {
+            wmConfirm("Remove listening address " + portToRemove + "?", function(ok){
+                if (!ok) return;
                 let newPorts = ports.filter(p => p !== portToRemove);
                 saveListeningPorts(uuid, newPorts, function(){
                     renderListeningPorts(uuid, newPorts);
                     msgbox("Listening address removed");
                 });
-            }
+            });
         });
     }
     
@@ -2068,9 +2074,9 @@
         
         //Check if the domain is wildcard domain, if yes do not render as a link
         if (subd.RootOrMatchingDomain.indexOf("*") > -1){
-            editor.find(".downstream_primary_hostname").html(subd.RootOrMatchingDomain);
+            editor.find(".downstream_primary_hostname").text(subd.RootOrMatchingDomain);
         }else{
-            editor.find(".downstream_primary_hostname").html(`<a href="//${subd.RootOrMatchingDomain}" target="_blank">${subd.RootOrMatchingDomain}</a>`);
+            editor.find(".downstream_primary_hostname").html(`<a href="//${htmlEscape(subd.RootOrMatchingDomain)}" target="_blank">${htmlEscape(subd.RootOrMatchingDomain)}</a>`);
         }
         editor.find(".BypassGlobalTLS").off('change');
         editor.find(".BypassGlobalTLS").prop("checked", subd.BypassGlobalTLS);
@@ -2177,10 +2183,10 @@
         subd.MatchingDomainAlias.forEach(alias => {
             if (alias.indexOf("*") > -1){
                 //Wildcard alias
-                aliasHTML += `<span class="ui tiny label">${alias}</span> `;
+                aliasHTML += `<span class="ui tiny label">${htmlEscape(alias)}</span> `;
             }else{
                 //Normal alias
-                aliasHTML += `<span class="ui tiny label"><a href="//${alias}" target="_blank">${alias}</a></span> `;
+                aliasHTML += `<span class="ui tiny label"><a href="//${htmlEscape(alias)}" target="_blank">${htmlEscape(alias)}</a></span> `;
             }
             
         });
@@ -2319,8 +2325,6 @@
         editor.find(".vdir_list").html(renderVirtualDirectoryList(subd));
         editor.find(".editVdirBtn").off("click").on("click", function(){
             quickEditVdir(uuid);
-            //Temporary restore scroll
-            $("body").css("overflow", "auto");
         });
 
         /* ------------ Alias ------------ */ 
@@ -2590,7 +2594,7 @@
         let editor = $("#httprpEditModalWrapper");
         let aliasHTML = "";
         subd.MatchingDomainAlias.forEach(alias => {
-            aliasHTML += alias.indexOf("*") > -1 ? `<span class="ui tiny label">${alias}</span> ` : `<span class="ui tiny label"><a href="//${alias}" target="_blank">${alias}</a></span> `;
+            aliasHTML += alias.indexOf("*") > -1 ? `<span class="ui tiny label">${htmlEscape(alias)}</span> ` : `<span class="ui tiny label"><a href="//${htmlEscape(alias)}" target="_blank">${htmlEscape(alias)}</a></span> `;
         });
         editor.find(".downstream_alias_hostname").html(aliasHTML);
         editor.find(".upstream_list").html(renderUpstreamList(subd));
@@ -2599,7 +2603,6 @@
         editor.find(".vdir_list").html(renderVirtualDirectoryList(subd));
         editor.find(".editVdirBtn").off("click").on("click", function(){
             quickEditVdir(subd.RootOrMatchingDomain);
-            $("body").css("overflow", "auto");
         });
     }
 

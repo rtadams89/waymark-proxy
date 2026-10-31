@@ -237,18 +237,24 @@
                 redact: f.find("input[name=redact]")[0].checked,
                 note: f.find("input[name=note]").val().trim()
             };
-            if (!cfg.redact && !confirm("Credentials in headers (passwords, session cookies, tokens) will be readable in the file. Capture anyway?")) return;
-            $("#capStartBtn").addClass("loading disabled");
-            $.cjax({
-                url: "/api/capture/start", method: "POST", data: { config: JSON.stringify(cfg) },
-                success: function(d){
-                    if (d.error != undefined){ showMsg(d.error, false); return; }
-                    $("#capMsg").hide();
-                    capLoad();
-                },
-                error: function(){ showMsg("Request failed", false); },
-                complete: function(){ $("#capStartBtn").removeClass("loading"); }
-            });
+            let wmGo = function(){
+                $("#capStartBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/capture/start", method: "POST", data: { config: JSON.stringify(cfg) },
+                    success: function(d){
+                        if (d.error != undefined){ showMsg(d.error, false); return; }
+                        $("#capMsg").hide();
+                        capLoad();
+                    },
+                    error: function(){ showMsg("Request failed", false); },
+                    complete: function(){ $("#capStartBtn").removeClass("loading"); }
+                });
+            };
+            if (!cfg.redact){
+                wmConfirm("Credentials in headers (passwords, session cookies, tokens) will be readable in the file. Capture anyway?", function(ok){ if (ok) wmGo(); });
+                return;
+            }
+            wmGo();
         };
 
         window.capStop = function(){
@@ -264,13 +270,15 @@
         };
 
         function capDelete(name){
-            if (!confirm("Delete " + name + "?")) return;
-            $.cjax({
-                url: "/api/capture/delete", method: "POST", data: { name: name },
-                success: function(d){
-                    if (d.error != undefined){ msgbox(d.error, false); }
-                    capLoad();
-                }
+            wmConfirm("Delete " + name + "?", function(ok){
+                if (!ok){ return; }
+                $.cjax({
+                    url: "/api/capture/delete", method: "POST", data: { name: name },
+                    success: function(d){
+                        if (d.error != undefined){ msgbox(d.error, false); }
+                        capLoad();
+                    }
+                });
             });
         }
 

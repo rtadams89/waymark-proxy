@@ -504,42 +504,42 @@
 			}
 
 			function resetAsset(assetKey){
-				if (!confirm('Restore this resource back to the Waymark default? The uploaded file will be deleted.')){
-					return;
-				}
+				wmConfirm('Restore this resource back to the Waymark default? The uploaded file will be deleted.', function(ok){
+					if (!ok){ return; }
 
-				$.cjax({
-					url: '/api/sso/zorxauth/customization/reset',
-					method: 'POST',
-					data: { asset: assetKey },
-					success: function(data){
-						if (data.error !== undefined){
-							notify(data.error, false);
-							return;
+					$.cjax({
+						url: '/api/sso/zorxauth/customization/reset',
+						method: 'POST',
+						data: { asset: assetKey },
+						success: function(data){
+							if (data.error !== undefined){
+								notify(data.error, false);
+								return;
+							}
+							notify('Resource restored to default');
+							loadCustomization();
 						}
-						notify('Resource restored to default');
-						loadCustomization();
-					}
+					});
 				});
 			}
 
 			function resetAllCustomization(){
-				if (!confirm('Reset all login page customization back to the Waymark defaults? All uploaded resources will be deleted.')){
-					return;
-				}
+				wmConfirm('Reset all login page customization back to the Waymark defaults? All uploaded resources will be deleted.', function(ok){
+					if (!ok){ return; }
 
-				$.cjax({
-					url: '/api/sso/zorxauth/customization/reset',
-					method: 'POST',
-					data: { asset: 'all' },
-					success: function(data){
-						if (data.error !== undefined){
-							notify(data.error, false);
-							return;
+					$.cjax({
+						url: '/api/sso/zorxauth/customization/reset',
+						method: 'POST',
+						data: { asset: 'all' },
+						success: function(data){
+							if (data.error !== undefined){
+								notify(data.error, false);
+								return;
+							}
+							notify('Login page customization reset');
+							loadCustomization();
 						}
-						notify('Login page customization reset');
-						loadCustomization();
-					}
+					});
 				});
 			}
 
@@ -554,12 +554,12 @@
 				if (parent !== undefined && parent.msgbox !== undefined){
 					parent.msgbox(message, isSuccess);
 				}else{
-					alert(message);
+					wmAlert(message, null, {error: true});
 				}
 			}
 
 			function escapeHtml(value){
-				return $('<div>').text(value === undefined || value === null ? '' : value).html();
+				return htmlEscape(value);
 			}
 		</script>
 	</body>

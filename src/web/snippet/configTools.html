@@ -80,7 +80,7 @@
                 var fileInput = $("#fileInput")[0];
                 var file = fileInput.files[0];
                 if (!file) {
-                    alert("Missing file.");
+                    wmAlert("Missing file.", null, {error: true});
                     return;
                 }
 

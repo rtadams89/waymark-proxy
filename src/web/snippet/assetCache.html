@@ -136,7 +136,7 @@
             let acLimitArea = wmTrackChanges($("#acLimitMB").closest(".ui.form"), {saveButton: "#acLimitBtn"});
 
             function notify(msg, ok=true, ms=undefined){
-                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { alert(msg); }
+                if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { wmAlert(msg, null, {error: true}); }
             }
             function fmtBytes(n){
                 if (!n || n < 0) return "0 B";

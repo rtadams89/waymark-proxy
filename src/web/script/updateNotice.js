@@ -18,7 +18,7 @@
     let waitStart = 0;
     let fastTimer = null;
 
-    function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html().replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+    function esc(s){ return htmlEscape(s); }
     function ago(ts){
         if (!ts) return "never";
         let s = Math.max(0, Math.round(Date.now() / 1000 - ts));
@@ -149,22 +149,24 @@
             }
             text += "\nIt stops at the first problem, and " + active.name + " is only updated once every other node runs " + v + " and has taken over.";
             if (st.major) text += "\n\n" + v + " is a new major version: read its release notes first.";
-            if (!confirm(text)) return;
-            $("#updRollingBtn, #haRollingBtn").addClass("loading disabled");
-            $.cjax({
-                url: "/api/update/rolling", method: "POST", data: { version: v }, timeout: 90000,
-                success: function(r){
-                    $("#updRollingBtn, #haRollingBtn").removeClass("loading disabled");
-                    if (r.error != undefined){ msgbox(r.error, false); if (done) done(false); return; }
-                    msgbox(r.message, true);
-                    poll();
-                    if (done) done(true);
-                },
-                error: function(){
-                    $("#updRollingBtn, #haRollingBtn").removeClass("loading disabled");
-                    msgbox("Request failed", false);
-                    if (done) done(false);
-                }
+            wmConfirm(text, function(ok){
+                if (!ok){ return; }
+                $("#updRollingBtn, #haRollingBtn").addClass("loading disabled");
+                $.cjax({
+                    url: "/api/update/rolling", method: "POST", data: { version: v }, timeout: 90000,
+                    success: function(r){
+                        $("#updRollingBtn, #haRollingBtn").removeClass("loading disabled");
+                        if (r.error != undefined){ msgbox(r.error, false); if (done) done(false); return; }
+                        msgbox(r.message, true);
+                        poll();
+                        if (done) done(true);
+                    },
+                    error: function(){
+                        $("#updRollingBtn, #haRollingBtn").removeClass("loading disabled");
+                        msgbox("Request failed", false);
+                        if (done) done(false);
+                    }
+                });
             });
         });
     };
@@ -232,31 +234,35 @@
         let text = "Install Waymark " + v + " on this node?\n\nIt is downloaded from GitHub and checked, then Waymark restarts (a few seconds).";
         if (st.major) text += "\n\nThis is a new major version: read its release notes first.";
         if (st.haActive) text += "\n\nThis node is active: the floating IPs move to the standby while it restarts.";
-        if (!confirm(text)) return;
-        $("#updInstallBtn").addClass("loading disabled");
-        $.cjax({
-            url: "/api/update/install", method: "POST", data: { version: v },
-            success: function(d){
-                if (d.error != undefined){ msgbox(d.error, false); poll(); return; }
-                msgbox(d.message, true);
-                startWaiting();
-            },
-            error: function(){ msgbox("Request failed", false); }
+        wmConfirm(text, function(ok){
+            if (!ok){ return; }
+            $("#updInstallBtn").addClass("loading disabled");
+            $.cjax({
+                url: "/api/update/install", method: "POST", data: { version: v },
+                success: function(d){
+                    if (d.error != undefined){ msgbox(d.error, false); poll(); return; }
+                    msgbox(d.message, true);
+                    startWaiting();
+                },
+                error: function(){ msgbox("Request failed", false); }
+            });
         });
     };
 
     window.updRollback = function(){
         if (!st || !st.previous) return;
-        if (!confirm("Go back to Waymark " + st.previous + " on this node? Waymark restarts (a few seconds).")) return;
-        $("#updRollbackBtn").addClass("loading disabled");
-        $.cjax({
-            url: "/api/update/rollback", method: "POST",
-            success: function(d){
-                if (d.error != undefined){ msgbox(d.error, false); poll(); return; }
-                msgbox(d.message, true);
-                startWaiting();
-            },
-            error: function(){ msgbox("Request failed", false); }
+        wmConfirm("Go back to Waymark " + st.previous + " on this node? Waymark restarts (a few seconds).", function(ok){
+            if (!ok){ return; }
+            $("#updRollbackBtn").addClass("loading disabled");
+            $.cjax({
+                url: "/api/update/rollback", method: "POST",
+                success: function(d){
+                    if (d.error != undefined){ msgbox(d.error, false); poll(); return; }
+                    msgbox(d.message, true);
+                    startWaiting();
+                },
+                error: function(){ msgbox("Request failed", false); }
+            });
         });
     };
 

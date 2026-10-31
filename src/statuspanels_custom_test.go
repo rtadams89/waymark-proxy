@@ -17,11 +17,11 @@ func TestStatusPanelLayout(t *testing.T) {
 
 	// Nothing saved yet: empty layout, not null
 	got := readStatusPanelLayout(db)
-	if got.Visible == nil || got.Order == nil || len(got.Visible) != 0 || len(got.Order) != 0 {
+	if got.Visible == nil || got.Order == nil || got.Sizes == nil || len(got.Visible) != 0 || len(got.Order) != 0 || len(got.Sizes) != 0 {
 		t.Fatalf("unexpected empty layout: %+v", got)
 	}
 
-	if msg := saveStatusPanelLayout(db, `{"flowDiagram":false,"cardCountries":true}`, `["systemResources","flowDiagram"]`); msg != "" {
+	if msg := saveStatusPanelLayout(db, `{"flowDiagram":false,"cardCountries":true}`, `["systemResources","flowDiagram"]`, `{"flowDiagram":"full"}`); msg != "" {
 		t.Fatal(msg)
 	}
 	got = readStatusPanelLayout(db)
@@ -31,13 +31,16 @@ func TestStatusPanelLayout(t *testing.T) {
 	if !reflect.DeepEqual(got.Order, []string{"systemResources", "flowDiagram"}) {
 		t.Fatalf("order not saved: %+v", got.Order)
 	}
+	if !reflect.DeepEqual(got.Sizes, map[string]string{"flowDiagram": "full"}) {
+		t.Fatalf("sizes not saved: %+v", got.Sizes)
+	}
 
 	// Saving only the order keeps the visibility
-	if msg := saveStatusPanelLayout(db, "", `["flowDiagram"]`); msg != "" {
+	if msg := saveStatusPanelLayout(db, "", `["flowDiagram"]`, ""); msg != "" {
 		t.Fatal(msg)
 	}
 	got = readStatusPanelLayout(db)
-	if len(got.Visible) != 2 || !reflect.DeepEqual(got.Order, []string{"flowDiagram"}) {
+	if len(got.Visible) != 2 || len(got.Sizes) != 1 || !reflect.DeepEqual(got.Order, []string{"flowDiagram"}) {
 		t.Fatalf("order-only save changed the visibility: %+v", got)
 	}
 }
@@ -49,24 +52,28 @@ func TestStatusPanelLayoutRejectsBadInput(t *testing.T) {
 	}
 	defer db.Close()
 
-	bad := []struct{ panels, order string }{
-		{"", ""},
-		{`{"bad id!":true}`, ""},
-		{`[]`, ""},
-		{`null`, ""},
-		{"", `["a","a"]`},
-		{"", `["../x"]`},
-		{"", `{"a":1}`},
-		{"", `null`},
-		// A bad order must not save good visibility either
-		{`{"flowDiagram":false}`, `["x y"]`},
+	bad := []struct{ panels, order, sizes string }{
+		{"", "", ""},
+		{`{"bad id!":true}`, "", ""},
+		{`[]`, "", ""},
+		{`null`, "", ""},
+		{"", `["a","a"]`, ""},
+		{"", `["../x"]`, ""},
+		{"", `{"a":1}`, ""},
+		{"", `null`, ""},
+		{"", "", `{"flowDiagram":"huge"}`},
+		{"", "", `{"bad id":"full"}`},
+		{"", "", `["full"]`},
+		// One bad value must not save the good ones either
+		{`{"flowDiagram":false}`, `["x y"]`, ""},
+		{`{"flowDiagram":false}`, `["flowDiagram"]`, `{"flowDiagram":"wide"}`},
 	}
 	for _, b := range bad {
-		if msg := saveStatusPanelLayout(db, b.panels, b.order); msg == "" {
-			t.Errorf("panels=%q order=%q was accepted", b.panels, b.order)
+		if msg := saveStatusPanelLayout(db, b.panels, b.order, b.sizes); msg == "" {
+			t.Errorf("panels=%q order=%q sizes=%q was accepted", b.panels, b.order, b.sizes)
 		}
 	}
-	if got := readStatusPanelLayout(db); len(got.Visible) != 0 || len(got.Order) != 0 {
+	if got := readStatusPanelLayout(db); len(got.Visible) != 0 || len(got.Order) != 0 || len(got.Sizes) != 0 {
 		t.Fatalf("rejected input was saved: %+v", got)
 	}
 
@@ -78,7 +85,7 @@ func TestStatusPanelLayoutRejectsBadInput(t *testing.T) {
 		many += `"p` + string(rune('a'+i%26)) + string(rune('a'+i/26)) + `"`
 	}
 	many += "]"
-	if msg := saveStatusPanelLayout(db, "", many); msg == "" {
+	if msg := saveStatusPanelLayout(db, "", many, ""); msg == "" {
 		t.Error("an order longer than the limit was accepted")
 	}
 }

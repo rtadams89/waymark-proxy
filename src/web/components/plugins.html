@@ -270,17 +270,17 @@ $('#pluginTagList').on('change', function() {
 });
 
 function loadPluginsForTag(tag) {
-  $.get(`/api/plugins/groups/list?tag=${tag}`, function(data) {
+  $.get(`/api/plugins/groups/list?tag=${encodeURIComponent(tag)}`, function(data) {
     $("#selectedTagPluginList").html("");
 
     let selectedPluginIDs = [];
     data.forEach(plugin => {
       $("#selectedTagPluginList").append(`
-        <div class="item selectedPluginItem" pluginid="${plugin.Spec.id}">
-          <img class="ui avatar image" src="/api/plugins/icon?plugin_id=${plugin.Spec.id}">
+        <div class="item selectedPluginItem" pluginid="${htmlEscape(plugin.Spec.id)}">
+          <img class="ui avatar image" src="/api/plugins/icon?plugin_id=${encodeURIComponent(plugin.Spec.id)}">
           <div class="content">
-            <a class="header">${plugin.Spec.name}</a>
-            <div class="description">${plugin.Spec.description}</div>
+            <a class="header">${htmlEscape(plugin.Spec.name)}</a>
+            <div class="description">${htmlEscape(plugin.Spec.description)}</div>
           </div>
           <div class="selectedIcon">
             <i class="ui large green circle check icon"></i>
@@ -309,11 +309,11 @@ function loadPluginsForTag(tag) {
       }
       if (!selectedPluginIDs.includes(plugin.Spec.id)) {
         $("#selectablePluginList").append(`
-          <div class="item selectablePluginItem" pluginid="${plugin.Spec.id}">
-            <img class="ui avatar image" src="/api/plugins/icon?plugin_id=${plugin.Spec.id}">
+          <div class="item selectablePluginItem" pluginid="${htmlEscape(plugin.Spec.id)}">
+            <img class="ui avatar image" src="/api/plugins/icon?plugin_id=${encodeURIComponent(plugin.Spec.id)}">
             <div class="content">
-              <a class="header">${plugin.Spec.name}</a>
-              <div class="description">${plugin.Spec.description}</div>
+              <a class="header">${htmlEscape(plugin.Spec.name)}</a>
+              <div class="description">${htmlEscape(plugin.Spec.description)}</div>
             </div>
             <div class="selectedIcon">
               <i class="ui large green circle check icon"></i>
@@ -347,7 +347,7 @@ function loadTags(){
     $("#pluginTagList").find(".menu").html("");
     data.forEach(tag => {
       $("#pluginTagList").find(".menu").append(`
-        <div class="item" data-value="${tag}">${tag}</div>
+        <div class="item" data-value="${htmlEscape(tag)}">${htmlEscape(tag)}</div>
       `);
     });
   });
@@ -368,10 +368,10 @@ function initSelectablePluginList(){
       }
       $("#selectablePluginList").append(`
         <div class="item" style="pointer-events: none; user-select: none; opacity: 0.6;">
-          <img class="ui avatar image" src="/api/plugins/icon?plugin_id=${plugin.Spec.id}">
+          <img class="ui avatar image" src="/api/plugins/icon?plugin_id=${encodeURIComponent(plugin.Spec.id)}">
           <div class="content">
-            <a class="header">${plugin.Spec.name}</a>
-            <div class="description">${plugin.Spec.description}</div>
+            <a class="header">${htmlEscape(plugin.Spec.name)}</a>
+            <div class="description">${htmlEscape(plugin.Spec.description)}</div>
           </div>
         </div>
       `);
@@ -481,8 +481,8 @@ function initPluginSideMenu(){
         return;
       }
       $("#pluginMenu").append(`
-        <a class="item" tag="pluginContextWindow" tab_group="plugins" pluginid="${plugin.Spec.id}">
-            <img style="width: 20px;" class="ui mini right spaced image" src="/api/plugins/icon?plugin_id=${plugin.Spec.id}"> ${plugin.Spec.name}
+        <a class="item" tag="pluginContextWindow" tab_group="plugins" pluginid="${htmlEscape(plugin.Spec.id)}">
+            <img style="width: 20px;" class="ui mini right spaced image" src="/api/plugins/icon?plugin_id=${encodeURIComponent(plugin.Spec.id)}"> ${htmlEscape(plugin.Spec.name)}
         </a>
       `);
       enabledPluginCount++;
@@ -543,30 +543,30 @@ function initiatePluginList(){
         <tr>
           <td data-label="PluginName">
             <h4 class="ui header">
-              <img src="/api/plugins/icon?plugin_id=${plugin.Spec.id}" class="ui image">
+              <img src="/api/plugins/icon?plugin_id=${encodeURIComponent(plugin.Spec.id)}" class="ui image">
               <div class="content">
-                ${plugin.Spec.name}
-                <div class="sub header">${versionString} by <a href="${authorContact}" target="_blank">${plugin.Spec.author}</a></div>
+                ${htmlEscape(plugin.Spec.name)}
+                <div class="sub header">${htmlEscape(versionString)} by <a href="${safeHref(authorContact)}" target="_blank">${htmlEscape(plugin.Spec.author)}</a></div>
               </div>
             </h4>
             </td>
-          <td data-label="Descriptions">${plugin.Spec.description}<br>
-          <a href="${plugin.Spec.url}" target="_blank">${plugin.Spec.url}</a></td>
+          <td data-label="Descriptions">${htmlEscape(plugin.Spec.description)}<br>
+          <a href="${safeHref(plugin.Spec.url)}" target="_blank">${htmlEscape(plugin.Spec.url)}</a></td>
           <td data-label="Category">${plugin.Spec.type==0?"Router":"Utilities"}</td>
           <td data-label="Action">
-            <button onclick="uninstallPlugin('${plugin.Spec.id}', '${plugin.Spec.name}', this);" class="ui basic red icon button">
+            <button onclick="uninstallPlugin(${jsArg(plugin.Spec.id)}, ${jsArg(plugin.Spec.name)}, this);" class="ui basic red icon button">
               <i class="trash icon"></i>
             </button>
-             <button onclick="getPluginInfo('${plugin.Spec.id}', this);" class="ui basic icon button" pluginid="${plugin.Spec.id}">
+             <button onclick="getPluginInfo(${jsArg(plugin.Spec.id)}, this);" class="ui basic icon button" pluginid="${htmlEscape(plugin.Spec.id)}">
               <i class="info circle icon"></i>
             </button>
-            <button onclick="stopPlugin('${plugin.Spec.id}', this);" class="ui basic button pluginEnableButton" pluginid="${plugin.Spec.id}" ${plugin.Enabled ? '' : 'style="display:none;"'}>
+            <button onclick="stopPlugin(${jsArg(plugin.Spec.id)}, this);" class="ui basic button pluginEnableButton" pluginid="${htmlEscape(plugin.Spec.id)}" ${plugin.Enabled ? '' : 'style="display:none;"'}>
               <i class="red stop circle icon"></i> Stop
             </button>
-            <button onclick="startPlugin('${plugin.Spec.id}', this);" class="ui basic button pluginDisableButton" pluginid="${plugin.Spec.id}" ${plugin.Enabled ? 'style="display:none;"' : ''}>
+            <button onclick="startPlugin(${jsArg(plugin.Spec.id)}, this);" class="ui basic button pluginDisableButton" pluginid="${htmlEscape(plugin.Spec.id)}" ${plugin.Enabled ? 'style="display:none;"' : ''}>
               <i class="green play circle icon"></i> Start
             </button>
-            ${plugin.SupportHotRebuild ? `<button onclick="rebuildPlugin('${plugin.Spec.id}', this);" class="ui basic button pluginRebuildButton" pluginid="${plugin.Spec.id}">
+            ${plugin.SupportHotRebuild ? `<button onclick="rebuildPlugin(${jsArg(plugin.Spec.id)}, this);" class="ui basic button pluginRebuildButton" pluginid="${htmlEscape(plugin.Spec.id)}">
               <i class="wrench icon"></i> Rebuild
             </button>` : ''}
           </td>
@@ -668,7 +668,7 @@ function showBuildErrorDialog(errorMessage) {
           <p>The plugin build process encountered an error. Please review the build output below:</p>
           <div class="ui form">
             <div class="field">
-              <textarea id="buildErrorOutput" readonly style="background-color: #000000; color: #ffffff; font-family: monospace; min-height: 300px; resize: vertical;">${errorMessage}</textarea>
+              <textarea id="buildErrorOutput" readonly style="background-color: #000000; color: #ffffff; font-family: monospace; min-height: 300px; resize: vertical;">${htmlEscape(errorMessage)}</textarea>
             </div>
           </div>
         </div>
@@ -699,7 +699,8 @@ function openPluginStore(){
 }
 
 function uninstallPlugin(pluginId, pluginName, btn=undefined) {
-      if (confirm("Are you sure you want to remove " + pluginName + " plugin?")) {
+      wmConfirm("Are you sure you want to remove " + pluginName + " plugin?", function(ok){
+          if (!ok) return;
           if (btn) {
               $(btn).html('<i class="spinner loading icon"></i>');
               $(btn).addClass('disabled');
@@ -718,7 +719,7 @@ function uninstallPlugin(pluginId, pluginName, btn=undefined) {
                   }
               }
           });
-      }
+      });
   }
 
 

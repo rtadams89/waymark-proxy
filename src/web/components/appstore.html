@@ -1197,7 +1197,7 @@
       { label: "Version", value: asEscapeHtml(asGetVersionString(spec)) },
       { label: "Category", value: asEscapeHtml(asGetAppCategory(app)) },
       { label: "Type", value: spec.type == 0 ? "Router" : "Utilities" },
-      { label: "URL", value: spec.url ? `<a href="${asEscapeHtml(spec.url)}" target="_blank">${asEscapeHtml(spec.url)}</a>` : "N/A" },
+      { label: "URL", value: spec.url ? `<a href="${safeHref(spec.url)}" target="_blank">${asEscapeHtml(spec.url)}</a>` : "N/A" },
       { label: "Source", value: asEscapeHtml(app.Source || "N/A") },
     ];
 

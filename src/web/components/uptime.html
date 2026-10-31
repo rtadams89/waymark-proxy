@@ -214,7 +214,7 @@
             }
         
             let datetime = format_time(thisStatus.Timestamp);
-            statusDotList += `<div title="${datetime}" class="${dotType} statusDot" payload="${statusDotPayload}" onclick="showStatusDotInfo(this);"></div>`
+            statusDotList += `<div title="${htmlEscape(datetime)}" class="${dotType} statusDot" payload="${statusDotPayload}" onclick="showStatusDotInfo(this);"></div>`
         }
 
         ontimeRate = ontimeRate / value.length * 100;
@@ -283,8 +283,8 @@
         $("#utmrender").append(`<div class="ui basic segment statusbar">
             <div class="domain">
                 <div>
-                    <h3 class="ui header" style="margin-bottom: 0.2em;">${name}</h3>
-                    <a href="${url}" target="_blank">${url}</a>
+                    <h3 class="ui header" style="margin-bottom: 0.2em;">${htmlEscape(name)}</h3>
+                    <a href="${safeHref(url)}" target="_blank">${htmlEscape(url)}</a>
                 </div>
                 <div style="position: absolute; bottom: 0; right: 0.2em; margin-bottom: -0.6em;">
                     <div class="ui basic label protocol">

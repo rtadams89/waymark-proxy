@@ -21,7 +21,7 @@
 
     function loadPluginContext(pluginID){
         //Check if the iframe is currently visable
-        let pluginContextURL = `/plugin.ui/${pluginID}/`;
+        let pluginContextURL = `/plugin.ui/${encodeURIComponent(pluginID)}/`;
         $("#pluginContextLoader").attr("src", pluginContextURL);
     }
 

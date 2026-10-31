@@ -522,26 +522,29 @@
             $("#proxyProtocol").off("change").on("change", function(data){
                 let enableProxyProtocol = ($(this).find("input[type='checkbox']")[0].checked);
                 let quicWasEnabled = $("#enableQuic").find("input[type='checkbox']")[0].checked;
-                if (enableProxyProtocol && gsViaProxy && !confirm("You are using this page through Waymark's proxy. With PROXY protocol on, Waymark only accepts connections that start with a PROXY header (from a load balancer in front of it), so this page stops loading unless your traffic comes through such a load balancer.\n\nTurn PROXY protocol on?")){
-                    setToggleStateSilently("#proxyProtocol", false);
+                let wmGo = function(){
+                    $.get("/api/proxy/proxyProtocol?enable=" + enableProxyProtocol, function(data){
+                        if (data.error != undefined){
+                            msgbox(data.error, false, 5000);
+                            //Revert checkbox state on error
+                            setToggleStateSilently("#proxyProtocol", !enableProxyProtocol);
+                        }else{
+                            if (enableProxyProtocol && quicWasEnabled){
+                                setToggleStateSilently("#enableQuic", false);
+                                msgbox("PROXY protocol enabled, HTTP/3 (QUIC) disabled");
+                            }else if (enableProxyProtocol){
+                                msgbox("PROXY protocol enabled");
+                            }else{
+                                msgbox("PROXY protocol disabled");
+                            }
+                        }
+                    });
+                };
+                if (enableProxyProtocol && gsViaProxy){
+                    wmConfirm("You are using this page through Waymark's proxy. With PROXY protocol on, Waymark only accepts connections that start with a PROXY header (from a load balancer in front of it), so this page stops loading unless your traffic comes through such a load balancer.\n\nTurn PROXY protocol on?", function(ok){ if (ok) wmGo(); else { setToggleStateSilently("#proxyProtocol", false); } });
                     return;
                 }
-                $.get("/api/proxy/proxyProtocol?enable=" + enableProxyProtocol, function(data){
-                    if (data.error != undefined){
-                        msgbox(data.error, false, 5000);
-                        //Revert checkbox state on error
-                        setToggleStateSilently("#proxyProtocol", !enableProxyProtocol);
-                    }else{
-                        if (enableProxyProtocol && quicWasEnabled){
-                            setToggleStateSilently("#enableQuic", false);
-                            msgbox("PROXY protocol enabled, HTTP/3 (QUIC) disabled");
-                        }else if (enableProxyProtocol){
-                            msgbox("PROXY protocol enabled");
-                        }else{
-                            msgbox("PROXY protocol disabled");
-                        }
-                    }
-                });
+                wmGo();
             });
         });
     }

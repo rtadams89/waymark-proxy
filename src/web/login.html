@@ -319,7 +319,7 @@
             let repeatMagic = $("#repeatMagic").val();
             let csrfToken = document.querySelector('meta[name="zoraxy.csrf.Token"]').getAttribute("content");
             if (magic !== repeatMagic) {
-                alert("Password does not match");
+                showLoginError("The passwords do not match");
                 return;
             }
 
@@ -335,7 +335,7 @@
                 },
                 success: function(data) {
                     if (data.error != undefined){
-                        alert(data.error);
+                        showLoginError(data.error);
                     }else{
                         //Register success. Refresh page
                         window.location.reload();
@@ -343,10 +343,17 @@
                 },
                 error: function(xhr, status, error) {
                     console.error("Error registering user:", error);
+                    showLoginError("The account could not be created. Check the connection and try again.");
                 }
             });
         });
 
+
+        // Shows an error under the form; the message is shown as text
+        function showLoginError(message){
+            $("#errmsg").html(`<i class="red remove icon"></i> `).append(document.createTextNode(String(message)));
+            $("#errmsg").stop().finish().slideDown('fast');
+        }
 
         //Login system with the given username and password
         function login(){
@@ -370,8 +377,7 @@
                 success: function(data){
                     if (data.error !== undefined){
                         //Something went wrong during the login
-                        $("#errmsg").html(`<i class="red remove icon"></i> ${data.error}`);
-                        $("#errmsg").stop().finish().slideDown('fast');
+                        showLoginError(data.error);
                     }else if(data.redirect !== undefined){
                         //LDAP Related Code
                         window.location.href = data.redirect;
@@ -387,7 +393,8 @@
                     $("input").removeClass('disabled');
                 },
                 error: function(){
-                    alert("Something went wrong.")
+                    $("input").removeClass('disabled');
+                    showLoginError("Sign-in failed. Check the connection and try again.");
                 }
             });
 

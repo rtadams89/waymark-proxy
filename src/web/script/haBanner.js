@@ -11,7 +11,7 @@
         FAULT:  ["Fault", "#db2828", "rgba(219,40,40,0.15)", "exclamation circle"],
         STOP:   ["keepalived stopped", "#db2828", "rgba(219,40,40,0.15)", "stop circle"]
     };
-    function esc(t){ return $("<div>").text(t).html(); }
+    function esc(t){ return htmlEscape(t); }
 
     // On a standby with configuration sync on, a second pill says settings
     // are read-only here and where to change them

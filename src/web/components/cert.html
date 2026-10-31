@@ -321,7 +321,8 @@
 
     //Delete the certificate by its domain
     function deleteCertificate(domain){
-        if (confirm("Confirm delete certificate for " + domain + " ?")){
+        wmConfirm("Confirm delete certificate for " + domain + " ?", function(ok){
+            if (!ok) return;
             $.cjax({
                 url: "/api/cert/delete",
                 method: "POST",
@@ -335,7 +336,7 @@
                     }
                 }
             });
-        }
+        });
         
     }
 
@@ -393,17 +394,17 @@
                         entryDomainRenewKey = entryDomainRenewKey.replace("_.","*.");
                     }
                     $("#certifiedDomainList").append(`<tr>
-                        <td><a style="cursor: pointer;" title="Download certificate" onclick="handleCertDownload('${entry.Filename}');">${entry.Domain}</a></td>
-                        <td>${entry.Filename}</td>
-                        <td>${entry.LastModifiedDate}</td>
-                        <td class="${isExpired?"expired":"valid"} certdate">${entry.ExpireDate} (${!isExpired?entry.RemainingDays+" days left":"Expired"})</td>
+                        <td><a style="cursor: pointer;" title="Download certificate" onclick="handleCertDownload(${jsArg(entry.Filename)});">${htmlEscape(entry.Domain)}</a></td>
+                        <td>${htmlEscape(entry.Filename)}</td>
+                        <td>${htmlEscape(entry.LastModifiedDate)}</td>
+                        <td class="${isExpired?"expired":"valid"} certdate">${htmlEscape(entry.ExpireDate)} (${!isExpired?entry.RemainingDays+" days left":"Expired"})</td>
                         <td>${entry.IsFallback?"<i class='green check icon'></i>":""}</td>
                         <td>${renderDnsChallengeCell(entry.Filename, entry.UseDNS)}</td>
                         <td>
-                            <button title="Set as Default / Fallback Certificate" class="ui mini basic button ${(entry.IsFallback?"disabled":"")} " onclick="setSelectedCertAsFallbackCertificate('${entry.Filename}');"><i class="ui blue home icon"></i> Set Fallback</button>
-                            <button title="Renew Certificate" class="ui mini basic icon button renewButton" onclick="renewCertificate('${entryDomainRenewKey}', '${entry.UseDNS}', this);"><i class="ui green refresh icon"></i></button>
-                            <button title="Challenge / DNS Credentials" class="ui mini basic icon button" onclick="openCertChallengeSettings('${entry.Filename}');"><i class="ui yellow key icon"></i></button>
-                            <button title="Delete key-pair" class="ui mini basic icon red button" onclick="deleteCertificate('${entry.Filename}');"><i class="ui red trash icon"></i></button>
+                            <button title="Set as Default / Fallback Certificate" class="ui mini basic button ${(entry.IsFallback?"disabled":"")} " onclick="setSelectedCertAsFallbackCertificate(${jsArg(entry.Filename)});"><i class="ui blue home icon"></i> Set Fallback</button>
+                            <button title="Renew Certificate" class="ui mini basic icon button renewButton" onclick="renewCertificate(${jsArg(entryDomainRenewKey)}, ${jsArg(entry.UseDNS)}, this);"><i class="ui green refresh icon"></i></button>
+                            <button title="Challenge / DNS Credentials" class="ui mini basic icon button" onclick="openCertChallengeSettings(${jsArg(entry.Filename)});"><i class="ui yellow key icon"></i></button>
+                            <button title="Delete key-pair" class="ui mini basic icon red button" onclick="deleteCertificate(${jsArg(entry.Filename)});"><i class="ui red trash icon"></i></button>
                         </td>
                     </tr>`);
                 });
