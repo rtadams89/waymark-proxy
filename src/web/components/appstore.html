@@ -583,9 +583,9 @@
       </thead>
       <tbody id="asSourceTable"></tbody>
     </table>
-    <div class="ui fluid action input">
+    <div id="asNewSourceArea" class="ui fluid action input">
       <input id="asNewSourceURL" type="text" placeholder="https://example.com/plugins/index.json">
-      <button class="ui basic button" onclick="asAddSource(this);"><i class="green add icon"></i> Add Source</button>
+      <button id="asAddSourceBtn" class="ui basic button" onclick="asAddSource(this);"><i class="green add icon"></i> Add Source</button>
     </div>
     <small>The source URL must point to a plugin index JSON file following the Zoraxy plugin list format.</small>
   </div>
@@ -1222,9 +1222,22 @@
   }
 
   /* ===== Settings (source management) ===== */
+  // A typed source URL is kept until "Add Source"; closing asks first
+  let asNewSourceArea = null;
   function asOpenSettings() {
     asRenderSourceTable();
-    $("#asSettingsModal").modal("show");
+    if (!asNewSourceArea) {
+      asNewSourceArea = wmTrackChanges("#asNewSourceArea", {saveButton: "#asAddSourceBtn", noteAfter: "#asNewSourceArea"});
+    }
+    $("#asNewSourceURL").val("");
+    asNewSourceArea.reset();
+    $("#asSettingsModal").modal({
+      onHide: function () {
+        if (!asNewSourceArea.check()) return true;
+        wmConfirmDiscard("#asNewSourceArea", function () { $("#asSettingsModal").modal("hide"); });
+        return false;
+      }
+    }).modal("show");
   }
 
   function asRenderSourceTable() {
@@ -1275,6 +1288,7 @@
         } else {
           msgbox("Source added", true);
           $("#asNewSourceURL").val("");
+          asNewSourceArea.reset();
           asLoadData(function () {
             asRenderSourceTable();
           });

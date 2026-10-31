@@ -15,7 +15,7 @@
         </style>
         <h3>Where logs go</h3>
         <p class="loHint"><b>System</b> logs are Waymark's own messages: startup, settings changes, certificate renewal, high availability, errors. <b>Access</b> logs have one line per HTTP request the proxy handles. Send each to the log file, to syslog servers, to both or to neither. System messages are also printed to standard output, so systemd's journal keeps them either way.</p>
-        <div class="ui form">
+        <div id="loForm" class="ui form">
             <div class="loCard">
                 <b><i class="file alternate outline icon"></i>Log file</b> <span class="loHint">(the <span class="loMono">log</span> folder on this node; rotation below)</span>
                 <div class="inline fields" style="margin: 0.6em 0 0 0;">
@@ -63,8 +63,8 @@
                     <br>
                     <small>When enabled, rotated log files are compressed with gzip.</small>
                 </div>
-                <button class="ui basic button" type="submit">
-                    <i class="green save icon"></i> Save Settings
+                <button id="logRotationSaveBtn" class="ui basic button" type="submit">
+                    <i class="green save icon"></i> Save
                 </button>
                 <button class="ui basic button" id="rotateLogBtn" onclick="triggerLogRotation(event)">
                     <i class="yellow archive icon" ></i> Rotate Log Now
@@ -84,6 +84,10 @@
     /*
         Log Settings
     */
+    // Both the outputs and the rotation settings are saved with their Save button
+    var logRotationArea = wmTrackChanges("#log-settings-form", {saveButton: "#logRotationSaveBtn"});
+    var loArea = wmTrackChanges("#loForm", {saveButton: "#loSaveBtn", onDiscard: function(){ loLoad(true); }});
+
     function loadLogSettings() {
         $.get("/api/logger/config", function(data) {
             if (data.error) {
@@ -96,6 +100,7 @@
             $("#logCompressionEnabled").prop("checked", data.compress);
             // Re-initialize checkboxes after setting values
             $('.ui.checkbox').checkbox();
+            logRotationArea.reset();
         }).fail(function(xhr, status, error) {
             console.error("Failed to load log settings:", error);
         });
@@ -136,6 +141,7 @@
                     showLogSettingsError(data.error);
                 } else {
                     showLogSettingsSuccess();
+                    logRotationArea.reset();
                 }
             },
             error: function(xhr, status, error) {
@@ -342,6 +348,7 @@
                     $("#loSyslogList").empty();
                     (o.syslog || []).forEach(s => $("#loSyslogList").append(card(s)));
                     loCount();
+                    loArea.reset();
                 }
                 renderStatus();
             });

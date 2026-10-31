@@ -65,7 +65,8 @@
         <div class="ten wide column">
             <div class="ui basic segment" style="border-radius: 1em; padding: 1em !important;">
                 <h3>New HTTP Rule</h3>
-                <div class="ui form">
+                <div id="newHttpRuleForm" class="ui form">
+                    <input type="hidden" id="newRuleCredState" value="[]">
                     <div class="field">
                         <label>Matching Keyword / Domain</label>
                         <input type="text" id="rootname" placeholder="mydomain.com">
@@ -91,7 +92,7 @@
                             </div>
                             <div class="content">
                                 <!-- The address the rule answers on -->
-                                <div class="field">
+                                <div class="field" data-wm-untracked>
                                     <label>Listen On</label>
                                     <select id="newRuleListenIP"></select>
                                     <small>The address of this host the rule answers on. Any address unless you want this site on one floating IP only.</small>
@@ -206,7 +207,7 @@
                                     <i class="ui grey hand paper icon"></i>
                                     Access
                                 </div>
-                                <div class="field">
+                                <div class="field" data-wm-untracked>
                                     <label>ACL</label>
                                     <div class="ui selection dropdown">
                                         <input type="hidden" id="newProxyRuleAccessFilter" value="allow-all">
@@ -297,7 +298,7 @@
                     </div>
                     <br>
                     <div style="display: inline-block;">
-                        <button class="ui basic button" onclick="newProxyEndpoint();"><i class="green add icon"></i> Create HTTP Rule</button>
+                        <button id="newHttpRuleCreateBtn" class="ui basic button" onclick="newProxyEndpoint();"><i class="green add icon"></i> Create HTTP Rule</button>
                     </div>
                     <br><br>
                 </div>
@@ -473,6 +474,7 @@
                     $("#disableStatisticCollection").prop("checked", false);
                     credentials = [];
                     updateTable();
+                    newHttpRuleArea.reset();
                     reloadUptimeList();
                     //Check if it is a new subdomain and TLS enabled
                     if ($("#tls").checkbox("is checked")){
@@ -579,6 +581,15 @@
     */
     let credentials = []; // Global variable to store credentials
 
+    // The new rule form is kept until "Create HTTP Rule" is clicked. The
+    // listen address and ACL lists are filled in from the server, so they
+    // are not tracked.
+    var newHttpRuleArea = wmTrackChanges("#newHttpRuleForm", {saveButton: "#newHttpRuleCreateBtn", onDiscard: function(){
+        credentials = [];
+        updateTable();
+    }});
+    setTimeout(function(){ newHttpRuleArea.reset(); }, 1000);
+
     function addCredentials() {
         // Retrieve the username and password input values
         var username = $('#basicAuthCredUsername').val();
@@ -607,6 +618,7 @@
     }
 
     function updateTable() {
+        $("#newRuleCredState").val(JSON.stringify(credentials.map(c => c.username))).trigger("change");
         var tableBody = $('#basicAuthCredentialTable');
         tableBody.empty();
 

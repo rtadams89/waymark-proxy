@@ -38,8 +38,8 @@
             <textarea id="trustedProxyTextArea" class="ui fluid" rows="14"
                 style="width:100%; font-family:monospace; font-size:0.95em; padding:0.75em; border:1px solid rgba(34,36,38,.15); border-radius:0.28571429rem; resize:vertical;"></textarea>
             <br><br>
-            <button class="ui basic green button" onclick="window.saveBulkTrustedProxies();">
-                <i class="save icon"></i> Save
+            <button id="trustedProxyBulkSaveBtn" class="ui basic button" onclick="window.saveBulkTrustedProxies();">
+                <i class="green save icon"></i> Save
             </button>
             <button class="ui basic button" onclick="window.cancelBulkTrustedProxies();">
                 <i class="times icon"></i> Cancel
@@ -65,7 +65,7 @@
                     <input type="text" id="trustedProxyDescInput" placeholder="e.g. Cloudflare">
                 </div>
             </div>
-            <button class="ui basic green button" onclick="window.addTrustedProxy();">
+            <button id="trustedProxyAddBtn" class="ui basic green button" onclick="window.addTrustedProxy();">
                 <i class="ui green add icon"></i> Add Trusted Proxy
             </button>
         </div>
@@ -135,10 +135,18 @@
     }
 
     var _inTextEditMode = false;
+    // The text editor, the add form and a row being edited each save with their own button
+    var tpBulkArea = wmTrackChanges("#trustedProxyTextView", {saveButton: "#trustedProxyBulkSaveBtn"});
+    var tpAddArea = wmTrackChanges("#trustedProxyAddForm", {saveButton: "#trustedProxyAddBtn"});
+    setTimeout(function(){ tpAddArea.reset(); }, 300);
 
     function toggleTrustedProxyTextEdit() {
         if (_inTextEditMode) {
             // Switch back to table mode without saving
+            if (tpBulkArea.check()){
+                wmConfirmDiscard("#trustedProxyTextView", toggleTrustedProxyTextEdit);
+                return;
+            }
             _inTextEditMode = false;
             $('#trustedProxyTableView').show();
             $('#trustedProxyAddForm').show();
@@ -154,6 +162,7 @@
                 $('#trustedProxyAddForm').hide();
                 $('#trustedProxyTextView').show();
                 $('#toggleTextEditBtn').html('<i class="table icon"></i> View as Table');
+                tpBulkArea.reset();
             });
         }
     }
@@ -170,6 +179,7 @@
                     return;
                 }
                 msgbox("Trusted proxy list saved", true);
+                tpBulkArea.discard();
                 // Switch back to table view
                 _inTextEditMode = false;
                 $('#trustedProxyTableView').show();
@@ -183,6 +193,7 @@
 
     function cancelBulkTrustedProxies() {
         // Re-fetch from backend and switch back to table view
+        tpBulkArea.discard();
         _inTextEditMode = false;
         $('#trustedProxyTableView').show();
         $('#trustedProxyAddForm').show();
@@ -205,6 +216,7 @@
                 }
                 // data is the new proxy list
                 $('#trustedProxyTextArea').val(proxyListToCsv(data));
+                tpBulkArea.reset();
                 msgbox("Trusted proxy list reset to defaults", true);
             }
         });
@@ -231,6 +243,7 @@
                 msgbox("Trusted proxy added", true);
                 $('#trustedProxyIpInput').val('');
                 $('#trustedProxyDescInput').val('');
+                tpAddArea.reset();
                 initTrustedProxyTable();
             }
         });
@@ -261,6 +274,8 @@
         row.find('.proxy-icon, .proxy-ip-display, .proxy-desc-display, .proxy-actions-display').hide();
         row.find('.proxy-ip-edit, .proxy-desc-edit, .proxy-actions-edit').show();
         row.find('.proxy-ip-edit input').focus();
+        if (!row.data("wmArea")) row.data("wmArea", wmTrackChanges(row, {saveButton: row.find('.proxy-actions-edit .green.button')}));
+        row.data("wmArea").reset();
     }
 
     function cancelTrustedProxyEdit(btn){
@@ -269,6 +284,7 @@
         row.find('.proxy-desc-edit input').val(row.find('.proxy-desc-display').text());
         row.find('.proxy-icon, .proxy-ip-display, .proxy-desc-display, .proxy-actions-display').show();
         row.find('.proxy-ip-edit, .proxy-desc-edit, .proxy-actions-edit').hide();
+        if (row.data("wmArea")) row.data("wmArea").discard();
     }
 
     function saveTrustedProxyRow(btn, originalIp){

@@ -28,7 +28,8 @@
 
     <!-- Editor -->
     <div id="objEditor" class="ui basic segment" style="display:none;">
-        <a href="#" onclick="objCloseEditor(); return false;"><i class="angle left icon"></i> All objects</a>
+        <a href="#" onclick="wmConfirmDiscard('#objEditor', objCloseEditor); return false;"><i class="angle left icon"></i> All objects</a>
+        <input type="hidden" id="objEntriesState">
         <div class="ui form" style="margin-top: 0.8em;">
             <div class="two fields">
                 <div class="field"><label>Name</label><input type="text" id="objName" maxlength="64"></div>
@@ -74,9 +75,8 @@
             <tbody id="objEntriesTable"></tbody>
         </table>
         <div id="objSaveBox">
-            <button class="ui basic button" onclick="objSave();"><i class="green save icon"></i> Save object</button>
-            <button class="ui basic button" onclick="objCloseEditor();">Cancel</button>
-            <span id="objDirty" style="margin-left: 0.6em; color: #c78e00; display:none;"><i class="exclamation circle icon"></i>Not saved yet</span>
+            <button id="objSaveBtn" class="ui basic button" onclick="objSave();"><i class="green save icon"></i> Save</button>
+            <button class="ui basic button" onclick="objCancelEdit();">Cancel</button>
         </div>
     </div>
 </div>
@@ -172,7 +172,22 @@
     };
 
     // Opens an object in the editor ("" for a new one), from anywhere
+    // Nothing in the editor (name, description, entries) is saved until Save
+    let objArea = null;
+    $(function(){ objArea = wmTrackChanges("#objEditor", {saveButton: "#objSaveBtn", onDiscard: function(){
+        // Puts back the saved entries (a new object starts empty)
+        if (!editing) return;
+        editing = editing.id && all[editing.id] ? JSON.parse(JSON.stringify(all[editing.id])) : {id: "", name: "", description: "", entries: [], revision: 0};
+        fillEditorFields();
+        renderEditor();
+    }}); });
+
     window.wmOpenObject = function(id){
+        if ($("#objEditor").is(":visible") && objArea && objArea.check()){
+            openTabById("aclobjects");
+            wmConfirmDiscard("#objEditor", function(){ wmOpenObject(id); });
+            return;
+        }
         openTabById("aclobjects");
         objLoadList(function(){
             if (id && !all[id]){ msgbox("Object not found", false); return; }
@@ -181,12 +196,18 @@
             renderEditor();
             $("#objListView").hide();
             $("#objEditor").show();
-            $("#objDirty").hide();
+            if (objArea) objArea.reset();
             if (!id) $("#objName").focus();
         });
     };
 
+    window.objCancelEdit = function(){
+        if (objArea) objArea.discard();
+        objCloseEditor();
+    };
+
     window.objCloseEditor = function(){
+        if (objArea) objArea.discard();
         editing = null;
         $("#objEditor").hide();
         $("#objListView").show();
@@ -223,9 +244,11 @@
         });
         if (rows.length == 0) rows.push(`<tr><td colspan="4"><small style="opacity: 0.7;">No entries</small></td></tr>`);
         $("#objEntriesTable").html(rows.join(""));
+        $("#objEntriesState").val(JSON.stringify(editing.entries || [])).trigger("change");
     }
 
-    function dirty(){ $("#objDirty").show(); }
+    // The entries are tracked through #objEntriesState
+    function dirty(){ if (objArea) objArea.check(); }
 
     // Objects that can go inside the one being edited: not itself, not one already
     // in it, and not one that contains it
@@ -252,7 +275,6 @@
     }
 
     window.objOpenNested = function(id){
-        if ($("#objDirty").is(":visible") && !confirm("This object has changes that are not saved. Open the other object anyway?")) return;
         wmOpenObject(id);
     };
 
@@ -312,8 +334,7 @@
         saveObject(editing, function(d){
             msgbox("Object saved");
             editing = d;
-            $("#objDirty").hide();
-            objLoadList(function(){ fillEditorFields(); renderEditor(); });
+            objLoadList(function(){ fillEditorFields(); renderEditor(); if (objArea) objArea.reset(); });
         });
     };
 

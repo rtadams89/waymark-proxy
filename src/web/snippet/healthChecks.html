@@ -216,6 +216,7 @@
             let editingEndpoint = {};
             let statusTimer = null;
             let formDirty = false;
+            let hcArea = wmTrackChanges("#hcForm", {saveButton: "#hcSaveBtn"});
 
             function esc(s){ return $("<div>").text(s == undefined ? "" : String(s)).html(); }
             function notify(msg, ok=true, ms=undefined){
@@ -293,6 +294,7 @@
                 });
                 applyVisibility();
                 formDirty = false;
+                hcArea.reset();
             }
 
             function readForm(){

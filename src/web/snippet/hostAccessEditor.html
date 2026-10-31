@@ -53,6 +53,8 @@
         <div class="ui container">
             <p>Choose the ACL for this rule. Its rules are checked top down for the client's address; an address no rule matches is denied.
                 <a href="#" onclick="openACLPage(); return false;">Manage ACLs</a></p>
+            <div id="aclArea">
+            <input type="hidden" id="selectedACL" value="">
             <div id="aclList"><small>Loading</small></div>
             <div id="trustBox" style="display:none; margin-top: 1em;">
                 <div class="ui divider"></div>
@@ -61,6 +63,9 @@
                     <label>Trust the client address forwarded by trusted proxies<br>
                         <small>When a request comes from an address on <a href="#" onclick="openTrustedProxies(); return false;">Access &gt; Trusted Proxies</a> (a CDN or load balancer in front of Waymark), the ACL, rate limiting and logs use the client address it forwards (X-Forwarded-For and similar). Leave this off when clients connect to Waymark directly.</small></label>
                 </div>
+            </div>
+            <div class="ui divider"></div>
+            <button class="ui basic button" id="aclSaveBtn" onclick="saveSelection();"><i class="green save icon"></i> Save</button>
             </div>
             <br><br><br>
         </div>
@@ -115,12 +120,24 @@
                     // An ACL that no longer exists is treated as Allow all
                     currentACL = "allow-all";
                 }
-                markActive();
+                showSaved();
             }
 
+            // The card shown as chosen: the unsaved choice, or the saved ACL
             function markActive(){
+                let chosen = $("#selectedACL").val() || currentACL;
                 $(".aclCard").removeClass("active");
-                $(".aclCard").filter(function(){ return $(this).attr("aclid") == currentACL; }).addClass("active");
+                $(".aclCard").filter(function(){ return $(this).attr("aclid") == chosen; }).addClass("active");
+            }
+
+            let aclArea = wmTrackChanges("#aclArea", {saveButton: "#aclSaveBtn"});
+
+            // Shows the saved ACL and trust setting as the starting values
+            function showSaved(){
+                $("#selectedACL").val(currentACL);
+                $("#trustProxyHeaders").prop("checked", currentTrust);
+                markActive();
+                aclArea.reset();
             }
 
             function loadList(){
@@ -160,21 +177,20 @@
             load();
 
             function selectACL(card){
-                let id = $(card).attr("aclid");
-                if (id == currentACL) return;
-                save(id, currentTrust);
+                $("#selectedACL").val($(card).attr("aclid")).trigger("change");
+                markActive();
             }
 
-            $("#trustProxyHeaders").on("change", function(){
-                save(currentACL, this.checked);
-            });
+            function saveSelection(){
+                save($("#selectedACL").val() || currentACL, $("#trustProxyHeaders")[0].checked);
+            }
 
             function save(aclID, trust){
                 if (isL4){
                     parent.saveL4Config({accessRuleUUID: aclID}, function(err){
                         let c = parent.l4CurrentConfig();
                         currentACL = normalizeID(c ? c.AccessRuleUUID : "");
-                        markActive();
+                        if (!err) showSaved();
                     });
                     return;
                 }
@@ -185,14 +201,12 @@
                     success: function(data){
                         if (data.error != undefined){
                             parent.msgbox(data.error, false, 6000);
-                            $("#trustProxyHeaders").prop("checked", currentTrust);
-                            markActive();
                             return;
                         }
                         currentACL = aclID;
                         currentTrust = trust;
-                        markActive();
-                        parent.msgbox("Access settings updated");
+                        showSaved();
+                        parent.msgbox("Access settings saved");
                         if (parent.updateAccessRuleNameUnderHost){
                             parent.updateAccessRuleNameUnderHost(editingEndpoint.ep, aclID);
                         }

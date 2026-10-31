@@ -112,7 +112,7 @@
             <div class="ui form">
                 <div class="acInline">
                     <div class="ui input"><input type="number" min="16" max="65536" id="acLimitMB"></div><span>MB</span>
-                    <button class="ui basic button" id="acLimitBtn" onclick="saveLimit();"><i class="green save icon"></i> Set limit</button>
+                    <button class="ui basic button" id="acLimitBtn" onclick="saveLimit();"><i class="green save icon"></i> Save</button>
                 </div>
                 <div class="acHint" style="margin-top: 0.3em;">Shared by every host with caching on. When it's full, the least recently used files are dropped. The cache is kept in memory only and starts empty after Waymark restarts.</div>
             </div>
@@ -132,6 +132,8 @@
             let editingEndpoint = {};
             let defaultExtensions = [];
             let formDirty = false;
+            let acArea = wmTrackChanges("#acForm", {saveButton: "#acSaveBtn"});
+            let acLimitArea = wmTrackChanges($("#acLimitMB").closest(".ui.form"), {saveButton: "#acLimitBtn"});
 
             function notify(msg, ok=true, ms=undefined){
                 if (parent && parent !== window && parent.msgbox){ parent.msgbox(msg, ok, ms); } else { alert(msg); }
@@ -174,6 +176,7 @@
                 $("#acForm [name=maxFileMB]").val(cfg.maxFileMB);
                 applyVisibility();
                 formDirty = false;
+                acArea.reset();
             }
 
             function readForm(){
@@ -206,8 +209,9 @@
                 let pct = usage.maxBytes > 0 ? Math.min(100, usage.bytes * 100 / usage.maxBytes) : 0;
                 $("#acUsageBar").progress({ percent: pct, showActivity: false });
                 $("#acUsageText").text(fmtBytes(usage.bytes) + " of " + fmtBytes(usage.maxBytes) + " used by " + fmtCount(usage.entries) + " file(s) across all hosts");
-                if (!$("#acLimitMB").is(":focus")){
+                if (!acLimitArea.check()){
                     $("#acLimitMB").val(limitMB);
+                    acLimitArea.reset();
                 }
             }
 
@@ -286,6 +290,7 @@
                         }
                         notify("Memory limit saved");
                         $("#acLimitMB").blur();
+                        acLimitArea.baseline = null;
                         load(false);
                     },
                     error: function(){

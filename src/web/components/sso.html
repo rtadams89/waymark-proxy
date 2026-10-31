@@ -98,7 +98,7 @@
                                 <b>No authentication is performed on these paths.</b> Every request whose path starts with one of these prefixes bypasses Forward Auth entirely and is served with no auth check — only list paths you intentionally want public.
                             </div>
                         </div>
-                        <div class="field" style="margin-top: 1em;">
+                        <div class="field" style="margin-top: 1em;" data-wm-untracked>
                             <label>Callback Virtual Directory (bulk apply)</label>
                             <small>
                                 In single-application mode the auth callback path also needs a Virtual Directory on each protected host to route it to the outpost. These buttons manage that directory across all hosts based on their Forward Auth state; a directory with different settings is never touched. <br>
@@ -127,7 +127,7 @@
                     </div>
                 </div>
             </div>
-            <button class="ui basic button" type="submit"><i class="green check icon"></i> Apply Change</button>
+            <button class="ui basic button" type="submit"><i class="green save icon"></i> Save</button>
             <button class="ui basic button" type="button" id="forwardAuthClear"><i class="red trash icon"></i> Clear</button>
         </form>
         </div>
@@ -203,7 +203,7 @@
                 <small>Time to cache OAuth2 configuration before refresh. Accepts Go time.Duration format (e.g. 1m, 10m, 1h). Defaults to 60s.</small>
             </div>
 
-            <button class="ui basic button" type="submit"><i class="green check icon"></i> Apply Change</button>
+            <button class="ui basic button" type="submit"><i class="green save icon"></i> Save</button>
             <button class="ui basic button" type="button" id="oauth2Clear"><i class="red trash icon"></i> Clear</button>
         </form>
         </div>
@@ -261,7 +261,7 @@
                     <input type="number" id="zorxAuthGatewayPort" name="gatewayPort" placeholder="5489" min="1" max="65535" value="5489">
                     <small>Port number for the Waymark Auth Gateway to listen on</small>
                 </div>
-                <button class="ui basic button" type="submit"><i class="green check icon"></i> Apply Change</button>
+                <button class="ui basic button" type="submit"><i class="green save icon"></i> Save</button>
                 <button class="ui basic button" type="button" onclick="openZorxAuthUserEditor();"><i class="ui green users icon"></i> Manage Users</button>
                 <button class="ui basic red button" type="button" onclick="logoutAllUsers();"><i class="ui sign-out icon"></i> Logout All Users</button>
             </form>
@@ -335,7 +335,7 @@
                 </div>
                 
                 <div style="margin-top: 1.5em;">
-                    <button class="ui basic button" type="submit"><i class="green check icon"></i> Apply Change</button>
+                    <button class="ui basic button" type="submit"><i class="green save icon"></i> Save</button>
                     <button class="ui basic button" type="button" id="zorxAuthClear"><i class="red trash icon"></i> Clear</button></div>
                 </div>
             </form>
@@ -374,6 +374,14 @@
     /*
         Forward Auth settings fetcher.
     */
+    // Each form is saved with its Save button
+    var ssoAreas = {
+        forwardAuth: wmTrackChanges("#forwardAuthSettings", {saveButton: "#forwardAuthSettings button[type=submit]"}),
+        oauth2: wmTrackChanges("#oauth2Settings", {saveButton: "#oauth2Settings button[type=submit]"}),
+        gateway: wmTrackChanges("#zorxAuthGatewaySettings", {saveButton: "#zorxAuthGatewaySettings button[type=submit]"}),
+        zorxAuth: wmTrackChanges("#zorxAuthSettings", {saveButton: "#zorxAuthSettings button[type=submit]"})
+    };
+
     function getForwardAuthSettings() {
         $.cjax({
             url: '/api/sso/forward-auth',
@@ -421,6 +429,7 @@
                 } else {
                     $('#forwardAuthIgnoredPaths').val("");
                 }
+                ssoAreas.forwardAuth.reset();
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.error('Error fetching SSO settings:', textStatus, errorThrown);
@@ -466,6 +475,7 @@
                     return;
                 }
                 msgbox('Forward Auth settings updated', true);
+                ssoAreas.forwardAuth.reset();
                 console.log('Forward Auth settings updated:', data);
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -573,6 +583,7 @@
                 $('#oauth2Scopes').val(data.oauth2Scopes);
                 $('#oauth2ConfigurationCacheTime').val(data.oauth2ConfigurationCacheTime);
                 $('[data-value="'+data.oauth2CodeChallengeMethod+'"]').click();
+                ssoAreas.oauth2.reset();
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.error('Error fetching SSO settings:', textStatus, errorThrown);
@@ -610,6 +621,7 @@
                     return;
                 }
                 msgbox('OAuth2 settings updated', true);
+                ssoAreas.oauth2.reset();
                 console.log('OAuth2 settings updated:', data);
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -673,6 +685,7 @@
                 
                 // Update logout URL display based on SSO Redirect URL
                 updateLogoutUrlDisplay();
+                ssoAreas.zorxAuth.reset();
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.error('Error fetching Waymark Auth settings:', textStatus, errorThrown);
@@ -743,6 +756,7 @@
                     return;
                 }
                 msgbox('Waymark Auth settings updated', true);
+                ssoAreas.zorxAuth.reset();
                 console.log('Waymark Auth settings updated:', data);
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -814,6 +828,7 @@
                     $("#zorxAuthGatewayEnabled").parent().checkbox("set unchecked");
                 }
                 $('#zorxAuthGatewayPort').val(data.gatewayPort || 5489);
+                ssoAreas.gateway.reset();
 
                 setZorxAuthGatewayRunningState(
                     data.gatewayEnabled === true,
@@ -851,6 +866,7 @@
                     return;
                 }
                 msgbox('Waymark Auth Gateway settings updated', true);
+                ssoAreas.gateway.reset();
                 console.log('Waymark Auth Gateway settings updated:', data);
                 
                 // Reload settings to update running status

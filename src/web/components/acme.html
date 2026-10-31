@@ -36,7 +36,7 @@
     <div class="ui divider"></div>
     <h3>Preferred Certificate Authority</h3>
     <p>The default CA used when a new proxy rule asks for a TLS certificate</p>
-    <div class="ui fluid form">
+    <div id="prefCAForm" class="ui fluid form">
         <div class="field">
             <label>Preferred CA</label>
             <div class="ui selection dropdown" id="defaultCA">
@@ -72,12 +72,13 @@
                 <label>Ignore TLS/SSL Verification Error<br><small>E.g. self-signed, expired certificate (Not Recommended)</small></label>
             </div>
         </div>
-        <button class="ui basic button" onclick="saveDefaultCA();"><i class="ui green save icon"></i> Save</button>
+        <button id="prefCASaveBtn" class="ui basic button" onclick="saveDefaultCA();"><i class="ui green save icon"></i> Save</button>
     </div>
     <br>
     <div class="ui divider"></div>
     <h3>Advanced Renew Policy</h3>
     <p>Configure which certificates the ACME auto-renewer should renew automatically.</p>
+    <div id="renewPolicyArea">
     <div style="display: flex; align-items: center; gap: 1.6em; flex-wrap: wrap;">
         <div class="ui toggle checkbox" id="renewAllSupportedCheckbox">
             <input type="checkbox" id="renewAllSupported" onchange="window.acmeSetAutoRenewMode(this.checked);">
@@ -117,9 +118,10 @@
         
         </div>
     </div>
-    <button class="ui basic button" onclick="window.acmeSaveRenewPolicy();">
-            <i class="green save icon"></i> Save Renew Policy
+    <button id="renewPolicySaveBtn" class="ui basic button" onclick="window.acmeSaveRenewPolicy();">
+            <i class="green save icon"></i> Save
     </button>
+    </div>
     
     <br>
     <div class="ui divider"></div>
@@ -260,6 +262,7 @@
                 });
                 acmeSetAutoRenewMode(false);
             }
+            renewPolicyArea.reset();
         });
     }
 
@@ -296,7 +299,9 @@
                 method: "POST",
                 data: {opr: "setAuto"},
                 success: function(data){
+                    if (data.error != undefined){ msgbox(data.error, false); return; }
                     msgbox("Renew policy updated");
+                    renewPolicyArea.reset();
                 }
             });
         } else {
@@ -309,7 +314,9 @@
                 method: "POST",
                 data: {opr: "setSelected", domains: JSON.stringify(checkedNames)},
                 success: function(data){
+                    if (data.error != undefined){ msgbox(data.error, false); return; }
                     msgbox("Renew policy updated");
+                    renewPolicyArea.reset();
                 }
             });
         }
@@ -325,8 +332,18 @@
         });
     }
 
+    // Both areas are saved with their own Save button
+    let prefCAArea = wmTrackChanges("#prefCAForm", {saveButton: "#prefCASaveBtn"});
+    let renewPolicyArea = wmTrackChanges("#renewPolicyArea", {saveButton: "#renewPolicySaveBtn", onDiscard: function(){ acmeSetAutoRenewMode($("#renewAllSupported").is(":checked")); }});
+    // Resets prefCAArea once the email and the CA have both loaded or saved
+    function prefCAStep(state){
+        state.left--;
+        if (state.left == 0 && state.ok) prefCAArea.reset();
+    }
+
     // Main initialization
     function initAcmeStatus(){
+        let prefLoad = {left: 2, ok: true};
         $.get("/api/acme/autoRenew/email", function(data){
             $("#prefACMEEmail").val(data);
             updateEmailGate(data);
@@ -335,14 +352,14 @@
             } else {
                 $(".renewButton").removeClass('disabled');
             }
-        });
+        }).always(function(){ prefCAStep(prefLoad); });
 
         $.get("/api/acme/autoRenew/ca", function(data){
             $("#defaultCA").dropdown("set value", data.name);
             $("#prefcaURL").val(data.url || "");
             updatePrefCaFields(data.name);
             $("#skipTLSCheckbox").prop("checked", data.skipTLS || false);
-        });
+        }).always(function(){ prefCAStep(prefLoad); });
 
         initToggleState();
         initDomainFileList();
@@ -408,6 +425,7 @@
             return;
         }
 
+        let prefSave = {left: 2, ok: true};
         $.cjax({
             url: "/api/acme/autoRenew/email",
             method: "POST",
@@ -415,11 +433,14 @@
             success: function(data){
                 if (data.error != undefined){
                     msgbox(data.error, false);
+                    prefSave.ok = false;
                 } else {
                     $(".renewButton").removeClass('disabled');
                     updateEmailGate(newDefaultEmail);
                 }
-            }
+            },
+            error: function(){ prefSave.ok = false; },
+            complete: function(){ prefCAStep(prefSave); }
         });
 
         $.cjax({
@@ -433,8 +454,11 @@
             success: function(data){
                 if (data.error != undefined){
                     msgbox(data.error, false);
+                    prefSave.ok = false;
                 }
-            }
+            },
+            error: function(){ prefSave.ok = false; },
+            complete: function(){ prefCAStep(prefSave); }
         });
 
 

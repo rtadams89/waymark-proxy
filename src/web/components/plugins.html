@@ -241,9 +241,14 @@
                     <small>Automatic reload plugin when the plugin binary changed</small></label>
                 </div>
                 <br><br>
+                <div id="autoReloadIntervalArea">
                 <div class="field" style="max-width: 50%;margin-bottom: 0px;">
                   <label>Check Interval</label>
-                  <input type="number" id="autoreload-interval" placeholder="Check Interval" min="1" max="60" step="1" value="1">
+                  <div class="ui action input">
+                    <input type="number" id="autoreload-interval" placeholder="Check Interval" min="1" max="60" step="1" value="1">
+                    <button id="autoReloadIntervalSaveBtn" class="ui basic button"><i class="green save icon"></i> Save</button>
+                  </div>
+                </div>
                 </div>
                 <small>Specify the interval (in seconds) for checking plugin changes. <br>Minimum is 1 second, maximum is 60 seconds.</small>
               </div>
@@ -745,12 +750,16 @@ function uninstallPlugin(pluginId, pluginName, btn=undefined) {
         if (data) {
           $("#autoreload-interval").val(data);
         }
+        autoReloadIntervalArea.reset();
 
         bindEventsToDeveloperSettings();
       });
     });
   }
   
+  // The interval is saved with its own Save button
+  let autoReloadIntervalArea = wmTrackChanges("#autoReloadIntervalArea", {saveButton: "#autoReloadIntervalSaveBtn", noteAfter: "#autoReloadIntervalArea .action.input"});
+
   function bindEventsToDeveloperSettings(){
     $("#enablePluginAutoReload").checkbox({
       onChecked: function() {
@@ -783,8 +792,8 @@ function uninstallPlugin(pluginId, pluginName, btn=undefined) {
       }
     });
 
-    $("#autoreload-interval").on("change", function() {
-      const interval = $(this).val();
+    $("#autoReloadIntervalSaveBtn").off("click").on("click", function() {
+      const interval = $("#autoreload-interval").val();
       if (interval < 1 || interval > 60) {
         msgbox("Interval must be between 1 and 60 seconds", false);
         return;
@@ -798,6 +807,7 @@ function uninstallPlugin(pluginId, pluginName, btn=undefined) {
             msgbox(data.error, false);
           } else {
             msgbox("Auto reload interval updated to " + interval + " seconds", true);
+            autoReloadIntervalArea.reset();
           }
         }
       });

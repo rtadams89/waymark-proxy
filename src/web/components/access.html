@@ -31,8 +31,8 @@
                 <div class="field"><label>Name</label><input type="text" id="aclNewName" maxlength="64" placeholder="e.g. Office only"></div>
                 <div class="field"><label>Description <small>(optional)</small></label><input type="text" id="aclNewDesc" maxlength="200"></div>
             </div>
-            <button class="ui basic button" onclick="aclCreate();"><i class="green check icon"></i> Create</button>
-            <button class="ui basic button" onclick="$('#aclNewForm').hide();">Cancel</button>
+            <button id="aclCreateBtn" class="ui basic button" onclick="aclCreate();"><i class="green check icon"></i> Create</button>
+            <button class="ui basic button" onclick="aclHideForm('#aclNewForm');">Cancel</button>
             <small style="margin-left: 0.6em; opacity: 0.8;">A new ACL has no rules, so it denies everything until you add some.</small>
         </div>
         <table class="ui very basic unstackable celled table" style="margin-top: 1em;">
@@ -43,11 +43,11 @@
 
     <!-- Editor -->
     <div id="aclEditor" class="ui basic segment" style="display:none;">
-        <a href="#" onclick="aclCloseEditor(); return false;"><i class="angle left icon"></i> All ACLs</a>
+        <a href="#" onclick="wmConfirmDiscard('#aclEditor', aclCloseEditor); return false;"><i class="angle left icon"></i> All ACLs</a>
         <div style="display:flex; align-items:baseline; gap: 0.8em; flex-wrap: wrap; margin-top: 0.6em;">
             <h3 id="aclEdName" style="margin: 0;"></h3>
             <span id="aclEdBuiltIn" class="ui mini basic label" style="display:none;">built in, read only</span>
-            <a href="#" id="aclEdRenameBtn" onclick="$('#aclRenameForm').toggle(); return false;"><i class="edit icon"></i>Rename</a>
+            <a href="#" id="aclEdRenameBtn" onclick="aclToggleRename(); return false;"><i class="edit icon"></i>Rename</a>
         </div>
         <p id="aclEdDesc" style="margin-top: 0.4em; opacity: 0.8;"></p>
         <div id="aclRenameForm" class="ui form" style="display:none;">
@@ -55,7 +55,7 @@
                 <div class="field"><label>Name</label><input type="text" id="aclRenName" maxlength="64"></div>
                 <div class="field"><label>Description</label><input type="text" id="aclRenDesc" maxlength="200"></div>
             </div>
-            <button class="ui basic small button" onclick="aclRename();"><i class="green save icon"></i> Save</button>
+            <button id="aclRenameSaveBtn" class="ui basic small button" onclick="aclRename();"><i class="green save icon"></i> Save</button>
         </div>
         <div class="aclUsers" id="aclEdUsers" style="margin: 0.6em 0;"></div>
         <div class="ui yellow message" id="aclGeoOff" style="display:none;"><i class="exclamation triangle icon"></i> GeoIP lookups are off (Utilities, System tab), so rules with countries are skipped.</div>
@@ -114,8 +114,8 @@
                 </div>
             </div>
             <p><small><b>Deny</b>: HTTP rules answer with the forbidden page (403); TCP connections are closed. <b>Drop</b>: HTTP connections are closed without an answer (HTTP/2 and HTTP/3 streams are reset); TCP connections are reset. UDP packets are ignored either way.</small></p>
-            <button class="ui basic button" onclick="aclSubmitRuleForm();"><i class="green check icon"></i> <span id="aclRuleFormBtn">Add</span></button>
-            <button class="ui basic button" onclick="$('#aclRuleForm').hide();">Cancel</button>
+            <button id="aclRuleSaveBtn" class="ui basic button" onclick="aclSubmitRuleForm();"><i class="green check icon"></i> <span id="aclRuleFormBtn">Add</span></button>
+            <button class="ui basic button" onclick="aclHideForm('#aclRuleForm');">Cancel</button>
         </div>
 
         <!-- Rules -->
@@ -168,10 +168,43 @@
         });
     };
 
+    // The new, rename and rule forms each save with their own button
+    let aclNewArea = wmTrackChanges("#aclNewForm", {saveButton: "#aclCreateBtn"});
+    let aclRenameArea = wmTrackChanges("#aclRenameForm", {saveButton: "#aclRenameSaveBtn"});
+    let aclRuleArea = wmTrackChanges("#aclRuleForm", {saveButton: "#aclRuleSaveBtn", onDiscard: function(){ showSourceField(); }});
+    let aclFormAreas = {"#aclNewForm": aclNewArea, "#aclRenameForm": aclRenameArea, "#aclRuleForm": aclRuleArea};
+
+    // Hides a form and drops its changes
+    window.aclHideForm = function(sel){
+        $(sel).hide();
+        if (aclFormAreas[sel]) aclFormAreas[sel].discard();
+    };
+
+    // Shows a form, after asking if another open edit of it would be lost
+    function aclShowForm(sel, fill){
+        wmConfirmDiscard(sel, function(){
+            fill();
+            $(sel).show();
+            aclFormAreas[sel].reset();
+        });
+    }
+
+    window.aclToggleRename = function(){
+        if ($("#aclRenameForm").is(":visible")){
+            wmConfirmDiscard("#aclRenameForm", function(){ aclHideForm("#aclRenameForm"); });
+            return;
+        }
+        aclShowForm("#aclRenameForm", function(){
+            $("#aclRenName").val(editing.name);
+            $("#aclRenDesc").val(editing.description || "");
+        });
+    };
+
     window.aclNewPrompt = function(){
-        $("#aclNewName").val("");
-        $("#aclNewDesc").val("");
-        $("#aclNewForm").show();
+        aclShowForm("#aclNewForm", function(){
+            $("#aclNewName").val("");
+            $("#aclNewDesc").val("");
+        });
         $("#aclNewName").focus();
     };
 
@@ -181,7 +214,7 @@
             data: {name: $("#aclNewName").val().trim(), description: $("#aclNewDesc").val().trim()},
             success: function(d){
                 if (d.error != undefined){ msgbox(d.error, false, 5000); return; }
-                $("#aclNewForm").hide();
+                aclHideForm("#aclNewForm");
                 msgbox("ACL created");
                 aclLoadList();
                 wmOpenACL(d.id);
@@ -221,14 +254,18 @@
         if (typeof closeHttpRuleEditor == "function" && $("#httprpEditModalWrapper").is(":visible")) closeHttpRuleEditor();
         if (typeof closeL4Editor == "function" && $("#l4EditModalWrapper").is(":visible")) closeL4Editor();
         openTabById("access");
-        if (!id){
-            aclCloseEditor();
-            return;
-        }
-        loadObjects(function(){ loadACL(id, true); });
+        wmConfirmDiscard("#aclEditor", function(){
+            if (!id){
+                aclCloseEditor();
+                return;
+            }
+            loadObjects(function(){ loadACL(id, true); });
+        });
     };
 
     window.aclCloseEditor = function(){
+        aclHideForm("#aclRuleForm");
+        aclHideForm("#aclRenameForm");
         editing = null;
         $("#aclEditor").hide();
         $("#aclListView").show();
@@ -255,8 +292,8 @@
             renderUsers(d.users || []);
             renderEditor();
             if (reset){
-                $("#aclRuleForm").hide();
-                $("#aclRenameForm").hide();
+                aclHideForm("#aclRuleForm");
+                aclHideForm("#aclRenameForm");
                 $("#aclTestResult").empty();
                 $("#aclListView").hide();
                 $("#aclEditor").show();
@@ -306,8 +343,6 @@
         $("#aclEdBuiltIn").toggle(ro);
         $("#aclEdRenameBtn").toggle(!ro);
         $("#aclRuleTools").toggle(!ro);
-        $("#aclRenName").val(a.name);
-        $("#aclRenDesc").val(a.description || "");
         let rows = (a.rules || []).map(function(r, i){
             let warn = warnings[r.id] ? ` <i class="yellow exclamation triangle icon" title="${esc(warnings[r.id])}"></i>` : "";
             let toggle = ro ? (r.enabled ? "on" : "off") :
@@ -364,7 +399,15 @@
     }
 
     // Saves the ACL as changed by change(rules), which edits a copy of the rules
-    function saveRules(change, okMessage){
+    // Rule list actions apply at once. They renumber the rules, so an open
+    // rule form is closed first (asking if it has unsaved changes).
+    function saveRules(change, okMessage, fromForm=false){
+        if (!fromForm && aclRuleArea.check()){
+            let proceeded = false;
+            wmConfirmDiscard("#aclRuleForm", function(){ proceeded = true; saveRules(change, okMessage); });
+            if (!proceeded) aclReload();
+            return;
+        }
         let a = JSON.parse(JSON.stringify(editing));
         change(a.rules);
         $.cjax({
@@ -376,7 +419,7 @@
                     return;
                 }
                 if (okMessage) msgbox(okMessage);
-                $("#aclRuleForm").hide();
+                aclHideForm("#aclRuleForm");
                 aclReload();
             }
         });
@@ -406,7 +449,7 @@
             url: "/api/acl/save", method: "POST", data: {acl: JSON.stringify(a)},
             success: function(d){
                 if (d.error != undefined){ msgbox(d.error, false, 5000); return; }
-                $("#aclRenameForm").hide();
+                aclHideForm("#aclRenameForm");
                 msgbox("ACL saved");
                 aclReload();
             }
@@ -444,6 +487,10 @@
     }
 
     window.aclOpenRuleForm = function(i){
+        if (aclRuleArea.check()){
+            wmConfirmDiscard("#aclRuleForm", function(){ aclRuleArea.discard(); aclOpenRuleForm(i); });
+            return;
+        }
         formIndex = i;
         fillSelects();
         let r = i >= 0 ? editing.rules[i] : {source: {type: "address", value: ""}, action: "allow", comment: "", enabled: true};
@@ -462,6 +509,7 @@
         $("#aclRuleFormBtn").text(i < 0 ? "Add" : "Save");
         showSourceField();
         $("#aclRuleForm").show();
+        aclRuleArea.reset();
     };
 
     function detectType(v){
@@ -493,13 +541,13 @@
         if (formIndex >= 0){
             rule.id = editing.rules[formIndex].id;
             rule.enabled = editing.rules[formIndex].enabled;
-            saveRules(rules => rules[formIndex] = rule, "Rule saved");
+            saveRules(rules => rules[formIndex] = rule, "Rule saved", true);
             return;
         }
         let pos = $("#aclPosition").val();
         saveRules(function(rules){
             if (pos == "bottom") rules.push(rule); else rules.splice(parseInt(pos), 0, rule);
-        }, "Rule added");
+        }, "Rule added", true);
     };
 
     /* Test */

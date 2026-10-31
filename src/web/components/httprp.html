@@ -80,6 +80,22 @@
             max-width: 840px;
         }
 
+        #httprpEditModal .httprpEditSaveGroup{
+            margin-bottom: 0.6em;
+        }
+        #httprpEditModal .httprpEditSaveGroup .wmUnsavedNote{
+            display: none;
+            margin: 0.3em 0 0 0;
+        }
+        #httprpEditModal .httprpEditSaveGroup .wmUnsavedNote.wmShow{
+            display: block;
+        }
+        #httprpEditModal .httprpEditSaveHint{
+            display: block;
+            opacity: 0.6;
+            margin-top: 0.3em;
+            line-height: 1.3;
+        }
         #httprpEditModal .rpconfig_content{
             height: 100%;
             overflow-y: auto;
@@ -296,6 +312,10 @@
                     </a>
                 </div>
 
+                <div class="httprpEditSaveGroup">
+                    <button class="ui basic fluid button httprpEditSaveBtn"><i class="green save icon"></i> Save</button>
+                    <small class="httprpEditSaveHint">Saves this rule's settings on every page above except the ones with their own Save</small>
+                </div>
                 <button class="ui basic fluid button httpProxyEditClosePC" onclick="closeHttpRuleEditor();">Close</button>
                 <button class="ui basic icon circular button httpProxyEditCloseMobile"  onclick="closeHttpRuleEditor();"><i class="ui times icon"></i></button>
             </div>
@@ -310,7 +330,7 @@
                                 </button>
                                 <span class="downstream_primary_hostname"></span>
                             </h3>
-                            <div class="ui action small fluid input downstream_primary_hostname_edit_input" style="margin-bottom: 0.4em;">
+                            <div class="ui action small fluid input downstream_primary_hostname_edit_input" style="margin-bottom: 0.4em;" data-wm-untracked>
                                 <input type="text" placeholder="new.example.com">
                                 <button class="ui green basic icon button saveDownstreamHostnameBtn">
                                     <i class="ui save icon"></i>
@@ -323,7 +343,7 @@
 
                             </div>
                             <!-- The admin console rule -->
-                            <div class="wmAdminRuleBox" style="display:none;"></div>
+                            <div class="wmAdminRuleBox" style="display:none;" data-wm-untracked></div>
                             <div class="ui divider"></div>
                             <div class="downstream_action_list">
                                 <div class="wmNotForSystem">
@@ -382,7 +402,7 @@
                             <div class="listening_ports_list" style="margin-top:0.4em;">
                                 <!-- Listening ports will be populated here -->
                             </div>
-                            <div class="ui action small fluid input" style="margin-top: 0.4em;">
+                            <div class="ui action small fluid input httprpNewPortBox" style="margin-top: 0.4em;" data-wm-untracked>
                                 <input type="text" class="new_listening_port_input" placeholder=":8080 or 192.168.1.1:8080">
                                 <button class="ui green basic icon button addListeningPortBtn">
                                     <i class="ui plus icon"></i>
@@ -1170,7 +1190,7 @@
         $("#proxyRulesList").find(".editBtn").removeClass("disabled");
     }
 
-    function saveTlsConfigs(uuid){
+    function saveTlsConfigs(uuid, callback=undefined){
         let enableSNI = $("#httprpEditModal .Tls_EnableSNI")[0].checked;
         let enableLegacyCertificateMatching = $("#httprpEditModal .Tls_EnableLegacyCertificateMatching")[0].checked;
         let enableAutoHTTPS = $("#httprpEditModal .Tls_EnableAutoHTTPS")[0].checked;
@@ -1189,16 +1209,115 @@
             success: function(data){
                 if (data.error !== undefined){
                     msgbox(data.error, false, 3000);
+                    if (callback) callback(false);
+                    return;
+                }
+                if (callback){
+                    callback(true);
                 }else{
                     msgbox("TLS config updated");
+                    updateTlsResolveList(uuid);
                 }
-                updateTlsResolveList(uuid);
+            },
+            error: function(){
+                msgbox("The TLS settings could not be saved", false, 6000);
+                if (callback) callback(false);
             }
         });
     }
 
+    /* Editor save tracking */
+    let httprpEditorArea = null;
+    let httprpHostnameArea = null;
+    let httprpNewPortArea = null;
+    let httprpEditorLoads = 0;
+
+    // Starting values are recorded once every background load has finished
+    function httprpEditorLoadStart(){
+        httprpEditorLoads++;
+        if (httprpEditorArea) httprpEditorArea.baseline = null;
+    }
+    function httprpEditorLoadDone(){
+        httprpEditorLoads = Math.max(0, httprpEditorLoads - 1);
+        if (httprpEditorLoads == 0 && httprpEditorArea) httprpEditorArea.reset();
+    }
+
+    $(function(){
+        let content = $("#httprpEditModalContentWindow");
+        httprpEditorArea = wmTrackChanges(content, {saveButton: $("#httprpEditModal .httprpEditSaveBtn")});
+        httprpHostnameArea = wmTrackChanges(content.find(".downstream_primary_hostname_edit_input"), {saveButton: content.find(".saveDownstreamHostnameBtn")});
+        httprpNewPortArea = wmTrackChanges(content.find(".httprpNewPortBox"), {saveButton: content.find(".addListeningPortBtn")});
+    });
+
+    // Saves the rule settings, TLS options, listening address and the
+    // preferred certificates that changed
+    function saveHttpRuleEditor(uuid, subd){
+        let editor = $("#httprpEditModalWrapper");
+        let rate = String(editor.find(".RateLimit").val()).trim();
+        if (editor.find(".RequireRateLimit")[0].checked && (rate === "" || isNaN(parseInt(rate, 10)) || parseInt(rate, 10) < 0)){
+            msgbox("Rate limit must be a whole number of 0 or more", false);
+            return;
+        }
+        let btn = editor.find(".httprpEditSaveBtn").addClass("loading disabled");
+        let failed = false;
+        let steps = [];
+        steps.push(cb => saveProxyInlineEdit(uuid, cb));
+        steps.push(cb => saveTlsConfigs(uuid, cb));
+        let ip = editor.find(".ruleListenIP").val() || "";
+        if (ip != (subd.ListenIP || "")){
+            steps.push(cb => $.cjax({
+                url: "/api/proxy/listenip/set", method: "POST", data: {ep: uuid, ip: ip},
+                success: function(data){
+                    if (data.error !== undefined){
+                        msgbox(data.error, false);
+                        cb(false);
+                        return;
+                    }
+                    subd.ListenIP = ip;
+                    cb(true);
+                },
+                error: function(){ cb(false); }
+            }));
+        }
+        editor.find(".certificateDropdown").each(function(){
+            let domain = $(this).attr("domain");
+            let chosen = $(this).find(".ui.dropdown").dropdown("get value") || "";
+            if (chosen != "" && chosen != ($(this).attr("data-saved") || "")){
+                steps.push(cb => $.cjax({
+                    url: "/api/cert/setPreferredCertificate", method: "POST",
+                    data: {domain: domain, certname: chosen},
+                    success: function(data){
+                        if (data.error !== undefined){
+                            msgbox(data.error, false, 3000);
+                            cb(false);
+                            return;
+                        }
+                        cb(true);
+                    },
+                    error: function(){ cb(false); }
+                }));
+            }
+        });
+        let next = function(i){
+            if (i >= steps.length){
+                btn.removeClass("loading disabled");
+                if (!failed){
+                    msgbox("Proxy rule saved");
+                    resyncProxyEditorConfig(true);
+                }
+                return;
+            }
+            steps[i](function(ok){
+                if (!ok) failed = true;
+                next(i + 1);
+            });
+        };
+        next(0);
+    }
+
     function updateTlsResolveList(uuid){
         let editor = $("#httprpEditModalWrapper");
+        httprpEditorLoadStart();
         editor.find(".certificateDropdown .ui.dropdown").off("change");
         editor.find(".certificateDropdown .ui.dropdown").remove();
 
@@ -1206,6 +1325,7 @@
         $.ajax({
             url: "/api/cert/resolve?domain=" + uuid,
             method: "GET",
+            error: function(){ httprpEditorLoadDone(); },
             success: function(data) {
                 // Populate the TLS resolve list
                 let resolveList = editor.find(".Tls_resolve_list tbody");
@@ -1242,41 +1362,25 @@
                         }
                     });
 
-                    editor.find(".certificateDropdown .ui.dropdown").dropdown({
-                        onChange: function(value, text, $selectedItem) {
-                            console.log("Selected certificate for domain:", $(this).parent().attr("domain"), "Value:", value);
-                            let domain = $(this).parent().attr("domain");
-                            let newCertificateName = value;
-                            $.cjax({
-                                url: "/api/cert/setPreferredCertificate",
-                                method: "POST",
-                                data: {
-                                    "domain": domain,
-                                    "certname": newCertificateName
-                                },
-                                success: function(data) {
-                                    if (data.error !== undefined) {
-                                        msgbox(data.error, false, 3000);
-                                    } else {
-                                        msgbox("Preferred certificate updated");
-                                    }
-                                }
-                            });
-                        }
+                    editor.find(".certificateDropdown .ui.dropdown").dropdown();
+                    // The saved choice of each name, compared on Save
+                    editor.find(".certificateDropdown").each(function(){
+                        $(this).attr("data-saved", certMap[$(this).attr("domain")] || "");
                     });
-                    
+
                     if (SNIEnabled) {
                         editor.find(".certificateDropdown .ui.dropdown").addClass("disabled");
                         editor.find(".sni_grey_out_info").show();
                     }else{
                         editor.find(".sni_grey_out_info").hide();
                     }
+                    httprpEditorLoadDone();
                 });
             }
         });
     }
 
-    function saveProxyInlineEdit(uuid){
+    function saveProxyInlineEdit(uuid, callback=undefined){
         let editor = $("#httprpEditModal");
         
         let epttype = "host";
@@ -1363,10 +1467,19 @@
             success: function(data){
                 if (data.error !== undefined){
                     msgbox(data.error, false, 6000);
+                    if (callback) callback(false);
                 }else{
-                    msgbox("Proxy rule updated");
+                    if (callback){
+                        callback(true);
+                    }else{
+                        msgbox("Proxy rule updated");
+                    }
                     listProxyEndpoints();
                 }
+            },
+            error: function(){
+                msgbox("The proxy rule could not be saved", false, 6000);
+                if (callback) callback(false);
             }
         })
     }
@@ -1796,6 +1909,10 @@
     });
 
     function closeHttpRuleEditor(){
+        if (wmHasUnsavedChanges("#httprpEditModalWrapper")){
+            wmConfirmDiscard("#httprpEditModalWrapper", closeHttpRuleEditor);
+            return;
+        }
         $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
         $("#httprpEditModalWrapper").fadeOut("fast", function(){
             $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
@@ -1841,6 +1958,9 @@
                 dropdown.append('<div class="default text">Fallback Certificate</div>');
                 dropdown.append(menu);
                 callback(dropdown);
+            },
+            error: function(){
+                callback($('<span>Certificates could not be loaded</span>'));
             }
         })
     }
@@ -1861,6 +1981,7 @@
         $("#httprpEditModal .rpconfig_content[rpcfg='downstream']").show();
         $("#httprpEditModal .hrpedit_menu_item.active").removeClass("active");
         $("#httprpEditModal .hrpedit_menu_item[cfgpage='downstream']").addClass("active");
+        $("#httprpEditModal .httprpEditSaveGroup").show();
         $("body").css("overflow", "hidden");
         $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
         $("#httprpEditModalWrapper").fadeIn("fast", function(){
@@ -1910,6 +2031,8 @@
                 if (g.hostname && g.hostname != s.hostname) notes.push("DNS name " + g.hostname);
                 box.find(".wmAdminGuessNote").text(notes.length ? "Best guess: " + notes.join(", ") : "");
                 box.find(".wmAdminNode").show();
+                let adminArea = wmTrackChanges(box.find(".wmAdminNode"), {saveButton: box.find(".wmAdminSave")});
+                adminArea.reset();
                 box.find(".wmAdminSave").off("click").on("click", function(){
                     $.cjax({
                         url: "/api/proxy/adminrule",
@@ -1921,6 +2044,7 @@
                                 return;
                             }
                             msgbox("Admin console addresses saved");
+                            adminArea.reset();
                             closeHttpRuleEditor();
                             listProxyEndpoints();
                         }
@@ -1951,54 +2075,45 @@
         editor.find(".BypassGlobalTLS").off('change');
         editor.find(".BypassGlobalTLS").prop("checked", subd.BypassGlobalTLS);
         editor.find(".BypassGlobalTLS").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".EnableConnectSupport").off('change');
         editor.find(".EnableConnectSupport").prop("checked", subd.EnableConnectSupport || false);
         editor.find(".EnableConnectSupport").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".EnableUpgradeForwarding").off('change');
         editor.find(".EnableUpgradeForwarding").prop("checked", subd.EnableUpgradeForwarding || false);
         editor.find(".EnableUpgradeForwarding").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".DisableLogging").off('change');
         editor.find(".DisableLogging").prop("checked", subd.DisableLogging);
         editor.find(".DisableLogging").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".DisableStatisticCollection").off('change');
         editor.find(".DisableStatisticCollection").prop("checked", subd.DisableStatisticCollection);
         editor.find(".DisableStatisticCollection").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         // Exploit Detection
         editor.find(".BlockCommonExploits").off('change');
         editor.find(".BlockCommonExploits").prop("checked", subd.BlockCommonExploits || false);
         editor.find(".BlockCommonExploits").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".BlockAICrawlers").off('change');
         editor.find(".BlockAICrawlers").prop("checked", subd.BlockAICrawlers || false);
         editor.find(".BlockAICrawlers").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".mitigationActionDropdown").off('change');
         editor.find(".mitigationActionDropdown input[type='hidden']").val((subd.MitigationAction || 0).toString());
+        httprpEditorLoadStart();
         setTimeout(function(){
-              editor.find(".mitigationActionDropdown").dropdown({
-                onChange: function(value) {
-                    saveProxyInlineEdit(uuid);
-                }
-            });
+            editor.find(".mitigationActionDropdown").dropdown();
+            httprpEditorLoadDone();
         }, 100);
       
         
@@ -2007,8 +2122,11 @@
             editor.find(".downstream_primary_hostname_edit_btn").parent().hide();
             editor.find(".downstream_primary_hostname_edit_input input").val(subd.RootOrMatchingDomain)
             editor.find(".downstream_primary_hostname_edit_input").show();
+            httprpHostnameArea.reset();
         });
         editor.find(".cancelDownstreamHostnameBtn").off("click").on("click", function(){
+            editor.find(".downstream_primary_hostname_edit_input input").val(subd.RootOrMatchingDomain);
+            httprpHostnameArea.reset();
             editor.find(".downstream_primary_hostname_edit_input").hide();
             editor.find(".downstream_primary_hostname_edit_btn").parent().show();
         });
@@ -2019,6 +2137,10 @@
                 return;
             }
 
+            if (httprpEditorArea && httprpEditorArea.check()){
+                msgbox("Save or discard the rule's other changes before renaming it", false, 6000);
+                return;
+            }
             if (newHostname == subd.RootOrMatchingDomain){
                 //No need to update
                 editor.find(".downstream_primary_hostname_edit_input").hide();
@@ -2036,6 +2158,7 @@
                     if (data.error != undefined){
                         msgbox(data.error, false);
                     }else{
+                        httprpHostnameArea.reset();
                         //Update the current editing hostname to DOM
                         $("#httprpEditModal").attr("editing-host", encodeURIComponent(newHostname));
                         //Grab the new hostname from server
@@ -2044,6 +2167,8 @@
                 }
             });
         });
+        editor.find(".downstream_primary_hostname_edit_input input").val(subd.RootOrMatchingDomain);
+        httprpHostnameArea.reset();
         editor.find(".downstream_primary_hostname_edit_input").hide();
         editor.find(".downstream_primary_hostname_edit_btn").parent().show();
         
@@ -2062,31 +2187,18 @@
         editor.find(".downstream_alias_hostname").html(aliasHTML);
 
         /* ------------ Listen On ------------ */
+        httprpEditorLoadStart();
         loadProxyListenOptions(function(opts){
             fillListenIPSelect(editor.find(".ruleListenIP"), opts, subd.ListenIP || "");
             editor.find(".ruleListenIPNote").text(listenIPNote(opts));
+            httprpEditorLoadDone();
         });
-        editor.find(".ruleListenIP").off("change").on("change", function(){
-            let ip = $(this).val() || "";
-            $.cjax({
-                url: "/api/proxy/listenip/set", method: "POST", data: {ep: uuid, ip: ip},
-                success: function(data){
-                    if (data.error !== undefined){
-                        msgbox(data.error, false);
-                        fillListenIPSelect(editor.find(".ruleListenIP"), proxyListenOptions, subd.ListenIP || "");
-                        return;
-                    }
-                    subd.ListenIP = ip;
-                    msgbox(ip ? "Rule now answers on " + ip : "Rule now answers on every address");
-                    listProxyEndpoints();
-                }
-            });
-        });
-
         /* ------------ Listening Ports ------------ */
         // Populate listening ports
         let listeningPorts = subd.ListeningPorts || [];
         renderListeningPorts(uuid, listeningPorts);
+        editor.find(".new_listening_port_input").val("");
+        httprpNewPortArea.reset();
         
         // Bind add listening port button
         editor.find(".addListeningPortBtn").off("click").on("click", function(){
@@ -2115,6 +2227,7 @@
             saveListeningPorts(uuid, listeningPorts, function(){
                 renderListeningPorts(uuid, listeningPorts);
                 editor.find(".new_listening_port_input").val("");
+                httprpNewPortArea.reset();
                 msgbox("Listening address added");
             });
         });
@@ -2146,21 +2259,18 @@
             if (!isUptimeMonitorEnabled) {
                 editor.find(".DisableAutoFallback").prop("checked", false);
             }
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".UptimeMonitorURI").off("change");
         editor.find(".UptimeMonitorURI").val(subd.UptimeMonitorURI || "");
         editor.find(".UptimeMonitorURI").prop("disabled", subd.DisableUptimeMonitor);
         editor.find(".UptimeMonitorURI").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".DisableAutoFallback").off("change");
         editor.find(".DisableAutoFallback").prop("checked", subd.DisableAutoFallback);
         editor.find(".DisableAutoFallback").prop("disabled", subd.DisableUptimeMonitor);
         editor.find(".DisableAutoFallback").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         let lbMode = subd.LoadBalancingMode == "leastconn" ? "leastconn" : "weighted";
@@ -2169,31 +2279,26 @@
         editor.find(".lbModeHint").text(HTTP_LB_HINTS[lbMode]);
         editor.find(".LoadBalancingMode").on("change", function() {
             editor.find(".lbModeHint").text(HTTP_LB_HINTS[$(this).val()] || "");
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".UseStickySession").off("change");
         editor.find(".UseStickySession").prop("checked", subd.UseStickySession);
         editor.find(".UseStickySession").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".DisableChunkedTransferEncoding").off("change");
         editor.find(".DisableChunkedTransferEncoding").prop("checked", subd.DisableChunkedTransferEncoding);
         editor.find(".DisableChunkedTransferEncoding").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".ForceHTTP11").off("change");
         editor.find(".ForceHTTP11").prop("checked", subd.ForceHTTP11);
         editor.find(".ForceHTTP11").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".EnableWebSocket").off("change");
         editor.find(".EnableWebSocket").prop("checked", !subd.DisableWebSocket);
         editor.find(".EnableWebSocket").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".WebsocketTimeout").off("change");
@@ -2203,13 +2308,11 @@
             if (isNaN(v) || v < 0) {
                 $(this).val(0);
             }
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".EnableTimeoutRefreshOnActivity").off("change");
         editor.find(".EnableTimeoutRefreshOnActivity").prop("checked", subd.EnableTimeoutRefreshOnActivity);
         editor.find(".EnableTimeoutRefreshOnActivity").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         /* ------------ Vdirs ------------ */
@@ -2283,7 +2386,6 @@
         }
 
         editor.find(".authProviderPicker input[type='radio']").off("change").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
 
         editor.find(".editBasicAuthCredentialsBtn").off("click").on("click", function(){
@@ -2318,7 +2420,6 @@
                 return;
             }
             subd.RateLimit = parsed;
-            saveProxyInlineEdit(uuid);
         }
 
         editor.find(".RequireRateLimit").on("change", function() {
@@ -2332,7 +2433,6 @@
                 subd.RateLimit = 100; // Set default rate limit to 100 if uninitialized
                 editor.find(".RateLimit").val(100);
             }
-            saveProxyInlineEdit(uuid);
         });
         editor.find(".RateLimit").val(subd.RateLimit).on("change", rateLimitChangeEvent);
 
@@ -2391,7 +2491,6 @@
                 } else { // Cloudflare Turnstile
                     editor.find(".googleRecaptchaSettings").hide();
                 }
-                saveProxyInlineEdit(uuid);
             }
         });
 
@@ -2403,7 +2502,6 @@
                 } else {
                     editor.find(".recaptchaV3Settings").hide();
                 }
-                saveProxyInlineEdit(uuid);
             }
         });
 
@@ -2414,24 +2512,23 @@
             } else {
                 editor.find(".captchaSettings").hide();
             }
-            saveProxyInlineEdit(uuid);
         });
 
         // Bind CAPTCHA input change events
         editor.find(".CaptchaSiteKey").off("change").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
         editor.find(".CaptchaSecretKey").off("change").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
         editor.find(".CaptchaSessionDuration").off("change").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
         editor.find(".CaptchaPathPrefixes").off("change").on("change", function() {
-            saveProxyInlineEdit(uuid);
         });
         editor.find(".RecaptchaScore").off("change").on("change", function() {
-            saveProxyInlineEdit(uuid);
+        });
+
+        /* ------------ Save ------------ */
+        editor.find(".httprpEditSaveBtn").off("click").on("click", function(){
+            saveHttpRuleEditor(getEditingHttpProxyHostname() || uuid, subd);
         });
 
         /* ------------ TLS ------------ */
@@ -2448,13 +2545,10 @@
         }
       
         editor.find(".Tls_EnableSNI").off("change").on("change", function() {
-            saveTlsConfigs(uuid);
         });
         editor.find(".Tls_EnableLegacyCertificateMatching").off("change").on("change", function() {
-            saveTlsConfigs(uuid);
         });
         editor.find(".Tls_EnableAutoHTTPS").off("change").on("change", function() {
-            saveTlsConfigs(uuid);
         });
 
         /* Quick access to get certificate for the current host */
@@ -2490,14 +2584,37 @@
         console.log(subd);
     }
 
+    // Refreshes the parts of the editor that sub-panels change, leaving the
+    // editor's own fields as they are
+    function refreshHttpEditorSummaries(subd){
+        let editor = $("#httprpEditModalWrapper");
+        let aliasHTML = "";
+        subd.MatchingDomainAlias.forEach(alias => {
+            aliasHTML += alias.indexOf("*") > -1 ? `<span class="ui tiny label">${alias}</span> ` : `<span class="ui tiny label"><a href="//${alias}" target="_blank">${alias}</a></span> `;
+        });
+        editor.find(".downstream_alias_hostname").html(aliasHTML);
+        editor.find(".upstream_list").html(renderUpstreamList(subd));
+        editor.find(".editUpstreamButton").off("click").on("click", function(){ editUpstreams(subd.RootOrMatchingDomain); });
+        editor.find(".healthCheckSummary").text(describeHealthCheck(subd.HealthCheck));
+        editor.find(".vdir_list").html(renderVirtualDirectoryList(subd));
+        editor.find(".editVdirBtn").off("click").on("click", function(){
+            quickEditVdir(subd.RootOrMatchingDomain);
+            $("body").css("overflow", "auto");
+        });
+    }
+
     // Pull the latest proxy config from server side again and populate the editor
     // with latest settings
-    function resyncProxyEditorConfig(){
+    // force: reload every field even with unsaved changes (after a save).
+    // With unsaved changes only the summaries are refreshed.
+    function resyncProxyEditorConfig(force=false){
         let currentEditingHostname = getEditingHttpProxyHostname();
         $.get("/api/proxy/list?type=host", function(data){
             data.sort((a,b) => (a.RootOrMatchingDomain > b.RootOrMatchingDomain) ? 1 : ((b.RootOrMatchingDomain > a.RootOrMatchingDomain) ? -1 : 0));
             let editingHost = data.find(subd => subd.RootOrMatchingDomain === currentEditingHostname);
-            if (editingHost) {
+            if (editingHost && !force && httprpEditorArea && httprpEditorArea.check()) {
+                refreshHttpEditorSummaries(editingHost);
+            } else if (editingHost) {
                 populateAndBindEventsToHTTPProxyEditor(editingHost);
             } else {
                 closeHttpRuleEditor();
@@ -2507,6 +2624,14 @@
 
     //bind events to hrpedit_menu_item
     $(".hrpedit_menu_item").on("click", function() {
+        let item = this;
+        if ($("#httprpEditModal .editor_side_wrapper").is(":visible") && wmHasUnsavedChanges("#httprpEditModal .editor_side_wrapper")){
+            wmConfirmDiscard("#httprpEditModal .editor_side_wrapper", function(){ $(item).trigger("click"); });
+            return;
+        }
+        // Pages with their own Save hide the editor's Save
+        let framed = $(`#httprpEditModal .rpconfig_content[rpcfg='${$(this).attr("cfgpage")}'] > iframe.wrapper_frame`).length > 0;
+        $("#httprpEditModal .httprpEditSaveGroup").toggle(!framed);
         $(".hrpedit_menu_item.active").removeClass("active");
         $(this).addClass("active");
         let cfgPageId = $(this).attr("cfgpage");
@@ -2528,8 +2653,10 @@
     }
 
     function hideEditorSideWrapperViaBtn(){
-        hideEditorSideWrapper();
-        resyncProxyEditorConfig();
+        wmConfirmDiscard("#httprpEditModal .editor_side_wrapper", function(){
+            hideEditorSideWrapper();
+            resyncProxyEditorConfig();
+        });
     }
 
     function hideEditorSideWrapper(){

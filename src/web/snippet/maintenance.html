@@ -72,6 +72,7 @@
         <script>
             let editingEndpoint = {};
             let formDirty = false;
+            let mtArea = wmTrackChanges("#mtForm", {saveButton: "#mtSaveBtn"});
             let defaultMessage = "";
 
             function notify(msg, ok=true, ms=undefined){
@@ -113,6 +114,7 @@
                         $("#mtForm [name=message]").val(data.config.message || "");
                         $("#mtForm [name=retryAfterMinutes]").val(data.config.retryAfterMinutes || "");
                         formDirty = false;
+                        mtArea.reset();
                     }
                 });
             }

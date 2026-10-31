@@ -86,7 +86,7 @@
                                     <i class="ui grey hand paper icon"></i>
                                     Access
                                 </div>
-                                <div class="field">
+                                <div class="field" data-wm-untracked>
                                     <label>ACL</label>
                                     <div class="ui selection dropdown">
                                         <input type="hidden" id="newL4AccessFilter" value="allow-all">
@@ -113,7 +113,7 @@
                     </div>
                     <br>
                     <div style="display: inline-block;">
-                        <button class="ui basic button" onclick="newL4Proxy(); return false;"><i class="green add icon"></i> Create TCP / UDP Rule</button>
+                        <button id="newL4CreateBtn" class="ui basic button" onclick="newL4Proxy(); return false;"><i class="green add icon"></i> Create TCP / UDP Rule</button>
                     </div>
                     <br><br>
                 </div>
@@ -172,6 +172,9 @@
 </div>
 <script>
     $("#advanceL4Rules").accordion();
+    // The new rule form is kept until "Create TCP / UDP Rule" is clicked
+    var newL4Area = wmTrackChanges("#newL4ProxyForm", {saveButton: "#newL4CreateBtn", onDiscard: function(){ $("#newL4UDPTimeoutField").toggle($("#newL4UseUDP")[0].checked); }});
+    setTimeout(function(){ newL4Area.reset(); }, 1000);
     //The timeout only applies to UDP
     $("#newL4UseUDP").on("change", function(){ $("#newL4UDPTimeoutField").toggle(this.checked); });
 
@@ -238,6 +241,7 @@
                                 msgbox("Layer 4 rule added");
                             }
                             clearNewL4ProxyForm();
+                            newL4Area.reset();
                             if (typeof initL4ProxyList == "function"){
                                 initL4ProxyList(true);
                             }

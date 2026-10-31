@@ -10,6 +10,17 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.7
+
+**Save buttons and unsaved changes**
+- One rule across the UI: **an area with a Save button saves nothing until you click Save; an area without one applies each change at once.** Pages and cards with only switches apply instantly. List actions (add, delete, duplicate, move, enable a row) apply instantly. Typed values, dropdowns and choices sit in an area with a Save button.
+- The proxy rule editor and the TCP / UDP rule editor have one Save button in the side menu. Fields that used to save on change (listen address, certificates, TLS options, Layer 4 listen address and options) are now saved with it. Sections with their own Save (headers, caching, maintenance, access, aliases, tags) keep it.
+- Settings that saved as soon as they changed now have a Save button: the main listening port, minimum TLS version, the static web server and WebDAV ports, the plugin auto-reload interval and the access rule picked for a host.
+- Save buttons are labelled "Save" with a green save icon ("Apply Change", "Apply Timeouts", "Save Renew Policy" and similar are gone; Default Site's Reset is now Discard).
+- When an area has unsaved changes its Save button turns green and "Unsaved changes" appears next to it.
+- Leaving with unsaved changes asks first ("Keep editing" or "Discard changes"): switching page, closing or replacing a side panel, closing a rule editor or modal, switching the ACL or object being edited, going back to a list, and closing or reloading the browser tab. Discarding puts the saved values back.
+- While a rule editor has unsaved changes, a background refresh only updates its summaries (aliases, destinations, health, virtual directories) instead of overwriting the fields, and renaming the host waits until the changes are saved.
+
 ## 2.19.6
 
 **ACME: certificate request progress**

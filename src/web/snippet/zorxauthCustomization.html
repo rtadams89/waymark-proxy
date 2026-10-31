@@ -125,7 +125,7 @@
 							<label>Disable Watermark Icon<br><small>Hide the watermark logo on the login page panel art, leaving the artwork on its own.</small></label>
 						</div>
 					</div>
-					<button class="ui basic button" onclick="saveBrandingText();"><i class="green check icon"></i> Apply Text &amp; Visibility</button>
+					<button class="ui basic button" id="brandingTextSaveBtn" onclick="saveBrandingText();"><i class="green save icon"></i> Save</button>
 				</form>
 			</div>
 
@@ -184,6 +184,8 @@
 			});
 
 			/* ---- Load current customization ---- */
+			let brandingTextArea = wmTrackChanges("#brandingTextForm", {saveButton: "#brandingTextSaveBtn"});
+
 			function loadCustomization(){
 				$.get('/api/sso/zorxauth/customization', function(data){
 					if (data.error !== undefined){
@@ -195,6 +197,7 @@
 					$('#watermarkText').val(data.watermarkText);
 					$('#hideWatermarkText').prop('checked', data.hideWatermarkText === true);
 					$('#hideWatermarkIcon').prop('checked', data.hideWatermarkIcon === true);
+					brandingTextArea.reset();
 					renderAssetList();
 				});
 			}

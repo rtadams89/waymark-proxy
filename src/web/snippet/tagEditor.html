@@ -38,7 +38,7 @@
             <div class="ui divider"></div>
             <h4>Add New Tags</h4>
             <p>Create new tag or add this proxy rule to an existing tag</p>
-            <div class="ui form">
+            <div class="ui form" id="tagAddForm">
                 <div class="field">
                     <label>New Tags</label>
                     <input type="text" id="tagsInput" placeholder="e.g. mediaserver, management">
@@ -153,6 +153,10 @@
                 return $(`#tagsTableBody .tagEntry[value="${tag}"]`).length > 0;
             }
 
+            // What is typed or picked here is only kept after Add or Join
+            let tagAddArea = wmTrackChanges("#tagAddForm", {saveButton: $("#tagAddForm > button")});
+            $(function(){ setTimeout(() => tagAddArea.reset(), 300); });
+
             function addSelectedTags() {
                 let tags = $('#tagsInput').val().split(',').map(tag => tag.trim());
                 if (tags.length == 0 || (tags.length == 1 && tags[0] == "")){
@@ -167,6 +171,7 @@
                 console.log(tags);
                 populateTagsDropdown();
                 $('#tagsInput').val('');
+                tagAddArea.reset();
                 saveTags();
             }
 
@@ -183,6 +188,7 @@
                 });
                 populateTagsDropdown();
                 $('#existingTagsDropdown').dropdown('clear');
+                tagAddArea.reset();
                 saveTags();
             }
             

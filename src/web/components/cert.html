@@ -47,6 +47,7 @@
     <!-- Adding a certificate is folded away below the list -->
     <div class="ui basic segment advanceoptions" style="padding-left: 0; padding-right: 0;">
         <div id="certAddAccordion" class="ui accordion advanceSettings">
+            <input type="hidden" id="certPendingFiles">
             <div class="title">
                 <i class="dropdown icon"></i>
                 Add a certificate
@@ -87,7 +88,7 @@
                             <textarea id="prikeyPasteContent" rows="8" placeholder="Paste your private key content here..."></textarea>
                         </div>
                     </div>
-                    <button class="ui basic button" onclick="handlePasteInBrowserAndUpload();"><i class="ui teal upload icon"></i> Upload from Pasted Content</button>
+                    <button id="certPasteUploadBtn" class="ui basic button" onclick="handlePasteInBrowserAndUpload();"><i class="ui teal upload icon"></i> Upload from Pasted Content</button>
                     <button class="ui basic button" onclick="togglePasteCertInterface();"><i class="ui grey cancel icon"></i> Cancel</button>
                 </div>
             </div>
@@ -427,6 +428,8 @@
             $("#certdomain").attr("placeholder", "");
             uploadPendingPublicKey = undefined;
             uploadPendingPrivateKey = undefined;
+            $("#certPendingFiles").val("");
+            certAddArea.reset();
 
             //Show succ
             $("#certUploadSuccMsg").stop().finish().slideDown("fast").delay(3000).slideUp("fast");
@@ -517,7 +520,17 @@
         }else if (ktype == "pri"){
             uploadPendingPrivateKey = file;
         }
+        // Chosen files are tracked as unsaved changes until uploaded
+        $("#certPendingFiles").val([uploadPendingPublicKey, uploadPendingPrivateKey].map(f => f ? f.name : "").join("|")).trigger("change");
     }
+
+    // Nothing in "Add a certificate" is kept until it is uploaded
+    var certAddArea = wmTrackChanges("#certAddAccordion", {saveButton: "#certUploadBtn, #certPasteUploadBtn", onDiscard: function(){
+        $("#pubkeySelector, #prikeySelector").val("");
+        uploadPendingPublicKey = undefined;
+        uploadPendingPrivateKey = undefined;
+    }});
+    setTimeout(function(){ certAddArea.reset(); }, 300);
 
     //Check if the default keypairs exists
     function initDefaultKeypairCheck(){
@@ -643,6 +656,8 @@
             
             // Hide paste area and show upload fields again
             togglePasteCertInterface();
+            $("#certPendingFiles").val("");
+            certAddArea.reset();
             
             // Show success message
             $("#certUploadSuccMsg").stop().finish().slideDown("fast").delay(3000).slideUp("fast");

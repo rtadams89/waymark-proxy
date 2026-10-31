@@ -244,6 +244,7 @@
                             }
 
                             $(".ui.checkbox").checkbox();
+                            upstreamListArea.reset();
                         }
                     }
                 })
@@ -267,7 +268,7 @@
                 $("#upstreamTable").append(`<div class="ui upstreamEntry ${isActive?"":"inactive"} basic segment" data-domid="${domUID}" data-payload="${payload}" data-priority="${upstream.Priority}">
                     <h4 class="ui header">
                         <div class="ui toggle checkbox" style="display:inline-block;">
-                            <input type="checkbox" class="enableState" name="enabled" style="margin-top: 0.4em;" onchange="saveUpstreamUpdate('${domUID}');" ${isActive?"checked":""}>
+                            <input type="checkbox" class="enableState" name="enabled" data-wm-untracked style="margin-top: 0.4em;" onchange="saveUpstreamUpdate('${domUID}');" ${isActive?"checked":""}>
                             <label></label>
                         </div>
                         <div class="content">
@@ -432,6 +433,7 @@
                             parent.msgbox("New destination added");
                             initOriginList();
                             $("#originURL").val("");
+                            newUpstreamArea.reset();
                             $("#maxConn").val("0");
                             $("#respTimeout").val("0");
                         }
@@ -617,6 +619,12 @@
                 "upstream": "The host name or IP address in the destination address. Use this when the destination has its own certificate.",
                 "proxyhost": "The host name the client asked Waymark for (this rule's host or alias). Use this when the destination serves the same certificate as the public site."
             };
+            // The destination list (each row has its own Save while edited)
+            // and the Add Destination form
+            let upstreamListArea = wmTrackChanges("#upstreamTable", {saveButton: "#upstreamTable .savebtn"});
+            let newUpstreamArea = wmTrackChanges('[data-tab="newupstream"]', {saveButton: $('[data-tab="newupstream"] button[onclick^="addNewUpstream"]')});
+            $(function(){ newUpstreamArea.reset(); });
+
             function syncTLSNameField(container){
                 let tlsOn = $(container).find("#requireTLS, .reqTLSCheckbox").first().is(":checked");
                 let field = $(container).find(".tlsNameField");

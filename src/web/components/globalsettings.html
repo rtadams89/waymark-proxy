@@ -117,10 +117,11 @@
     <p>The ports Waymark listens on for proxied traffic, HTTP to HTTPS redirection, and other inbound connection settings</p>
     <div class="ui divider"></div>
     <p>Main Listening Port</p>
+    <div id="incomingPortArea">
     <div class="ui action fluid input">
-        <small id="applyButtonReminder">Click "Apply" button to confirm listening port changes</small>
         <input type="text" id="incomingPort" placeholder="Main listening port" value="443">
-        <button class="ui green button" style="background: var(--theme_green);" onclick="handlePortChange();"><i class="ui checkmark icon"></i> Apply</button>
+        <button id="incomingPortSaveBtn" class="ui basic button" onclick="handlePortChange();"><i class="ui green save icon"></i> Save</button>
+    </div>
     </div>
     <br>
     <div id="tls" class="ui toggle checkbox">
@@ -166,6 +167,8 @@
                             <button type="button" role="radio" aria-checked="false" data-version="1.3">1.3</button>
                         </div>
                         <small id="tlsVersionHint" class="ingressFieldHint"></small>
+                        <input type="hidden" id="tlsMinVersionValue">
+                        <div><button id="tlsMinVersionSaveBtn" class="ui basic small button" style="margin-top: 0.6em;" onclick="saveTlsMinVersion();"><i class="ui green save icon"></i> Save</button></div>
                     </div>
                 </div>
 
@@ -187,9 +190,9 @@
                 </div>
 
                 <!-- Timeouts -->
-                <div class="ingressSettingGroup">
+                <div id="proxyTimeoutArea" class="ingressSettingGroup">
                     <div class="ingressGroupTitle">Timeouts</div>
-                    <small class="ingressGroupNote">In seconds, 0 disables the timeout. Applying restarts the proxy if it is running.</small>
+                    <small class="ingressGroupNote">In seconds, 0 disables the timeout. Saving restarts the proxy if it is running.</small>
                     <div class="ui middle aligned stackable grid ingressTimeoutGrid">
                         <div class="row">
                             <div class="ten wide column">
@@ -228,7 +231,7 @@
                             </div>
                         </div>
                     </div>
-                    <button class="ui basic green button" style="margin-top: 0.6em;" onclick="saveProxyTimeoutSettings();"><i class="ui checkmark icon"></i> Apply Timeouts</button>
+                    <button id="proxyTimeoutSaveBtn" class="ui basic button" style="margin-top: 0.6em;" onclick="saveProxyTimeoutSettings();"><i class="ui green save icon"></i> Save</button>
                 </div>
 
                 <!-- Development -->
@@ -278,19 +281,16 @@
     $.get("/api/proxy/requestIsProxied", function(data){ gsViaProxy = (data == true); });
 
     //Load the current listening port state into the input field
+    // Each typed setting on this page is saved with its own Save button
+    let incomingPortArea = wmTrackChanges("#incomingPortArea", {saveButton: "#incomingPortSaveBtn", noteAfter: "#incomingPortArea > .action.input"});
+    let tlsMinVersionArea = wmTrackChanges("#tlsMinVer", {saveButton: "#tlsMinVersionSaveBtn", onDiscard: function(){ renderTlsVersionSlider($("#tlsMinVersionValue").val()); }});
+    let proxyTimeoutArea = wmTrackChanges("#proxyTimeoutArea", {saveButton: "#proxyTimeoutSaveBtn"});
+
     function initIncomingPortSetting(){
         $.get("/api/proxy/status", function(data){
-            $("#incomingPort").off("change");
             $("#incomingPort").val(data.Option.Port);
             currentListeningPort = data.Option.Port;
-            $("#incomingPort").on("change", function(){
-                let newPortValue = $("#incomingPort").val().trim();
-                if (currentListeningPort != newPortValue){
-                    $("#applyButtonReminder").show();
-                }else{
-                    $("#applyButtonReminder").hide();
-                }
-            });
+            incomingPortArea.reset();
         });
     }
     initIncomingPortSetting();
@@ -314,9 +314,6 @@
                 msgbox("Main listening port updated");
                 initIncomingPortSetting();
                 initRPStaste();
-
-                //Hide the reminder text
-                $("#applyButtonReminder").hide();
             }
         });
     }
@@ -421,6 +418,7 @@
     //Move the slider thumb to the given version without saving it
     function renderTlsVersionSlider(version){
         let buttons = $("#tlsVersionSlider button");
+        $("#tlsMinVersionValue").val(version).trigger("change");
         let index = buttons.index(buttons.filter(`[data-version="${version}"]`));
         if (index < 0){
             return;
@@ -432,8 +430,9 @@
         $("#tlsVersionHint").text(tlsVersionHints[version] || "");
     }
 
-    function setTlsMinVersion(version, previousVersion){
-        renderTlsVersionSlider(version);
+    // Picking a version only selects it; Save applies it
+    function saveTlsMinVersion(){
+        let version = $("#tlsMinVersionValue").val();
         $.cjax({
             url: "/api/cert/tlsMinVersion",
             method: "POST",
@@ -441,9 +440,9 @@
             success: function(data){
                 if (data.error != undefined){
                     msgbox(data.error, false, 5000);
-                    renderTlsVersionSlider(previousVersion);
                 }else{
                     msgbox("Minimum TLS version set to " + version);
+                    tlsMinVersionArea.reset();
                 }
             }
         });
@@ -454,12 +453,13 @@
             if (data && typeof data === "string") {
                 renderTlsVersionSlider(data);
             }
+            tlsMinVersionArea.reset();
 
             $("#tlsVersionSlider button").off("click").on("click", function(){
                 let previousVersion = $("#tlsVersionSlider button.active").attr("data-version");
                 let version = $(this).attr("data-version");
                 if (version != previousVersion){
-                    setTlsMinVersion(version, previousVersion);
+                    renderTlsVersionSlider(version);
                 }
             });
 
@@ -590,6 +590,7 @@
             $("#readHeaderTimeoutInput").val(data.readHeaderTimeout);
             $("#writeTimeoutInput").val(data.writeTimeout);
             $("#idleTimeoutInput").val(data.idleTimeout);
+            proxyTimeoutArea.reset();
         });
     }
     initProxyTimeoutSettings();
@@ -615,7 +616,6 @@
             success: function(data){
                 if (data.error != undefined){
                     msgbox(data.error, false, 5000);
-                    initProxyTimeoutSettings();
                     return;
                 }
 

@@ -2,7 +2,7 @@
     <div class="ui basic segment">
         <h2>Default Site</h2>
         <p>Default routing options for inbound traffic</p>
-        <div class="ui form">
+        <div id="rprootForm" class="ui form">
             <div class="grouped fields">
                 <label>What to show when Waymark is hit with an unknown Host?</label>
                 <div class="field">
@@ -78,13 +78,15 @@
             </div>
         </div>
 
-        <button class="ui basic button" onclick="setProxyRoot(this)"><i class="green checkmark icon" ></i> Apply Changes</button>
-        <button class="ui basic button" onclick="initRootInfo()"><i class="refresh icon" ></i> Reset</button>
+        <button id="rprootSaveBtn" class="ui basic button" onclick="setProxyRoot(this)"><i class="green save icon" ></i> Save</button>
+        <button class="ui basic button" onclick="initRootInfo()"><i class="undo icon" ></i> Discard</button>
         <br>
     </div>
 </div>
 <script>
     var currentDefaultSiteOption = 0; //For enum see typedef.go
+    // Nothing here is saved until Save is clicked
+    let rprootArea = wmTrackChanges("#rprootForm", {saveButton: "#rprootSaveBtn", onDiscard: function(){ updateAvaibleDefaultSiteOptions(); }});
     $("#advanceRootSettings").accordion();
 
     //Handle toggle events of option radio boxes
@@ -153,7 +155,9 @@
                 updateAvaibleDefaultSiteOptions();
                 
                 $("#proxyRoot").val(data.ActiveOrigins[0].OriginIpOrDomain);
-                checkRootRequireTLS(data.ActiveOrigins[0].OriginIpOrDomain);
+                checkRootRequireTLS(data.ActiveOrigins[0].OriginIpOrDomain, function(){
+                    rprootArea.reset();
+                });
             }
 
             if (callback != undefined){
@@ -184,7 +188,7 @@
     }
 
     //Check if the given domain will redirect to https
-    function checkRootRequireTLS(targetDomain){
+    function checkRootRequireTLS(targetDomain, done=undefined){
         //Trim off the http or https from the origin
         if (targetDomain.startsWith("http://")){
             targetDomain = targetDomain.substring(7);
@@ -205,6 +209,9 @@
                 }else if (data == "http"){
                     $("#rootReqTLS").parent().checkbox("set unchecked");
                 }
+            },
+            complete: function(){
+                if (typeof done == "function") done();
             }
        })
     }

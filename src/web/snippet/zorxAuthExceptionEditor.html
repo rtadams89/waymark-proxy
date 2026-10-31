@@ -36,7 +36,7 @@
             </table>
 
             <!-- Add New Rule -->
-            <div class="ui form" style="margin-top: 1em;">
+            <div class="ui form" id="zorxExceptionAddForm" style="margin-top: 1em;">
                 <div class="fields">
                     <div class="field">
                         <label>Exception Type</label>
@@ -82,7 +82,7 @@
                     Enabling <em>Trust Proxy Headers</em> allows Waymark to read the client IP from HTTP headers that any client can forge. Only enable this when Waymark sits <b>behind a trusted reverse proxy</b> (e.g. Cloudflare, Nginx).
                 </div>
 
-                <button class="ui basic button" onclick="addZorxAuthExceptionRule();" style="margin-top: 0.6em;">
+                <button class="ui basic button" id="zorxAddExceptionBtn" onclick="addZorxAuthExceptionRule();" style="margin-top: 0.6em;">
                     <i class="yellow add icon"></i> Add Exception Rule
                 </button>
             </div>
@@ -221,6 +221,7 @@
                             } else {
                                 $('#zorxPathPattern').val('');
                                 $('#zorxIsRegex').prop('checked', false);
+                                zorxExceptionAddArea.reset();
                                 parent.msgbox("Exception rule added", true);
                                 loadExceptionRules();
                             }
@@ -249,6 +250,7 @@
                                 $('#zorxIPPattern').val('');
                                 $('#zorxTrustProxy').prop('checked', false);
                                 $('#zorxTrustProxyWarning').hide();
+                                zorxExceptionAddArea.reset();
                                 parent.msgbox("Exception rule added", true);
                                 loadExceptionRules();
                             }
@@ -256,6 +258,10 @@
                     });
                 }
             }
+
+            // What is typed in the Add form is only kept after Add
+            let zorxExceptionAddArea = wmTrackChanges("#zorxExceptionAddForm", {saveButton: "#zorxAddExceptionBtn"});
+            $(function(){ setTimeout(() => zorxExceptionAddArea.reset(), 300); });
 
             /* ---- Remove a rule ---- */
             function removeZorxAuthExceptionRule(btn) {

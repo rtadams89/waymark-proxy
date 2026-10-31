@@ -235,7 +235,9 @@
       $("html, body").animate({ scrollTop: $("#profileEditor").offset().top - 20 }, 200);
     }
 
+    // Cancel discards the editor's changes
     function closeEditor(){
+      profileEditorArea.discard();
       $("#profileEditor").hide();
       $("#newProfileButton").show();
     }
@@ -303,6 +305,7 @@
         container.append(boolHTML);
         container.append(durationHTML);
         container.find(".checkbox").checkbox();
+        profileEditorArea.reset();
       });
     }
 
@@ -377,6 +380,9 @@
       }
     }
 
+    let profileEditorArea = wmTrackChanges("#profileEditor", {saveButton: "#saveProfileButton"});
+    let assignArea = wmTrackChanges("#assignSection", {saveButton: $("#assignSection button[onclick^='saveAssignment']")});
+
     function initAssignMode(){
       if (assignCert == "") return;
       $("#assignCertName").text(assignCert);
@@ -393,6 +399,7 @@
         if (current != ""){
           $("#assignChoice").dropdown("set selected", current);
         }
+        assignArea.reset();
         if (!assignInfo.acmeManaged){
           $("#assignNotAcmeWarning").show();
         }
@@ -416,7 +423,7 @@
           }
           notify("Challenge settings updated for " + assignCert);
           refreshParentCertList();
-          loadProfiles(function(){ $("#assignChoice").dropdown("set selected", choice); });
+          loadProfiles(function(){ $("#assignChoice").dropdown("set selected", choice); assignArea.reset(); });
         }
       });
     }

@@ -62,7 +62,7 @@
     <!-- Add New Redirection Rules -->
     <div class="ui divider"></div>
     <h4>Add Redirection Rule</h4>
-    <div class="ui form">
+    <div id="redirectAddForm" class="ui form">
         <div class="field">
           <label>Redirection URL (From)</label>
           <input type="text" id="rurl" name="redirection-url" placeholder="Redirection URL">
@@ -129,7 +129,7 @@
             </div>
         </div>
         <div style="display:inline-block;">
-          <button class="ui basic button" onclick="addRules();"><i class="ui teal plus icon"></i> Add Redirection Rule</button>
+          <button id="redirectAddBtn" class="ui basic button" onclick="addRules();"><i class="ui teal plus icon"></i> Add Redirection Rule</button>
         </div>
         <div class="ui green message" id="ruleAddSucc" style="display:none;">
           <i class="ui green checkmark icon"></i> Redirection Rules Added
@@ -146,6 +146,10 @@
     $(".checkbox").checkbox();
     // Scope to this page's accordion only
     $("#redirectionAdvanceSettings").accordion();
+    // The add form is saved with its Add button; a row being edited with its save button
+    let redirectAddArea = wmTrackChanges("#redirectAddForm", {saveButton: "#redirectAddBtn"});
+    setTimeout(function(){ redirectAddArea.reset(); }, 500);
+
     function resetForm() {
       document.getElementById("rurl").value = "";
       document.getElementsByName("destination-url")[0].value = "";
@@ -180,6 +184,7 @@
                 }
                 initRedirectionRuleList();
                 resetForm();
+                redirectAddArea.reset();
             }
         });
     }
@@ -289,12 +294,13 @@
           <div class="ui radio checkbox"><input type="radio" name="editStatusCode" value="301" ${statusCode == 301 ? "checked" : ""}><label>Moved Permanently (301)</label></div>
         </td>
         <td>
-          <button onclick="saveEditRule(this);" payload="${encodeURIComponent(JSON.stringify(payload))}" class="ui small circular green icon basic button"><i class="save icon"></i></button>
+          <button onclick="saveEditRule(this);" payload="${encodeURIComponent(JSON.stringify(payload))}" class="ui small circular green icon basic button redirectEditSaveBtn"><i class="save icon"></i></button>
           <button onclick="initRedirectionRuleList();" class="ui small circular icon basic button"><i class="cancel icon"></i></button>
         </td>
       `);
 
       $(".checkbox").checkbox();
+      wmTrackChanges(row, {saveButton: row.find(".redirectEditSaveBtn")}).reset();
     }
 
     function saveEditRule(obj){

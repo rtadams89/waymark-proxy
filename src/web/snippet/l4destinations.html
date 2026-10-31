@@ -148,7 +148,7 @@
                     table.append(`<div class="ui upstreamEntry ${d.enabled ? "" : "inactive"} basic segment" data-index="${i}">
                         <h4 class="ui header">
                             <div class="ui toggle checkbox" style="display:inline-block;">
-                                <input type="checkbox" class="enableState" name="enabled" style="margin-top: 0.4em;" onchange="toggleDestination(${i}, this.checked);" ${d.enabled ? "checked" : ""}>
+                                <input type="checkbox" class="enableState" name="enabled" data-wm-untracked style="margin-top: 0.4em;" onchange="toggleDestination(${i}, this.checked);" ${d.enabled ? "checked" : ""}>
                                 <label></label>
                             </div>
                             <div class="content">
@@ -181,7 +181,14 @@
                     </div>`);
                 });
                 $(".ui.checkbox").checkbox();
+                destListArea.reset();
             }
+
+            // The list (each row has its own Save while edited; the on/off
+            // switch applies at once) and the Add Destination form
+            let destListArea = wmTrackChanges("#upstreamTable", {saveButton: "#upstreamTable .savebtn"});
+            let newDestArea = wmTrackChanges('[data-tab="newupstream"]', {saveButton: $('[data-tab="newupstream"] button[onclick^="addDestination"]')});
+            $(function(){ newDestArea.reset(); });
 
             function save(list, done){
                 parent.saveL4Pool({destinations: list}, function(err){
@@ -243,6 +250,7 @@
                 list.push({address: addr, weight: 1, enabled: $("#activateNewUpstreamCheckbox")[0].checked});
                 save(list, function(){
                     $("#newDestination").val("");
+                    newDestArea.reset();
                     $('.menu .item').tab("change tab", "upstreamlist");
                 });
             }

@@ -45,11 +45,13 @@
   <div class="ui container">
     <h3>ACME Email</h3>
     <p>Email is required by many CAs for renewing via ACME protocol</p>
+    <div id="acmeEmailArea">
     <div class="ui fluid action input">
       <input id="caRegisterEmail" type="text" placeholder="webmaster@example.com">
       <button class="ui icon basic button" onclick="saveEmailToConfig(this);">
-          <i class="blue save icon"></i>
+          <i class="green save icon"></i>
       </button>
+    </div>
     </div>
     <small>If you don't want to share your private email address, you can also fill in an email address that point to a mailbox not exists on your domain.</small>
   <h3>Generate New Certificate</h3>
@@ -220,6 +222,7 @@
         if (data != "" && data != undefined && data != null){
           $("#caRegisterEmail").val(data);
         }
+        acmeEmailArea.reset();
       });
 
       //Load the domain selection options
@@ -234,6 +237,9 @@
     initRenewerConfigFromFile();
 
 
+    // The email is saved with its own button
+    let acmeEmailArea = wmTrackChanges("#acmeEmailArea", {saveButton: "#acmeEmailArea button", noteAfter: "#acmeEmailArea > .action.input"});
+
     function saveEmailToConfig(btn){
       $.cjax({
         url: "/api/acme/autoRenew/email",
@@ -245,10 +251,11 @@
 
           }else{
             parent.msgbox("Email updated");
+            acmeEmailArea.reset();
             $(btn).html(`<i class="green check icon"></i>`);
             $(btn).addClass("disabled");
             setTimeout(function(){
-              $(btn).html(`<i class="blue save icon"></i>`);
+              $(btn).html(`<i class="green save icon"></i>`);
               $(btn).removeClass("disabled");
             }, 3000);
           }

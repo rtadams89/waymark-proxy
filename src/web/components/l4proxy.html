@@ -17,6 +17,9 @@
             z-index: 8;
             max-width: 840px;
         }
+        #l4EditModal .l4EditSaveGroup{ margin-bottom: 0.6em; }
+        #l4EditModal .l4EditSaveGroup .wmUnsavedNote{ display: none; margin: 0.3em 0 0 0; }
+        #l4EditModal .l4EditSaveGroup .wmUnsavedNote.wmShow{ display: block; }
         #l4EditModal .l4config_content{
             height: 100%;
             overflow-y: auto;
@@ -116,7 +119,7 @@
             }
         }
     </style>
-<!-- Editor for a Layer 4 rule. Each setting is saved when it is changed. -->
+<!-- Editor for a Layer 4 rule -->
 <div id="l4EditModalWrapper">
     <div id="l4EditModal" editing-uuid="">
         <div class="ui grid" style="height:100%;">
@@ -132,6 +135,9 @@
                         <i class="star icon"></i> <span class="editorSideMenuText">Access (ACL)</span>
                     </a>
                 </div>
+                <div class="l4EditSaveGroup">
+                    <button class="ui basic fluid button l4EditSaveBtn"><i class="green save icon"></i> Save</button>
+                </div>
                 <button class="ui basic fluid button l4EditClosePC" onclick="closeL4ProxyEditor();">Close</button>
                 <button class="ui basic icon circular button l4EditCloseMobile" onclick="closeL4ProxyEditor();"><i class="ui times icon"></i></button>
             </div>
@@ -146,7 +152,7 @@
                                 </button>
                                 <span class="l4_name"></span>
                             </h3>
-                            <div class="ui action small fluid input l4_name_edit_input" style="margin-bottom: 0.4em; display: none;">
+                            <div class="ui action small fluid input l4_name_edit_input" style="margin-bottom: 0.4em; display: none;" data-wm-untracked>
                                 <input type="text" placeholder="Name">
                                 <button class="ui green basic icon button l4SaveNameBtn" title="Save">
                                     <i class="ui save icon"></i>
@@ -158,11 +164,8 @@
                             <div class="ui divider"></div>
                             <b>Listening Address</b>
                             <p style="margin-top: 0.4em;"><small>Address and port of this host to listen on, e.g. :25565 or 192.168.1.1:25565.</small></p>
-                            <div class="ui action small fluid input">
+                            <div class="ui small fluid input">
                                 <input type="text" class="l4ListenAddr" placeholder=":25565">
-                                <button class="ui green basic icon button l4SaveListenBtn" title="Save">
-                                    <i class="ui save icon"></i>
-                                </button>
                             </div>
                             <div class="ui divider"></div>
                             <div class="ui checkbox" style="margin-top: 0.4em;">
@@ -572,6 +575,7 @@
         }
         l4Editing = JSON.parse(JSON.stringify(config));
         $("#l4EditModal").attr("editing-uuid", config.UUID);
+        if (l4EditorArea) l4EditorArea.baseline = null;
         populateL4Editor();
         hideL4EditorSideWrapper();
         showL4EditorPage("listener");
@@ -586,6 +590,10 @@
     }
 
     function closeL4ProxyEditor(){
+        if (wmHasUnsavedChanges("#l4EditModalWrapper")){
+            wmConfirmDiscard("#l4EditModalWrapper", closeL4ProxyEditor);
+            return;
+        }
         $(".ui.toggle.tiny.fitted.checkbox").css("z-index", 0);
         $("#l4EditModalWrapper").fadeOut("fast", function(){
             $(".ui.toggle.tiny.fitted.checkbox").css("z-index", "auto");
@@ -597,6 +605,8 @@
     }
 
     function showL4EditorPage(page){
+        // The Access page has its own Save
+        $("#l4EditModal .l4EditSaveGroup").toggle(page != "accessrule");
         $("#l4EditModal .l4edit_menu_item.active").removeClass("active");
         $(`#l4EditModal .l4edit_menu_item[cfgpage='${page}']`).addClass("active");
         $("#l4EditModal .l4config_content").hide();
@@ -604,15 +614,18 @@
     }
 
     $("#l4EditModal .l4edit_menu_item").on("click", function(){
-        showL4EditorPage($(this).attr("cfgpage"));
-        hideL4EditorSideWrapper(); //Always close the side wrapper on tab change
+        let page = $(this).attr("cfgpage");
+        wmConfirmDiscard("#l4EditModal .editor_side_wrapper", function(){
+            showL4EditorPage(page);
+            hideL4EditorSideWrapper(); //Always close the side wrapper on tab change
+        });
     });
 
     $("#l4EditDarkenLayer").on("click", closeL4ProxyEditor);
     $(document).on("keydown", function(e){
         if (e.key != "Escape" || !l4EditorOpen()) return;
         if ($("#l4EditModal .editor_side_wrapper").is(":visible")){
-            hideL4EditorSideWrapper(true);
+            wmConfirmDiscard("#l4EditModal .editor_side_wrapper", () => hideL4EditorSideWrapper(true));
         }else{
             closeL4ProxyEditor();
         }
@@ -627,27 +640,25 @@
         if (!editor.find(".l4_name_edit_input").is(":visible")){
             editor.find(".l4_name").text(name);
         }
-        let listen = editor.find(".l4ListenAddr");
-        if (!listen.is(":focus")){
-            listen.val(c.ListeningAddress);
-        }
+        // Summaries that the side panels change
+        editor.find(".l4_destination_list").html(l4DestinationsCell(c));
+        editor.find(".l4HealthCheckSummary").text(describeL4HealthCheck(c.HealthCheck));
+        // Unsaved edits stay as they are
+        if (l4EditorArea && l4EditorArea.check()) return;
+
+        editor.find(".l4ListenAddr").val(c.ListeningAddress);
         editor.find(".l4UseTCP").prop("checked", !!c.UseTCP);
         editor.find(".l4UseUDP").prop("checked", !!c.UseUDP);
         editor.find(".l4UDPTimeoutField").toggle(!!c.UseUDP);
-        let timeout = editor.find(".l4Timeout");
-        if (!timeout.is(":focus")){
-            timeout.val(parseInt(c.Timeout) || 0);
-        }
+        editor.find(".l4Timeout").val(parseInt(c.Timeout) || 0);
         editor.find(".l4EnableLogging").prop("checked", !!c.EnableLogging);
-
-        editor.find(".l4_destination_list").html(l4DestinationsCell(c));
-        editor.find(".l4HealthCheckSummary").text(describeL4HealthCheck(c.HealthCheck));
         editor.find(".l4LoadBalancing").val(c.LoadBalancing == "leastconn" ? "leastconn" : "weighted");
         editor.find(".l4LBHint").text(L4_LB_HINTS[c.LoadBalancing == "leastconn" ? "leastconn" : "weighted"]);
         editor.find(".l4StickySessions").prop("checked", !!c.StickySessions);
         editor.find(".l4CloseOnDown").prop("checked", !!c.CloseOnUpstreamDown);
         editor.find(".l4ProxyProtocol").val(String(c.ProxyProtocolVersion || 0));
         editor.find(".l4ProxyProtocolUdpWarning").toggle(c.ProxyProtocolVersion === 1 && !!c.UseUDP);
+        if (l4EditorArea) l4EditorArea.reset();
     }
 
     // resyncL4Editor reloads the rules and refreshes the editor and the list
@@ -690,6 +701,7 @@
             error: function(){
                 msgbox("Request failed", false);
                 resyncL4Editor();
+                if (callback != undefined) callback("Request failed");
             }
         });
     }
@@ -723,6 +735,7 @@
             error: function(){
                 msgbox("Request failed", false);
                 resyncL4Editor();
+                if (callback != undefined) callback("Request failed");
             }
         });
     }
@@ -734,10 +747,13 @@
         editor.find(".l4_name_edit_btn").on("click", function(){
             editor.find(".l4_name_edit_btn").parent().hide();
             editor.find(".l4_name_edit_input input").val(l4Editing ? (l4Editing.Name || "") : "");
+            l4NameArea.reset();
             editor.find(".l4_name_edit_input").show();
             editor.find(".l4_name_edit_input input").focus();
         });
         let endRename = function(){
+            editor.find(".l4_name_edit_input input").val(l4Editing ? (l4Editing.Name || "") : "");
+            l4NameArea.reset();
             editor.find(".l4_name_edit_input").hide();
             editor.find(".l4_name_edit_btn").parent().show();
         };
@@ -747,8 +763,13 @@
                 msgbox("Name cannot be empty", false);
                 return;
             }
-            endRename();
-            saveL4Config({name: name});
+            if (l4EditorArea.check()){
+                msgbox("Save or discard the rule's other changes before renaming it", false, 6000);
+                return;
+            }
+            saveL4Config({name: name}, function(err){
+                if (!err) endRename();
+            });
         };
         editor.find(".l4CancelNameBtn").on("click", endRename);
         editor.find(".l4SaveNameBtn").on("click", saveName);
@@ -757,51 +778,73 @@
             if (e.key == "Escape"){ e.stopPropagation(); endRename(); }
         });
 
-        let saveListen = function(){
-            let addr = editor.find(".l4ListenAddr").val().trim();
-            if (l4Editing == null || addr == l4Editing.ListeningAddress) return;
-            if (addr == ""){
-                msgbox("Listening address cannot be empty", false);
-                return;
-            }
-            saveL4Config({listenAddr: addr});
-        };
-        editor.find(".l4SaveListenBtn").on("click", saveListen);
-        editor.find(".l4ListenAddr").on("keydown", function(e){
-            if (e.key == "Enter") saveListen();
-        });
-
         editor.find(".l4UseTCP, .l4UseUDP").on("change", function(){
             let tcp = editor.find(".l4UseTCP")[0].checked, udp = editor.find(".l4UseUDP")[0].checked;
             if (!tcp && !udp){
                 msgbox("Keep TCP, UDP or both on (stop the rule with its slider instead)", false, 6000);
                 $(this).prop("checked", true);
+            }
+            editor.find(".l4UDPTimeoutField").toggle(editor.find(".l4UseUDP")[0].checked);
+            editor.find(".l4ProxyProtocolUdpWarning").toggle(editor.find(".l4ProxyProtocol").val() == "1" && editor.find(".l4UseUDP")[0].checked);
+        });
+        editor.find(".l4LoadBalancing").on("change", function(){
+            editor.find(".l4LBHint").text(L4_LB_HINTS[$(this).val()] || "");
+        });
+        editor.find(".l4ProxyProtocol").on("change", function(){
+            editor.find(".l4ProxyProtocolUdpWarning").toggle($(this).val() == "1" && editor.find(".l4UseUDP")[0].checked);
+        });
+
+        // Saves what changed: rule settings, then destination pool settings
+        editor.find(".l4EditSaveBtn").on("click", function(){
+            let c = l4Editing;
+            if (c == null) return;
+            let addr = editor.find(".l4ListenAddr").val().trim();
+            if (addr == ""){
+                msgbox("Listening address cannot be empty", false);
                 return;
             }
-            saveL4Config({useTCP: tcp, useUDP: udp});
-        });
-        editor.find(".l4Timeout").on("change", function(){
-            let t = parseInt($(this).val(), 10);
+            let t = parseInt(editor.find(".l4Timeout").val(), 10);
             if (isNaN(t) || t < 0){
                 msgbox("UDP idle timeout must be a whole number of seconds", false);
                 return;
             }
-            saveL4Config({timeout: t});
-        });
-        editor.find(".l4EnableLogging").on("change", function(){
-            saveL4Config({enableLogging: this.checked});
-        });
-        editor.find(".l4LoadBalancing").on("change", function(){
-            saveL4Pool({loadBalancing: $(this).val()});
-        });
-        editor.find(".l4StickySessions").on("change", function(){
-            saveL4Pool({stickySessions: this.checked});
-        });
-        editor.find(".l4CloseOnDown").on("change", function(){
-            saveL4Pool({closeOnUpstreamDown: this.checked});
-        });
-        editor.find(".l4ProxyProtocol").on("change", function(){
-            saveL4Config({proxyProtocolVersion: parseInt($(this).val(), 10)});
+            let config = {
+                listenAddr: addr,
+                useTCP: editor.find(".l4UseTCP")[0].checked,
+                useUDP: editor.find(".l4UseUDP")[0].checked,
+                timeout: t,
+                enableLogging: editor.find(".l4EnableLogging")[0].checked,
+                proxyProtocolVersion: parseInt(editor.find(".l4ProxyProtocol").val(), 10)
+            };
+            let pool = {
+                loadBalancing: editor.find(".l4LoadBalancing").val(),
+                stickySessions: editor.find(".l4StickySessions")[0].checked,
+                closeOnUpstreamDown: editor.find(".l4CloseOnDown")[0].checked
+            };
+            let configChanged = config.listenAddr != c.ListeningAddress || config.useTCP != !!c.UseTCP || config.useUDP != !!c.UseUDP ||
+                config.timeout != (parseInt(c.Timeout) || 0) || config.enableLogging != !!c.EnableLogging || config.proxyProtocolVersion != (c.ProxyProtocolVersion || 0);
+            let poolChanged = pool.loadBalancing != (c.LoadBalancing == "leastconn" ? "leastconn" : "weighted") ||
+                pool.stickySessions != !!c.StickySessions || pool.closeOnUpstreamDown != !!c.CloseOnUpstreamDown;
+            let btn = $(this).addClass("loading disabled");
+            let finish = function(err){
+                btn.removeClass("loading disabled");
+                if (!err){
+                    l4EditorArea.baseline = null;
+                    populateL4Editor();
+                }
+            };
+            let savePool = function(){
+                if (!poolChanged){ finish(); return; }
+                saveL4Pool(pool, finish);
+            };
+            if (configChanged){
+                saveL4Config(config, function(err){
+                    if (err){ finish(err); return; }
+                    savePool();
+                });
+            }else{
+                savePool();
+            }
         });
         editor.find(".l4EditDestinationsBtn").on("click", function(){
             if (l4Editing == null) return;
@@ -815,9 +858,17 @@
         });
         editor.find(".editor_back_button").on("click", function(event){
             event.stopPropagation();
-            hideL4EditorSideWrapper(true);
+            wmConfirmDiscard("#l4EditModal .editor_side_wrapper", () => hideL4EditorSideWrapper(true));
         });
     })();
+
+    /* Save tracking */
+    let l4EditorArea = null;
+    let l4NameArea = null;
+    $(function(){
+        l4EditorArea = wmTrackChanges("#l4EditModalContentWindow", {saveButton: $("#l4EditModal .l4EditSaveBtn")});
+        l4NameArea = wmTrackChanges("#l4EditModal .l4_name_edit_input", {saveButton: $("#l4EditModal .l4SaveNameBtn")});
+    });
 
     function showL4EditorSideWrapper(url){
         $("#l4EditModal .editor_side_wrapper .wrapper_frame").attr("src", url);

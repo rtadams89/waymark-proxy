@@ -14,7 +14,7 @@
             <h3>Change Password</h3>
             <p>Change the password of the account you are signed in with.</p>
             <div class="ui basic segment" style="padding-left: 0;">
-                <div class="ui form">
+                <div id="changePasswordForm" class="ui form">
                     <div class="field">
                         <label>Current Password</label>
                         <input type="password" name="oldPassword" placeholder="Current Password">
@@ -27,7 +27,7 @@
                         <label>Confirm New Password</label>
                         <input type="password" name="confirmNewPassword" placeholder="Confirm New Password">
                     </div>
-                    <button class="ui basic button" onclick="changePassword()"><i class="ui teal key icon"></i> Change Password</button>
+                    <button id="changePasswordBtn" class="ui basic button" onclick="changePassword()"><i class="ui teal key icon"></i> Change Password</button>
                 </div>
     
                 <div id="passwordChangeSuccMsg" class="ui green message" style="display:none;">
@@ -39,6 +39,10 @@
     <br>
 </div>
 <script>
+    // The password form is kept until "Change Password" is clicked
+    var changePasswordArea = wmTrackChanges("#changePasswordForm", {saveButton: "#changePasswordBtn"});
+    setTimeout(function(){ changePasswordArea.reset(); }, 1000);
+
     /*
         Account Password utilities
     */
@@ -72,6 +76,7 @@
                     $('[name="oldPassword"]').val('');
                     $('[name="newPassword"]').val('');
                     $('[name="confirmNewPassword"]').val('');
+                    changePasswordArea.reset();
                 }
             },
             error: function (xhr, status, error) {

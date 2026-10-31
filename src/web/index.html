@@ -521,6 +521,12 @@
             //Pages merged into others
             const TAB_ALIASES = {streamproxy: "httprp", l4proxy: "httprp", l4rules: "rules"};
             function openTabById(tabID, object=undefined){
+                //Leaving a page with unsaved changes asks first
+                let currentTab = $(".functiontab:visible");
+                if (currentTab.length && currentTab.attr("id") != (TAB_ALIASES[tabID] || tabID) && wmHasUnsavedChanges(currentTab)){
+                    wmConfirmDiscard(currentTab, function(){ openTabById(tabID, object); });
+                    return;
+                }
                 if (object == undefined && TAB_ALIASES[tabID] != undefined){
                     if (tabID == "l4rules" && window.selectAddRuleType) selectAddRuleType("l4");
                     tabID = TAB_ALIASES[tabID];
@@ -669,7 +675,7 @@
                 sideWrapperLockMessage = "";
             }
             window.addEventListener("beforeunload", function(e){
-                if (sideWrapperLockMessage != ""){
+                if (sideWrapperLockMessage != "" || wmHasUnsavedChanges()){
                     e.preventDefault();
                     e.returnValue = "";
                 }
@@ -678,6 +684,11 @@
             function showSideWrapper(scriptpath="", extendedMode=false){
                 if (sideWrapperLockMessage != ""){
                     msgbox(sideWrapperLockMessage, false);
+                    return;
+                }
+                //Replacing an open side panel with unsaved changes asks first
+                if (scriptpath != "" && $(".sideWrapper").is(":visible") && wmHasUnsavedChanges(".sideWrapper")){
+                    wmConfirmDiscard(".sideWrapper", function(){ showSideWrapper(scriptpath, extendedMode); });
                     return;
                 }
                 if (scriptpath != ""){
@@ -702,6 +713,17 @@
             function hideSideWrapper(discardFrameContent = false){
                 if (sideWrapperLockMessage != ""){
                     msgbox(sideWrapperLockMessage, false);
+                    return;
+                }
+                //The panel being closed: a rule editor's own side panel, or the page's
+                let closingPanel = ".sideWrapper";
+                if ($("#httprpEditModal").length && $("#httprpEditModal .editor_side_wrapper").is(":visible")){
+                    closingPanel = "#httprpEditModal .editor_side_wrapper";
+                }else if ($("#l4EditModal").length && $("#l4EditModal").is(":visible") && $("#l4EditModal .editor_side_wrapper").is(":visible")){
+                    closingPanel = "#l4EditModal .editor_side_wrapper";
+                }
+                if (wmHasUnsavedChanges(closingPanel)){
+                    wmConfirmDiscard(closingPanel, function(){ hideSideWrapper(discardFrameContent); });
                     return;
                 }
                 if ($("#httprpEditModal").length && $("#httprpEditModal").is(":visible")) {

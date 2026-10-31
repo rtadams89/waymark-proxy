@@ -44,14 +44,17 @@
                     See the -webserv flag for more details.
                 </small>
             </div>
-            <div class="field webservRootDisabled">
+            <div id="webservPortArea" class="field webservRootDisabled">
                 <label>Port Number</label>
-                <input id="webserv_listenPort" type="number" step="1" min="0" max="65535" value="8081" onchange="updateWebServLinkExample(this.value);">
+                <div class="ui action input">
+                    <input id="webserv_listenPort" type="number" step="1" min="0" max="65535" value="8081">
+                    <button id="webserv_savePort" class="ui basic button"><i class="green save icon"></i> Save</button>
+                </div>
                 <small>Use <code>http://127.0.0.1:<span class="webserv_port">8081</span></code> in proxy rules to access the web server</small>
             </div>
         </div>
     </div>
-    <small><i class="ui blue save icon"></i> Changes are saved automatically</small>
+    <small><i class="ui blue info circle icon"></i> Switches apply immediately. Other settings are saved with their Save button.</small>
     <br>
     <div class="ui message">
         <div class="ui accordion webservhelp">
@@ -104,9 +107,12 @@
                 <small>Notes: You still need to add a proxy rule to access the WebDAV server remotely.</small>
             </div>
         </div>
-        <div class="field">
+        <div id="webdavPortArea" class="field">
             <label>WebDAV Server Port</label>
-            <input id="webdav_port" type="number" step="1" min="1" max="65535" value="5488">
+            <div class="ui action input">
+                <input id="webdav_port" type="number" step="1" min="1" max="65535" value="5488">
+                <button id="webdav_savePort" class="ui basic button"><i class="green save icon"></i> Save</button>
+            </div>
             <small>WebDAV server listens only on localhost (127.0.0.1) for security reasons.</small>
         </div>
         <div class="ui basic segment advanceoptions accordion" style="margin-top:0.6em;">
@@ -142,7 +148,7 @@
         </div>
     </div>
     <br>
-    <small><i class="ui blue save icon"></i> Changes are saved automatically</small>
+    <small><i class="ui blue info circle icon"></i> Switches apply immediately. Other settings are saved with their Save button.</small>
     <br>
     <div class="ui message">
         <div class="ui accordion webdavhelp">
@@ -241,6 +247,10 @@
             }
         }
 
+        let webservPortArea = wmTrackChanges("#webservPortArea", {saveButton: "#webserv_savePort", noteAfter: "#webservPortArea .action.input"});
+        let webdavPortArea = wmTrackChanges("#webdavPortArea", {saveButton: "#webdav_savePort", noteAfter: "#webdavPortArea .action.input"});
+        let webdavCredArea = wmTrackChanges("#webdav_customCredentialsForm", {saveButton: "#webdav_saveCustomCredentials"});
+
         function updateWebServState(){
             $.get("/api/webserv/status", function(data){
                 //Clear all event listeners
@@ -251,6 +261,8 @@
                 $("#webdav_port").off("change");
                 $("#webdav_useCustomCredentials").off("change");
                 $("#webdav_saveCustomCredentials").off("click");
+                $("#webserv_savePort").off("click");
+                $("#webdav_savePort").off("click");
 
                 setWebServerRunningState(data.Running);
 
@@ -294,6 +306,11 @@
                 if (data.CustomCredentialsUsername){
                     $("#webdav_customUsername").val(data.CustomCredentialsUsername);
                 }
+
+                //Typed settings are saved with their own Save buttons
+                webservPortArea.reset();
+                webdavPortArea.reset();
+                webdavCredArea.reset();
 
                 //Bind checkbox events
                 $("#webserv_enable").off("change").on("change", function(){
@@ -377,7 +394,10 @@
                 });
 
                 $("#webserv_listenPort").off("change").on("change", function(){
-                    let newPort = $(this).val();
+                    updateWebServLinkExample($(this).val());
+                });
+                $("#webserv_savePort").off("click").on("click", function(){
+                    let newPort = $("#webserv_listenPort").val();
 
                     //Check if the new value is same as listening port
                     let rpListeningPort = $("#incomingPort").val();
@@ -414,14 +434,15 @@
                                     msgbox(data.error, false);
                                 }else{
                                     msgbox("Listening port updated");
+                                    webservPortArea.reset();
                                 }
                             }
                         })
                     }
                 });
 
-                $("#webdav_port").off("change").on("change", function(){
-                    let newPort = $(this).val();
+                $("#webdav_savePort").off("click").on("click", function(){
+                    let newPort = $("#webdav_port").val();
                     $.cjax({
                         url: "/api/webserv/webdav/setPort",
                         method: "POST",
@@ -432,6 +453,7 @@
                             }else{
                                 msgbox("WebDAV port updated");
                                 updateWebDAVPortExample(newPort);
+                                webdavPortArea.reset();
                             }
                         }
                     })
@@ -488,6 +510,7 @@
                                 msgbox("Custom credentials saved successfully");
                                 // Clear password field
                                 $("#webdav_customPassword").val("");
+                                webdavCredArea.reset();
                             }
                         }
                     })

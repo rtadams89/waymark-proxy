@@ -144,7 +144,7 @@ sudo sysctl --system</pre></div>
             <button class="ui basic button" id="haSaveBtn" onclick="haSave(); return false;"><i class="green save icon"></i> Save and apply</button>
             <button class="ui basic button" onclick="haExport(); return false;"><i class="copy icon"></i> Copy settings</button>
             <button class="ui basic button" onclick="$('#haImportBox').slideToggle('fast'); return false;"><i class="paste icon"></i> Paste settings</button>
-            <div id="haImportBox" style="display:none; margin-top: 0.8em;">
+            <div id="haImportBox" style="display:none; margin-top: 0.8em;" data-wm-untracked>
                 <div class="field">
                     <label>Settings copied from the other node</label>
                     <textarea id="haImportText" rows="5" class="haMono"></textarea>
@@ -308,21 +308,30 @@ sudo sysctl --system</pre></div>
             $("#haNodesTable tbody").empty();
             (c.nodes || []).forEach(n => $("#haNodesTable tbody").append(nodeRow(n)));
             haMarkSelf();
-            haGuessHostnames();
+            // The DNS name guesses count as loaded values, not as changes
+            haGuessHostnames(function(){ if (haArea) haArea.reset(); });
         }
 
         // Empty DNS name fields get a best guess (reverse DNS of the address)
-        window.haGuessHostnames = function(){
+        // done (optional) runs after every guess has come back
+        window.haGuessHostnames = function(done){
+            let pending = 1;
+            let finish = function(){ if (--pending == 0 && typeof done == "function") done(); };
             $("#haForm tr").each(function(){
                 let row = $(this), into = row.find(".haGuessInto"), addr = row.find(".haGuessFrom").val();
                 if (into.length == 0 || into.val().trim() != "" || !/^\d{1,3}(\.\d{1,3}){3}$/.test((addr || "").trim())) return;
+                pending++;
                 $.get("/api/ha/dnsguess?ip=" + encodeURIComponent(addr.trim()), function(d){
                     if (d && d.hostname && into.val().trim() == "" && row.find(".haGuessFrom").val().trim() == addr.trim()){
                         into.val(d.hostname).attr("title", "Best guess from reverse DNS; change it if it is wrong");
                     }
-                });
+                }).always(finish);
             });
+            finish();
         };
+
+        // Nothing in the cluster form is saved until "Save and apply"
+        var haArea = wmTrackChanges("#haForm", {saveButton: "#haSaveBtn", onDiscard: function(){ haLoad(true); }});
         $(document).off("change.haGuess").on("change.haGuess", "#haForm .haGuessFrom", function(){ haGuessHostnames(); });
 
         function renderStatus(d){

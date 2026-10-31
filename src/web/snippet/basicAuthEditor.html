@@ -64,6 +64,7 @@
                     </tr>
                     </tbody>
                 </table>
+                <div id="exceptionAddForm">
                 <div class="fields" style="margin-bottom: 0.4em;">
                     <div class="field" style="margin-bottom: 0.4em;">
                         <select class="ui basic fluid dropdown" id="exceptionTypeDropdown" style="margin-right: 1em;">
@@ -102,7 +103,8 @@
                     </div>
                 </div>  
                 <div class="field" >
-                    <button class="ui basic button" onclick="addExceptionPath();"><i class="yellow add icon"></i> Add Exception</button>
+                    <button class="ui basic button" id="addExceptionBtn" onclick="addExceptionPath();"><i class="yellow add icon"></i> Add Exception</button>
+                </div>
                 </div>
                 <div class="field">
                     <div class="ui basic message">
@@ -180,6 +182,11 @@
                 })
             }
 
+            // The two Add forms: what is typed is only kept after Add
+            let credentialAddArea = wmTrackChanges(".credentialEntry", {saveButton: $(".credentialEntry button")});
+            let exceptionAddArea = wmTrackChanges("#exceptionAddForm", {saveButton: "#addExceptionBtn"});
+            $(function(){ credentialAddArea.reset(); setTimeout(() => exceptionAddArea.reset(), 300); });
+
             function addCredentialsToEditingList() {
                 // Retrieve the username and password input values
                 var username = $('#inlineEditBasicAuthCredUsername').val();
@@ -207,6 +214,7 @@
                 // Clear the input fields
                 $('#inlineEditBasicAuthCredUsername').val('');
                 $('#inlineEditBasicAuthCredPassword').val('');
+                credentialAddArea.reset();
 
                 // Update the table body with the credentials
                 updateEditingCredentialList();
@@ -256,6 +264,7 @@
                             parent.msgbox("New exception path added", true);
                             $('#newExclusionPath').val("");
                             $('#newExclusionIP').val("");
+                            exceptionAddArea.reset();
                             $('#newExclusionTrustProxy').prop('checked', false);
                             $('#newExclusionCaseSensitive').prop('checked', true);
                         }

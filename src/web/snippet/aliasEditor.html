@@ -31,7 +31,7 @@
                         </tbody>
                     </table>
                     <div class="ui divider"></div>
-                    <div class="three small fields">
+                    <div class="three small fields" id="aliasAddForm">
                         <div class="field">
                             <label>Alias Hostname</label>
                             <input id="aliasHostname" type="text" placeholder="alias.mydomain.com" autocomplete="off">
@@ -111,10 +111,14 @@
                 });
             }
 
+            let aliasAddArea = wmTrackChanges("#aliasAddForm", {saveButton: $("#aliasAddForm button")});
+            aliasAddArea.reset();
+
             function addAliasToRoutingRule(){
                 let newAliasHostname = $("#aliasHostname").val().trim();
                 aliasList.push(newAliasHostname);
                 $("#aliasHostname").val("");
+                aliasAddArea.reset();
                 saveCurrentAliasList(function(data){
                     if (data.error != undefined){
                         parent.msgbox(data.error);

@@ -85,7 +85,7 @@
 					<div class="field">
 						<label>Allowed Hosts <small class="passwordHint">(blank = allow all)</small></label>
 						<div style="margin-bottom:0.4em; display:flex; gap:0.4em; align-items:center;">
-							<select id="editHostQuickSelect" style="flex:1;">
+							<select id="editHostQuickSelect" style="flex:1;" data-wm-untracked>
 								<option value="">— select a registered host —</option>
 							</select>
 							<button class="ui mini basic button" type="button" onclick="addHostToTable('editHostsTable', $('#editHostQuickSelect').val());"><i class="add icon"></i> Add</button>
@@ -97,7 +97,7 @@
 						</table>
 					</div>
 					</div>
-					<button class="ui basic button" onclick="saveUser();"><i class="ui green save icon"></i> Save Changes</button>
+					<button class="ui basic button" onclick="saveUser();"><i class="ui green save icon"></i> Save</button>
 					<button class="ui basic yellow button" id="disable2faBtn" style="display:none;" onclick="disableUserTOTP();"><i class="ui shield icon"></i> Disable 2FA</button>
 					<button class="ui basic button" onclick="cancelEdit();"><i class="ui grey cancel icon"></i> Cancel</button>
 				</div>
@@ -137,7 +137,7 @@
 					<div class="field">
 						<label>Allowed Hosts <small class="passwordHint">(blank = allow all)</small></label>
 						<div style="margin-bottom:0.4em; display:flex; gap:0.4em; align-items:center;">
-						<select id="newHostQuickSelect" style="flex:1;">
+						<select id="newHostQuickSelect" style="flex:1;" data-wm-untracked>
 							<option value="">— select a registered host —</option>
 						</select>
 						<button class="ui mini basic button" type="button" onclick="addHostToTable('newHostsTable', $('#newHostQuickSelect').val());"><i class="add icon"></i> Add</button>
@@ -191,7 +191,7 @@
 					<div class="field">
 						<label>Allowed Hosts <small class="passwordHint">(blank = allow all)</small></label>
 						<div style="margin-bottom:0.4em; display:flex; gap:0.4em; align-items:center;">
-							<select id="editGPHostQuickSelect" style="flex:1;">
+							<select id="editGPHostQuickSelect" style="flex:1;" data-wm-untracked>
 								<option value="">— select a registered host —</option>
 							</select>
 							<button class="ui mini basic button" type="button" onclick="addHostToTable('editGPHostsTable', $('#editGPHostQuickSelect').val());"><i class="add icon"></i> Add</button>
@@ -202,7 +202,7 @@
 							</tbody>
 						</table>
 					</div>
-					<button class="ui basic button" onclick="saveGroupPolicy();"><i class="ui green save icon"></i> Save Changes</button>
+					<button class="ui basic button" onclick="saveGroupPolicy();"><i class="ui green save icon"></i> Save</button>
 					<button class="ui basic button" onclick="cancelEditGroupPolicy();"><i class="ui grey cancel icon"></i> Cancel</button>
 				</div>
 
@@ -224,7 +224,7 @@
 					<div class="field">
 						<label>Allowed Hosts <small class="passwordHint">(blank = allow all)</small></label>
 						<div style="margin-bottom:0.4em; display:flex; gap:0.4em; align-items:center;">
-							<select id="newGPHostQuickSelect" style="flex:1;">
+							<select id="newGPHostQuickSelect" style="flex:1;" data-wm-untracked>
 								<option value="">— select a registered host —</option>
 							</select>
 							<button class="ui mini basic button" type="button" onclick="addHostToTable('newGPHostsTable', $('#newGPHostQuickSelect').val());"><i class="add icon"></i> Add</button>
@@ -292,7 +292,7 @@
 				tbody.find('.emptyRow').remove();
 
 				// Add new row
-				const row = `<tr class="hostRow" data-hostname="${escapeHtml(hostname)}">
+				const row = `<tr class="hostRow" data-hostname="${escapeHtml(hostname)}" data-wm-value="${escapeHtml(hostname)}">
 					<td style="padding:0.4em 0.6em;">${escapeHtml(hostname)}</td>
 					<td style="width:3em; text-align:right; padding:0.4em 0.6em;">
 						<button class="ui mini icon basic red circular button" type="button" onclick="removeHostFromTable(this);" title="Remove host"><i class="times icon"></i></button>
@@ -344,7 +344,7 @@
 				}
 
 				hosts.forEach(function(hostname){
-					const row = `<tr class="hostRow" data-hostname="${escapeHtml(hostname)}">
+					const row = `<tr class="hostRow" data-hostname="${escapeHtml(hostname)}" data-wm-value="${escapeHtml(hostname)}">
 						<td style="padding:0.4em 0.6em;">${escapeHtml(hostname)}</td>
 						<td style="width:3em; text-align:right; padding:0.4em 0.6em;">
 							<button class="ui mini icon basic red circular button" type="button" onclick="removeHostFromTable(this);" title="Remove host"><i class="times icon"></i></button>
@@ -427,6 +427,13 @@
                 });
 			}
 
+			// Each form saves with its own button
+			let editUserArea = wmTrackChanges("#editUserSection", {saveButton: $("#editUserSection button[onclick^='saveUser']")});
+			let newUserArea = wmTrackChanges("#newUserSection", {saveButton: $("#newUserSection button[onclick^='createUser']")});
+			let editGPArea = wmTrackChanges("#editGroupPolicySection", {saveButton: $("#editGroupPolicySection button[onclick^='saveGroupPolicy']")});
+			let newGPArea = wmTrackChanges("#newGroupPolicySection", {saveButton: $("#newGroupPolicySection button[onclick^='createGroupPolicy']")});
+			$(function(){ setTimeout(function(){ newUserArea.reset(); newGPArea.reset(); }, 800); });
+
 			function openEditUser(btn){
 				const row = $(btn).closest('.userRow');
 				const username = row.attr('data-username');
@@ -456,9 +463,12 @@
 
 				// Scroll the edit form into view smoothly
 				$('#editUserSection')[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+				editUserArea.reset();
 			}
 
+			// Cancel (and a finished save) discards the form's changes
 			function cancelEdit(){
+				editUserArea.discard();
 				populateHostTable('editHostsTable', '');
 				$('#editUserSection').hide();
 				$('#newUserSection').show();
@@ -533,6 +543,7 @@
 						$('#newGroupId').val('');
 						toggleGroupPolicyMode('new');
 						populateHostTable('newHostsTable', '');
+						newUserArea.reset();
 						loadUsers();
 					}
 				});
@@ -688,10 +699,12 @@
 
 				$('#newGroupPolicySection').hide();
 				$('#editGroupPolicySection').show();
+				editGPArea.reset();
 				$('#editGroupPolicySection')[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 			}
 
 			function cancelEditGroupPolicy(){
+				editGPArea.discard();
 				populateHostTable('editGPHostsTable', '');
 				$('#editGroupPolicySection').hide();
 				$('#newGroupPolicySection').show();
@@ -724,6 +737,7 @@
 						$('#newGPName').val('');
 						$('#newGPDescription').val('');
 						populateHostTable('newGPHostsTable', '');
+						newGPArea.reset();
 						loadGroupPolicies(function(){ loadUsers(); });
 					}
 				});
