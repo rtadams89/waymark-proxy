@@ -57,6 +57,18 @@
             display:none;
         }
 
+        #loginForm.registering{
+            height: 600px;
+        }
+
+        .setupCodeHelp{
+            display: block;
+            margin-top: 0.4em;
+            text-align: left;
+            color: #555;
+            line-height: 1.4;
+        }
+
         #loginForm {
                 border-radius: 1em;
                 width: 25em;
@@ -176,6 +188,13 @@
                     <div class="ui basic segment">
                         <img class="ui fluid image" src="img/public/logo.svg" style="pointer-events:none;">
                         <p class="registerOnly">Account Setup</p>
+                        <div class="field registerOnly">
+                            <div class="ui left icon input">
+                                <i class="key icon"></i>
+                                <input id="setupCode" type="text" name="setupcode" placeholder="Setup code" autocomplete="off" spellcheck="false">
+                            </div>
+                            <small class="setupCodeHelp">Waymark writes the setup code to its log when it starts without an admin account, for example: <code>sudo journalctl -u waymark | grep "setup code"</code></small>
+                        </div>
                         <div class="field">
                             <div class="ui left icon input">
                                 <i class="user icon"></i>
@@ -199,6 +218,7 @@
                             <input id="rmbme" type="checkbox" tabindex="0" class="hidden">
                             <label>Remember Me</label>
                             </div>
+                            <a id="forgotLink" href="/reset.html" style="float: right;">Forgot password?</a>
                         </div>
                         <div id="loginbtn" class="ui fluid basic button loginOnly"> <i class="ui blue sign-in icon"></i> Login</div>
                         <div id="regsiterbtn" class="ui fluid basic button registerOnly"><i class="ui green checkmark icon"></i> Confirm</div>
@@ -251,6 +271,7 @@
                 if (data == 0){
                     //Allow user creation
                     registerMode = true;
+                    $("#loginForm").addClass("registering");
                     $(".loginOnly").hide();
                     $(".registerOnly").show();
                 }
@@ -330,6 +351,7 @@
                     request.setRequestHeader("X-CSRF-Token",csrfToken);
                 },
                 data: {
+                    setupcode: $("#setupCode").val(),
                     username: username,
                     password: magic
                 },

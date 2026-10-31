@@ -20,7 +20,6 @@ import (
 	"imuslab.com/zoraxy/mod/auth/sso/zorxauth"
 	csrf "imuslab.com/zoraxy/mod/csrfcompat" // stdlib CrossOriginProtection
 	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/database/dbinc"
 	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
 	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
 	"imuslab.com/zoraxy/mod/geodb"
@@ -95,13 +94,7 @@ func startupSequence() {
 	})
 
 	//Create database
-	backendType := database.GetRecommendedBackendType()
-	switch *databaseBackend {
-	case "leveldb":
-		backendType = dbinc.BackendLevelDB
-	case "boltdb":
-		backendType = dbinc.BackendBoltDB
-	}
+	backendType := selectedDBBackend()
 	l.PrintAndLog("database", "Using "+backendType.String()+" as the database backend", nil)
 	db, err := database.NewDatabase(*path_database, backendType)
 	if err != nil {
@@ -126,6 +119,7 @@ func startupSequence() {
 		//Not logged in. Redirecting to login page
 		http.Redirect(w, r, "/login.html", http.StatusTemporaryRedirect)
 	})
+	initAdminSetupCode()
 
 	// Create an API key manager for plugin authentication
 	pluginApiKeyManager = auth.NewAPIKeyManager()

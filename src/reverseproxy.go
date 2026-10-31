@@ -110,13 +110,13 @@ func ReverseProxyInit() {
 		Load Reverse Proxy Ingress Settings
 	*/
 	inboundPort := *defaultInboundPort
-	autoStartReverseProxy := *defaultEnableInboundTraffic
+	autoStartReverseProxy := true
 	if sysdb.KeyExists("settings", "inbound") {
 		//Read settings from database
 		sysdb.Read("settings", "inbound", &inboundPort)
 		if netutils.CheckIfPortOccupied(inboundPort) {
 			autoStartReverseProxy = false
-			SystemWideLogger.Println("Inbound port ", inboundPort, " is occupied. Change the listening port in the webmin panel and press \"Start Service\" to start reverse proxy service")
+			SystemWideLogger.Println("Inbound port ", inboundPort, " is in use by another program, so the proxy is not started. Free the port and restart Waymark, or save another Main Listening Port under System > Settings (that starts the proxy)")
 		} else {
 			SystemWideLogger.Println("Serving inbound port ", inboundPort)
 		}
@@ -124,9 +124,9 @@ func ReverseProxyInit() {
 		//Default port
 		if netutils.CheckIfPortOccupied(inboundPort) {
 			autoStartReverseProxy = false
-			SystemWideLogger.Println("Port 443 is occupied. Change the listening port in the webmin panel and press \"Start Service\" to start reverse proxy service")
+			SystemWideLogger.Println("Port ", inboundPort, " is in use by another program, so the proxy is not started. Free the port and restart Waymark, or save another Main Listening Port under System > Settings (that starts the proxy)")
 		}
-		SystemWideLogger.Println("Inbound port not set. Using default (443)")
+		SystemWideLogger.Println("Inbound port not set. Using the default (", inboundPort, ")")
 	}
 
 	useTls := true

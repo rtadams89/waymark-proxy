@@ -5,11 +5,6 @@
         <p>The account you are signed in to this web interface with. Users of Waymark Auth (single sign-on for proxied sites) are managed under Access &gt; SSO.</p>
     </div>
     <div class="ui segment">
-        <div class="extAuthOnly" style="display:none;">
-            <div class="ui basic segment">
-                <i class="ui grey info circle icon"></i> Sign-in is turned off (Waymark was started with <code>-noauth</code>), so there is no admin account to change.
-            </div>
-        </div>
         <div class="selfauthOnly">
             <h3>Change Password</h3>
             <p>Change the password of the account you are signed in with.</p>
@@ -46,14 +41,6 @@
     /*
         Account Password utilities
     */
-
-    $.get("/api/auth/userCount", function(data){
-        if (data == 0){
-            //Using external auth manager. Hide options
-            $(".selfauthOnly").hide();
-            $(".extAuthOnly").show();
-        }
-    });
 
     function changePassword() {
         const oldPassword = document.getElementsByName('oldPassword')[0].value;

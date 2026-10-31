@@ -37,19 +37,34 @@ func initACME() *acme.ACMEHandler {
 		port = getRandomPort(30000)
 	}
 
-	keyFileMode := parseACMEFileMode(*acmeKeyFileMode, 0o600, "acmekeymode")
-	publicFileMode := parseACMEFileMode(*acmePublicFileMode, 0o644, "acmepublicmode")
+	keyFileMode := parseACMEFileMode(*acmeKeyFileMode, 0o600, "acmekeymode", acmeKeyModeAllowed)
+	publicFileMode := parseACMEFileMode(*acmePublicFileMode, 0o644, "acmepublicmode", acmePublicModeAllowed)
 
 	return acme.NewACME(strconv.Itoa(port), sysdb, SystemWideLogger, *acmeTestMode, keyFileMode, publicFileMode)
 }
 
-func parseACMEFileMode(raw string, fallback os.FileMode, flagName string) os.FileMode {
+// acmeKeyModeAllowed: private keys are readable by the owner, and at most
+// by the group, and writable by no one else.
+func acmeKeyModeAllowed(m os.FileMode) bool {
+	return m&0o400 != 0 && m&^0o640 == 0
+}
+
+// acmePublicModeAllowed: certificates are readable by the owner and
+// writable by no one else.
+func acmePublicModeAllowed(m os.FileMode) bool {
+	return m&0o400 != 0 && m&^0o644 == 0
+}
+
+func parseACMEFileMode(raw string, fallback os.FileMode, flagName string, allowed func(os.FileMode) bool) os.FileMode {
 	parsed, err := strconv.ParseUint(raw, 8, 32)
 	if err != nil {
-		SystemWideLogger.Println("Invalid " + flagName + " value " + raw + ", using fallback " + fmt.Sprintf("%#o", fallback))
+		SystemWideLogger.Println("Invalid -" + flagName + " value " + raw + ", using " + fmt.Sprintf("%#o", fallback))
 		return fallback
 	}
-
+	if !allowed(os.FileMode(parsed)) {
+		SystemWideLogger.Println("Refusing -" + flagName + " " + raw + ": it would let other users read or change the files. Using " + fmt.Sprintf("%#o", fallback))
+		return fallback
+	}
 	return os.FileMode(parsed)
 }
 

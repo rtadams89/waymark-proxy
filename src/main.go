@@ -32,7 +32,6 @@ import (
 	"syscall"
 
 	"github.com/google/uuid"
-	"imuslab.com/zoraxy/mod/auth"
 	csrf "imuslab.com/zoraxy/mod/csrfcompat"
 	"imuslab.com/zoraxy/mod/geodb"
 	"imuslab.com/zoraxy/mod/utils"
@@ -51,6 +50,7 @@ func SetupCloseHandler() {
 
 func main() {
 	flag.Parse()
+	refuseRemovedCommands()
 
 	TMP_FOLDER = *path_tmp
 	CONF_FOLDER = *path_conf
@@ -83,9 +83,8 @@ func main() {
 	if *resetAdminRuleFlag {
 		adminRuleResetAndExit()
 	}
-	if *reset_account {
-		auth.ResetAccount(databaseBackend, path_database)
-		os.Exit(0)
+	if *setAdminPassword {
+		setAdminPasswordAndExit()
 	}
 
 	if !utils.ValidateListeningAddress(*webUIPort) {
@@ -109,21 +108,19 @@ func main() {
 
 	webminPanelMux = http.NewServeMux()
 	pluginAPIMux := http.NewServeMux()
-	csrfMiddleware = csrf.Protect(
-		[]byte(nodeUUID),
-		csrf.CookieName(CSRF_COOKIENAME),
-		csrf.Secure(false),
-		csrf.Path("/"),
-		csrf.SameSite(csrf.SameSiteLaxMode),
-	)
+	// Refuses cross-origin requests that change something (no cookie is set)
+	csrfMiddleware = csrf.Protect([]byte(nodeUUID))
 	csrfMiddleware = haWithReadOnly(csrfMiddleware)
 	csrfMiddleware = adminGuardWrap(csrfMiddleware)
 
 	startupSequence()
+	logRemovedFlags()
+	if *development_build {
+		SystemWideLogger.PrintAndLog("system", "Warning: started with -dev, which is for UI development only. The web UI is served from the web folder next to the binary (if there is one) and logging is verbose. Remove -dev from the service.", nil)
+	}
 	initSelfUpdate()
 	initTrafficCapture()
 
-	requireAuth = !(*noauth)
 	initAPIs(webminPanelMux)
 	initRestAPI(pluginAPIMux)
 

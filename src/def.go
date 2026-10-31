@@ -45,7 +45,6 @@ const (
 	MDNS_SCAN_TIMEOUT            = 30 /* Seconds */
 	MDNS_SCAN_UPDATE_INTERVAL    = 15 /* Minutes */
 	GEODB_CACHE_CLEAR_INTERVAL   = 15 /* Minutes */
-	CSRF_COOKIENAME              = "waymark_csrf"
 	LOG_PREFIX                   = "waymark"
 	STATISTIC_AUTO_SAVE_INTERVAL = 600 /* Seconds */
 )
@@ -54,19 +53,17 @@ const (
 var (
 	webUIPort                  = flag.String("port", ":8000", "Management web interface listening port")
 	databaseBackend            = flag.String("db", "auto", "Database backend to use (leveldb, boltdb, auto) Note that fsdb will be used on unsupported platforms like RISCV")
-	noauth                     = flag.Bool("noauth", false, "Disable authentication for management interface")
 	showver                    = flag.Bool("version", false, "Show version of this server")
-	allowMdnsScanning          = flag.Bool("mdns", true, "Enable mDNS scanner and transponder")
+	allowMdnsScanning          = flag.Bool("mdns", false, "Announce this node on the local network over mDNS and scan for other hosts")
 	mdnsName                   = flag.String("mdnsname", "", "mDNS name, leave empty to use default (waymark_{node-uuid}.local)")
 	enableHighSpeedGeoIPLookup = flag.Bool("fastgeoip", true, "Enable high speed geoip lookup, disable this if you are using a very small memory footprint device")
-	_                          = flag.Bool("cfgupgrade", true, "No longer used (Zoraxy's config migrations were removed in Waymark 2.17.1); accepted so existing service files still start")
 
 	/* Acme Configuration Flags */
 	acmeAutoRenewInterval = flag.Int("autorenew", 86400, "ACME auto TLS/SSL certificate renew check interval (seconds)")
 	acmeCertAutoRenewDays = flag.Int("earlyrenew", 30, "Number of days to early renew a soon expiring certificate (days)")
 	acmeTestMode          = flag.Bool("acmetestmode", false, "Run ACME in test/staging mode")
-	acmeKeyFileMode       = flag.String("acmekeymode", "0600", "File mode for ACME private key files (octal)")
-	acmePublicFileMode    = flag.String("acmepublicmode", "0644", "File mode for ACME certificate and metadata files (octal)")
+	acmeKeyFileMode       = flag.String("acmekeymode", "0600", "File mode for ACME private key files (octal): 0600, 0400, 0640 or 0440")
+	acmePublicFileMode    = flag.String("acmepublicmode", "0644", "File mode for ACME certificate and metadata files (octal); only the owner may write")
 
 	/* Logging Configuration Flags */
 	enableLog = flag.Bool("enablelog", true, "Enable system wide logging, set to false for writing log to STDOUT only")
@@ -75,8 +72,7 @@ var (
 	statsMaxEntriesPerMap = flag.Int("stats_max_entries", 20000, "Soft-cap per-dimension statistics maps at N entries; when exceeded the entries with the lowest request counts are dropped first (0 = unbounded)")
 
 	/* Default Configuration Flags */
-	defaultInboundPort          = flag.Int("default_inbound_port", 443, "Default web server listening port")
-	defaultEnableInboundTraffic = flag.Bool("default_inbound_enabled", true, "If web server is enabled by default")
+	defaultInboundPort = flag.Int("default_inbound_port", 443, "Main listening port for proxied traffic until one is saved under System > Settings")
 
 	/* Proxy Timeout Configuration Flags */
 	proxyReadHeaderTimeout = flag.Int("readheadertimeout", 30, "Proxy server read header timeout in seconds (0 = disabled)")
@@ -103,16 +99,15 @@ var (
 
 	/* Maintaince & Development Function Flags */
 	geoDbUpdate       = flag.Bool("update_geoip", false, "Download the latest GeoIP data and exit")
-	development_build = flag.Bool("dev", false, "Use external web folder for UI development and enable verbose logging")
-	reset_account     = flag.Bool("reset_ac", false, "Reset admin account username and password to default and exit")
+	development_build = flag.Bool("dev", false, "For UI development only: serve the web UI from the web folder next to the binary and log verbosely")
+	setAdminPassword  = flag.Bool("set-admin-password", false, "Set an admin account's password (or create the account) at the terminal and exit; stop Waymark first")
 )
 
 /* Global Variables and Handlers */
 var (
 	/* System */
-	nodeUUID    = "generic"
-	bootTime    = time.Now().Unix()
-	requireAuth = true
+	nodeUUID = "generic"
+	bootTime = time.Now().Unix()
 
 	/* Path variables initialized after flag parsing */
 	TMP_FOLDER                 string

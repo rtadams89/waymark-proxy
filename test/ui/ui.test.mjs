@@ -1,12 +1,13 @@
 // Browser tests of the Waymark admin UI.
 //
 // Run against a fresh instance (no admin account yet), e.g.
-//   ./waymark -port :8000 -mdns=false -default_inbound_port 8443
-//   BASE_URL=http://127.0.0.1:8000 npm test
+//   ./waymark -port :8000 -default_inbound_port 8443 > waymark.log &
+//   BASE_URL=http://127.0.0.1:8000 WAYMARK_LOG=waymark.log npm test
 //
 // The first test creates the admin account on the sign-in page (ADMIN_USER,
-// ADMIN_PASSWORD; on an instance that has one already, give its
-// credentials). The tests create what they need (rules, an ACL, a trusted
+// ADMIN_PASSWORD), with the setup code from Waymark's output (WAYMARK_LOG, or
+// SETUP_CODE). On an instance that has an account already, give its
+// credentials instead. The tests create what they need (rules, an ACL, a trusted
 // proxy) and remove it again. Any page error, native browser dialog or
 // Content-Security-Policy violation fails the run.
 
@@ -17,6 +18,15 @@ const { chromium } = require("playwright");
 const BASE = process.env.BASE_URL || "http://127.0.0.1:8000";
 const ADMIN_USER = process.env.ADMIN_USER || "uitest";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ui-test-password-1";
+
+// The setup code Waymark printed when it started without an admin account
+function setupCode() {
+    if (process.env.SETUP_CODE) return process.env.SETUP_CODE;
+    if (!process.env.WAYMARK_LOG) return "";
+    const log = require("node:fs").readFileSync(process.env.WAYMARK_LOG, "utf8");
+    const all = [...log.matchAll(/setup code ([0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4})/g)];
+    return all.length ? all[all.length - 1][1] : "";
+}
 const results = [];
 let page, browser;
 const pageErrors = [];
@@ -69,23 +79,42 @@ async function main() {
     // Violations in frames too
     await page.addInitScript(() => document.addEventListener("securitypolicyviolation", e => console.error("Content-Security-Policy violation: " + e.violatedDirective + " " + e.blockedURI)));
 
-    await test("sign-in page: creates the admin account, shows errors under the form, signs in", async () => {
+    await test("sign-in page: creates the admin account with the setup code, shows errors under the form, signs in", async () => {
         await page.goto(BASE + "/", { waitUntil: "networkidle" });
         await sleep(1000);
         assert(page.url().includes("login"), "the console opened without signing in: " + page.url());
         const register = await page.evaluate(() => $("#regsiterbtn").is(":visible"));
         if (register) {
+            const code = setupCode();
+            assert(code != "", "no setup code: set WAYMARK_LOG to Waymark's output (or SETUP_CODE)");
+            assert(await page.evaluate(() => $("#setupCode").is(":visible")), "the setup code field is not shown");
             await page.fill("#username", ADMIN_USER);
             await page.fill("#magic", ADMIN_PASSWORD);
             await page.fill("#repeatMagic", ADMIN_PASSWORD + "x");
+            await page.fill("#setupCode", code);
             await page.click("#regsiterbtn");
             await sleep(500);
             assert(await page.evaluate(() => $("#errmsg").is(":visible") && $("#errmsg").text().includes("do not match")), "a password mismatch is not shown under the form");
             await page.fill("#repeatMagic", ADMIN_PASSWORD);
+            // A wrong code is refused (the server checks it, not the page)
+            const wrong = await page.evaluate(async (u) => {
+                const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ username: u, password: "x-password-1", setupcode: "0000-0000-0000" }) });
+                return await r.text();
+            }, ADMIN_USER + "-wrongcode");
+            assert(/setup code is wrong/.test(wrong), "a wrong setup code was not refused: " + wrong);
+            await page.fill("#setupCode", "0000-0000-0000");
+            await page.click("#regsiterbtn");
+            await sleep(800);
+            assert(await page.evaluate(() => $("#errmsg").is(":visible") && $("#errmsg").text().includes("setup code")), "a wrong setup code is not shown under the form");
+            await page.fill("#setupCode", code.toLowerCase());
             await page.click("#regsiterbtn");
             await page.waitForLoadState("networkidle");
             await sleep(1500);
         }
+        assert(await page.evaluate(() => $("#forgotLink").is(":visible")), "the Forgot password link is not shown");
+        const reset = await page.evaluate(async () => (await fetch("/reset.html")).text());
+        assert(reset.includes("-set-admin-password"), "the password reset page does not explain -set-admin-password");
         await page.fill("#username", ADMIN_USER);
         await page.fill("#magic", ADMIN_PASSWORD + "-wrong");
         await page.click("#loginbtn");

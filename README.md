@@ -238,7 +238,23 @@ To listen on all interfaces instead, use `-port=:8000` and limit access with you
 - You can change its main domain, add aliases, and choose its certificate, ACL, caching, logging and tags. An ACL change that would block the computer you are using is refused.
 - If it ever stops working, run `sudo -u waymark /opt/waymark/waymark -reset-admin-rule` (with the same `-port` as the service) and restart Waymark. This rebuilds the rule with a new self-signed certificate and the Allow all ACL. With HA, do it on the active node.
 
-**5. Create the admin account.** The first visit shows **Account Setup**: choose a username and password.
+**5. Create the admin account.** The first visit shows **Account Setup**: choose a username and password, and enter the setup code. Waymark writes the code to its log when it starts without an admin account, so only someone who can read the log on this machine can create the account:
+
+```sh
+sudo journalctl -u waymark | grep "setup code"
+```
+
+The code changes every time Waymark starts. You can also create the account at the terminal instead (see below).
+
+**Forgot the admin password?** Stop Waymark and set it at the terminal, in Waymark's folder and as its user. This also adds an account if you enter a new name, and signs everyone out of the admin console:
+
+```sh
+sudo systemctl stop waymark
+cd /opt/waymark && sudo -u waymark ./waymark -set-admin-password
+sudo systemctl start waymark
+```
+
+With HA, do this on the active node; the other nodes copy the admin accounts from it.
 
 ## Quick start: your first proxy
 

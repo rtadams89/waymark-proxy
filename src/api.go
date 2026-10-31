@@ -309,20 +309,10 @@ func RegisterPluginAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/plugins/developer/setAutoReloadInterval", pluginManager.HandleSetHotReloadInterval)
 }
 
-func RegisterAuthAPIs(requireAuth bool, targetMux *http.ServeMux) {
+func RegisterAuthAPIs(targetMux *http.ServeMux) {
 	targetMux.HandleFunc("/api/auth/login", authAgent.HandleLogin)
 	targetMux.HandleFunc("/api/auth/logout", authAgent.HandleLogout)
-	targetMux.HandleFunc("/api/auth/checkLogin", func(w http.ResponseWriter, r *http.Request) {
-		if requireAuth {
-			authAgent.CheckLogin(w, r)
-		} else {
-			utils.SendJSONResponse(w, "true")
-		}
-	})
-	targetMux.HandleFunc("/api/auth/authEnabled", func(w http.ResponseWriter, r *http.Request) {
-		js, _ := json.Marshal(requireAuth)
-		utils.SendJSONResponse(w, string(js))
-	})
+	targetMux.HandleFunc("/api/auth/checkLogin", authAgent.CheckLogin)
 	targetMux.HandleFunc("/api/auth/username", func(w http.ResponseWriter, r *http.Request) {
 		username, err := authAgent.GetUserName(w, r)
 		if err != nil {
@@ -336,13 +326,7 @@ func RegisterAuthAPIs(requireAuth bool, targetMux *http.ServeMux) {
 		js, _ := json.Marshal(authAgent.GetUserCounts())
 		utils.SendJSONResponse(w, string(js))
 	})
-	targetMux.HandleFunc("/api/auth/register", func(w http.ResponseWriter, r *http.Request) {
-		if authAgent.GetUserCounts() == 0 {
-			authAgent.HandleRegisterWithoutEmail(w, r, func(username, reserved string) {})
-		} else {
-			utils.SendErrorResponse(w, "Root management account already exists")
-		}
-	})
+	targetMux.HandleFunc("/api/auth/register", HandleAdminRegister)
 	targetMux.HandleFunc("/api/auth/changePassword", func(w http.ResponseWriter, r *http.Request) {
 		username, err := authAgent.GetUserName(w, r)
 		if err != nil {
@@ -384,7 +368,7 @@ func RegisterAuthAPIs(requireAuth bool, targetMux *http.ServeMux) {
 func initAPIs(targetMux *http.ServeMux) {
 	authRouter := auth.NewManagedHTTPRouter(auth.RouterOption{
 		AuthAgent:   authAgent,
-		RequireAuth: requireAuth,
+		RequireAuth: true,
 		TargetMux:   targetMux,
 		DeniedHandler: func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "401 - Unauthorized", http.StatusUnauthorized)
@@ -410,7 +394,7 @@ func initAPIs(targetMux *http.ServeMux) {
 	advHandler := FSHandler(staticWebRes)
 	targetMux.Handle("/", advHandler)
 
-	RegisterAuthAPIs(requireAuth, targetMux)
+	RegisterAuthAPIs(targetMux)
 	RegisterHTTPProxyAPIs(authRouter)
 	RegisterTLSAPIs(authRouter)
 	RegisterAuthenticationHandlerAPIs(authRouter)

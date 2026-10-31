@@ -88,7 +88,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/wm"
           cd "$RUNNER_TEMP/wm"
-          nohup "$RUNNER_TEMP/waymark" -noauth -port :8000 -mdns=false -default_inbound_port 8443 > waymark.log 2>&1 &
+          nohup "$RUNNER_TEMP/waymark" -port :8000 -default_inbound_port 8443 > waymark.log 2>&1 &
           for i in $(seq 1 60); do
             if curl -fs -o /dev/null http://127.0.0.1:8000/; then exit 0; fi
             sleep 1
@@ -102,6 +102,7 @@ jobs:
         working-directory: test/ui
         env:
           BASE_URL: http://127.0.0.1:8000
+          WAYMARK_LOG: ${{ runner.temp }}/wm/waymark.log
 
       - name: Upload screenshots and log
         if: failure()

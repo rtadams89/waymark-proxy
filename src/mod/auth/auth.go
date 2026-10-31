@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 
@@ -155,9 +156,24 @@ func newSessionOptions(r *http.Request, maxAge int) *sessions.Options {
 		MaxAge:   maxAge,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   requestUsesHTTPS(r),
 		SameSite: http.SameSiteLaxMode,
 	}
+}
+
+// requestUsesHTTPS reports whether the browser reached the console over
+// HTTPS: directly, or through Waymark's own proxy (the admin console rule),
+// which connects from this machine and sets X-Forwarded-Proto.
+func requestUsesHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback() && strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 // HandleLogout logs out and replies OK.
@@ -206,35 +222,6 @@ func (a *AuthAgent) CheckLogin(w http.ResponseWriter, r *http.Request) {
 	} else {
 		utils.SendJSONResponse(w, "false")
 	}
-}
-
-// HandleRegisterWithoutEmail creates a user from the posted username and
-// password.
-func (a *AuthAgent) HandleRegisterWithoutEmail(w http.ResponseWriter, r *http.Request, callback func(string, string)) {
-	newusername, err := utils.PostPara(r, "username")
-	if err != nil {
-		utils.SendErrorResponse(w, "Missing 'username' paramter")
-		return
-	}
-
-	password, err := utils.PostPara(r, "password")
-	if err != nil {
-		utils.SendErrorResponse(w, "Missing 'password' paramter")
-		return
-	}
-
-	err = a.CreateUserAccount(newusername, password, "")
-	if err != nil {
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	if callback != nil {
-		callback(newusername, "")
-	}
-
-	utils.SendOK(w)
-	a.Logger.PrintAndLog("auth", "Admin account created: "+newusername, nil)
 }
 
 // CheckAuth reports whether the request's session is authenticated.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -15,8 +16,14 @@ type Database struct {
 	Db interface{}
 }
 
+// OpenTimeout is how long NewBoltDatabase waits for another process to close
+// the file (0 waits for ever).
+var OpenTimeout time.Duration
+
 func NewBoltDatabase(dbfile string) (*Database, error) {
-	db, err := bolt.Open(dbfile, 0600, nil)
+	opts := *bolt.DefaultOptions
+	opts.Timeout = OpenTimeout
+	db, err := bolt.Open(dbfile, 0600, &opts)
 	if err != nil {
 		return nil, err
 	}

@@ -438,17 +438,6 @@
                 return true;
             }
 
-            //Hide the logout button if the management interface is started in noauth mode
-            function initLogoutButtonState() {
-                $.get("/api/auth/authEnabled", function(authEnabled) {
-                    if (authEnabled === false) {
-                        //noauth mode: hide the logout button
-                        $("#logoutButtonWrapper").hide();
-                    }
-                });
-            }
-            initLogoutButtonState();
-
             function logout() {
                 $.get("/api/auth/logout", function(response) {
                     if (response === "OK") {

@@ -29,7 +29,7 @@ func FSHandler(handler http.Handler) http.Handler {
 		}
 
 		// Check authentication
-		if !authAgent.CheckAuth(r) && requireAuth {
+		if !authAgent.CheckAuth(r) {
 			http.Redirect(w, r, "/login.html", http.StatusTemporaryRedirect)
 			return
 		}

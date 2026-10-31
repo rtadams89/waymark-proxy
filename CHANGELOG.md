@@ -10,6 +10,31 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 3.0.0
+
+**Before upgrading:** check the service's `ExecStart` (`systemctl cat waymark`). The flags below are removed. Waymark still accepts their names, so a node that still passes one keeps starting, but they do nothing and the log says so; remove them. If you rely on mDNS, add `-mdns` (it is now off by default). With HA, upgrade each node as usual.
+
+**Removed flags**
+- `-noauth` is removed: sign-in to the admin console is always on. It turned off every check on a console that listens on all interfaces by default. A service that still passes it starts with sign-in on and logs a warning.
+- `-reset_ac` is replaced by `-set-admin-password` (below). `-reset_ac` deleted every admin account, and until someone set up a new one, whoever opened the console first became its admin. It now refuses to run and says what to use instead.
+- `-default_inbound_enabled` is removed: the proxy always starts (there has been no Start button since 2.19.8, so `=false` left the proxy stopped with no way to start it).
+- `-cfgupgrade` is removed; it did nothing since 2.17.1.
+
+**First admin account needs a setup code**
+- On a new install the sign-in page asks for a setup code as well as the username and password. Waymark writes the code to its log when it starts without an admin account (`sudo journalctl -u waymark | grep "setup code"`); it changes at every start and stops working once the account exists. Before, whoever opened the console first could make themselves its admin. Wrong codes are refused and logged with the address they came from.
+
+**`-set-admin-password`**
+- Sets an admin account's password at the terminal, or creates an account if you enter a new name, without deleting the others: stop Waymark, then run `cd /opt/waymark && sudo -u waymark ./waymark -set-admin-password`. The password is not echoed, is asked for twice, and everyone signed in to the console has to sign in again. With HA, do it on the active node. If Waymark is still running, it says so instead of waiting. The **Forgot password** page shows these steps.
+
+**Other hardening**
+- mDNS is off by default, so a node no longer announces its admin console on the local network. Start Waymark with `-mdns` to turn it back on.
+- `-acmekeymode` only accepts modes that keep private keys from other users (`0600`, `0400`, `0640` or `0440`), and `-acmepublicmode` only modes where only the owner can write. Other values are refused and logged, and the defaults are used.
+- Waymark logs a warning at startup when it runs with `-dev`, which is meant for UI development only.
+- The admin console's session cookie is marked `Secure` when the console is reached over HTTPS through Waymark's own admin console rule, not only when it is reached over HTTPS directly.
+
+**Tests**
+- The UI tests create the first admin account with the setup code (read from Waymark's output, `WAYMARK_LOG`), and check that a wrong code is refused. CI no longer passes `-mdns=false`.
+
 ## 2.19.10
 
 **Security headers on the admin console**
