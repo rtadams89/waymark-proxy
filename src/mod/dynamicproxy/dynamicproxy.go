@@ -136,18 +136,20 @@ func NewDynamicProxy(option RouterOption) (*Router, error) {
 // UpdateTLSSetting sets whether TLS is used and restarts a running proxy.
 func (router *Router) UpdateTLSSetting(tlsEnabled bool) {
 	router.Option.UseTls = tlsEnabled
-	router.Restart()
+	router.restartIfRunning()
 }
 
 // SetTlsMinVersion sets the minimum TLS version and restarts a running proxy.
 func (router *Router) SetTlsMinVersion(minTlsVersion uint16) {
 	router.Option.MinTLSVersion = minTlsVersion
-	router.Restart()
+	router.restartIfRunning()
 }
 
+// UpdatePort80ListenerState turns the port 80 listener on or off and
+// restarts a running proxy.
 func (router *Router) UpdatePort80ListenerState(useRedirect bool) {
 	router.Option.ListenOnPort80 = useRedirect
-	router.Restart()
+	router.restartIfRunning()
 }
 
 // GetPort80ListenerState reports whether the port 80 listener is running.
@@ -162,7 +164,15 @@ func (router *Router) GetPort80ListenerState() bool {
 // restarts a running proxy.
 func (router *Router) UpdateHttpToHttpsRedirectSetting(useRedirect bool) {
 	router.Option.ForceHttpsRedirect = useRedirect
-	router.Restart()
+	router.restartIfRunning()
+}
+
+// restartIfRunning applies a listener setting: a running proxy restarts, a
+// stopped one stays stopped (Restart alone would start it).
+func (router *Router) restartIfRunning() {
+	if router.Running {
+		router.Restart()
+	}
 }
 
 func (router *Router) StartProxyService() error {

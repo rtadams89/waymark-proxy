@@ -565,10 +565,3 @@ func HandleDNSGuess(w http.ResponseWriter, r *http.Request) {
 	js, _ := json.Marshal(map[string]string{"hostname": adminGuessHostname(ip)})
 	utils.SendJSONResponse(w, string(js))
 }
-
-func adminConsolePort() string {
-	if _, port, err := net.SplitHostPort(*webUIPort); err == nil {
-		return port
-	}
-	return "8000"
-}

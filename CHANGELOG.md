@@ -10,6 +10,20 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 2.19.8
+
+**Status page**
+- The green status banner at the top is gone, with its Start and Stop buttons; the same numbers are on the summary cards. Uptime moved to the System Resources panel.
+- The panels can be moved: click **Customize**, then drag a panel or use its arrow buttons. Each panel's eye button (or the switches in the Customize card) shows or hides it, and Reset puts back the default layout. Changes are saved at once.
+- The layout (which panels are shown and their order) is saved on the server in `conf/ui.json`, so it is the same in every browser, and HA config sync copies it to the other nodes.
+- Panels in a row that is not full widen to fill it, so hiding a panel leaves no gap.
+- A notice appears only while the HTTP proxy is not running (its port was in use when Waymark started), with a link to Listeners.
+- The `/api/proxy/enable` endpoint used by Start and Stop is removed.
+
+**Fixes**
+- Changing the TLS switch, the minimum TLS version, the port 80 listener or the HTTP to HTTPS redirect no longer starts a stopped proxy; these settings restart the proxy only when it is running.
+- Saving the main listening port while the proxy is not running now starts it (with a message if it still cannot start). This replaces the Start button for the case where the port was in use when Waymark started.
+
 ## 2.19.7
 
 **Save buttons and unsaved changes**

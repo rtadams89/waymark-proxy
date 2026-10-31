@@ -18,7 +18,6 @@ import (
 
 func RegisterHTTPProxyAPIs(authRouter *auth.RouterDef) {
 	/* Reverse Proxy Settings & Status */
-	authRouter.HandleFunc("/api/proxy/enable", ReverseProxyHandleOnOff)
 	authRouter.HandleFunc("/api/proxy/add", ReverseProxyHandleAddEndpoint)
 	authRouter.HandleFunc("/api/proxy/status", ReverseProxyStatus)
 	authRouter.HandleFunc("/api/proxy/toggle", ReverseProxyToggleRuleSet)

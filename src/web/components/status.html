@@ -18,48 +18,47 @@
         font-size: 0.9em;
     }
 
-    /* Hero banner */
-    #serverstatus{
+    /* Page header */
+    #status .zrStatusHeader{
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1em;
+        flex-wrap: wrap;
+    }
+
+    /* Panels: each tile takes a share of the row (quarter, third, half,
+       two thirds or full); tiles in a row that is not full grow to fill it */
+    #status #zrPanelGrid{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1em;
+        align-items: stretch;
+    }
+    #status .zrTile{
         position: relative;
-        padding: 1.5em;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1 1 100%;
     }
-
-    #serverstatus .heroMetrics{
-        margin-top: 0.4em;
+    #status .zrTile[data-size="quarter"]{ flex-basis: calc(25% - 0.75em); }
+    #status .zrTile[data-size="third"]{ flex-basis: calc(33.333% - 0.667em); }
+    #status .zrTile[data-size="half"]{ flex-basis: calc(50% - 0.5em); }
+    #status .zrTile[data-size="twothirds"]{ flex-basis: calc(66.666% - 0.334em); }
+    #status .zrTile > .dashboard-card,
+    #status .zrTile > .statusFlowCol,
+    #status .zrTile > .statusNetCol{
+        flex: 1 1 auto;
+        height: auto;
     }
-
-    #serverstatus .heroMetric .heroMetricLabel{
-        font-size: 0.9em;
-        opacity: 0.8;
+    @media screen and (max-width: 1100px){
+        #status .zrTile[data-size="quarter"]{ flex-basis: calc(50% - 0.5em); }
+        #status .zrTile[data-size="third"],
+        #status .zrTile[data-size="twothirds"]{ flex-basis: 100%; }
     }
-
-    #serverstatus .heroMetric .heroMetricValue{
-        font-size: 1.5em;
-        font-weight: 300;
-        display: block;
-        margin-top: 0.1em;
-    }
-
-    #serverstatus.green .heroMetric span,
-    #serverstatus.green .heroMetric .heroMetricLabel{
-        color: #ffffff;
-    }
-
-    #serverstatus:not(.green) .heroMetric span,
-    #serverstatus:not(.green) .heroMetric .heroMetricLabel{
-        color: #ffffff;
-    }
-
-    #serverstatus .heroDivider{
-        border-top: 1px solid rgba(255,255,255,0.35);
-        margin: 1em 0;
-    }
-
-    #serverstatus .poweroptions{
-        position: absolute;
-        top: 1.2em;
-        right: 1.2em;
-        z-index: 2;
+    @media screen and (max-width: 768px){
+        #status .zrTile[data-size]{ flex-basis: 100%; }
     }
 
     /* Statistic summary cards */
@@ -105,13 +104,7 @@
         color: var(--text_color);
     }
 
-    /* Top row: flow diagram (left) + stacked network in/out (right) */
-    #status .statusTopRow{
-        display: flex;
-        gap: 1em;
-        align-items: stretch;
-    }
-
+    /* Flow diagram and stacked network in/out panels */
     #status .statusFlowCol{
         flex: 1 1 62%;
         min-width: 0;
@@ -192,10 +185,6 @@
     }
 
     @media screen and (max-width: 768px){
-        #status .statusTopRow{
-            flex-direction: column;
-        }
-
         #status .statusFlowCol{
             flex: none;
         }
@@ -386,52 +375,36 @@
     }
 </style>
 
-<!-- Server Status Hero Banner -->
+<!-- Page header; the panel buttons are added by script/statusPanels.js -->
 <div class="standardContainer nobottom">
-    <div id="serverstatus" class="ui statustab inverted segment" style="margin: 0;">
-        <div class="poweroptions">
-            <button id="startbtn" class="ui small basic inverted disabled button" onclick="startService();"><i class="ui arrow alternate circle up icon"></i> Start</button>
-            <button id="stopbtn" class="ui small basic inverted disabled button" onclick="stopService();"><i class="ui minus circle icon"></i> Stop</button>
+    <div class="zrStatusHeader">
+        <div>
+            <h2 style="margin-bottom: 0.2em;">Status</h2>
+            <p style="color: var(--text_color_secondary);">Traffic, health and resource use of this node</p>
         </div>
-        <h1 class="ui header" style="margin: 0;">
-            <i id="rpStatusIcon" class="loading spinner icon"></i>
-            <div class="content">
-                <span id="statusTitle">Loading</span>
-                <div class="sub header" id="statusText">Checking server status</div>
-            </div>
-        </h1>
-        <div class="heroDivider"></div>
-        <div class="ui four column stackable grid heroMetrics">
-            <div class="column heroMetric">
-                <span class="heroMetricLabel"><i class="clock outline icon"></i> Uptime</span>
-                <span class="heroMetricValue" id="heroUptime">-</span>
-            </div>
-            <div class="column heroMetric">
-                <span class="heroMetricLabel"><i class="exchange icon"></i> Requests (Today)</span>
-                <span class="heroMetricValue" id="heroRequests">-</span>
-            </div>
-            <div class="column heroMetric">
-                <span class="heroMetricLabel"><i class="chart area icon"></i> Bandwidth (Today)</span>
-                <span class="heroMetricValue" id="heroBandwidth">-</span>
-            </div>
-            <div class="column heroMetric">
-                <span class="heroMetricLabel"><i class="share alternate icon"></i> Active Connections</span>
-                <span class="heroMetricValue" id="heroConnections">-</span>
-            </div>
-        </div>
+        <div id="zrPanelHeaderButtons"></div>
     </div>
 </div>
 
-<!-- Traffic Flow Diagram (left) + Realtime Network In / Out (right) -->
-<div class="standardContainer nobottom">
-    <div class="statusTopRow">
-        <!-- Left: Architectural flow diagram -->
+<!-- Shown only while the HTTP proxy is not running (initRPStaste) -->
+<div class="standardContainer nobottom" id="zrProxyOffline" style="display:none;">
+    <div class="ui yellow message" style="margin: 0;">
+        <i class="exclamation triangle icon"></i>
+        <span id="zrProxyOfflineText">The HTTP proxy is not running.</span>
+        <a href="#" onclick="openTabById('globalsettings'); return false;">Open Listeners</a>
+    </div>
+</div>
+
+<!-- Status panels: shown, hidden and arranged by script/statusPanels.js -->
+<div class="standardContainer" id="zrPanelGrid">
+    <div class="zrTile" data-panel="flowDiagram" data-size="twothirds">
         <div class="statusFlowCol">
             <div id="trafficFlowDiagramWrapper">
                 <iframe id="trafficFlowDiagram" src="snippet/trafficFlowDiagram.html" allowfullscreen></iframe>
             </div>
         </div>
-        <!-- Right: Realtime network input (top) / output (bottom) -->
+    </div>
+    <div class="zrTile" data-panel="networkIO" data-size="third">
         <div class="statusNetCol">
             <div class="dashboard-card">
                 <div class="netCardHeader">
@@ -459,11 +432,8 @@
             </div>
         </div>
     </div>
-</div>
-
-<!-- Visitor Locations -->
-<div class="standardContainer nobottom">
-    <div class="dashboard-card">
+    <div class="zrTile" data-panel="visitorLocations" data-size="full">
+        <div class="dashboard-card">
         <h4>Visitor Locations (Today)</h4>
         <p class="cardSubtitle">Unique visitor distribution resolved by GeoIP</p>
         <div class="ui stackable grid" style="margin-top: 0.2em;">
@@ -491,88 +461,72 @@
             </div>
         </div>
     </div>
-</div>
-
-<!-- Summary Statistic Cards -->
-<div class="standardContainer nobottom">
-    <div class="ui four column stackable grid" style="margin: -0.5em;">
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardTotalRequests" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Total Requests</span>
                 <span class="dbstatValue" id="cardTotalRequests">-</span>
                 <span class="dbstatDelta" id="cardTotalRequestsDelta"></span>
             </div>
-        </div>
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardUniqueVisitors" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Unique Visitors</span>
                 <span class="dbstatValue" id="cardUniqueVisitors">-</span>
                 <span class="dbstatDelta" id="cardUniqueVisitorsDelta"></span>
             </div>
-        </div>
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardBandwidth" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Bandwidth (Today)</span>
                 <span class="dbstatValue" id="cardBandwidth">-</span>
                 <span class="dbstatDelta" id="cardBandwidthDetail"></span>
             </div>
-        </div>
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardErrorRate" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Error Rate (Today)</span>
                 <span class="dbstatValue" id="cardErrorRate">-</span>
                 <span class="dbstatDelta" id="cardErrorRateDelta"></span>
             </div>
-        </div>
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardActiveConns" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Active Connections</span>
                 <span class="dbstatValue" id="cardActiveConns">-</span>
                 <span class="dbstatDelta">Established on proxy ports</span>
             </div>
-        </div>
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardProxyHosts" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Proxy Rules</span>
                 <span class="dbstatValue" id="cardProxyHosts">-</span>
                 <span class="dbstatDelta">Configured HTTP proxy rules</span>
             </div>
-        </div>
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardUpstreams" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Destination Servers</span>
                 <span class="dbstatValue" id="cardUpstreams">-</span>
                 <span class="dbstatDelta">Active destinations</span>
             </div>
-        </div>
-        <div class="column">
-            <div class="dashboard-card dbstatCard">
+    </div>
+    <div class="zrTile" data-panel="cardCountries" data-size="quarter">
+        <div class="dashboard-card dbstatCard">
                 <span class="dbstatLabel">Countries (Today)</span>
                 <span class="dbstatValue" id="cardCountries">-</span>
                 <span class="dbstatDelta">Distinct visitor origins</span>
             </div>
-        </div>
     </div>
-</div>
-
-<!-- HA cluster (script/statusHA.js, script/haCluster.js); shown only while HA is on -->
-<div class="standardContainer nobottom" id="zrHARow" style="display:none;">
-    <div class="ui one column grid" style="margin: 0;">
-        <div class="column" style="padding-left: 0; padding-right: 0;">
-            <div class="dashboard-card dbstatCard" id="zrHACard">
+    <div class="zrTile" id="zrHARow" style="display:none;" data-panel="haCluster" data-size="full">
+        <div class="dashboard-card dbstatCard" id="zrHACard">
                 <h4>High Availability <a href="#" style="font-size: 0.75em; font-weight: normal; margin-left: 0.5em;" onclick="openTabById('ha'); return false;">Manage</a></h4>
                 <p class="cardSubtitle">Cluster nodes, their roles and health</p>
                 <div id="zrHABox"></div>
             </div>
-        </div>
     </div>
-</div>
-
-<!-- Upstream health (script/statusUpstreams.js) -->
-<div class="standardContainer nobottom" id="zrHealthRow">
-    <div class="ui one column grid" style="margin: 0;">
-        <div class="column" style="padding-left: 0; padding-right: 0;">
-            <div class="dashboard-card dbstatCard" id="zrHealthCard">
+    <div class="zrTile" id="zrHealthRow" data-panel="upstreamHealth" data-size="full">
+        <div class="dashboard-card dbstatCard" id="zrHealthCard">
                 <h4>Destination Health</h4>
                 <p class="cardSubtitle" id="zrHealthSub">Health-checked destinations and rules in maintenance</p>
                 <div class="certOverviewBox">
@@ -591,15 +545,9 @@
                 </div>
                 <div id="zrHealthList" style="margin-top: 0.8em;"></div>
             </div>
-        </div>
     </div>
-</div>
-
-<!-- Static file cache (script/statusCache.js) -->
-<div class="standardContainer nobottom" id="zrCacheRow">
-    <div class="ui two column stackable grid" style="margin: 0;">
-        <div class="column" style="padding-left: 0;">
-            <div class="dashboard-card dbstatCard" id="zrCacheTodayCard">
+    <div class="zrTile" id="zrCacheRow" data-panel="cacheToday" data-size="half">
+        <div class="dashboard-card dbstatCard" id="zrCacheTodayCard">
                 <h4>Static File Cache (Today)</h4>
                 <p class="cardSubtitle" id="zrCacheTodaySub">Static file requests on hosts with caching on</p>
                 <div class="certOverviewBox">
@@ -616,9 +564,9 @@
                 </div>
                 <span class="dbstatDelta" id="zrCacheTodayDetail" style="margin-top: 0.8em;"></span>
             </div>
-        </div>
-        <div class="column" style="padding-right: 0;">
-            <div class="dashboard-card dbstatCard" id="zrCacheMemoryCard">
+    </div>
+    <div class="zrTile" data-panel="cacheMemory" data-size="half">
+        <div class="dashboard-card dbstatCard" id="zrCacheMemoryCard">
                 <h4>Cache Memory</h4>
                 <p class="cardSubtitle">In-memory cache shared by all hosts</p>
                 <div class="certOverviewBox">
@@ -638,24 +586,18 @@
                 <div class="ui small teal progress" id="zrCacheBar" style="margin: 1em 0 0.3em 0;"><div class="bar" style="min-width: 0;"></div></div>
                 <span class="dbstatDelta" id="zrCacheMemoryDetail"></span>
             </div>
-        </div>
     </div>
-</div>
-
-<!-- Top Requested Paths & Request Methods -->
-<div class="standardContainer nobottom">
-    <div class="ui two column stackable grid" style="margin: 0;">
-        <div class="column" style="padding-left: 0;">
-            <div class="dashboard-card">
+    <div class="zrTile" data-panel="topPaths" data-size="half">
+        <div class="dashboard-card">
                 <h4>Top Requested Paths</h4>
                 <p class="cardSubtitle">Most requested URLs today</p>
                 <div id="topPathsList">
                     <p style="color: var(--text_color_secondary);"><i class="green circle check icon"></i> No data</p>
                 </div>
             </div>
-        </div>
-        <div class="column" style="padding-right: 0;">
-            <div class="dashboard-card">
+    </div>
+    <div class="zrTile" data-panel="requestMethods" data-size="half">
+        <div class="dashboard-card">
                 <h4>Request Methods</h4>
                 <p class="cardSubtitle">HTTP methods of proxied requests today</p>
                 <div class="methodChartWrapper">
@@ -665,15 +607,9 @@
                     <i class="green circle check icon"></i> No request method data recorded today
                 </div>
             </div>
-        </div>
     </div>
-</div>
-
-<!-- SSL/TLS Overview & System Resources -->
-<div class="standardContainer">
-    <div class="ui two column stackable grid" style="margin: 0;">
-        <div class="column" style="padding-left: 0;">
-            <div class="dashboard-card">
+    <div class="zrTile" data-panel="tlsOverview" data-size="half">
+        <div class="dashboard-card">
                 <h4>SSL / TLS Overview</h4>
                 <p class="cardSubtitle">Certificates in the local certificate store</p>
                 <div class="certOverviewBox">
@@ -692,11 +628,17 @@
                 </div>
                 <button class="ui fluid basic small button" style="margin-top: 1em;" onclick="openTabById('cert');">Manage Certificates</button>
             </div>
-        </div>
-        <div class="column" style="padding-right: 0;">
-            <div class="dashboard-card">
+    </div>
+    <div class="zrTile" data-panel="systemResources" data-size="half">
+        <div class="dashboard-card">
                 <h4>System Resources</h4>
                 <p class="cardSubtitle" id="hostInfoLine">Loading host information</p>
+                <div class="resourceBarRow">
+                    <div class="resourceLabel">
+                        <span>Uptime</span>
+                        <span id="sysUptime">-</span>
+                    </div>
+                </div>
                 <div class="resourceBarRow">
                     <div class="resourceLabel">
                         <span>CPU Usage</span>
@@ -719,60 +661,24 @@
                     <div class="resourceBarTrack"><div class="resourceBarFill" id="diskUsageBar" style="width: 0%;"></div></div>
                 </div>
             </div>
-        </div>
     </div>
 </div>
 
 <script>
 
-    //Get the latest server status from proxy server
+    // Shows a notice while the HTTP proxy is not running (for example when
+    // its port was taken when Waymark started). Also called by other pages
+    // after listener changes.
     function initRPStaste(){
         $.get("/api/proxy/status", function(data){
+            if (!data || data.error != undefined){
+                return;
+            }
             if (data.Running == true){
-                $("#startbtn").addClass("disabled");
-                $("#stopbtn").removeClass("disabled");
-                $("#serverstatus").addClass("green");
-                $("#statusTitle").text("Online");
-                $("#rpStatusIcon").attr("class", "white circle check icon");
-                $("#statusText").text("Waymark is listening on port " + data.Option.Port);
+                $("#zrProxyOffline").hide();
             }else{
-                $("#startbtn").removeClass("disabled");
-                $("#stopbtn").addClass("disabled");
-                $("#statusTitle").text("Offline");
-                $("#rpStatusIcon").attr("class", "yellow moon icon")
-                $("#statusText").text("Reverse proxy server is offline");
-                $("#serverstatus").removeClass("green");
-            }
-        });
-    }
-
-    //Start and stop service button
-    function startService(){
-        $.cjax({
-            url: "/api/proxy/enable",
-            method: "POST",
-            data: {enable: true},
-            success: function(data){
-                if (data.error != undefined){
-                    msgbox(data.error, false, 5000);
-                }
-                initRPStaste();
-                updateDashboardOverview();
-            }
-        });
-    }
-
-    function stopService(){
-        $.cjax({
-            url: "/api/proxy/enable",
-            method: "POST",
-            data: {enable: false},
-            success: function(data){
-                if (data.error != undefined){
-                    msgbox(data.error, false, 5000);
-                }
-                initRPStaste();
-                updateDashboardOverview();
+                $("#zrProxyOfflineText").text("The HTTP proxy is not running, so proxy rules are not being served. This happens when port " + data.Option.Port + " is in use by another program when Waymark starts. Free the port, or choose another one, and save it in Listeners to start the proxy.");
+                $("#zrProxyOffline").show();
             }
         });
     }
@@ -853,7 +759,7 @@
     }
 
     /*
-        Dashboard Overview (hero metrics + summary cards)
+        Dashboard Overview (summary cards and uptime)
     */
     function updateDashboardOverview(){
         $.ajax({
@@ -864,11 +770,7 @@
                     return;
                 }
 
-                //Hero metrics
-                $("#heroUptime").text(formatUptime(data.SystemUptime));
-                $("#heroRequests").text(abbreviateNumber(data.TotalRequestToday));
-                $("#heroBandwidth").text(formatByteSize(data.BandwidthRxToday + data.BandwidthTxToday));
-                $("#heroConnections").text(data.ActiveConnections >= 0 ? data.ActiveConnections : "-");
+                $("#sysUptime").text(formatUptime(data.SystemUptime));
 
                 //Summary cards
                 $("#cardTotalRequests").text(abbreviateNumber(data.TotalRequestToday));

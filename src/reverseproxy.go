@@ -296,37 +296,6 @@ func ReverseProxyInit() {
 
 }
 
-// Toggle the reverse proxy service on and off
-func ReverseProxyHandleOnOff(w http.ResponseWriter, r *http.Request) {
-	enable, err := utils.PostBool(r, "enable")
-	if err != nil {
-		utils.SendErrorResponse(w, "enable not defined")
-		return
-	}
-
-	if enable {
-		err := dynamicProxyRouter.StartProxyService()
-		if err != nil {
-			utils.SendErrorResponse(w, err.Error())
-			return
-		}
-	} else {
-		//Check if it is loopback
-		if dynamicProxyRouter.IsProxiedSubdomain(r) {
-			utils.SendErrorResponse(w, "You are using this page through Waymark's proxy, so stopping it would cut off this page. Stop it from the admin console's own address (port "+adminConsolePort()+") or restart Waymark.")
-			return
-		}
-
-		err := dynamicProxyRouter.StopProxyService()
-		if err != nil {
-			utils.SendErrorResponse(w, err.Error())
-			return
-		}
-	}
-
-	utils.SendOK(w)
-}
-
 func ReverseProxyHandleAddEndpoint(w http.ResponseWriter, r *http.Request) {
 	eptype, err := utils.PostPara(r, "type") //Support root and host
 	if err != nil {
@@ -2150,17 +2119,18 @@ func HandleIncomingPortSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Stop and change the setting of the reverse proxy service
+	// A running proxy restarts on the new port. A stopped one (its port was
+	// in use when Waymark started) is started: saving the port is how the
+	// proxy is started again, as there is no start button.
+	dynamicProxyRouter.Option.Port = newIncomingPortInt
+	sysdb.Write("settings", "inbound", newIncomingPortInt)
 	if dynamicProxyRouter.Running {
-		dynamicProxyRouter.Option.Port = newIncomingPortInt
 		time.Sleep(300 * time.Millisecond)
 		dynamicProxyRouter.Restart()
-	} else {
-		//Only change setting but not starting the proxy service
-		dynamicProxyRouter.Option.Port = newIncomingPortInt
+	} else if err := dynamicProxyRouter.StartProxyService(); err != nil {
+		utils.SendErrorResponse(w, "Port saved, but the proxy could not start: "+err.Error())
+		return
 	}
-
-	sysdb.Write("settings", "inbound", newIncomingPortInt)
 
 	utils.SendOK(w)
 }
