@@ -10,6 +10,12 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 3.1.1
+
+**Security**
+- go-jose (`github.com/go-jose/go-jose/v4`) is updated from 4.1.5 to 4.1.8, which fixes the vulnerabilities reported against versions before 4.1.6. Waymark only uses it through the HyperOne DNS provider for ACME DNS challenges.
+- `go.sum` no longer lists module versions that are not used.
+
 ## 3.1.0
 
 **TLS profiles** (similar to Zoraxy PR #1314)
