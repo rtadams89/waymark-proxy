@@ -128,6 +128,7 @@ Traefik and Caddy are excellent when your configuration lives in files or contai
 **Certificates**
 - ACME certificates from Let's Encrypt or another CA, with HTTP or DNS challenges and automatic renewal.
 - **DNS credential sets** for DNS challenges: save a provider token once and use it for any number of certificates.
+- **TLS profiles** after Mozilla's guidelines (**System > Settings > Advanced Settings**): Modern (TLS 1.3 only), Intermediate (TLS 1.2 limited to forward-secret AEAD cipher suites; the default for new installs), Compatible (Go's default suites, including CBC) or Legacy (adds TLS 1.0 and 1.1).
 - After adding a proxy rule, Waymark offers to get its certificate through the same ACME tool.
 
 **Static file caching**

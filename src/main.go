@@ -96,6 +96,7 @@ func main() {
 
 	uuidRecord := *path_uuid
 	if !utils.FileExists(uuidRecord) {
+		freshInstall = true
 		newSystemUUID := uuid.New().String()
 		utils.WriteFileAtomic(uuidRecord, []byte(newSystemUUID), 0644)
 	}

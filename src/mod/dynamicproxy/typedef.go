@@ -45,15 +45,15 @@ type ProxyHandler struct {
 /* Router Object Options */
 type RouterOption struct {
 	/* Basic Settings */
-	HostUUID           string // The UUID of this host
-	HostVersion        string // The version of this host
-	Port               int    //Incoming port
-	UseTls             bool   // Use TLS to serve incoming requests
-	MinTLSVersion      uint16 //Minimum TLS version
-	NoCache            bool   //Force set Cache-Control: no-store
-	ListenOnPort80     bool   //Enable port 80 http listener
-	ForceHttpsRedirect bool   //Force redirection of http to https endpoint
-	UseProxyProtocol   bool   //Enable PROXY protocol v1/v2 support for TLS listener
+	HostUUID           string     // The UUID of this host
+	HostVersion        string     // The version of this host
+	Port               int        //Incoming port
+	UseTls             bool       // Use TLS to serve incoming requests
+	TLSProfile         TLSProfile //Lowest TLS version and TLS 1.2 cipher suites (tlsprofile_custom.go)
+	NoCache            bool       //Force set Cache-Control: no-store
+	ListenOnPort80     bool       //Enable port 80 http listener
+	ForceHttpsRedirect bool       //Force redirection of http to https endpoint
+	UseProxyProtocol   bool       //Enable PROXY protocol v1/v2 support for TLS listener
 
 	/* Routing Service Managers */
 	TlsManager         *tlscert.Manager          //TLS manager for serving SAN certificates

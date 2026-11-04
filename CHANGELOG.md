@@ -10,6 +10,19 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 3.1.0
+
+**TLS profiles** (similar to Zoraxy PR #1314)
+- **Minimum TLS Version** under **System > Settings > Advanced Settings** is replaced by **TLS Profile**, which also chooses the TLS 1.2 cipher suites, after [Mozilla's server side TLS guidelines](https://wiki.mozilla.org/Security/Server_Side_TLS):
+  - **Modern**: TLS 1.3 only.
+  - **Intermediate** (recommended): TLS 1.2 and 1.3. TLS 1.2 is limited to the six forward-secret AEAD suites (ECDHE with AES-GCM or ChaCha20-Poly1305), so the CBC and SHA-1 suites that SSL Labs and other scanners flag are no longer offered.
+  - **Compatible**: TLS 1.2 and 1.3 with Go's default suites, as before.
+  - **Legacy**: also TLS 1.0 and 1.1 (deprecated by RFC 8996), with Go's default suites.
+- One setting instead of two, so a version and a cipher list can never contradict each other. TLS 1.3 suites and key exchange groups (including the post-quantum hybrid) stay at Go's defaults; Go does not let them be chosen and they are all strong.
+- **Upgrading changes nothing:** an install that kept the default (TLS 1.2) gets Compatible, one set to TLS 1.3 gets Modern, and one set to TLS 1.0 or 1.1 gets Legacy (every client that supports 1.1 also supports 1.0, so no client is turned away). New installs start with Intermediate. Switching an existing install to Intermediate is recommended unless it serves clients from before about 2015, such as Safari 8 or Java 7 ([Mozilla's page](https://wiki.mozilla.org/Security/Server_Side_TLS) lists the oldest clients each profile supports).
+- Saving the profile restarts the HTTPS listener, as changing the minimum version did, and is synced to the other HA nodes. A matching minimum version is still saved, so a node on an older Waymark during a rolling update keeps the same lowest version.
+- The API `/api/cert/tlsMinVersion` is replaced by `/api/cert/tlsProfile` (GET returns the profile; POST `profile=modern|intermediate|compatible|legacy`).
+
 ## 3.0.0
 
 **Before upgrading:** check the service's `ExecStart` (`systemctl cat waymark`). The flags below are removed. Waymark still accepts their names, so a node that still passes one keeps starting, but they do nothing and the log says so; remove them. If you rely on mDNS, add `-mdns` (it is now off by default). With HA, upgrade each node as usual.

@@ -137,9 +137,9 @@ func ReverseProxyInit() {
 		SystemWideLogger.Println("TLS mode disabled. Serving proxy request with plain http")
 	}
 
-	minTLSVersion := "1.2" // default
-	sysdb.Read("settings", "minTLSVersion", &minTLSVersion)
-	SystemWideLogger.Println("Minimum TLS version set to v" + minTLSVersion)
+	initTLSProfileForNewInstall()
+	tlsProfile := readTLSProfile()
+	SystemWideLogger.Println("TLS profile: " + string(tlsProfile))
 
 	developmentMode := false
 	sysdb.Read("settings", "devMode", &developmentMode)
@@ -201,7 +201,7 @@ func ReverseProxyInit() {
 		HostVersion:        SYSTEM_VERSION,
 		Port:               inboundPort,
 		UseTls:             useTls,
-		MinTLSVersion:      minTlsVersionStringToUint16(minTLSVersion),
+		TLSProfile:         tlsProfile,
 		NoCache:            developmentMode,
 		ListenOnPort80:     listenOnPort80,
 		ForceHttpsRedirect: forceHttpsRedirect,

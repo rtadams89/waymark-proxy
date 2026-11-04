@@ -1,7 +1,6 @@
 package dynamicproxy
 
 import (
-	"crypto/tls"
 	"testing"
 )
 
@@ -12,13 +11,13 @@ func TestListenerSettingsKeepStoppedProxyStopped(t *testing.T) {
 	// listeners (on a random port) or fail the test on the missing parts
 	r := &Router{Option: &RouterOption{Port: 0}, Root: &ProxyEndpoint{}}
 	r.UpdateTLSSetting(true)
-	r.SetTlsMinVersion(tls.VersionTLS13)
+	r.SetTLSProfile(TLSProfileModern)
 	r.UpdatePort80ListenerState(true)
 	r.UpdateHttpToHttpsRedirectSetting(true)
 	if r.Running || r.server != nil || r.tlsRedirectStop != nil {
 		t.Fatal("a listener setting started the stopped proxy")
 	}
-	if !r.Option.UseTls || r.Option.MinTLSVersion != tls.VersionTLS13 || !r.Option.ListenOnPort80 || !r.Option.ForceHttpsRedirect {
+	if !r.Option.UseTls || r.Option.TLSProfile != TLSProfileModern || !r.Option.ListenOnPort80 || !r.Option.ForceHttpsRedirect {
 		t.Fatal("the settings were not stored")
 	}
 }

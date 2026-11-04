@@ -301,6 +301,25 @@ async function main() {
         assert(await ev(() => $("#haRouterId").val()) != "77", "Discard kept the change");
     });
 
+    await test("TLS profile: shows the saved profile, saves a new one with Save", async () => {
+        await openTab("globalsettings");
+        const saved = await api("/api/cert/tlsProfile", {}, "GET");
+        assert(["legacy", "compatible", "intermediate", "modern"].includes(saved), "unexpected TLS profile: " + JSON.stringify(saved));
+        assert(await ev(() => $("#tlsProfileSlider button.active").attr("data-profile")) == saved, "the slider does not show the saved profile");
+        const other = saved == "modern" ? "intermediate" : "modern";
+        await ev(p => $(`#tlsProfileSlider button[data-profile=${p}]`).click(), other);
+        await sleep(200);
+        assert(await ev(() => $("#tlsProfileSaveBtn").hasClass("wmUnsaved")), "Save is not highlighted after picking a profile");
+        assert(await api("/api/cert/tlsProfile", {}, "GET") == saved, "picking a profile saved it without Save");
+        assert((await ev(() => $("#tlsProfileHint").text())).length > 0, "no description of the picked profile");
+        await ev(() => $("#tlsProfileSaveBtn").click());
+        await sleep(1500);
+        assert(await api("/api/cert/tlsProfile", {}, "GET") == other, "Save did not save the profile");
+        assert(!(await ev(() => $("#tlsProfileSaveBtn").hasClass("wmUnsaved"))), "still unsaved after Save");
+        assert((await api("/api/cert/tlsProfile", { profile: "bogus" })).error, "an unknown profile was accepted");
+        assert((await api("/api/cert/tlsProfile", { profile: saved })) == "OK", "could not put the profile back");
+    });
+
     await test("admin console sends its security headers", async () => {
         const h = await ev(() => fetch("/", { credentials: "same-origin" }).then(r => ({ csp: r.headers.get("content-security-policy") || "", xfo: r.headers.get("x-frame-options") || "", nosniff: r.headers.get("x-content-type-options") || "" })));
         assert(h.csp.includes("frame-ancestors 'self'") && h.csp.includes("object-src 'none'"), "Content-Security-Policy missing or incomplete: " + h.csp);

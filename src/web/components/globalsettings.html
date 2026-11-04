@@ -49,7 +49,7 @@
 
     /* TLS version segmented selector */
     #globalsettings .ingressSettingGroup.disabled,
-    #globalsettings #tlsMinVer.disabled{
+    #globalsettings #tlsProfile.disabled{
         opacity: 0.45;
         pointer-events: none;
         user-select: none;
@@ -58,7 +58,7 @@
     #globalsettings .tlsVersionSlider{
         position: relative;
         display: flex;
-        max-width: 360px;
+        max-width: 440px;
         margin: 0.7em 0 0.4em 0;
         padding: 3px;
         border: 1px solid var(--divider_color);
@@ -85,13 +85,15 @@
         position: relative;
         z-index: 1;
         flex: 1;
-        padding: 0.45em 0;
+        min-width: 0;
+        padding: 0.45em 0.2em;
         border: none;
         border-radius: 999px;
         background: transparent;
         color: var(--text_color_secondary);
         font-family: inherit;
-        font-size: 0.95em;
+        font-size: 0.9em;
+        white-space: nowrap;
         cursor: pointer;
         transition: color 0.25s ease;
     }
@@ -156,19 +158,19 @@
             <div class="content">
                 <!-- TLS -->
                 <div class="ingressSettingGroup">
-                    <div id="tlsMinVer" class="tlsEnabledOnly">
-                        <span class="ingressFieldLabel">Minimum TLS Version</span>
-                        <small class="ingressFieldHint">Clients that only support older versions will be rejected</small>
-                        <div id="tlsVersionSlider" class="tlsVersionSlider" role="radiogroup" aria-label="Minimum TLS Version">
+                    <div id="tlsProfile" class="tlsEnabledOnly">
+                        <span class="ingressFieldLabel">TLS Profile</span>
+                        <small class="ingressFieldHint">The TLS versions and TLS 1.2 cipher suites clients may use, after <a href="https://wiki.mozilla.org/Security/Server_Side_TLS" target="_blank" rel="noopener noreferrer">Mozilla's guidelines</a>. Clients that cannot use them are rejected.</small>
+                        <div id="tlsProfileSlider" class="tlsVersionSlider" role="radiogroup" aria-label="TLS Profile">
                             <span class="tlsVersionThumb"></span>
-                            <button type="button" role="radio" aria-checked="false" data-version="1.0">1.0</button>
-                            <button type="button" role="radio" aria-checked="false" data-version="1.1">1.1</button>
-                            <button type="button" role="radio" aria-checked="false" data-version="1.2">1.2</button>
-                            <button type="button" role="radio" aria-checked="false" data-version="1.3">1.3</button>
+                            <button type="button" role="radio" aria-checked="false" data-profile="legacy">Legacy</button>
+                            <button type="button" role="radio" aria-checked="false" data-profile="compatible">Compatible</button>
+                            <button type="button" role="radio" aria-checked="false" data-profile="intermediate">Intermediate</button>
+                            <button type="button" role="radio" aria-checked="false" data-profile="modern">Modern</button>
                         </div>
-                        <small id="tlsVersionHint" class="ingressFieldHint"></small>
-                        <input type="hidden" id="tlsMinVersionValue">
-                        <div><button id="tlsMinVersionSaveBtn" class="ui basic small button" style="margin-top: 0.6em;" onclick="saveTlsMinVersion();"><i class="ui green save icon"></i> Save</button></div>
+                        <small id="tlsProfileHint" class="ingressFieldHint"></small>
+                        <input type="hidden" id="tlsProfileValue">
+                        <div><button id="tlsProfileSaveBtn" class="ui basic small button" style="margin-top: 0.6em;" onclick="saveTlsProfile();"><i class="ui green save icon"></i> Save</button></div>
                     </div>
                 </div>
 
@@ -283,7 +285,7 @@
     //Load the current listening port state into the input field
     // Each typed setting on this page is saved with its own Save button
     let incomingPortArea = wmTrackChanges("#incomingPortArea", {saveButton: "#incomingPortSaveBtn", noteAfter: "#incomingPortArea > .action.input"});
-    let tlsMinVersionArea = wmTrackChanges("#tlsMinVer", {saveButton: "#tlsMinVersionSaveBtn", onDiscard: function(){ renderTlsVersionSlider($("#tlsMinVersionValue").val()); }});
+    let tlsProfileArea = wmTrackChanges("#tlsProfile", {saveButton: "#tlsProfileSaveBtn", onDiscard: function(){ renderTlsProfileSlider($("#tlsProfileValue").val()); }});
     let proxyTimeoutArea = wmTrackChanges("#proxyTimeoutArea", {saveButton: "#proxyTimeoutSaveBtn"});
 
     function initIncomingPortSetting(){
@@ -408,64 +410,65 @@
     }
     initHTTPtoHTTPSRedirectSetting();
 
-    const tlsVersionHints = {
-        "1.0": "Legacy. Deprecated by RFC 8996, only for very old clients.",
-        "1.1": "Legacy. Deprecated by RFC 8996, only for very old clients.",
-        "1.2": "Recommended. Supported by all modern browsers.",
-        "1.3": "Strictest. Rejects clients without TLS 1.3 support."
+    const tlsProfileHints = {
+        "legacy": "TLS 1.0 and up. TLS 1.0 and 1.1 are deprecated (RFC 8996); only for very old clients.",
+        "compatible": "TLS 1.2 and up, with Go's default cipher suites, which include the CBC suites some older clients need. Scanners such as SSL Labs flag those suites as weak.",
+        "intermediate": "Recommended. TLS 1.2 and up; TLS 1.2 only with forward-secret AEAD suites (AES-GCM, ChaCha20). Works with every browser of the last ten years.",
+        "modern": "TLS 1.3 only. Rejects clients without TLS 1.3, such as some older devices and libraries."
     };
+    const tlsProfileNames = {"legacy": "Legacy", "compatible": "Compatible", "intermediate": "Intermediate", "modern": "Modern"};
 
-    //Move the slider thumb to the given version without saving it
-    function renderTlsVersionSlider(version){
-        let buttons = $("#tlsVersionSlider button");
-        $("#tlsMinVersionValue").val(version).trigger("change");
-        let index = buttons.index(buttons.filter(`[data-version="${version}"]`));
+    //Move the slider thumb to the given profile without saving it
+    function renderTlsProfileSlider(profile){
+        let buttons = $("#tlsProfileSlider button");
+        $("#tlsProfileValue").val(profile).trigger("change");
+        let index = buttons.index(buttons.filter(`[data-profile="${profile}"]`));
         if (index < 0){
             return;
         }
         buttons.removeClass("active").attr("aria-checked", "false").attr("tabindex", "-1");
         buttons.eq(index).addClass("active").attr("aria-checked", "true").attr("tabindex", "0");
-        $("#tlsVersionSlider .tlsVersionThumb").css("transform", `translateX(${index * 100}%)`);
-        $("#tlsVersionSlider").addClass("ready");
-        $("#tlsVersionHint").text(tlsVersionHints[version] || "");
+        $("#tlsProfileSlider .tlsVersionThumb").css("transform", `translateX(${index * 100}%)`);
+        $("#tlsProfileSlider").addClass("ready");
+        $("#tlsProfileHint").text(tlsProfileHints[profile] || "");
     }
 
-    // Picking a version only selects it; Save applies it
-    function saveTlsMinVersion(){
-        let version = $("#tlsMinVersionValue").val();
+    // Picking a profile only selects it; Save applies it
+    function saveTlsProfile(){
+        let profile = $("#tlsProfileValue").val();
         $.cjax({
-            url: "/api/cert/tlsMinVersion",
+            url: "/api/cert/tlsProfile",
             method: "POST",
-            data: {set: version},
+            data: {profile: profile},
             success: function(data){
                 if (data.error != undefined){
                     msgbox(data.error, false, 5000);
                 }else{
-                    msgbox("Minimum TLS version set to " + version);
-                    tlsMinVersionArea.reset();
+                    msgbox("TLS profile set to " + (tlsProfileNames[profile] || profile));
+                    tlsProfileArea.reset();
                 }
             }
         });
     }
 
-    function initTlsVersionSetting(){
-        $.get("/api/cert/tlsMinVersion", function(data){
+    function initTlsProfileSetting(){
+        $.get("/api/cert/tlsProfile", function(data){
             if (data && typeof data === "string") {
-                renderTlsVersionSlider(data);
+                renderTlsProfileSlider(data);
             }
-            tlsMinVersionArea.reset();
+            tlsProfileArea.reset();
 
-            $("#tlsVersionSlider button").off("click").on("click", function(){
-                let previousVersion = $("#tlsVersionSlider button.active").attr("data-version");
-                let version = $(this).attr("data-version");
-                if (version != previousVersion){
-                    renderTlsVersionSlider(version);
+            $("#tlsProfileSlider button").off("click").on("click", function(){
+                let previous = $("#tlsProfileSlider button.active").attr("data-profile");
+                let profile = $(this).attr("data-profile");
+                if (profile != previous){
+                    renderTlsProfileSlider(profile);
                 }
             });
 
             //Arrow key navigation for the radio group
-            $("#tlsVersionSlider").off("keydown").on("keydown", function(e){
-                let buttons = $("#tlsVersionSlider button");
+            $("#tlsProfileSlider").off("keydown").on("keydown", function(e){
+                let buttons = $("#tlsProfileSlider button");
                 let current = buttons.index(buttons.filter(".active"));
                 let next = current;
                 if (e.key == "ArrowRight" || e.key == "ArrowDown"){
@@ -482,7 +485,7 @@
             });
         });
     }
-    initTlsVersionSetting();
+    initTlsProfileSetting();
 
     function initDevelopmentMode(){
         $.get("/api/proxy/developmentMode", function(data){

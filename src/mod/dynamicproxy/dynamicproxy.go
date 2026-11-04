@@ -139,12 +139,6 @@ func (router *Router) UpdateTLSSetting(tlsEnabled bool) {
 	router.restartIfRunning()
 }
 
-// SetTlsMinVersion sets the minimum TLS version and restarts a running proxy.
-func (router *Router) SetTlsMinVersion(minTlsVersion uint16) {
-	router.Option.MinTLSVersion = minTlsVersion
-	router.restartIfRunning()
-}
-
 // UpdatePort80ListenerState turns the port 80 listener on or off and
 // restarts a running proxy.
 func (router *Router) UpdatePort80ListenerState(useRedirect bool) {
@@ -184,15 +178,10 @@ func (router *Router) StartProxyService() error {
 		return errors.New("reverse proxy router root not set")
 	}
 
-	minVersion := tls.VersionTLS12
-	if router.Option.MinTLSVersion != 0 {
-		minVersion = int(router.Option.MinTLSVersion)
-	}
-
 	config := &tls.Config{
 		GetCertificate: router.Option.TlsManager.GetCert,
-		MinVersion:     uint16(minVersion),
 	}
+	router.Option.TLSProfile.Apply(config)
 
 	err := router.startRateLimterCounterResetTicker()
 	if err != nil {
