@@ -139,6 +139,8 @@ func ReverseProxyInit() {
 
 	initTLSProfileForNewInstall()
 	tlsProfile := readTLSProfile()
+	loadTLSExceptions()
+	accessController.ExtraObjectUsers = tlsExceptionObjectUsers
 	SystemWideLogger.Println("TLS profile: " + string(tlsProfile))
 
 	developmentMode := false
@@ -202,6 +204,7 @@ func ReverseProxyInit() {
 		Port:               inboundPort,
 		UseTls:             useTls,
 		TLSProfile:         tlsProfile,
+		TLSProfileFor:      chooseTLSProfile,
 		NoCache:            developmentMode,
 		ListenOnPort80:     listenOnPort80,
 		ForceHttpsRedirect: forceHttpsRedirect,

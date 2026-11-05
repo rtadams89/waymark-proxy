@@ -10,6 +10,28 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 - Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
 
+## 3.3.0
+
+**TLS profile exceptions**
+- Under **TLS Profile** in **System > Settings > Advanced Settings**, **Exceptions** give some clients a different TLS profile, chosen by the client's address. For example, Compatible for old devices on `10.20.0.0/24`, or Modern for every client outside your private networks.
+- A source is set the same way as in an ACL rule: an address, CIDR, range or wildcard, a country, or an ACL object, optionally with **Not**. The first enabled exception that matches decides; other clients get the main profile. Exceptions can be turned on and off, reordered and given a comment.
+- The client's address is the TCP peer, or the client address from the PROXY protocol header when that is on.
+- Saved exceptions apply to new connections straight away, and editing an ACL object an exception uses applies at once too. They are synced to the other HA nodes with the other settings.
+- **Test** shows which profile an address gets, and from which exception.
+- An ACL object used by an exception cannot be deleted until the exception is removed.
+- Refused handshakes name the exception that chose the profile, for example `the Modern TLS profile (from the exception "Internet clients") requires TLS 1.3 or later`.
+- New API: `/api/cert/tlsProfileExceptions` (GET; POST `exceptions=<JSON list>`) and `/api/cert/tlsProfileTest?ip=<address>`.
+
+## 3.2.0
+
+**Refused TLS handshakes**
+- Failed TLS handshakes on the proxy's HTTPS listener are written to the system log under `tls` (so they reach the log file, the log viewer and syslog outputs), with the client's address, the host it asked for and the reason in plain words. For example: `TLS handshake failed: client 192.0.2.10, host app.example.com: the client only supports TLS 1.0 to 1.1, and the Intermediate TLS profile requires TLS 1.2 or later`. Refusals for cipher suites name the suites the client offered.
+- Each client, host and kind is logged at most once every 10 minutes. Connections that never send a TLS hello (port scans, plain HTTP to the HTTPS port, connections closed straight away) are not reported, so they don't bury the useful lines. Before, Go wrote every failure, including those, to standard output only, without the host name.
+- **System > Settings > Advanced Settings** shows, under **TLS Profile**, how many handshakes the profile refused since Waymark started (by TLS version and by cipher suites), other failed handshakes, and the last 50 with time, client, host and reason. **Clear** resets the list. Each node keeps its own list in memory (it is not synced), and it survives the listener restarts caused by changing the profile.
+- Common failures that are not caused by the profile are put into words too, such as a client that does not accept the certificate or closes the connection during the handshake.
+- HTTP/3 (QUIC) handshakes are not covered.
+- New API: `/api/cert/tlsFailures` (GET; POST `action=clear`, also allowed on a read-only HA standby since the list is per node).
+
 ## 3.1.1
 
 **Security**

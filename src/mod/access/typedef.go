@@ -36,10 +36,15 @@ type Controller struct {
 	acls          map[string]*ACL         // saved ACLs by ID
 	objects       map[string]*Object      // saved objects by ID
 	compiled      map[string]*compiledACL // every ACL including the built-in one
+	objMatchers   map[string]*matcher     // by object ID, nested objects included
 	hits          map[string]*hitCounter  // by ACL ID + "/" + rule ID
 	denyLog       denyLogger
 	countryLookup func(ip string) (country string, known bool) // replaces the GeoIP lookup in tests
 	converted     *LegacyConversion                            // conversion done at startup
+
+	// ExtraObjectUsers names other settings using an object; DeleteObject
+	// refuses while there are any.
+	ExtraObjectUsers func(id string) []string `json:"-"`
 
 	publicIpTicker     *time.Ticker
 	publicIpTickerStop chan bool

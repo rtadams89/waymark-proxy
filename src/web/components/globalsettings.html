@@ -47,6 +47,58 @@
         opacity: 0.8;
     }
 
+    /* TLS profile exceptions */
+    #globalsettings .tlsExceptions{
+        margin-top: 1.4em;
+        max-width: 900px;
+    }
+    #globalsettings .tlsExcTableWrap{
+        width: 100%;
+        overflow-x: auto;
+        margin-top: 0.6em;
+    }
+    #globalsettings #tlsExcTable tr.tlsExcOff td:not(:first-child){
+        opacity: 0.5;
+    }
+    #globalsettings .tlsExcForm{
+        margin-top: 0.6em;
+        padding: 0.8em;
+        border: 1px solid var(--divider_color);
+        border-radius: 0.4em;
+    }
+    #globalsettings .tlsExcForm #tlsExcAddress{
+        min-width: 18em;
+    }
+    #globalsettings .tlsExcTest{
+        margin-top: 0.8em;
+    }
+    #globalsettings #tlsExcTestResult{
+        display: inline-block;
+        margin-left: 0.6em;
+        margin-top: 0.4em;
+    }
+
+    /* Refused TLS handshakes */
+    #globalsettings .tlsFailures{
+        margin-top: 1.4em;
+        max-width: 900px;
+    }
+    #globalsettings .tlsFailuresCounts{
+        margin: 0.6em 0;
+    }
+    #globalsettings .tlsFailuresTableWrap{
+        width: 100%;
+        overflow-x: auto;
+        margin-bottom: 0.6em;
+    }
+    #globalsettings #tlsFailuresTable td{
+        vertical-align: top;
+    }
+    #globalsettings #tlsFailuresTable td.tlsFailureReason{
+        min-width: 16em;
+        word-break: break-word;
+    }
+
     /* TLS version segmented selector */
     #globalsettings .ingressSettingGroup.disabled,
     #globalsettings #tlsProfile.disabled{
@@ -171,6 +223,77 @@
                         <small id="tlsProfileHint" class="ingressFieldHint"></small>
                         <input type="hidden" id="tlsProfileValue">
                         <div><button id="tlsProfileSaveBtn" class="ui basic small button" style="margin-top: 0.6em;" onclick="saveTlsProfile();"><i class="ui green save icon"></i> Save</button></div>
+                        <div id="tlsExceptions" class="tlsExceptions">
+                            <span class="ingressFieldLabel">Exceptions</span>
+                            <small class="ingressFieldHint">Clients matching an exception get its profile instead of the one above, for example Compatible for old devices on one network, or Modern for everything outside your private networks. The first enabled exception that matches decides. Uses the client's address (from the PROXY protocol header when that is on). Changes apply to new connections as soon as they are saved.</small>
+                            <div class="tlsExcTableWrap">
+                                <table id="tlsExcTable" class="ui very compact unstackable small celled table">
+                                    <thead><tr><th class="collapsing">On</th><th class="collapsing">#</th><th>Source</th><th>Profile</th><th>Comment</th><th class="collapsing"></th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div id="tlsExcForm" class="ui form tlsExcForm" data-wm-untracked style="display: none;">
+                                <div class="fields" style="flex-wrap: wrap; row-gap: 0.6em; margin-bottom: 0.4em;">
+                                    <div class="field">
+                                        <label>Source</label>
+                                        <select id="tlsExcSrcType" class="ui dropdown">
+                                            <option value="address">Address, CIDR, range or wildcard</option>
+                                            <option value="object">Object</option>
+                                            <option value="country">Country</option>
+                                        </select>
+                                    </div>
+                                    <div class="field" id="tlsExcValueField">
+                                        <label>&nbsp;</label>
+                                        <input type="text" id="tlsExcAddress" placeholder="10.0.0.5, 10.20.0.0/24, 10.0.0.10-10.0.0.50 or 192.168.*.*">
+                                        <select id="tlsExcObject"></select>
+                                        <select id="tlsExcCountry"></select>
+                                    </div>
+                                    <div class="field">
+                                        <label>&nbsp;</label>
+                                        <div class="ui checkbox" style="margin-top: 0.6em;" title="Matches every address outside the source"><input type="checkbox" id="tlsExcNot"><label>Not</label></div>
+                                    </div>
+                                    <div class="field">
+                                        <label>Profile</label>
+                                        <select id="tlsExcProfile">
+                                            <option value="legacy">Legacy</option>
+                                            <option value="compatible">Compatible</option>
+                                            <option value="intermediate">Intermediate</option>
+                                            <option value="modern">Modern</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label>Comment</label>
+                                        <input type="text" id="tlsExcComment" maxlength="200" placeholder="Old printers">
+                                    </div>
+                                </div>
+                                <button id="tlsExcFormBtn" class="ui basic small button" onclick="submitTlsExceptionForm(); return false;"><i class="green check icon"></i> <span>Add</span></button>
+                                <button class="ui basic small button" onclick="closeTlsExceptionForm(); return false;"><i class="remove icon"></i> Cancel</button>
+                            </div>
+                            <div style="margin-top: 0.6em;">
+                                <button id="tlsExcAddBtn" class="ui basic small button" onclick="openTlsExceptionForm(-1);"><i class="add icon"></i> Add exception</button>
+                                <button id="tlsExcSaveBtn" class="ui basic small button" onclick="saveTlsExceptions();"><i class="ui green save icon"></i> Save</button>
+                            </div>
+                            <div class="tlsExcTest" data-wm-untracked>
+                                <div class="ui small action input">
+                                    <input type="text" id="tlsExcTestIp" placeholder="Test an address, e.g. 10.20.0.5">
+                                    <button class="ui basic button" onclick="testTlsException();">Test</button>
+                                </div>
+                                <span id="tlsExcTestResult"></span>
+                            </div>
+                        </div>
+                        <div id="tlsFailures" class="tlsFailures" data-wm-untracked>
+                            <span class="ingressFieldLabel">Refused Handshakes</span>
+                            <small class="ingressFieldHint">Clients whose TLS handshake failed on this node, for example because the profile does not allow their TLS version or cipher suites. Kept until Waymark restarts; also written to the system log (at most once every 10 minutes per client and host). Clients that never start a handshake, such as port scans, are not listed, and neither are HTTP/3 connections.</small>
+                            <div id="tlsFailuresCounts" class="tlsFailuresCounts"></div>
+                            <div class="tlsFailuresTableWrap">
+                                <table id="tlsFailuresTable" class="ui very compact unstackable small celled table" style="display: none;">
+                                    <thead><tr><th>Time</th><th>Client</th><th>Host</th><th>Reason</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <button id="tlsFailuresRefreshBtn" class="ui basic mini button" onclick="loadTlsFailures();"><i class="refresh icon"></i> Refresh</button>
+                            <button id="tlsFailuresClearBtn" class="ui basic mini button" onclick="clearTlsFailures();"><i class="eraser icon"></i> Clear</button>
+                        </div>
                     </div>
                 </div>
 
@@ -418,7 +541,6 @@
     };
     const tlsProfileNames = {"legacy": "Legacy", "compatible": "Compatible", "intermediate": "Intermediate", "modern": "Modern"};
 
-    //Move the slider thumb to the given profile without saving it
     function renderTlsProfileSlider(profile){
         let buttons = $("#tlsProfileSlider button");
         $("#tlsProfileValue").val(profile).trigger("change");
@@ -433,7 +555,6 @@
         $("#tlsProfileHint").text(tlsProfileHints[profile] || "");
     }
 
-    // Picking a profile only selects it; Save applies it
     function saveTlsProfile(){
         let profile = $("#tlsProfileValue").val();
         $.cjax({
@@ -446,6 +567,7 @@
                 }else{
                     msgbox("TLS profile set to " + (tlsProfileNames[profile] || profile));
                     tlsProfileArea.reset();
+                    loadTlsFailures();
                 }
             }
         });
@@ -486,6 +608,264 @@
         });
     }
     initTlsProfileSetting();
+
+    // TLS profile exceptions
+    let tlsExcSaved = [];   // as last loaded or saved
+    let tlsExcList = [];    // being edited
+    let tlsExcFormIndex = -1;
+    let tlsExcObjects = {}; // ACL objects by ID
+    let tlsExceptionsArea = wmTrackChanges("#tlsExceptions", {saveButton: "#tlsExcSaveBtn", onDiscard: function(){
+        tlsExcList = JSON.parse(JSON.stringify(tlsExcSaved));
+        closeTlsExceptionForm();
+        renderTlsExceptions();
+    }});
+
+    function tlsExcSourceText(src){
+        let t;
+        if (src.type == "object"){
+            t = tlsExcObjects[src.value] ? tlsExcObjects[src.value].name : src.value + " (deleted object)";
+        }else if (src.type == "country"){
+            let c = (window.WM_COUNTRY_LIST || []).find(x => x[0] == src.value);
+            t = "Country: " + (c ? c[1] + " (" + c[0] + ")" : src.value);
+        }else{
+            t = src.value;
+        }
+        return (src.not ? "Not " : "") + t;
+    }
+
+    function renderTlsExceptions(){
+        let body = $("#tlsExcTable tbody").empty();
+        if (tlsExcList.length == 0){
+            body.append(`<tr><td colspan="6"><i class="grey info circle icon"></i> No exceptions: every client gets the profile above</td></tr>`);
+        }
+        tlsExcList.forEach(function(e, i){
+            let row = $(`<tr class="${e.enabled ? "" : "tlsExcOff"}">
+                <td class="collapsing"><div class="ui fitted toggle checkbox"><input type="checkbox" class="tlsExcEnabled" ${e.enabled ? "checked" : ""}><label></label></div></td>
+                <td class="collapsing">${i + 1}</td>
+                <td>${htmlEscape(tlsExcSourceText(e.source))}</td>
+                <td>${htmlEscape(tlsProfileNames[e.profile] || e.profile)}</td>
+                <td>${htmlEscape(e.comment || "")}</td>
+                <td class="collapsing">
+                    <button class="ui circular mini basic icon button" title="Move up" onclick="moveTlsException(${i}, -1);" ${i == 0 ? "disabled" : ""}><i class="arrow up icon"></i></button>
+                    <button class="ui circular mini basic icon button" title="Move down" onclick="moveTlsException(${i}, 1);" ${i == tlsExcList.length - 1 ? "disabled" : ""}><i class="arrow down icon"></i></button>
+                    <button class="ui circular mini basic icon button" title="Edit" onclick="openTlsExceptionForm(${i});"><i class="edit icon"></i></button>
+                    <button class="ui circular mini red basic icon button" title="Delete" onclick="deleteTlsException(${i});"><i class="trash icon"></i></button>
+                </td>
+            </tr>`);
+            row.attr("data-wm-value", JSON.stringify(e));
+            row.find(".tlsExcEnabled").on("change", function(){
+                tlsExcList[i].enabled = this.checked;
+                renderTlsExceptions();
+            });
+            body.append(row);
+        });
+        body.find(".ui.checkbox").checkbox();
+        tlsExceptionsArea.check();
+    }
+
+    window.moveTlsException = function(i, dir){
+        let j = i + dir;
+        if (j < 0 || j >= tlsExcList.length) return;
+        [tlsExcList[i], tlsExcList[j]] = [tlsExcList[j], tlsExcList[i]];
+        renderTlsExceptions();
+    };
+
+    window.deleteTlsException = function(i){
+        tlsExcList.splice(i, 1);
+        closeTlsExceptionForm();
+        renderTlsExceptions();
+    };
+
+    function showTlsExcSourceField(){
+        let t = $("#tlsExcSrcType").val();
+        $("#tlsExcAddress").toggle(t == "address");
+        $("#tlsExcObject").toggle(t == "object");
+        $("#tlsExcCountry").toggle(t == "country");
+    }
+
+    window.openTlsExceptionForm = function(i){
+        tlsExcFormIndex = i;
+        let os = $("#tlsExcObject").empty();
+        Object.values(tlsExcObjects).sort((x, y) => (x.builtIn ? -1 : y.builtIn ? 1 : x.name.localeCompare(y.name))).forEach(function(o){
+            os.append($("<option>").val(o.id).text(o.name + " (" + (o.entries || []).length + ")"));
+        });
+        let cs = $("#tlsExcCountry");
+        if (cs.children().length == 0){
+            (window.WM_COUNTRY_LIST || []).forEach(c => cs.append($("<option>").val(c[0]).text(c[1] + " (" + c[0] + ")")));
+        }
+        let e = i >= 0 ? tlsExcList[i] : {source: {type: "address", value: ""}, profile: "compatible", comment: "", enabled: true};
+        let t = e.source.type;
+        let uiType = (t == "object" || t == "country") ? t : "address";
+        $("#tlsExcSrcType").val(uiType);
+        $("#tlsExcAddress").val(uiType == "address" ? e.source.value : "");
+        if (uiType == "object") $("#tlsExcObject").val(e.source.value);
+        if (uiType == "country") $("#tlsExcCountry").val(e.source.value);
+        $("#tlsExcNot").prop("checked", !!e.source.not);
+        $("#tlsExcProfile").val(e.profile);
+        $("#tlsExcComment").val(e.comment || "");
+        $("#tlsExcFormBtn span").text(i < 0 ? "Add" : "Update");
+        showTlsExcSourceField();
+        $("#tlsExcForm").show();
+        $("#tlsExcAddBtn").hide();
+    };
+
+    window.closeTlsExceptionForm = function(){
+        $("#tlsExcForm").hide();
+        $("#tlsExcAddBtn").show();
+        tlsExcFormIndex = -1;
+    };
+
+    function tlsExcDetectType(v){
+        if (v.includes("/")) return "cidr";
+        if (v.includes("*")) return "wildcard";
+        if (/^[^:]*-/.test(v) || (v.includes("-") && v.includes(":"))) return "range";
+        return "ip";
+    }
+
+    // Adds or updates the exception in the list
+    window.submitTlsExceptionForm = function(){
+        let t = $("#tlsExcSrcType").val();
+        let src = {type: t, not: $("#tlsExcNot")[0].checked};
+        if (t == "address"){
+            let v = $("#tlsExcAddress").val().trim();
+            if (v == ""){ msgbox("Enter an address, CIDR, range or wildcard", false); return; }
+            src.type = tlsExcDetectType(v);
+            src.value = v;
+        }else if (t == "object"){
+            src.value = $("#tlsExcObject").val();
+            if (!src.value){ msgbox("Create an object first (Access > Objects)", false); return; }
+        }else{
+            src.value = $("#tlsExcCountry").val();
+            if (!src.value){ msgbox("Choose a country", false); return; }
+        }
+        let e = {source: src, profile: $("#tlsExcProfile").val(), comment: $("#tlsExcComment").val().trim(), enabled: true};
+        if (tlsExcFormIndex >= 0){
+            e.id = tlsExcList[tlsExcFormIndex].id;
+            e.enabled = tlsExcList[tlsExcFormIndex].enabled;
+            tlsExcList[tlsExcFormIndex] = e;
+        }else{
+            tlsExcList.push(e);
+        }
+        closeTlsExceptionForm();
+        renderTlsExceptions();
+    };
+
+    window.saveTlsExceptions = function(){
+        let payload = tlsExcList.map(e => ({id: e.id || "", enabled: !!e.enabled, source: e.source, profile: e.profile, comment: e.comment || ""}));
+        $.cjax({
+            url: "/api/cert/tlsProfileExceptions",
+            method: "POST",
+            data: {exceptions: JSON.stringify(payload)},
+            success: function(data){
+                if (data.error != undefined){
+                    msgbox(data.error, false, 6000);
+                    return;
+                }
+                msgbox("TLS profile exceptions saved");
+                loadTlsExceptions();
+            }
+        });
+    };
+
+    window.testTlsException = function(){
+        let ip = $("#tlsExcTestIp").val().trim();
+        if (ip == "") return;
+        let note = tlsExceptionsArea.check() ? " (saved exceptions; save to test your changes)" : "";
+        $.get("/api/cert/tlsProfileTest?ip=" + encodeURIComponent(ip), function(data){
+            let out = $("#tlsExcTestResult").empty();
+            if (data.error != undefined){
+                out.append($("<span>").css("color", "#db2828").text(data.error));
+                return;
+            }
+            let name = tlsProfileNames[data.profile] || data.profile;
+            if (data.exception >= 0){
+                out.text(data.ip + " gets " + name + " from the exception \"" + data.name + "\"" + note);
+            }else{
+                out.text(data.ip + " matches no exception and gets the main profile, " + name + note);
+            }
+        });
+    };
+    $("#tlsExcTestIp").on("keydown", function(e){ if (e.key == "Enter"){ e.preventDefault(); testTlsException(); } });
+    $("#tlsExcSrcType").on("change", showTlsExcSourceField);
+
+    function loadTlsExceptions(){
+        $.get("/api/acl/objects", function(od){
+            tlsExcObjects = {};
+            ((od && od.objects) || []).forEach(o => tlsExcObjects[o.id] = o);
+            $.get("/api/cert/tlsProfileExceptions", function(data){
+                if (!Array.isArray(data)){
+                    msgbox((data && data.error) || "The TLS profile exceptions could not be loaded", false);
+                    return;
+                }
+                tlsExcSaved = data.map(e => ({id: e.id, enabled: e.enabled, source: e.source, profile: e.profile, comment: e.comment || ""}));
+                tlsExcList = JSON.parse(JSON.stringify(tlsExcSaved));
+                closeTlsExceptionForm();
+                renderTlsExceptions();
+                tlsExceptionsArea.reset();
+            });
+        });
+    }
+    loadTlsExceptions();
+
+    // Refused TLS handshakes on this node
+    const tlsFailureKinds = {
+        "version": {label: "TLS version", color: "orange"},
+        "cipher": {label: "Cipher suites", color: "orange"},
+        "other": {label: "Other", color: "grey"}
+    };
+
+    function loadTlsFailures(){
+        $.get("/api/cert/tlsFailures", function(data){
+            if (!data || data.error != undefined || !data.counts){
+                $("#tlsFailuresCounts").text("The refused handshakes could not be loaded.");
+                return;
+            }
+            let c = data.counts;
+            let profileCount = (c.version || 0) + (c.cipher || 0);
+            let since = new Date(data.since * 1000).toLocaleString();
+            let text;
+            if (profileCount == 0){
+                text = "No client has been refused by the TLS profile since " + since + ".";
+            }else{
+                let parts = [];
+                if (c.version) parts.push(c.version + " for their TLS version");
+                if (c.cipher) parts.push(c.cipher + " for their cipher suites");
+                text = profileCount + (profileCount == 1 ? " handshake" : " handshakes") + " refused by the TLS profile since " + since + " (" + parts.join(", ") + ").";
+            }
+            if (c.other){
+                text += " " + c.other + " other failed " + (c.other == 1 ? "handshake" : "handshakes") + ".";
+            }
+            $("#tlsFailuresCounts").text(text);
+
+            let body = $("#tlsFailuresTable tbody").empty();
+            (data.recent || []).forEach(function(f){
+                let kind = tlsFailureKinds[f.kind] || tlsFailureKinds.other;
+                body.append(`<tr>
+                    <td>${htmlEscape(new Date(f.time * 1000).toLocaleString())}</td>
+                    <td><code>${htmlEscape(f.client)}</code></td>
+                    <td>${f.host ? htmlEscape(f.host) : '<span style="opacity: 0.6;">none</span>'}</td>
+                    <td class="tlsFailureReason"><span class="ui mini basic ${kind.color} label">${htmlEscape(kind.label)}</span> ${htmlEscape(f.reason)}</td>
+                </tr>`);
+            });
+            $("#tlsFailuresTable").toggle((data.recent || []).length > 0);
+        });
+    }
+
+    function clearTlsFailures(){
+        $.cjax({
+            url: "/api/cert/tlsFailures",
+            method: "POST",
+            data: {action: "clear"},
+            success: function(data){
+                if (data.error != undefined){
+                    msgbox(data.error, false, 5000);
+                    return;
+                }
+                loadTlsFailures();
+            }
+        });
+    }
+    loadTlsFailures();
 
     function initDevelopmentMode(){
         $.get("/api/proxy/developmentMode", function(data){

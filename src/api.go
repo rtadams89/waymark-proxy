@@ -109,6 +109,9 @@ func RegisterTLSAPIs(authRouter *auth.RouterDef) {
 	//Global certificate settings
 	authRouter.HandleFunc("/api/cert/tls", handleToggleTLSProxy)
 	authRouter.HandleFunc("/api/cert/tlsProfile", HandleTLSProfile)
+	authRouter.HandleFunc("/api/cert/tlsFailures", HandleTLSFailures)
+	authRouter.HandleFunc("/api/cert/tlsProfileExceptions", HandleTLSProfileExceptions)
+	authRouter.HandleFunc("/api/cert/tlsProfileTest", HandleTLSProfileTest)
 	authRouter.HandleFunc("/api/cert/resolve", handleCertTryResolve)
 	authRouter.HandleFunc("/api/cert/setPreferredCertificate", handleSetDomainPreferredCertificate)
 

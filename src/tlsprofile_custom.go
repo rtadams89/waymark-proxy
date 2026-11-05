@@ -1,10 +1,6 @@
 package main
 
-// The proxy's TLS profile (System > Settings > Advanced Settings): the lowest
-// TLS version and the TLS 1.2 cipher suites, see
-// mod/dynamicproxy/tlsprofile_custom.go. It replaces the minimum TLS version
-// setting of Waymark 3.0.0 and earlier, and is stored in the settings table
-// (conf/listener.json), which HA config sync copies to the other nodes.
+// The proxy's TLS profile setting.
 
 import (
 	"encoding/json"
@@ -16,17 +12,14 @@ import (
 
 const (
 	tlsProfileKey     = "tlsProfile"
-	legacyMinTLSKey   = "minTLSVersion" // Waymark 3.0.0 and earlier
+	legacyMinTLSKey   = "minTLSVersion"
 	newInstallProfile = dynamicproxy.TLSProfileIntermediate
 )
 
-// freshInstall is set in main when this start created sys.uuid.
+// freshInstall is true when this start created sys.uuid.
 var freshInstall bool
 
-// profileFromMinTLSVersion is the profile matching a minimum TLS version
-// saved by an older Waymark: the same lowest version, with Go's default
-// suites as before. 1.1 becomes legacy (TLS 1.0 and up): every client that
-// supports 1.1 supports 1.0 too, so no client is turned away.
+// profileFromMinTLSVersion maps a saved minimum TLS version to a profile.
 func profileFromMinTLSVersion(v string) dynamicproxy.TLSProfile {
 	switch v {
 	case "1.3":
@@ -37,8 +30,7 @@ func profileFromMinTLSVersion(v string) dynamicproxy.TLSProfile {
 	return dynamicproxy.TLSProfileCompatible
 }
 
-// minTLSVersionForProfile is what an older Waymark reads, so a node still on
-// an older version during a rolling update keeps a matching lowest version.
+// minTLSVersionForProfile returns the minimum TLS version saved with p.
 func minTLSVersionForProfile(p dynamicproxy.TLSProfile) string {
 	switch p {
 	case dynamicproxy.TLSProfileModern:
@@ -49,10 +41,8 @@ func minTLSVersionForProfile(p dynamicproxy.TLSProfile) string {
 	return "1.2"
 }
 
-// readTLSProfile returns the saved profile. Without one, a minimum TLS
-// version saved by an older Waymark decides (an install that never changed it
-// keeps the old behaviour: TLS 1.2 with Go's default suites). Nothing is
-// written here, so a synced HA standby never differs from the active node.
+// readTLSProfile returns the saved profile, or the one matching the saved
+// minimum TLS version.
 func readTLSProfile() dynamicproxy.TLSProfile {
 	var p dynamicproxy.TLSProfile
 	if sysdb.KeyExists("settings", tlsProfileKey) {
@@ -67,8 +57,7 @@ func readTLSProfile() dynamicproxy.TLSProfile {
 	return profileFromMinTLSVersion(old)
 }
 
-// initTLSProfileForNewInstall saves the intermediate profile on a new
-// install, so new installs get Mozilla's recommendation.
+// initTLSProfileForNewInstall saves the intermediate profile on a new install.
 func initTLSProfileForNewInstall() {
 	if freshInstall && !sysdb.KeyExists("settings", tlsProfileKey) {
 		saveTLSProfile(newInstallProfile)
@@ -82,8 +71,8 @@ func saveTLSProfile(p dynamicproxy.TLSProfile) error {
 	return sysdb.Write("settings", legacyMinTLSKey, minTLSVersionForProfile(p))
 }
 
-// HandleTLSProfile returns (GET) or sets (POST profile=<name>) the proxy's
-// TLS profile. Setting it restarts the HTTPS listener.
+// HandleTLSProfile: GET returns the profile; POST profile=<name> sets it and
+// restarts the HTTPS listener.
 func HandleTLSProfile(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -102,6 +91,25 @@ func HandleTLSProfile(w http.ResponseWriter, r *http.Request) {
 		}
 		SystemWideLogger.PrintAndLog("tls", "TLS profile set to "+string(p), nil)
 		dynamicProxyRouter.SetTLSProfile(p)
+		utils.SendOK(w)
+	default:
+		http.Error(w, "405 - Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// HandleTLSFailures: GET returns this node's failed TLS handshakes; POST
+// action=clear clears them.
+func HandleTLSFailures(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		js, _ := json.Marshal(dynamicProxyRouter.TLSFailures())
+		utils.SendJSONResponse(w, string(js))
+	case http.MethodPost:
+		if action, _ := utils.PostPara(r, "action"); action != "clear" {
+			utils.SendErrorResponse(w, "unknown action")
+			return
+		}
+		dynamicProxyRouter.ClearTLSFailures()
 		utils.SendOK(w)
 	default:
 		http.Error(w, "405 - Method not allowed", http.StatusMethodNotAllowed)

@@ -96,7 +96,7 @@ async function main() {
             await sleep(500);
             assert(await page.evaluate(() => $("#errmsg").is(":visible") && $("#errmsg").text().includes("do not match")), "a password mismatch is not shown under the form");
             await page.fill("#repeatMagic", ADMIN_PASSWORD);
-            // A wrong code is refused (the server checks it, not the page)
+            // Wrong setup code sent to the API
             const wrong = await page.evaluate(async (u) => {
                 const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: new URLSearchParams({ username: u, password: "x-password-1", setupcode: "0000-0000-0000" }) });
@@ -318,6 +318,73 @@ async function main() {
         assert(!(await ev(() => $("#tlsProfileSaveBtn").hasClass("wmUnsaved"))), "still unsaved after Save");
         assert((await api("/api/cert/tlsProfile", { profile: "bogus" })).error, "an unknown profile was accepted");
         assert((await api("/api/cert/tlsProfile", { profile: saved })) == "OK", "could not put the profile back");
+    });
+
+    await test("TLS profile exceptions: add, test, reorder, save and remove", async () => {
+        await openTab("globalsettings");
+        await sleep(800);
+        const before = await api("/api/cert/tlsProfileExceptions", {}, "GET");
+        assert(Array.isArray(before), "unexpected exceptions: " + JSON.stringify(before));
+        const add = async (type, value, profile, comment, not = false) => {
+            await ev(() => openTlsExceptionForm(-1));
+            await ev(([type, value, profile, comment, not]) => {
+                $("#tlsExcSrcType").val(type).trigger("change");
+                if (type == "address") $("#tlsExcAddress").val(value);
+                if (type == "object") $("#tlsExcObject").val(value);
+                $("#tlsExcNot").prop("checked", not);
+                $("#tlsExcProfile").val(profile);
+                $("#tlsExcComment").val(comment);
+                submitTlsExceptionForm();
+            }, [type, value, profile, comment, not]);
+            await sleep(150);
+        };
+        await add("address", "10.20.0.0/24", "compatible", "UI test printers");
+        await add("object", "private-networks", "modern", "UI test outside", true);
+        assert(await ev(() => $("#tlsExcSaveBtn").hasClass("wmUnsaved")), "Save is not highlighted after adding exceptions");
+        assert((await api("/api/cert/tlsProfileExceptions", {}, "GET")).length == before.length, "adding saved the list without Save");
+        // Move the second one up and save
+        await ev(n => moveTlsException(n - 1, -1), before.length + 2);
+        await ev(() => saveTlsExceptions());
+        await sleep(1200);
+        const saved = await api("/api/cert/tlsProfileExceptions", {}, "GET");
+        const mine = saved.filter(e => (e.comment || "").startsWith("UI test"));
+        assert(mine.length == 2 && mine[0].comment == "UI test outside" && mine[0].source.not && mine[1].source.value == "10.20.0.0/24", "not saved in order: " + JSON.stringify(mine));
+        assert(!(await ev(() => $("#tlsExcSaveBtn").hasClass("wmUnsaved"))), "still unsaved after Save");
+        // Test addresses
+        await ev(() => { $("#tlsExcTestIp").val("8.8.8.8"); testTlsException(); });
+        await sleep(600);
+        assert(/Modern/.test(await ev(() => $("#tlsExcTestResult").text())), "8.8.8.8 did not get Modern: " + await ev(() => $("#tlsExcTestResult").text()));
+        await ev(() => { $("#tlsExcTestIp").val("not an ip"); testTlsException(); });
+        await sleep(600);
+        assert(/IP address/.test(await ev(() => $("#tlsExcTestResult").text())), "a bad address was not refused");
+        const bad = await api("/api/cert/tlsProfileExceptions", { exceptions: JSON.stringify([{ enabled: true, source: { type: "ip", value: "nope" }, profile: "legacy" }]) });
+        assert(bad.error, "an invalid exception was saved");
+        for (let k = 0; k < 2; k++) {
+            await ev(() => { let i = tlsExcList.findIndex(e => (e.comment || "").startsWith("UI test")); if (i >= 0) deleteTlsException(i); });
+        }
+        await ev(() => saveTlsExceptions());
+        await sleep(1200);
+        assert((await api("/api/cert/tlsProfileExceptions", {}, "GET")).length == before.length, "the test exceptions were not removed");
+    });
+
+    await test("refused TLS handshakes: listed with the reason, cleared with Clear", async () => {
+        await openTab("globalsettings");
+        await sleep(500);
+        const data = await api("/api/cert/tlsFailures", {}, "GET");
+        assert(data && data.counts && Array.isArray(data.recent), "unexpected failed handshake data: " + JSON.stringify(data));
+        assert((await ev(() => $("#tlsFailuresCounts").text())).length > 0, "no summary of refused handshakes");
+        const rows = await ev(() => $("#tlsFailuresTable tbody tr").length);
+        assert(rows == data.recent.length, "the table shows " + rows + " rows for " + data.recent.length + " failures");
+        if (process.env.TLS_FAILURE_EXPECTED) {
+            assert(data.counts.version + data.counts.cipher > 0, "the expected refused handshake was not counted");
+            assert(await ev(() => $("#tlsFailuresTable").css("display") != "none" && /TLS profile/.test($("#tlsFailuresTable").text())), "the refused handshake is not listed with its reason");
+        }
+        await ev(() => $("#tlsFailuresClearBtn").click());
+        await sleep(800);
+        const after = await api("/api/cert/tlsFailures", {}, "GET");
+        assert(after.recent.length == 0 && after.counts.version == 0 && after.counts.cipher == 0, "Clear did not clear the list");
+        assert(await ev(() => $("#tlsFailuresTable").css("display")) == "none", "the table is still shown after Clear");
+        assert(!(await ev(() => wmHasUnsavedChanges("#globalsettings"))), "the panel made the page report unsaved changes");
     });
 
     await test("admin console sends its security headers", async () => {

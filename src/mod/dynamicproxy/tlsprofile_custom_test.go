@@ -2,16 +2,19 @@ package dynamicproxy
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"slices"
 	"strings"
 	"testing"
+
+	"imuslab.com/zoraxy/mod/access"
 )
 
 func TestTLSProfiles(t *testing.T) {
 	cases := []struct {
 		p      TLSProfile
 		min    uint16
-		suites bool // limited list
+		suites bool
 	}{
 		{TLSProfileModern, tls.VersionTLS13, false},
 		{TLSProfileIntermediate, tls.VersionTLS12, true},
@@ -43,8 +46,6 @@ func TestTLSProfiles(t *testing.T) {
 	}
 }
 
-// The intermediate suites are all forward secret AEAD suites that Go
-// supports and considers secure; none are CBC or SHA-1.
 func TestIntermediateSuitesAreStrong(t *testing.T) {
 	secure := map[uint16]bool{}
 	for _, s := range tls.CipherSuites() {
@@ -59,10 +60,17 @@ func TestIntermediateSuitesAreStrong(t *testing.T) {
 			t.Errorf("%s is not an ECDHE AEAD suite", name)
 		}
 	}
-	// The returned list is a copy
 	s := TLSProfileIntermediate.CipherSuites()
 	s[0] = 0
 	if slices.Contains(TLSProfileIntermediate.CipherSuites(), 0) {
 		t.Error("changing the returned list changed the profile")
+	}
+}
+
+func TestRouterOptionStaysJSONEncodable(t *testing.T) {
+	o := RouterOption{TLSProfile: TLSProfileModern, TLSProfileFor: func(string) (TLSProfile, string, bool) { return "", "", false },
+		AccessController: &access.Controller{ExtraObjectUsers: func(string) []string { return nil }}}
+	if _, err := json.Marshal(o); err != nil {
+		t.Fatal(err)
 	}
 }

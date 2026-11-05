@@ -75,6 +75,7 @@ func (router *Router) startH3Listener(tlsConfig *tls.Config) (*http3.Server, err
 	// HTTP/3 ALPN on a copy of the TLS config
 	h3TLSConfig := tlsConfig.Clone()
 	h3TLSConfig.NextProtos = []string{"h3"}
+	h3TLSConfig.GetConfigForClient = nil
 
 	port := strconv.Itoa(router.Option.Port)
 
@@ -200,6 +201,7 @@ func (router *Router) StartProxyService() error {
 		if err := router.configureHTTP2(router.server); err != nil {
 			return err
 		}
+		router.installTLSHooks(router.server, config)
 
 		router.Running = true
 		if router.Option.Port != 80 && router.Option.ListenOnPort80 && !netutils.CheckIfPortOccupied(80) {

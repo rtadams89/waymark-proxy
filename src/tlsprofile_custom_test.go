@@ -23,7 +23,6 @@ func TestProfileFromMinTLSVersion(t *testing.T) {
 			t.Errorf("%q: got %s, want %s", v, got, want)
 		}
 	}
-	// The minimum version written for older nodes maps back to the same profile
 	for _, p := range []dynamicproxy.TLSProfile{dynamicproxy.TLSProfileModern, dynamicproxy.TLSProfileCompatible, dynamicproxy.TLSProfileLegacy} {
 		if got := profileFromMinTLSVersion(minTLSVersionForProfile(p)); got != p {
 			t.Errorf("%s round-trips to %s", p, got)
@@ -51,7 +50,7 @@ func TestReadAndSaveTLSProfile(t *testing.T) {
 	sysdb = db
 	defer func() { sysdb, freshInstall = oldDB, oldFresh }()
 
-	// An upgraded install that never changed the setting keeps Go's defaults
+	// Existing install without a saved profile
 	freshInstall = false
 	initTLSProfileForNewInstall()
 	if db.KeyExists("settings", tlsProfileKey) {
@@ -60,13 +59,12 @@ func TestReadAndSaveTLSProfile(t *testing.T) {
 	if p := readTLSProfile(); p != dynamicproxy.TLSProfileCompatible {
 		t.Fatalf("existing install: got %s", p)
 	}
-	// One that chose TLS 1.3 keeps it
 	db.Write("settings", legacyMinTLSKey, "1.3")
 	if p := readTLSProfile(); p != dynamicproxy.TLSProfileModern {
 		t.Fatalf("minimum 1.3: got %s", p)
 	}
 
-	// A new install gets intermediate
+	// New install
 	db.Delete("settings", legacyMinTLSKey)
 	freshInstall = true
 	initTLSProfileForNewInstall()
@@ -74,7 +72,6 @@ func TestReadAndSaveTLSProfile(t *testing.T) {
 		t.Fatalf("new install: got %s", p)
 	}
 
-	// Saving writes the profile and a minimum version for older nodes
 	if err := saveTLSProfile(dynamicproxy.TLSProfileLegacy); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +81,6 @@ func TestReadAndSaveTLSProfile(t *testing.T) {
 		t.Fatalf("after saving legacy: %s, minTLSVersion %q", p, old)
 	}
 
-	// A broken value falls back to intermediate
 	db.Write("settings", tlsProfileKey, "bogus")
 	if p := readTLSProfile(); p != dynamicproxy.TLSProfileIntermediate {
 		t.Fatalf("invalid saved profile: got %s", p)

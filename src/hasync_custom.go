@@ -579,7 +579,8 @@ func haReadOnlyMessage() string {
 }
 
 // haReadOnly refuses configuration changes on a read-only standby, except
-// signing in and out, HA settings and actions, updates and captures.
+// signing in and out, HA settings and actions, updates, captures and
+// clearing this node's failed TLS handshake list.
 func haReadOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -588,7 +589,7 @@ func haReadOnly(next http.Handler) http.Handler {
 			return
 		}
 		p := r.URL.Path
-		if !strings.HasPrefix(p, "/api/") || p == "/api/auth/login" || p == "/api/auth/logout" || strings.HasPrefix(p, "/api/ha/") || strings.HasPrefix(p, "/api/update/") || strings.HasPrefix(p, "/api/capture/") {
+		if !strings.HasPrefix(p, "/api/") || p == "/api/auth/login" || p == "/api/auth/logout" || strings.HasPrefix(p, "/api/ha/") || strings.HasPrefix(p, "/api/update/") || strings.HasPrefix(p, "/api/capture/") || p == "/api/cert/tlsFailures" {
 			next.ServeHTTP(w, r)
 			return
 		}

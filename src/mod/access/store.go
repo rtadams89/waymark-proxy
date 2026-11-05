@@ -475,8 +475,12 @@ func (c *Controller) DeleteObject(id string) error {
 	if id == PrivateNetworksID {
 		return errors.New("the Private networks object cannot be deleted")
 	}
-	if users := c.ObjectUsers(id); len(users) > 0 {
-		return fmt.Errorf("this object is used by %s; remove it from those rules first", strings.Join(users, ", "))
+	users := c.ObjectUsers(id)
+	if c.ExtraObjectUsers != nil {
+		users = append(users, c.ExtraObjectUsers(id)...)
+	}
+	if len(users) > 0 {
+		return fmt.Errorf("this object is used by %s; remove it from there first", strings.Join(users, ", "))
 	}
 	if parents := c.ObjectParents(id); len(parents) > 0 {
 		return fmt.Errorf("this object is inside %s; remove it from there first", strings.Join(parents, ", "))

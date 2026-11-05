@@ -201,6 +201,7 @@ func (c *Controller) compileLocked() {
 		walk(id, m, map[string]bool{})
 		objMatchers[id] = m
 	}
+	c.objMatchers = objMatchers
 	compiled := map[string]*compiledACL{}
 	all := map[string]*ACL{AllowAllID: builtInAllowAll()}
 	for id, a := range c.acls {

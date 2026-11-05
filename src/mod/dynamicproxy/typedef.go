@@ -45,15 +45,18 @@ type ProxyHandler struct {
 /* Router Object Options */
 type RouterOption struct {
 	/* Basic Settings */
-	HostUUID           string     // The UUID of this host
-	HostVersion        string     // The version of this host
-	Port               int        //Incoming port
-	UseTls             bool       // Use TLS to serve incoming requests
-	TLSProfile         TLSProfile //Lowest TLS version and TLS 1.2 cipher suites (tlsprofile_custom.go)
-	NoCache            bool       //Force set Cache-Control: no-store
-	ListenOnPort80     bool       //Enable port 80 http listener
-	ForceHttpsRedirect bool       //Force redirection of http to https endpoint
-	UseProxyProtocol   bool       //Enable PROXY protocol v1/v2 support for TLS listener
+	HostUUID    string // The UUID of this host
+	HostVersion string // The version of this host
+	Port        int    //Incoming port
+	UseTls      bool   // Use TLS to serve incoming requests
+	TLSProfile  TLSProfile
+	// TLSProfileFor returns the profile for a client address; ok false means
+	// TLSProfile.
+	TLSProfileFor      func(ip string) (profile TLSProfile, exception string, ok bool) `json:"-"`
+	NoCache            bool                                                            //Force set Cache-Control: no-store
+	ListenOnPort80     bool                                                            //Enable port 80 http listener
+	ForceHttpsRedirect bool                                                            //Force redirection of http to https endpoint
+	UseProxyProtocol   bool                                                            //Enable PROXY protocol v1/v2 support for TLS listener
 
 	/* Routing Service Managers */
 	TlsManager         *tlscert.Manager          //TLS manager for serving SAN certificates
@@ -118,6 +121,9 @@ type Router struct {
 	rateLimitCounter RequestCountPerIpTable // Request counter for rate limiter
 
 	captchaSessionStore *captcha.SessionStore //CAPTCHA session store for tracking verified sessions
+
+	tlsFailures     *tlsFailureTracker
+	tlsFailuresOnce sync.Once
 
 	// Secondary listening ports and their servers
 	secondaryServers     map[string]*http.Server //Map of secondary listening servers, key is the listening address (ip:port or :port)
