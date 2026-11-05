@@ -9,10 +9,15 @@ This file lists Waymark Proxy's changes.
 - **MAJOR** (2.0.0): changes that need action when upgrading.
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 
+## 3.4.1
+
+**Fixes**
+- The build works again: `src/mod/auth/sys_reset.go` (the old `-reset_ac` code, unused since 3.0.0) still imported the old module path and is removed.
+
 ## 3.4.0
 
 **Zoraxy references removed**
-- The sign-in page, `waymark -version` (now just `Waymark Proxy 3.4.0`), the About page's supporters list and Zoraxy link, the README comparison, and the docs no longer mention Zoraxy. The About page keeps the copyright and modification notice the AGPL requires, and the README keeps its license section.
+- The sign-in page, `waymark -version` (now just `Waymark Proxy <version>`), the About page's supporters list and Zoraxy link, the README comparison, and the docs no longer mention Zoraxy. The About page keeps the copyright and modification notice the AGPL requires, and the README keeps its license section.
 - The Go module is now `github.com/rtadams89/waymark-proxy` (was `imuslab.com/zoraxy`), and internal names, the CSRF meta tag and test data were renamed. Settings and stored data are unchanged.
 - Kept for plugin compatibility: the plugin SDK (`zoraxy_plugin`), the `X-Zoraxy-*` headers and plugin JSON fields, the official plugin store index, and the SDK documentation links in the app store.
 - `/api/info/brand` no longer returns `upstreamBase`.
