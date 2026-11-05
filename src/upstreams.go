@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // List upstreams from a endpoint

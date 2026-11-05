@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
 )
 
 func TestHealthCheckTLSName(t *testing.T) {

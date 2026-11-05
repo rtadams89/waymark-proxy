@@ -9,10 +9,10 @@ package dynamicproxy
 import (
 	"net/http"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/eventsystem"
-	"imuslab.com/zoraxy/mod/netutils"
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin/events"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/eventsystem"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin/events"
 )
 
 // StatusDropped is the status logged for a dropped request.

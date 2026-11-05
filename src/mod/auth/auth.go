@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/gorilla/sessions"
-	db "imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
+	db "github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 type AuthAgent struct {
@@ -161,9 +161,8 @@ func newSessionOptions(r *http.Request, maxAge int) *sessions.Options {
 	}
 }
 
-// requestUsesHTTPS reports whether the browser reached the console over
-// HTTPS: directly, or through Waymark's own proxy (the admin console rule),
-// which connects from this machine and sets X-Forwarded-Proto.
+// requestUsesHTTPS reports a TLS request, or a loopback request with
+// X-Forwarded-Proto: https.
 func requestUsesHTTPS(r *http.Request) bool {
 	if r.TLS != nil {
 		return true

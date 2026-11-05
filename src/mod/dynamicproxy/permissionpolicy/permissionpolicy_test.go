@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/permissionpolicy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/permissionpolicy"
 )
 
 func TestInjectPermissionPolicyHeader(t *testing.T) {

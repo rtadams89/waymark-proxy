@@ -3,7 +3,7 @@ package forward
 import (
 	"strings"
 
-	"imuslab.com/zoraxy/mod/pathmatch"
+	"github.com/rtadams89/waymark-proxy/mod/pathmatch"
 )
 
 // Ignored paths for forward auth: request path prefixes served without

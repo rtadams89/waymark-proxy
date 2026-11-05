@@ -14,7 +14,6 @@ func TestRemovedFlagsAreAcceptedAndIgnored(t *testing.T) {
 		fs.Var(flags[name], name, "")
 	}
 	if err := fs.Parse([]string{"-noauth", "-cfgupgrade=true", "-default_inbound_enabled=false", "-port", ":1"}); err == nil {
-		// -port is not defined in this set, so parsing stops there with an error
 		t.Fatal("expected an error for the undefined -port")
 	}
 	for _, name := range []string{"noauth", "cfgupgrade", "default_inbound_enabled"} {

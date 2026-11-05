@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 const (

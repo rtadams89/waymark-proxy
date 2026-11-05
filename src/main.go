@@ -32,9 +32,9 @@ import (
 	"syscall"
 
 	"github.com/google/uuid"
-	csrf "imuslab.com/zoraxy/mod/csrfcompat"
-	"imuslab.com/zoraxy/mod/geodb"
-	"imuslab.com/zoraxy/mod/utils"
+	csrf "github.com/rtadams89/waymark-proxy/mod/csrfcompat"
+	"github.com/rtadams89/waymark-proxy/mod/geodb"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // SetupCloseHandler runs the shutdown sequence on SIGTERM.
@@ -69,7 +69,7 @@ func main() {
 
 	/* Maintaince Function Modes */
 	if *showver {
-		fmt.Println(PRODUCT_NAME + " " + DISPLAY_VERSION + " (based on Zoraxy " + UPSTREAM_BASE + ")")
+		fmt.Println(PRODUCT_NAME + " " + DISPLAY_VERSION)
 		os.Exit(0)
 	}
 	if *geoDbUpdate {

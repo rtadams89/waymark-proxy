@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-acme/lego/v5/challenge"
-	"imuslab.com/zoraxy/mod/acme/acmedns"
+	"github.com/rtadams89/waymark-proxy/mod/acme/acmedns"
 )
 
 // GetDnsChallengeProviderByName returns the DNS challenge provider configured

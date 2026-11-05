@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/capture"
+	"github.com/rtadams89/waymark-proxy/mod/capture"
 )
 
 /*

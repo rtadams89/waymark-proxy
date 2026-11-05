@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 type CertCache struct {

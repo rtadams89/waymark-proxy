@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/pathmatch"
+	"github.com/rtadams89/waymark-proxy/mod/pathmatch"
 )
 
 // CAPTCHA verification and sessions: Cloudflare Turnstile and Google

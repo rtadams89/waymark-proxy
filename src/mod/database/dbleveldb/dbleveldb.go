@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"imuslab.com/zoraxy/mod/database/dbinc"
 )
 
 var _ dbinc.Backend = (*DB)(nil)

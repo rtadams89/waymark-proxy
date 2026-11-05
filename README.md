@@ -77,20 +77,20 @@ Objects are named lists of addresses, ranges and countries, and can contain othe
 
 Out of the box, in each project's free, open-source edition, at the time of writing:
 
-| | Waymark | Nginx Proxy Manager | Zoraxy | Traefik | Caddy |
-|---|---|---|---|---|---|
-| Configured from | Web UI | Web UI | Web UI | Files, labels or API (read-only dashboard) | Config file or API |
-| Automatic certificates (HTTP and DNS challenges) | Yes | Yes | Yes | Yes | Yes |
-| Built-in active/standby failover with config sync | Yes | No | No | No | No |
-| Load balancing across several destinations | Weighted, least connections, sticky sessions | No | Yes | Yes | Yes |
-| Destination health checks | Active and passive | No | Uptime monitor | Active and passive | Active and passive |
-| IP and country access control | Ordered allow/deny/drop ACLs with nested objects | Allow/deny access lists (IP) | Allowlist and blocklist (IP, country) | IP allowlist (countries via plugins) | IP matchers in config (countries via plugins) |
-| TCP/UDP proxying | Yes, with load balancing and health checks | Yes | Yes | Yes | Plugin |
-| Static file caching | Built in, honours cache headers | Per-host toggle | No | Plugin | Plugin |
-| Decrypted traffic capture (pcapng) | Built in | No | No | No | No |
-| Updates | From the web UI, with automatic roll back | New container image | New binary or image | New binary or image | New binary or image |
+| | Waymark | Nginx Proxy Manager | Traefik | Caddy |
+|---|---|---|---|---|
+| Configured from | Web UI | Web UI | Files, labels or API (read-only dashboard) | Config file or API |
+| Automatic certificates (HTTP and DNS challenges) | Yes | Yes | Yes | Yes |
+| Built-in active/standby failover with config sync | Yes | No | No | No |
+| Load balancing across several destinations | Weighted, least connections, sticky sessions | No | Yes | Yes |
+| Destination health checks | Active and passive | No | Active and passive | Active and passive |
+| IP and country access control | Ordered allow/deny/drop ACLs with nested objects | Allow/deny access lists (IP) | IP allowlist (countries via plugins) | IP matchers in config (countries via plugins) |
+| TCP/UDP proxying | Yes, with load balancing and health checks | Yes | Yes | Plugin |
+| Static file caching | Built in, honours cache headers | Per-host toggle | Plugin | Plugin |
+| Decrypted traffic capture (pcapng) | Built in | No | No | No |
+| Updates | From the web UI, with automatic roll back | New container image | New binary or image | New binary or image |
 
-Traefik and Caddy are excellent when your configuration lives in files or container labels, and Nginx Proxy Manager and Zoraxy are friendly single-node web UIs. Waymark is for people who want a web UI and high availability, health checks and fine-grained access control without assembling them themselves.
+Traefik and Caddy are excellent when your configuration lives in files or container labels, and Nginx Proxy Manager is a friendly single-node web UI. Waymark is for people who want a web UI and high availability, health checks and fine-grained access control without assembling them themselves.
 
 ## Features
 

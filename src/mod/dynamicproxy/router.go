@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/dynamicproxy/exploits"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/exploits"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // PrepareProxyRoute starts the proxy handlers for the endpoint's origins and virtual directories.

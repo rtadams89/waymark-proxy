@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/assetcache"
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/assetcache"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 const (
@@ -148,7 +148,7 @@ func HandleAssetCacheGet(w http.ResponseWriter, r *http.Request) {
 		"stats":              dynamicproxy.AssetCache.Stats(ep.RootOrMatchingDomain),
 		"usage":              dynamicproxy.AssetCache.Usage(),
 		"limitMB":            assetCacheLimitMB(),
-		"zoraxyBasicAuth":    ep.AuthenticationProvider != nil && ep.AuthenticationProvider.AuthMethod == dynamicproxy.AuthMethodBasic,
+		"ruleBasicAuth":      ep.AuthenticationProvider != nil && ep.AuthenticationProvider.AuthMethod == dynamicproxy.AuthMethodBasic,
 		"globalNoCache":      dynamicProxyRouter.Option.NoCache,
 	}
 	js, _ := json.Marshal(resp)

@@ -8,7 +8,7 @@ import (
 	"net"
 	"sync"
 
-	"imuslab.com/zoraxy/mod/capture"
+	"github.com/rtadams89/waymark-proxy/mod/capture"
 )
 
 // capConn records what passes through a connection as one TCP flow.

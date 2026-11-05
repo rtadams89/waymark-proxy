@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Plugin store sources: the official index URLs (ManagerOptions.PluginStoreURLs)

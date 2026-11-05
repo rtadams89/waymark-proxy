@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Checks of the ACME setup for the ACME wizard.

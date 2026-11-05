@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 func TestSetupCodeFormat(t *testing.T) {
@@ -116,12 +116,11 @@ func TestAdminRegisterNeedsSetupCode(t *testing.T) {
 		t.Fatal("the setup code was not cleared")
 	}
 
-	// A second account cannot be registered, even with the old code
 	if r := postRegister(url.Values{"username": {"other"}, "password": {"pw"}, "setupcode": {code}}); r["ok"] == true {
 		t.Fatal("registered a second account")
 	}
 
-	// Waymark started with an account: no code
+	// Start with an existing account
 	initAdminSetupCode()
 	if adminSetup.code != "" {
 		t.Fatal("a setup code was made with an account present")

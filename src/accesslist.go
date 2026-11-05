@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Trusted proxies and the list of busy client addresses.

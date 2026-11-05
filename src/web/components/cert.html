@@ -468,7 +468,7 @@
         }
         if (uploadPendingPublicKey && uploadPendingPrivateKey && typeof uploadPendingPublicKey === 'object' && typeof uploadPendingPrivateKey === 'object') {
             const publicKeyForm = new FormData();
-            const csrfToken = document.querySelector('meta[name="zoraxy.csrf.Token"]').getAttribute("content");
+            const csrfToken = document.querySelector('meta[name="waymark.csrf.Token"]').getAttribute("content");
 
             publicKeyForm.append('file', uploadPendingPublicKey, 'publicKey');
 

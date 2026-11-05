@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
 )
 
 // Filesystem backend for OpenWrt and RISC-V.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
 )
 
 // StartProxy creates the proxy for this upstream (e.g. https://example.com:443

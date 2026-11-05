@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	db "imuslab.com/zoraxy/mod/database"
+	db "github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 func TestSetOrCreateAccount(t *testing.T) {

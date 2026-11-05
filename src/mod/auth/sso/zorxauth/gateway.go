@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pquerna/otp/totp"
-	"imuslab.com/zoraxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
 )
 
 // validateTOTPCode validates a TOTP code against secret.

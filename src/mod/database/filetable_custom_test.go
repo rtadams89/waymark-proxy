@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
 )
 
 func TestFileTable(t *testing.T) {

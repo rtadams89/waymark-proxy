@@ -12,11 +12,11 @@ import (
 	"net/http"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 var healthCheckManager *healthcheck.Manager

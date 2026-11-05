@@ -11,11 +11,11 @@ import (
 	"sort"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
-	"imuslab.com/zoraxy/mod/statistic"
-	"imuslab.com/zoraxy/mod/websocketproxy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/rewrite"
+	"github.com/rtadams89/waymark-proxy/mod/statistic"
+	"github.com/rtadams89/waymark-proxy/mod/websocketproxy"
 )
 
 // Check if the request URI matches any of the proxy endpoint

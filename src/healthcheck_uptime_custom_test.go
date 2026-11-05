@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/uptime"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/uptime"
 )
 
 func newTestFeed() (*uptimeFeed, *[]uptime.Record, *time.Time) {

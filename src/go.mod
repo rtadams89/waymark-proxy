@@ -1,4 +1,4 @@
-module imuslab.com/zoraxy
+module github.com/rtadams89/waymark-proxy
 
 go 1.26.0
 

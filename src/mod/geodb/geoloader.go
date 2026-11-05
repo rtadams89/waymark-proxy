@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
 )
 
 func (s *Store) search(ip string) string {

@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"encoding/json"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 	"os"
 )
 

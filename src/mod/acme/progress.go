@@ -12,7 +12,7 @@ import (
 	"time"
 
 	legolog "github.com/go-acme/lego/v5/log"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // ProgressEntry is one line of a certificate request's progress log.

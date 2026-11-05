@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 func withTestAccessController(t *testing.T) *access.Controller {

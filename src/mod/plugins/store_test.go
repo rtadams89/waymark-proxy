@@ -3,7 +3,7 @@ package plugins
 import (
 	"testing"
 
-	"imuslab.com/zoraxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 func TestUpdateDownloadablePluginList(t *testing.T) {

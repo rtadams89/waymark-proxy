@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 //go:embed templates/*

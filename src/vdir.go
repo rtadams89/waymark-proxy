@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // List the Virtual directory under given proxy rule

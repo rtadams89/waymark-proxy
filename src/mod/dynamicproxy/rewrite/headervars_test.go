@@ -55,13 +55,13 @@ func TestCustomHeadersIncludeDynamicVariables(t *testing.T) {
 			name: "Headers without dynamic variables",
 			headers: []*UserDefinedHeader{
 				{
-					Direction: HeaderDirection_ZoraxyToUpstream,
+					Direction: HeaderDirection_ToUpstream,
 					Key:       "X-Custom-Header",
 					Value:     "staticValue",
 					IsRemove:  false,
 				},
 				{
-					Direction: HeaderDirection_ZoraxyToDownstream,
+					Direction: HeaderDirection_ToDownstream,
 					Key:       "X-Another-Header",
 					Value:     "staticValue",
 					IsRemove:  false,
@@ -73,7 +73,7 @@ func TestCustomHeadersIncludeDynamicVariables(t *testing.T) {
 			name: "Headers with one dynamic variable",
 			headers: []*UserDefinedHeader{
 				{
-					Direction: HeaderDirection_ZoraxyToUpstream,
+					Direction: HeaderDirection_ToUpstream,
 					Key:       "X-Custom-Header",
 					Value:     "$dynamicValue",
 					IsRemove:  false,
@@ -85,13 +85,13 @@ func TestCustomHeadersIncludeDynamicVariables(t *testing.T) {
 			name: "Headers with multiple dynamic variables",
 			headers: []*UserDefinedHeader{
 				{
-					Direction: HeaderDirection_ZoraxyToUpstream,
+					Direction: HeaderDirection_ToUpstream,
 					Key:       "X-Custom-Header",
 					Value:     "$dynamicValue1",
 					IsRemove:  false,
 				},
 				{
-					Direction: HeaderDirection_ZoraxyToDownstream,
+					Direction: HeaderDirection_ToDownstream,
 					Key:       "X-Another-Header",
 					Value:     "$dynamicValue2",
 					IsRemove:  false,
@@ -122,17 +122,17 @@ func TestPopulateRequestHeaderVariables(t *testing.T) {
 	// Define user-defined headers with dynamic variables
 	userDefinedHeaders := []*UserDefinedHeader{
 		{
-			Direction: HeaderDirection_ZoraxyToUpstream,
+			Direction: HeaderDirection_ToUpstream,
 			Key:       "X-Forwarded-Host",
 			Value:     "$host",
 		},
 		{
-			Direction: HeaderDirection_ZoraxyToDownstream,
+			Direction: HeaderDirection_ToDownstream,
 			Key:       "X-Client-IP",
 			Value:     "$remote_addr",
 		},
 		{
-			Direction: HeaderDirection_ZoraxyToDownstream,
+			Direction: HeaderDirection_ToDownstream,
 			Key:       "X-Custom-Header",
 			Value:     "$request_uri",
 		},
@@ -143,17 +143,17 @@ func TestPopulateRequestHeaderVariables(t *testing.T) {
 	// Expected results after variable substitution
 	expectedHeaders := []*UserDefinedHeader{
 		{
-			Direction: HeaderDirection_ZoraxyToUpstream,
+			Direction: HeaderDirection_ToUpstream,
 			Key:       "X-Forwarded-Host",
 			Value:     "example.com",
 		},
 		{
-			Direction: HeaderDirection_ZoraxyToDownstream,
+			Direction: HeaderDirection_ToDownstream,
 			Key:       "X-Client-IP",
 			Value:     "192.168.1.1:12345",
 		},
 		{
-			Direction: HeaderDirection_ZoraxyToDownstream,
+			Direction: HeaderDirection_ToDownstream,
 			Key:       "X-Custom-Header",
 			Value:     "https://example.com/test?foo=bar",
 		},

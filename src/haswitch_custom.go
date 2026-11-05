@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/hacluster"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/hacluster"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // haSwitchHold is the longest this node reports itself unhealthy while

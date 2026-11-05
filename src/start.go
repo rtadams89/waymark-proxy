@@ -10,32 +10,32 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/auth/sso/oauth2"
-	"imuslab.com/zoraxy/mod/eventsystem"
+	"github.com/rtadams89/waymark-proxy/mod/auth/sso/oauth2"
+	"github.com/rtadams89/waymark-proxy/mod/eventsystem"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/acme"
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/auth/sso/forward"
-	"imuslab.com/zoraxy/mod/auth/sso/zorxauth"
-	csrf "imuslab.com/zoraxy/mod/csrfcompat" // stdlib CrossOriginProtection
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
-	"imuslab.com/zoraxy/mod/geodb"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/info/logviewer"
-	"imuslab.com/zoraxy/mod/info/usageinfo"
-	"imuslab.com/zoraxy/mod/l4proxy"
-	"imuslab.com/zoraxy/mod/mdns"
-	"imuslab.com/zoraxy/mod/netstat"
-	"imuslab.com/zoraxy/mod/pathrule"
-	"imuslab.com/zoraxy/mod/plugins"
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
-	"imuslab.com/zoraxy/mod/statistic"
-	"imuslab.com/zoraxy/mod/statistic/analytic"
-	"imuslab.com/zoraxy/mod/tlscert"
-	"imuslab.com/zoraxy/mod/webserv"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/acme"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/auth/sso/forward"
+	"github.com/rtadams89/waymark-proxy/mod/auth/sso/zorxauth"
+	csrf "github.com/rtadams89/waymark-proxy/mod/csrfcompat" // stdlib CrossOriginProtection
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/redirection"
+	"github.com/rtadams89/waymark-proxy/mod/geodb"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/info/logviewer"
+	"github.com/rtadams89/waymark-proxy/mod/info/usageinfo"
+	"github.com/rtadams89/waymark-proxy/mod/l4proxy"
+	"github.com/rtadams89/waymark-proxy/mod/mdns"
+	"github.com/rtadams89/waymark-proxy/mod/netstat"
+	"github.com/rtadams89/waymark-proxy/mod/pathrule"
+	"github.com/rtadams89/waymark-proxy/mod/plugins"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
+	"github.com/rtadams89/waymark-proxy/mod/statistic"
+	"github.com/rtadams89/waymark-proxy/mod/statistic/analytic"
+	"github.com/rtadams89/waymark-proxy/mod/tlscert"
+	"github.com/rtadams89/waymark-proxy/mod/webserv"
 )
 
 // startupSequence starts all required modules in order
@@ -329,21 +329,21 @@ func startupSequence() {
 	pluginFolder := *path_plugin
 	pluginFolder = strings.TrimSuffix(pluginFolder, "/")
 
-	ZoraxyPort := 8000
-	ZoraxyAddrPort, err := netip.ParseAddrPort(*webUIPort)
+	adminPort := 8000
+	adminAddrPort, err := netip.ParseAddrPort(*webUIPort)
 
 	if err != nil {
 		// check for ":<port>" parameter
 		webUIPortNoPrefix, hadPrefix := strings.CutPrefix(*webUIPort, ":")
 		if hadPrefix {
-			ZoraxyAddrPort, err = netip.ParseAddrPort("0.0.0.0:" + webUIPortNoPrefix)
+			adminAddrPort, err = netip.ParseAddrPort("0.0.0.0:" + webUIPortNoPrefix)
 		}
 	}
 
-	if err == nil && ZoraxyAddrPort.IsValid() && ZoraxyAddrPort.Port() > 0 {
-		ZoraxyPort = int(ZoraxyAddrPort.Port())
+	if err == nil && adminAddrPort.IsValid() && adminAddrPort.Port() > 0 {
+		adminPort = int(adminAddrPort.Port())
 	} else {
-		SystemWideLogger.PrintAndLog("plugin-manager", fmt.Sprintf("Could not set port for plugin communication (webUI/-port); fallback to default port '%d'", ZoraxyPort), err)
+		SystemWideLogger.PrintAndLog("plugin-manager", fmt.Sprintf("Could not set port for plugin communication (webUI/-port); fallback to default port '%d'", adminPort), err)
 	}
 
 	pluginManager = plugins.NewPluginManager(&plugins.ManagerOptions{
@@ -352,7 +352,7 @@ func startupSequence() {
 		Logger:             SystemWideLogger,
 		PluginGroupsConfig: CONF_PLUGIN_GROUPS,
 		APIKeyManager:      pluginApiKeyManager,
-		ZoraxyPort:         ZoraxyPort,
+		AdminPort:          adminPort,
 		CSRFTokenGen: func(r *http.Request) string {
 			return csrf.Token(r)
 		},

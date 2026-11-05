@@ -9,11 +9,10 @@ import (
 	"path/filepath"
 )
 
-// LiveConfEntries are synced config files that take effect without a
-// restart (they are read again whenever they change on disk), so a
-// standby can apply them as soon as they change.
+// LiveConfEntries are synced config files a standby applies without a
+// restart.
 var LiveConfEntries = []string{
-	"ui.json", // status page panels
+	"ui.json",
 }
 
 func isLiveEntry(e string) bool {
@@ -25,9 +24,8 @@ func isLiveEntry(e string) bool {
 	return false
 }
 
-// LiveChanges compares this node's content with the active node's. If
-// they differ only in LiveConfEntries it returns those entries and true;
-// if anything else differs it returns false.
+// LiveChanges returns the LiveConfEntries that differ and true when nothing
+// else differs.
 func LiveChanges(local, incoming *SyncContent) ([]string, bool) {
 	tl, _ := json.Marshal(local.Tables)
 	ti, _ := json.Marshal(incoming.Tables)
@@ -65,8 +63,7 @@ func LiveChanges(local, incoming *SyncContent) ([]string, bool) {
 	return changed, true
 }
 
-// ApplyLiveEntries writes (or removes) the given LiveConfEntries files from
-// the active node's content.
+// ApplyLiveEntries writes or removes the given entries from incoming.
 func ApplyLiveEntries(confDir string, incoming *SyncContent, entries []string) error {
 	for _, e := range entries {
 		if !isLiveEntry(e) {

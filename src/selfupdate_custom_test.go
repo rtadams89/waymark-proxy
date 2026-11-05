@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 func TestVersionCompare(t *testing.T) {
@@ -55,7 +55,7 @@ func TestUpdateAllowedHost(t *testing.T) {
 
 // fakeBinary is a shell script that answers -version like Waymark.
 func fakeBinary(version string) []byte {
-	return []byte("#!/bin/sh\necho '" + PRODUCT_NAME + " " + version + " (based on Zoraxy 3.3.5)'\n")
+	return []byte("#!/bin/sh\necho '" + PRODUCT_NAME + " " + version + "'\n")
 }
 
 // rewriteTransport sends every request to the test server, whatever host
@@ -172,7 +172,7 @@ func TestBinaryVersion(t *testing.T) {
 		t.Fatalf("%q %v", v, err)
 	}
 	other := filepath.Join(dir, "other")
-	os.WriteFile(other, []byte("#!/bin/sh\necho 'Zoraxy 3.3.5'\n"), 0755)
+	os.WriteFile(other, []byte("#!/bin/sh\necho 'Other Proxy 3.3.5'\n"), 0755)
 	if _, err := binaryVersion(other); err == nil {
 		t.Fatal("non-Waymark binary accepted")
 	}

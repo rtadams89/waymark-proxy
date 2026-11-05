@@ -15,8 +15,8 @@ import (
 	"strings"
 	"sync"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // NewPluginManager creates a new plugin manager

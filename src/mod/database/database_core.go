@@ -6,9 +6,9 @@ package database
 import (
 	"errors"
 
-	"imuslab.com/zoraxy/mod/database/dbbolt"
-	"imuslab.com/zoraxy/mod/database/dbinc"
-	"imuslab.com/zoraxy/mod/database/dbleveldb"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbbolt"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbleveldb"
 )
 
 func newDatabase(dbfile string, backendType dbinc.BackendType) (*Database, error) {

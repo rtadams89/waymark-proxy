@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/uptime"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/uptime"
 )
 
 type uptimeFeedKey struct{ rule, addr string }

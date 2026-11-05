@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 
 	"github.com/stretchr/testify/assert"
 )

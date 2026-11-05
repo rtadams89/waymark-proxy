@@ -1,19 +1,12 @@
 package main
 
-// Browser security headers for the admin console. They are a second line
-// of defence behind the UI's escaping: scripts, styles, frames and form
-// posts may only come from the console itself.
+// Security headers for the admin console.
 
 import (
 	"net/http"
 	"strings"
 )
 
-// adminCSP is the admin console's Content-Security-Policy. The UI still
-// uses inline scripts and onclick handlers, so 'unsafe-inline' is needed
-// for scripts; other sites' scripts, plugins (object), framing by other
-// sites and posting forms elsewhere are blocked. Images may come from
-// https (app store icons are on other sites).
 const adminCSP = "default-src 'self'; " +
 	"script-src 'self' 'unsafe-inline'; " +
 	"style-src 'self' 'unsafe-inline'; " +
@@ -26,9 +19,8 @@ const adminCSP = "default-src 'self'; " +
 	"base-uri 'self'; " +
 	"object-src 'none'"
 
-// adminSecurityHeaders adds the headers to every admin console response.
-// Plugin pages (/plugin.ui/) are the plugins' own and keep their headers,
-// apart from nosniff.
+// adminSecurityHeaders sets nosniff on every response and the other headers
+// outside /plugin.ui/.
 func adminSecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()

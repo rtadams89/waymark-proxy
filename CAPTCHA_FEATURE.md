@@ -1,6 +1,6 @@
-# CAPTCHA Gating Feature for Zoraxy
+# CAPTCHA Gating
 
-This document describes the CAPTCHA gating feature that has been added to Zoraxy.
+This document describes the CAPTCHA gating feature.
 
 ## Overview
 
@@ -102,7 +102,7 @@ You can exclude certain paths or IP addresses from CAPTCHA challenges:
    `X-Real-IP`, `CF-Connecting-IP` or `X-Forwarded-For` are only honored when
    **Enable Trusted Proxy Gating** is turned on for that access rule and the
    connection comes from a trusted proxy. Otherwise the connection address is
-   used. If Zoraxy runs behind a CDN or another reverse proxy, enable trusted
+   used. If Waymark runs behind a CDN or another reverse proxy, enable trusted
    proxy gating so IP-based exceptions match the real client address.
 
 ### Use Cases
@@ -139,7 +139,7 @@ When a user successfully completes a CAPTCHA:
 2. Navigate to Turnstile section
 3. Create a new site
 4. Copy the **Site Key** and **Secret Key**
-5. Configure in Zoraxy with `captchaProvider=0`
+5. Configure in Waymark with `captchaProvider=0`
 
 ### Google reCAPTCHA v2
 
@@ -147,7 +147,7 @@ When a user successfully completes a CAPTCHA:
 2. Register a new site
 3. Select reCAPTCHA v2 (checkbox)
 4. Copy the **Site Key** and **Secret Key**
-5. Configure in Zoraxy with:
+5. Configure in Waymark with:
    - `captchaProvider=1`
    - `captchaRecaptchaVersion=v2`
 
@@ -157,7 +157,7 @@ When a user successfully completes a CAPTCHA:
 2. Register a new site
 3. Select reCAPTCHA v3
 4. Copy the **Site Key** and **Secret Key**
-5. Configure in Zoraxy with:
+5. Configure in Waymark with:
    - `captchaProvider=1`
    - `captchaRecaptchaVersion=v3`
    - `captchaRecaptchaScore=0.5` (adjust as needed)
@@ -250,7 +250,7 @@ Potential improvements for future versions:
 3. **Exception Rule Management API**: Dedicated endpoints for managing exception rules
 4. **Analytics**: Track CAPTCHA solve rates and bot detection statistics
 5. **Custom Challenge Pages**: Allow custom HTML templates for CAPTCHA pages
-6. **Distributed Sessions**: Support for session sharing across multiple Zoraxy instances
+6. **Distributed Sessions**: Support for session sharing across multiple Waymark instances
 
 ## Troubleshooting
 
@@ -274,11 +274,11 @@ Potential improvements for future versions:
 
 ## Credits
 
-Implemented following the existing Zoraxy architecture patterns:
+Implemented following the existing architecture patterns:
 - Rate limiting implementation for reference
 - Basic authentication exception rules for exception handling pattern
 - Access control for IP filtering patterns
 
 ---
 
-For questions or issues, please file a GitHub issue at https://github.com/tobychui/zoraxy/issues
+For questions or issues, please file a GitHub issue at https://github.com/rtadams89/waymark-proxy/issues

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
 )
 
 // Saves after the midnight reset must not overwrite the previous day

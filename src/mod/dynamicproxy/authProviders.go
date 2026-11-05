@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"regexp"
 
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/netutils"
-	"imuslab.com/zoraxy/mod/pathmatch"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/pathmatch"
 )
 
 /*

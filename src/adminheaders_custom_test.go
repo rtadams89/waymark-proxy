@@ -25,7 +25,6 @@ func TestAdminSecurityHeaders(t *testing.T) {
 		t.Errorf("missing headers: %v", rec.Header())
 	}
 
-	// Plugin pages keep their own policy
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest("GET", "/plugin.ui/abc/", nil))
 	if rec.Header().Get("Content-Security-Policy") != "" || rec.Header().Get("X-Content-Type-Options") != "nosniff" {

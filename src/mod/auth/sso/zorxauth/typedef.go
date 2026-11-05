@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 const (

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
 )
 
 // Register the system build-in routing rules into the core

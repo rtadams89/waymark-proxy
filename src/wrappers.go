@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/uptime"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/uptime"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 /*
@@ -276,12 +276,9 @@ func HandleMdnsListing(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, string(js))
 }
 
-/*
-	Zoraxy Host Info
-*/
-
-func HandleZoraxyInfo(w http.ResponseWriter, r *http.Request) {
-	type ZoraxyInfo struct {
+// HandleHostInfo returns the version, node UUID and boot time.
+func HandleHostInfo(w http.ResponseWriter, r *http.Request) {
+	type hostInfo struct {
 		Version           string
 		NodeUUID          string
 		Development       bool
@@ -297,7 +294,7 @@ func HandleZoraxyInfo(w http.ResponseWriter, r *http.Request) {
 		displayBootTime = 0
 	}
 
-	info := ZoraxyInfo{
+	info := hostInfo{
 		Version:     DISPLAY_VERSION,
 		NodeUUID:    displayUUID,
 		Development: *development_build,

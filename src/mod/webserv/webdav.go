@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
 	"golang.org/x/net/webdav"
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/netutils"
 )
 
 // WebDAV server for managing files in the static web server directory

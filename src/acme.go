@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/acme"
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/acme"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Routing of ACME HTTP-01 challenges and certificate renewal.

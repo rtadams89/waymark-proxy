@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
 )
 
 //go:embed geoipv4.csv

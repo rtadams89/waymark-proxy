@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 func TestStatusPanelLayout(t *testing.T) {

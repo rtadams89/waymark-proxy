@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/info/logger"
-	zoraxyPlugin "imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	zoraxyPlugin "github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
 )
 
 //go:embed no_img.png
@@ -44,7 +44,7 @@ type ManagerOptions struct {
 
 	/* Runtime */
 	SystemConst  *zoraxyPlugin.RuntimeConstantValue //The system constant value
-	ZoraxyPort   int                                //The port of this instance, used for API calls
+	AdminPort    int                                //Admin console port, for plugin API calls
 	CSRFTokenGen func(*http.Request) string         `json:"-"` //The CSRF token generator function
 	Database     *database.Database                 `json:"-"`
 	Logger       *logger.Logger                     `json:"-"`

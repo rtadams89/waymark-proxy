@@ -10,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
 )
 
 // TestTLSNameModes checks the TLS name modes with an upstream reached as

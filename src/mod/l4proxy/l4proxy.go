@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Layer 4 proxy: forwards TCP and UDP traffic from one address to another

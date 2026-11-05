@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 // rlTrust: whether each test's proxy rule trusts forwarded addresses

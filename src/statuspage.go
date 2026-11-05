@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/info/usageinfo"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 	"github.com/shirou/gopsutil/v4/disk"
 	gonet "github.com/shirou/gopsutil/v4/net"
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/info/usageinfo"
-	"imuslab.com/zoraxy/mod/utils"
 )
 
 // Data endpoints for the status page dashboard: overview (uptime, bandwidth,

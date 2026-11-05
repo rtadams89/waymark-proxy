@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/acme"
+	"github.com/rtadams89/waymark-proxy/mod/acme"
 )
 
 func TestExtractIssuerNameFromPEM(t *testing.T) {

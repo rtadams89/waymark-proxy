@@ -1,7 +1,6 @@
 package auth
 
-// Admin account helpers that work on the database directly, for the
-// -set-admin-password command (Waymark is stopped, so there is no AuthAgent).
+// Admin account helpers that use the database directly.
 
 import (
 	"errors"
@@ -10,12 +9,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	db "imuslab.com/zoraxy/mod/database"
+	db "github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 const maxUsernameLength = 64
 
-// ValidateUsername returns an error if name cannot be an admin username.
 func ValidateUsername(name string) error {
 	if name == "" {
 		return errors.New("the username is empty")
@@ -34,7 +32,6 @@ func ValidateUsername(name string) error {
 	return nil
 }
 
-// ValidateNewPassword returns an error if password cannot be set.
 func ValidateNewPassword(password string) error {
 	if password == "" {
 		return errors.New("the password is empty")
@@ -61,9 +58,8 @@ func ListUsernames(sysdb *db.Database) []string {
 	return names
 }
 
-// SetOrCreateAccount sets username's password, creating the account if it
-// does not exist (created is true then). It also replaces the session key,
-// so everyone signed in to the admin console has to sign in again.
+// SetOrCreateAccount sets username's password, creating the account if
+// needed, and deletes the session key.
 func SetOrCreateAccount(sysdb *db.Database, username, password string) (created bool, err error) {
 	if err := ValidateUsername(username); err != nil {
 		return false, err

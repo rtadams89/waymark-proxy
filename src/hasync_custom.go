@@ -28,8 +28,8 @@ import (
 	"syscall"
 	"time"
 
-	"imuslab.com/zoraxy/mod/hacluster"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/hacluster"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 const (
@@ -494,8 +494,7 @@ func haSyncTick(force bool) (string, bool) {
 		SystemWideLogger.PrintAndLog("ha-sync", msg, nil)
 		return msg, false
 	}
-	// Changes only to files that are read again when they change (the
-	// status page layout) are applied now, without restarting Waymark
+	// Changes only to LiveConfEntries are applied without a restart
 	if local, err := hacluster.BuildContent(CONF_FOLDER, sysdb); err == nil {
 		if live, ok := hacluster.LiveChanges(local, &snap.Content); ok {
 			err := hacluster.ApplyLiveEntries(CONF_FOLDER, &snap.Content, live)

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/rewrite"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
 )
 
 /*

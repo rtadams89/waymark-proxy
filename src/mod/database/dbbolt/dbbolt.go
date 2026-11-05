@@ -16,8 +16,8 @@ type Database struct {
 	Db interface{}
 }
 
-// OpenTimeout is how long NewBoltDatabase waits for another process to close
-// the file (0 waits for ever).
+// OpenTimeout is how long NewBoltDatabase waits for the file lock (0: no
+// limit).
 var OpenTimeout time.Duration
 
 func NewBoltDatabase(dbfile string) (*Database, error) {

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 	"golang.org/x/net/publicsuffix"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
 )
 
 // Create a new uptime monitor

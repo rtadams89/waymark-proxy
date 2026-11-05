@@ -69,7 +69,7 @@ $.cjax = function(payload){
     let requireTokenMethod = ["POST", "PUT", "DELETE"];
     if (requireTokenMethod.includes(payload.method) || requireTokenMethod.includes(payload.type)){
         //csrf token is required
-        let csrfToken = document.getElementsByTagName("meta")["zoraxy.csrf.Token"].getAttribute("content");
+        let csrfToken = document.getElementsByTagName("meta")["waymark.csrf.Token"].getAttribute("content");
         payload.headers = {
             "X-CSRF-Token": csrfToken,
         }

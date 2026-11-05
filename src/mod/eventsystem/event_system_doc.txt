@@ -1,4 +1,4 @@
-package eventsystem // import "imuslab.com/zoraxy/mod/eventsystem"
+package eventsystem // import "github.com/rtadams89/waymark-proxy/mod/eventsystem"
 
 
 VARIABLES

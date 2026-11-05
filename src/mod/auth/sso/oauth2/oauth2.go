@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 	"golang.org/x/oauth2"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
 )
 
 const (

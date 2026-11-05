@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
 
 	"github.com/google/uuid"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 type UserResponse struct {

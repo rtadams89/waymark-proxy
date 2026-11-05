@@ -15,8 +15,8 @@ import (
 func sample() *Config {
 	return &Config{
 		Enabled: true, VIP: "10.10.20.5", Prefix: 24, RouterID: 51, Password: "s3cret", Nodes: []Node{
-			{Name: "zoraxy1", Address: "10.10.20.10", Interface: "ens18", Priority: 150},
-			{Name: "zoraxy2", Address: "10.10.20.11", Interface: "ens18", Priority: 100},
+			{Name: "waymark1", Address: "10.10.20.10", Interface: "ens18", Priority: 150},
+			{Name: "waymark2", Address: "10.10.20.11", Interface: "ens18", Priority: 100},
 		},
 	}
 }
@@ -108,15 +108,15 @@ func TestSettingsAndSelf(t *testing.T) {
 		t.Fatalf("self = %d", self)
 	}
 	s := c.Settings(self, 42, "")
-	for _, want := range []string{"APPLY_ID=42", "ENABLED=1", "NODE_NAME=zoraxy2", "LOCAL_IP=10.10.20.11", "PEER_IPS=10.10.20.10", "PRIORITY=100", "PREEMPT=0"} {
+	for _, want := range []string{"APPLY_ID=42", "ENABLED=1", "NODE_NAME=waymark2", "LOCAL_IP=10.10.20.11", "PEER_IPS=10.10.20.10", "PRIORITY=100", "PREEMPT=0"} {
 		if !strings.Contains(s, want+"\n") {
 			t.Errorf("settings missing %s:\n%s", want, s)
 		}
 	}
-	if s := c.Settings(-1, 7, "zoraxy9"); !strings.Contains(s, "ENABLED=0\n") || strings.Contains(s, "VIP=") {
+	if s := c.Settings(-1, 7, "waymark9"); !strings.Contains(s, "ENABLED=0\n") || strings.Contains(s, "VIP=") {
 		t.Errorf("not-a-member settings: %s", s)
 	}
-	if c.ActiveNode() != "zoraxy1" {
+	if c.ActiveNode() != "waymark1" {
 		t.Errorf("active node %s", c.ActiveNode())
 	}
 }
@@ -161,7 +161,7 @@ func TestPreviewMatchesHelper(t *testing.T) {
 		func(c *Config) {},
 		func(c *Config) { c.Password = ""; c.Preempt = true },
 		func(c *Config) {
-			c.Nodes = append(c.Nodes, Node{Name: "zoraxy3", Address: "10.10.20.12", Interface: "eth0", Priority: 50})
+			c.Nodes = append(c.Nodes, Node{Name: "waymark3", Address: "10.10.20.12", Interface: "eth0", Priority: 50})
 		},
 		func(c *Config) { c.Enabled = false },
 		func(c *Config) {
@@ -258,7 +258,7 @@ func TestRealKeepalivedAcceptsConfig(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("needs root to create a root-owned scripts folder")
 	}
-	scripts, err := os.MkdirTemp("/usr/local/lib", "zoraxy-ha-test-")
+	scripts, err := os.MkdirTemp("/usr/local/lib", "waymark-ha-test-")
 	if err != nil {
 		t.Skip("cannot create a scripts folder: " + err.Error())
 	}

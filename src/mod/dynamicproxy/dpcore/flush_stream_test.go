@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
 )
 
 // TestChunkedResponseReachesClientBeforeUpstreamFinishes checks that a

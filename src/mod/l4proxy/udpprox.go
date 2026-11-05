@@ -3,7 +3,7 @@ package l4proxy
 import (
 	"bytes"
 	"errors"
-	"imuslab.com/zoraxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/access"
 	"log"
 	"net"
 	"os"

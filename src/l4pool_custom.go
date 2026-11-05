@@ -12,10 +12,10 @@ import (
 	"net/http"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/l4proxy"
-	"imuslab.com/zoraxy/mod/uptime"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/l4proxy"
+	"github.com/rtadams89/waymark-proxy/mod/uptime"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // notifyUpstreamOnline applies a health check verdict to the HTTP load

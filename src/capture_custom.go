@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/capture"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/capture"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 const (

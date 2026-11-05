@@ -148,9 +148,9 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           TAG: ${{ github.ref_name }}
         run: |
-          # Prints e.g. "Waymark Proxy 1.0.0 (based on Zoraxy 3.3.5)"
+          # Prints e.g. "Waymark Proxy 1.0.0"
           line="$(./waymark_linux_amd64 -version)"
-          version="$(echo "$line" | sed -n -E 's/^Waymark Proxy ([0-9]+\.[0-9]+\.[0-9]+) .*/\1/p')"
+          version="$(echo "$line" | sed -n -E 's/^Waymark Proxy ([0-9]+\.[0-9]+\.[0-9]+)( .*)?$/\1/p')"
           echo "Built: ${line}"
           echo "Built **${line}**" >> "$GITHUB_STEP_SUMMARY"
           if [ -z "$version" ]; then

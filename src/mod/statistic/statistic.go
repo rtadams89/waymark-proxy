@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"imuslab.com/zoraxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 // Collects request statistics and stores them for analysis

@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"regexp"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 const (

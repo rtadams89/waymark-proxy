@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/assetcache"
+	"github.com/rtadams89/waymark-proxy/mod/assetcache"
 )
 
 // AssetCache is the memory cache shared by all proxy rules.
@@ -17,9 +17,9 @@ func (h *ProxyHandler) assetCacheBegin(w http.ResponseWriter, r *http.Request, t
 	if !target.AssetCache.On() || isWebSocketRequest(r) {
 		return nil
 	}
-	zoraxyBasicAuth := target.AuthenticationProvider != nil && target.AuthenticationProvider.AuthMethod == AuthMethodBasic
+	ruleBasicAuth := target.AuthenticationProvider != nil && target.AuthenticationProvider.AuthMethod == AuthMethodBasic
 	s := AssetCache.Begin(w, r, strings.ToLower(target.RootOrMatchingDomain), target.AssetCache, assetcache.BeginOptions{
-		AuthorizationIsZoraxys: zoraxyBasicAuth,
+		AuthorizationIsProxyAuth: ruleBasicAuth,
 	})
 	if s != nil && s.Served() {
 		h.Parent.logRequest(r, true, s.ServedStatus(), "host-http", r.Host, "cache", target)

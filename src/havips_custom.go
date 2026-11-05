@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/hacluster"
+	"github.com/rtadams89/waymark-proxy/mod/hacluster"
 )
 
 // haFloatingIPsHeld lists every floating IP with whether this node holds it.

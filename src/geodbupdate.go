@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // API of the GeoIP database update (manual and scheduled).

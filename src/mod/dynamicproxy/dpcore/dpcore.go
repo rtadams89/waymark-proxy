@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"imuslab.com/zoraxy/mod/capture"
-	"imuslab.com/zoraxy/mod/dynamicproxy/domainsniff"
-	"imuslab.com/zoraxy/mod/dynamicproxy/permissionpolicy"
+	"github.com/rtadams89/waymark-proxy/mod/capture"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/domainsniff"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/permissionpolicy"
 )
 
 // Tunnel settings for HTTP protocol upgrades

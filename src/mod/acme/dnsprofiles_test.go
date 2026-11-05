@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/database/dbinc"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 // newTestACMEHandler returns a handler backed by a throwaway database, with

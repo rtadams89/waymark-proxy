@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/info/logger"
-	zoraxyPlugin "imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	zoraxyPlugin "github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
 )
 
 // TestStartPluginOutputReadersDoNotRaceProcessField starts a plugin that writes

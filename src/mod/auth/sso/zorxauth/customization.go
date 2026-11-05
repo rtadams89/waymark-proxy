@@ -21,7 +21,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 //go:embed brand_mark.svg

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 func logOutputsPath() string { return CONF_FOLDER + "/log_outputs.json" }

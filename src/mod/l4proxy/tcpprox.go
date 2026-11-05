@@ -3,7 +3,7 @@ package l4proxy
 import (
 	"errors"
 	"fmt"
-	"imuslab.com/zoraxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/access"
 	"io"
 	"log"
 	"net"

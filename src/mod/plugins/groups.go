@@ -3,9 +3,9 @@ package plugins
 import (
 	"encoding/json"
 	"errors"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
 )
 
 // ListPluginGroups returns a map of plugin groups

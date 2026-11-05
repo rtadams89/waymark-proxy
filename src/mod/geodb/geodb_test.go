@@ -3,7 +3,7 @@ package geodb
 import (
 	"testing"
 
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 func TestResolveCountryCodeFromIP(t *testing.T) {

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/database/dbinc"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
 )
 
 var testCountries = map[string]string{"1.1.1.1": "AU", "8.8.8.8": "US", "5.5.5.5": "DE", "9.9.9.9": "CN"}

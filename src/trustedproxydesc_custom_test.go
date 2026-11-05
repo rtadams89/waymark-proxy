@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 func TestCleanTrustedProxyDesc(t *testing.T) {
@@ -52,7 +52,7 @@ func TestMigrateTrustedProxyDescriptions(t *testing.T) {
 		t.Fatalf("file not rewritten: %s", saved)
 	}
 
-	// Runs once: a description typed later with "&amp;" in it stays as typed
+	// Second run
 	c.RemoveTrustedProxy("10.0.0.2")
 	c.AddTrustedProxy("10.0.0.2", "A &amp; B")
 	migrateTrustedProxyDescriptions(c, db)

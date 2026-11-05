@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/info/usageinfo"
+	"github.com/rtadams89/waymark-proxy/mod/info/usageinfo"
 )
 
 // haNodeStats are one node's figures; counts are since local midnight.

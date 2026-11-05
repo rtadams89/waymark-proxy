@@ -40,8 +40,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Load balancing methods, the same as HTTP proxy rules.

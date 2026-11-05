@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Gets (GET) or sets (POST set) whether the proxy uses TLS.

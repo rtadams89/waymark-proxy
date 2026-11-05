@@ -25,7 +25,6 @@ src/sys.db
 src/src/sys.db.lock
 src/conf/*
 src/ReverseProxy_*_*
-src/Zoraxy_*_*
 src/certs/*
 src/rules/*
 src/README.md
@@ -36,8 +35,8 @@ src/tmp/localhost.key
 src/tmp/localhost.pem
 src/www/html/index.html
 src/sys.uuid
-src/zoraxy
 src/waymark
+src/waymark-proxy
 src/log/
 
 # plugins
@@ -56,7 +55,6 @@ www/html/index.html
 /src/plugins
 .DS_Store
 /build
-src/zoraxy.exe~
 src/waymark.exe~
 /src/www
 /src/conf.old_*

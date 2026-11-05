@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/acme/acmedns"
+	"github.com/rtadams89/waymark-proxy/mod/acme/acmedns"
 )
 
 func TestACMEDNSConfigStructureReflector(t *testing.T) {

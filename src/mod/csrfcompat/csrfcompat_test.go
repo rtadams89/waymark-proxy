@@ -26,9 +26,9 @@ func TestCrossOriginProtection(t *testing.T) {
 		// Modern browsers (Sec-Fetch-Site present)
 		{"same-origin POST over plain http", "POST", "192.168.1.50:8000", map[string]string{"Sec-Fetch-Site": "same-origin", "Origin": "http://192.168.1.50:8000"}, 200},
 		{"same-origin POST via SSH tunnel", "POST", "localhost:8000", map[string]string{"Sec-Fetch-Site": "same-origin", "Origin": "http://localhost:8000"}, 200},
-		{"same-origin POST behind Zoraxy https proxy", "POST", "zoraxy.example.com", map[string]string{"Sec-Fetch-Site": "same-origin", "Origin": "https://zoraxy.example.com"}, 200},
+		{"same-origin POST behind an https proxy", "POST", "waymark.example.com", map[string]string{"Sec-Fetch-Site": "same-origin", "Origin": "https://waymark.example.com"}, 200},
 		{"cross-site POST rejected", "POST", "192.168.1.50:8000", map[string]string{"Sec-Fetch-Site": "cross-site", "Origin": "https://evil.example"}, 403},
-		{"same-site (other subdomain) POST rejected", "POST", "zoraxy.example.com", map[string]string{"Sec-Fetch-Site": "same-site", "Origin": "https://app.example.com"}, 403},
+		{"same-site (other subdomain) POST rejected", "POST", "waymark.example.com", map[string]string{"Sec-Fetch-Site": "same-site", "Origin": "https://app.example.com"}, 403},
 		{"cross-site DELETE rejected", "DELETE", "192.168.1.50:8000", map[string]string{"Sec-Fetch-Site": "cross-site"}, 403},
 		// Older browsers (Origin only)
 		{"old browser same host allowed", "POST", "192.168.1.50:8000", map[string]string{"Origin": "http://192.168.1.50:8000"}, 200},

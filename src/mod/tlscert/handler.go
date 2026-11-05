@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/acme"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/acme"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Handle cert remove

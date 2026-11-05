@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // HandlePluginUI routes the request to the plugin's UI handler

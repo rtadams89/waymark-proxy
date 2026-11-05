@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
 )
 
 // PluginAPIKey represents an API key for a plugin

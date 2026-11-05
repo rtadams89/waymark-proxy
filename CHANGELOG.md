@@ -1,6 +1,6 @@
 # Waymark Proxy changelog
 
-Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/zoraxy) by tobychui and contributors. This file lists Waymark's changes; for Zoraxy's own history see its [releases](https://github.com/tobychui/zoraxy/releases).
+This file lists Waymark Proxy's changes.
 
 **Versioning:** [semantic versioning](https://semver.org), `MAJOR.MINOR.PATCH`.
 
@@ -8,7 +8,17 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 - **MINOR** (1.1.0): new features that keep existing configuration working.
 - **MAJOR** (2.0.0): changes that need action when upgrading.
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
-- Waymark was forked from Zoraxy 3.3.5, which **Settings > About** and `waymark -version` still show. Since 2.6.2 it no longer follows Zoraxy releases.
+
+## 3.4.0
+
+**Zoraxy references removed**
+- The sign-in page, `waymark -version` (now just `Waymark Proxy 3.4.0`), the About page's supporters list and Zoraxy link, the README comparison, and the docs no longer mention Zoraxy. The About page keeps the copyright and modification notice the AGPL requires, and the README keeps its license section.
+- The Go module is now `github.com/rtadams89/waymark-proxy` (was `imuslab.com/zoraxy`), and internal names, the CSRF meta tag and test data were renamed. Settings and stored data are unchanged.
+- Kept for plugin compatibility: the plugin SDK (`zoraxy_plugin`), the `X-Zoraxy-*` headers and plugin JSON fields, the official plugin store index, and the SDK documentation links in the app store.
+- `/api/info/brand` no longer returns `upstreamBase`.
+
+**Code comments**
+- Comments in the code added since 2.19.10 are shortened to describe what the code does.
 
 ## 3.3.0
 
@@ -40,7 +50,7 @@ Waymark Proxy is a reverse proxy based on [Zoraxy](https://github.com/tobychui/z
 
 ## 3.1.0
 
-**TLS profiles** (similar to Zoraxy PR #1314)
+**TLS profiles**
 - **Minimum TLS Version** under **System > Settings > Advanced Settings** is replaced by **TLS Profile**, which also chooses the TLS 1.2 cipher suites, after [Mozilla's server side TLS guidelines](https://wiki.mozilla.org/Security/Server_Side_TLS):
   - **Modern**: TLS 1.3 only.
   - **Intermediate** (recommended): TLS 1.2 and 1.3. TLS 1.2 is limited to the six forward-secret AEAD suites (ECDHE with AES-GCM or ChaCha20-Poly1305), so the CBC and SHA-1 suites that SSL Labs and other scanners flag are no longer offered.

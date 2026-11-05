@@ -3,15 +3,15 @@ package rewrite
 import (
 	"encoding/json"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/permissionpolicy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/permissionpolicy"
 )
 
 // Header injection direction type
 type HeaderDirection int
 
 const (
-	HeaderDirection_ZoraxyToUpstream   HeaderDirection = 0 // Set or remove the header on requests to the backend
-	HeaderDirection_ZoraxyToDownstream HeaderDirection = 1 // Set or remove the header on responses to the client
+	HeaderDirection_ToUpstream   HeaderDirection = 0 // Set or remove the header on requests to the backend
+	HeaderDirection_ToDownstream HeaderDirection = 1 // Set or remove the header on responses to the client
 )
 
 // User defined headers to add into a proxy endpoint

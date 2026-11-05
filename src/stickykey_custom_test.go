@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 func TestStickySessionKey(t *testing.T) {

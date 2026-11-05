@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Handle request for listing all stored redirection rules

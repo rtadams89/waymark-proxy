@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/access"
 )
 
 func TestTLSProfiles(t *testing.T) {

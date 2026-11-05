@@ -6,35 +6,35 @@ import (
 	"net/http"
 	"time"
 
-	"imuslab.com/zoraxy/mod/auth/sso/oauth2"
+	"github.com/rtadams89/waymark-proxy/mod/auth/sso/oauth2"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/acme"
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/auth/sso/forward"
-	"imuslab.com/zoraxy/mod/auth/sso/zorxauth"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/dynamicproxy/redirection"
-	"imuslab.com/zoraxy/mod/geodb"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/info/logviewer"
-	"imuslab.com/zoraxy/mod/l4proxy"
-	"imuslab.com/zoraxy/mod/mdns"
-	"imuslab.com/zoraxy/mod/netstat"
-	"imuslab.com/zoraxy/mod/pathrule"
-	"imuslab.com/zoraxy/mod/plugins"
-	"imuslab.com/zoraxy/mod/statistic"
-	"imuslab.com/zoraxy/mod/statistic/analytic"
-	"imuslab.com/zoraxy/mod/tlscert"
-	"imuslab.com/zoraxy/mod/uptime"
-	"imuslab.com/zoraxy/mod/webserv"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/acme"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/auth/sso/forward"
+	"github.com/rtadams89/waymark-proxy/mod/auth/sso/zorxauth"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/redirection"
+	"github.com/rtadams89/waymark-proxy/mod/geodb"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/info/logviewer"
+	"github.com/rtadams89/waymark-proxy/mod/l4proxy"
+	"github.com/rtadams89/waymark-proxy/mod/mdns"
+	"github.com/rtadams89/waymark-proxy/mod/netstat"
+	"github.com/rtadams89/waymark-proxy/mod/pathrule"
+	"github.com/rtadams89/waymark-proxy/mod/plugins"
+	"github.com/rtadams89/waymark-proxy/mod/statistic"
+	"github.com/rtadams89/waymark-proxy/mod/statistic/analytic"
+	"github.com/rtadams89/waymark-proxy/mod/tlscert"
+	"github.com/rtadams89/waymark-proxy/mod/uptime"
+	"github.com/rtadams89/waymark-proxy/mod/webserv"
 )
 
 const (
 	/* Build Constants */
 	SYSTEM_NAME    = "Waymark"
-	SYSTEM_VERSION = "3.3.5"
+	SYSTEM_VERSION = "3.3.5" // plugin host version
 
 	/* System Constants */
 	WEBSERV_DEFAULT_PORT         = 5487

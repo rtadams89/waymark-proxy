@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/eventsystem"
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin/events"
+	"github.com/rtadams89/waymark-proxy/mod/eventsystem"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin/events"
 )
 
 func (p *Plugin) GetID() eventsystem.ListenerID {

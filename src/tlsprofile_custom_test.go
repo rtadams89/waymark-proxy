@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 func TestProfileFromMinTLSVersion(t *testing.T) {

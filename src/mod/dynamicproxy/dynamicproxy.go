@@ -18,10 +18,10 @@ import (
 	"github.com/quic-go/quic-go/http3"
 	"golang.org/x/net/http2"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/captcha"
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/netutils"
-	"imuslab.com/zoraxy/mod/pathmatch"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/captcha"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/pathmatch"
 )
 
 // configureHTTP2 applies the HTTP/2 options to the TLS listener, or turns

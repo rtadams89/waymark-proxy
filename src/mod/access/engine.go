@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"imuslab.com/zoraxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
 )
 
 type hitCounter struct{ n atomic.Int64 }

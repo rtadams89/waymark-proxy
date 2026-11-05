@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"regexp"
 
-	"imuslab.com/zoraxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 const stickySessionKeyName = "sticky_session_key"

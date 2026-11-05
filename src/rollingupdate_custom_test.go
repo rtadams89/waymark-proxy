@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/hacluster"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/hacluster"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 // fakeCluster simulates the other nodes for a rolling update.

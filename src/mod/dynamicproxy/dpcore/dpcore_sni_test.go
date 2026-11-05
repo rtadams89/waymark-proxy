@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
 )
 
 // sharedServerName returns the ServerName of the proxy's shared transport.

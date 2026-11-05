@@ -4,7 +4,7 @@ import (
 	"log"
 	"runtime"
 
-	"imuslab.com/zoraxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
 )
 
 type Database struct {

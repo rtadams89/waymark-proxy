@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"imuslab.com/zoraxy/mod/tlscert"
+	"github.com/rtadams89/waymark-proxy/mod/tlscert"
 )
 
 func (router *Router) ResolveHostSpecificTlsBehaviorForHostname(hostname string) (*tlscert.HostSpecificTlsBehavior, error) {

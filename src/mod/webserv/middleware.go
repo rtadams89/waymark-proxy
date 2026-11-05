@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // Convert a request path (e.g. /index.html) into physical path on disk

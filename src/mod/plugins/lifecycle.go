@@ -13,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/eventsystem"
-	zoraxyPlugin "imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin/events"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/eventsystem"
+	zoraxyPlugin "github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin/events"
 )
 
 func (m *Manager) StartPlugin(pluginID string) error {
@@ -50,7 +50,7 @@ func (m *Manager) StartPlugin(pluginID string) error {
 			return err
 		}
 		pluginConfiguration.APIKey = apiKey.APIKey
-		pluginConfiguration.ZoraxyPort = m.Options.ZoraxyPort
+		pluginConfiguration.ZoraxyPort = m.Options.AdminPort
 		m.Log("Generated API key for plugin "+thisPlugin.Spec.Name, nil)
 	}
 

@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/netutils"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 //go:embed default_trusted_proxies.csv

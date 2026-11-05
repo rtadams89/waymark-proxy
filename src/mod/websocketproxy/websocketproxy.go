@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/rewrite"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 const defaultWebsocketTimeout = 300 * time.Second

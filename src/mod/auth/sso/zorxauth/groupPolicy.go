@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 const (

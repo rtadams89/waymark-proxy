@@ -6,12 +6,12 @@ import (
 	"io/fs"
 	"net/http"
 
-	"imuslab.com/zoraxy/mod/acme"
-	"imuslab.com/zoraxy/mod/acme/acmedns"
-	"imuslab.com/zoraxy/mod/acme/acmewizard"
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/dynamicproxy/domainsniff"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/acme"
+	"github.com/rtadams89/waymark-proxy/mod/acme/acmedns"
+	"github.com/rtadams89/waymark-proxy/mod/acme/acmewizard"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/domainsniff"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // API handlers of the web management interface.
@@ -412,7 +412,7 @@ func initAPIs(targetMux *http.ServeMux) {
 	RegisterStaticWebServerAPIs(authRouter)
 	RegisterPluginAPIs(authRouter)
 
-	targetMux.HandleFunc("/api/info/x", HandleZoraxyInfo)
+	targetMux.HandleFunc("/api/info/x", HandleHostInfo)
 	authRouter.HandleFunc("/api/info/geoip", HandleGeoIpLookup)
 	authRouter.HandleFunc("/api/geodb/updateStatus", HandleGeoDBUpdateStatus)
 	authRouter.HandleFunc("/api/geodb/updateNow", HandleGeoDBUpdateNow)

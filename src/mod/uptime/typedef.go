@@ -3,7 +3,7 @@ package uptime
 import (
 	"sync"
 
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 const (

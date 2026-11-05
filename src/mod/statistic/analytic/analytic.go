@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/statistic"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/statistic"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 type DataLoader struct {

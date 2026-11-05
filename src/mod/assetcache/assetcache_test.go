@@ -375,10 +375,10 @@ func TestBypassCases(t *testing.T) {
 		t.Fatalf("authorization bypass")
 	}
 	// ...unless they are the proxy's own basic auth
-	h.opts.AuthorizationIsZoraxys = true
+	h.opts.AuthorizationIsProxyAuth = true
 	h.do("GET", "/p.css", "Authorization", "Basic eDp5")
 	if r := h.do("GET", "/p.css", "Authorization", "Basic eDp5"); status(r) != "HIT" {
-		t.Fatalf("zoraxy basic auth: %q", status(r))
+		t.Fatalf("proxy basic auth: %q", status(r))
 	}
 	// Failed transfers are not stored
 	h.upErr = errors.New("connection reset")

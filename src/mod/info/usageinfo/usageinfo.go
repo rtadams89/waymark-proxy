@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rtadams89/waymark-proxy/mod/info/shellexec"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
-	"imuslab.com/zoraxy/mod/info/shellexec"
 )
 
 // CPU and RAM usage on different platforms

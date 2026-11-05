@@ -10,10 +10,10 @@ import (
 
 	"math/rand"
 
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/database/dbinc"
-	"imuslab.com/zoraxy/mod/geodb"
-	"imuslab.com/zoraxy/mod/statistic"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/geodb"
+	"github.com/rtadams89/waymark-proxy/mod/statistic"
 )
 
 const test_db_path = "test_db"

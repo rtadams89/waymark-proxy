@@ -1,7 +1,7 @@
 // Package csrfcompat provides gorilla/csrf's Protect and Token API on top of
 // net/http.CrossOriginProtection:
 //
-//	csrf "imuslab.com/zoraxy/mod/csrfcompat"
+//	csrf "github.com/rtadams89/waymark-proxy/mod/csrfcompat"
 //
 // Unsafe methods are rejected when Sec-Fetch-Site reports a cross-origin
 // request, or when the Origin host does not match the Host header. GET, HEAD

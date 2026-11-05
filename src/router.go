@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	csrf "imuslab.com/zoraxy/mod/csrfcompat" // stdlib CrossOriginProtection
+	csrf "github.com/rtadams89/waymark-proxy/mod/csrfcompat" // stdlib CrossOriginProtection
 )
 
 // Static resources router for the admin console

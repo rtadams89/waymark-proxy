@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
-	"imuslab.com/zoraxy/mod/dynamicproxy/dpcore"
-	"imuslab.com/zoraxy/mod/geodb"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/dpcore"
+	"github.com/rtadams89/waymark-proxy/mod/geodb"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 type Options struct {

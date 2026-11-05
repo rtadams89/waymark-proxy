@@ -11,16 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/dynamicproxy/permissionpolicy"
-	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
-	"imuslab.com/zoraxy/mod/netutils"
-	"imuslab.com/zoraxy/mod/tlscert"
-	"imuslab.com/zoraxy/mod/uptime"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/permissionpolicy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/rewrite"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/tlscert"
+	"github.com/rtadams89/waymark-proxy/mod/uptime"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 const (
@@ -2217,9 +2217,9 @@ func HandleCustomHeaderAdd(w http.ResponseWriter, r *http.Request) {
 	//Create a Custom Header Definition type
 	var rewriteDirection rewrite.HeaderDirection
 	if direction == "toOrigin" {
-		rewriteDirection = rewrite.HeaderDirection_ZoraxyToUpstream
+		rewriteDirection = rewrite.HeaderDirection_ToUpstream
 	} else if direction == "toClient" {
-		rewriteDirection = rewrite.HeaderDirection_ZoraxyToDownstream
+		rewriteDirection = rewrite.HeaderDirection_ToDownstream
 	} else {
 		//Unknown direction
 		utils.SendErrorResponse(w, "header rewrite direction not supported")

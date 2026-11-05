@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"imuslab.com/zoraxy/mod/eventsystem"
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
-	"imuslab.com/zoraxy/mod/plugins/zoraxy_plugin/events"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/eventsystem"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
+	"github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin/events"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // See https://github.com/aroz-online/zoraxy-official-plugins/blob/main/directories/index2.json for the standard format

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	zoraxyPlugin "imuslab.com/zoraxy/mod/plugins/zoraxy_plugin"
+	zoraxyPlugin "github.com/rtadams89/waymark-proxy/mod/plugins/zoraxy_plugin"
 )
 
 // checkSupportHotRebuild checks if a Makefile or main.go exists in the given directory

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy"
-	"imuslab.com/zoraxy/mod/hacluster"
-	"imuslab.com/zoraxy/mod/tlscert"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy"
+	"github.com/rtadams89/waymark-proxy/mod/hacluster"
+	"github.com/rtadams89/waymark-proxy/mod/tlscert"
 )
 
 func testCluster() *hacluster.Config {
@@ -76,7 +76,7 @@ func TestAdminRuleKeepsEditableSettings(t *testing.T) {
 	json.Unmarshal([]byte(`{"ProxyType":1,"System":"admin-console","RootOrMatchingDomain":"waymark.home.example",
 		"MatchingDomainAlias":["10.10.20.4","10.10.20.5","10.10.20.6","waymark01.home.example","waymark02.home.example"],
 		"ActiveOrigins":[{"OriginIpOrDomain":"127.0.0.1:8000","Weight":1}],"Disabled":true,"ListenIP":"10.10.20.4",
-		"TlsOptions":{"DisableSNI":false,"PreferredCertificate":{"zoraxy01.home.example":"zoraxy","waymark.home.example":"wild"}},
+		"TlsOptions":{"DisableSNI":false,"PreferredCertificate":{"proxy01.home.example":"old","waymark.home.example":"wild"}},
 		"AuthenticationProvider":{"AuthMethod":1},"AccessFilterUUID":"728ce19b","Tags":["infra"],
 		"AssetCache":{"enabled":true,"extensions":["css"],"defaultTTLSeconds":60,"maxFileMB":1}}`), &old)
 	c := testCluster()

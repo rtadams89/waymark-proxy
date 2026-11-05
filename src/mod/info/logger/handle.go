@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 // LogConfig represents the log rotation configuration

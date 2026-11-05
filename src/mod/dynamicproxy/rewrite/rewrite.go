@@ -3,7 +3,7 @@ package rewrite
 import (
 	"strconv"
 
-	"imuslab.com/zoraxy/mod/dynamicproxy/permissionpolicy"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/permissionpolicy"
 )
 
 // SplitUpDownStreamHeaders splits user defined headers into upstream and
@@ -28,10 +28,10 @@ func SplitUpDownStreamHeaders(rewriteOptions *HeaderRewriteOptions) ([][]string,
 			thisHeaderSet[1] = ""
 		}
 
-		if customHeader.Direction == HeaderDirection_ZoraxyToUpstream {
+		if customHeader.Direction == HeaderDirection_ToUpstream {
 			upstreamHeaders[upstreamHeaderCounter] = thisHeaderSet
 			upstreamHeaderCounter++
-		} else if customHeader.Direction == HeaderDirection_ZoraxyToDownstream {
+		} else if customHeader.Direction == HeaderDirection_ToDownstream {
 			downstreamHeaders[downstreamHeaderCounter] = thisHeaderSet
 			downstreamHeaderCounter++
 		}

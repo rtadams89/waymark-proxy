@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"imuslab.com/zoraxy/mod/statistic"
+	"github.com/rtadams89/waymark-proxy/mod/statistic"
 )
 
 // Generate all the record keys from a given start and end dates

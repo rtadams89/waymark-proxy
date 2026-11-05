@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 	"github.com/shirou/gopsutil/v4/net"
-	"imuslab.com/zoraxy/mod/info/logger"
-	"imuslab.com/zoraxy/mod/utils"
 )
 
 // FlowStat stores the change of RX and TX

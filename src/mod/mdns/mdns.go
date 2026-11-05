@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/grandcat/zeroconf"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 type MDNSHost struct {
@@ -121,7 +121,6 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 
 	resolver, err := zeroconf.NewResolver(zcoption)
 	if err != nil {
-		// e.g. no IPv6 on the host: skip this scan instead of exiting
 		log.Println("[mDNS] Cannot scan:", err.Error())
 		return []*NetworkHost{}
 	}

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 func (m *Manager) HandleAddProxyConfig(w http.ResponseWriter, r *http.Request) {

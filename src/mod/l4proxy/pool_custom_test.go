@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"imuslab.com/zoraxy/mod/healthcheck"
-	"imuslab.com/zoraxy/mod/info/logger"
+	"github.com/rtadams89/waymark-proxy/mod/healthcheck"
+	"github.com/rtadams89/waymark-proxy/mod/info/logger"
 )
 
 func newTestManager(t *testing.T) *Manager {

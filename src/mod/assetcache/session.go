@@ -16,7 +16,7 @@ const CacheStatusHeader = "X-Waymark-Cache"
 // BeginOptions are request details from the proxy.
 type BeginOptions struct {
 	// The Authorization header holds the proxy's own basic auth credentials
-	AuthorizationIsZoraxys bool
+	AuthorizationIsProxyAuth bool
 }
 
 // Session handles one request on a rule with caching on: it serves the
@@ -59,7 +59,7 @@ func (s *Store) Begin(w http.ResponseWriter, r *http.Request, rule string, cfg *
 	if r.Header.Get("Upgrade") != "" || requestNoStore(r) {
 		return nil
 	}
-	if r.Header.Get("Authorization") != "" && !opts.AuthorizationIsZoraxys {
+	if r.Header.Get("Authorization") != "" && !opts.AuthorizationIsProxyAuth {
 		return nil // per-user credentials for the upstream
 	}
 	ext := strings.TrimPrefix(strings.ToLower(path.Ext(r.URL.Path)), ".")

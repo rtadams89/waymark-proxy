@@ -2,9 +2,9 @@ package dynamicproxy
 
 import (
 	"github.com/google/uuid"
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/dynamicproxy/loadbalance"
-	"imuslab.com/zoraxy/mod/dynamicproxy/rewrite"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/loadbalance"
+	"github.com/rtadams89/waymark-proxy/mod/dynamicproxy/rewrite"
 )
 
 func GetDefaultAuthenticationProvider() *AuthenticationProvider {

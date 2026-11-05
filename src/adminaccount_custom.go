@@ -1,15 +1,7 @@
 package main
 
-/*
-	Admin accounts: the one-time setup code needed to create the first admin
-	account in the web UI, and -set-admin-password, which sets an account's
-	password (or creates the account) at the terminal.
-
-	Without the setup code, whoever opened the admin console first on a new
-	install could make themselves its admin. The code is written to the log
-	when Waymark starts without an admin account, so only someone who can
-	read the log on this machine can create the first account.
-*/
+// The setup code for creating the first admin account, and
+// -set-admin-password.
 
 import (
 	"bufio"
@@ -25,15 +17,15 @@ import (
 	"sync"
 	"time"
 
-	"imuslab.com/zoraxy/mod/auth"
-	"imuslab.com/zoraxy/mod/database"
-	"imuslab.com/zoraxy/mod/database/dbbolt"
-	"imuslab.com/zoraxy/mod/database/dbinc"
-	"imuslab.com/zoraxy/mod/netutils"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/auth"
+	"github.com/rtadams89/waymark-proxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbbolt"
+	"github.com/rtadams89/waymark-proxy/mod/database/dbinc"
+	"github.com/rtadams89/waymark-proxy/mod/netutils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
-// Crockford base32: no I, L, O or U, so the code is easy to read and type.
+// Crockford base32
 const setupCodeAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 const setupCodeLength = 12 // 60 bits
@@ -59,8 +51,8 @@ func newSetupCode() string {
 	return sb.String()
 }
 
-// normalizeSetupCode uppercases s, drops spaces and dashes, and maps the
-// letters people confuse with digits (O, I, L) to them.
+// normalizeSetupCode uppercases s, drops spaces and dashes, and maps O to 0
+// and I and L to 1.
 func normalizeSetupCode(s string) string {
 	s = strings.ToUpper(s)
 	return strings.Map(func(r rune) rune {
@@ -84,13 +76,12 @@ func setupCodeMatches(want, given string) bool {
 	return subtle.ConstantTimeCompare([]byte(w), []byte(g)) == 1
 }
 
-// logSetupCode logs how to create the first admin account. Callers hold
-// adminSetup.
+// logSetupCode logs the setup code. Callers hold adminSetup.
 func logSetupCode() {
 	SystemWideLogger.PrintAndLog("auth", "No admin account yet. To create one, open the admin console and enter the setup code "+adminSetup.code+" (it changes every time Waymark starts), or stop Waymark and run waymark -set-admin-password", nil)
 }
 
-// initAdminSetupCode creates and logs a setup code if there is no admin
+// initAdminSetupCode creates and logs a setup code when there is no admin
 // account.
 func initAdminSetupCode() {
 	adminSetup.Lock()
@@ -101,8 +92,6 @@ func initAdminSetupCode() {
 	}
 }
 
-// HandleAdminRegister creates the first admin account from username,
-// password and setupcode.
 func HandleAdminRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -115,7 +104,6 @@ func HandleAdminRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if adminSetup.code == "" {
-		// The accounts were removed while Waymark was running
 		adminSetup.code = newSetupCode()
 		logSetupCode()
 	}
@@ -144,7 +132,6 @@ func HandleAdminRegister(w http.ResponseWriter, r *http.Request) {
 	utils.SendOK(w)
 }
 
-// selectedDBBackend is the database backend chosen with -db.
 func selectedDBBackend() dbinc.BackendType {
 	switch *databaseBackend {
 	case "leveldb":
@@ -155,8 +142,7 @@ func selectedDBBackend() dbinc.BackendType {
 	return database.GetRecommendedBackendType()
 }
 
-// passwordReader reads lines from the terminal, hiding what is typed for
-// passwords when it can.
+// passwordReader reads lines from the terminal; secret turns off echo.
 type passwordReader struct {
 	in       *bufio.Reader
 	out      io.Writer
@@ -197,7 +183,6 @@ func sttyEcho(on bool) error {
 	return cmd.Run()
 }
 
-// promptAdminPassword asks for the account and its new password.
 func promptAdminPassword(p *passwordReader, existing []string) (string, string, error) {
 	switch len(existing) {
 	case 0:
@@ -236,7 +221,6 @@ func promptAdminPassword(p *passwordReader, existing []string) (string, string, 
 	return username, password, nil
 }
 
-// setAdminPasswordAndExit runs -set-admin-password.
 func setAdminPasswordAndExit() {
 	fail := func(msg string) {
 		fmt.Fprintln(os.Stderr, msg)

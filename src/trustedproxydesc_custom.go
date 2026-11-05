@@ -1,20 +1,17 @@
 package main
 
-// Trusted proxy descriptions are stored as plain text (the UI escapes them
-// when it shows them). Before 2.19.10 they were stored HTML-encoded.
-
 import (
 	"html"
 	"strings"
 	"unicode"
 
-	"imuslab.com/zoraxy/mod/access"
-	"imuslab.com/zoraxy/mod/database"
+	"github.com/rtadams89/waymark-proxy/mod/access"
+	"github.com/rtadams89/waymark-proxy/mod/database"
 )
 
 const (
 	maxTrustedProxyDescLen   = 200
-	trustedProxyDescPlainKey = "trusted_proxy_desc_plain" // set once the descriptions are plain text
+	trustedProxyDescPlainKey = "trusted_proxy_desc_plain"
 )
 
 // cleanTrustedProxyDesc trims a description, drops control characters and
@@ -32,9 +29,7 @@ func cleanTrustedProxyDesc(desc string) string {
 	return desc
 }
 
-// migrateTrustedProxyDescriptions decodes the HTML-encoded descriptions of
-// earlier versions, once. The marker is in custom_fork, which HA sync
-// copies together with conf/trusted_proxies.json.
+// migrateTrustedProxyDescriptions HTML-decodes the descriptions once.
 func migrateTrustedProxyDescriptions(c *access.Controller, db *database.Database) {
 	if c == nil || db == nil {
 		return

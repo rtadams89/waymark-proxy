@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 /* Plugin Groups */

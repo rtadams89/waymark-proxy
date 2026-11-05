@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/pquerna/otp/totp"
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 //go:embed user.html

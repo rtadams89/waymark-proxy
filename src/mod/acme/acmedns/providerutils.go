@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"imuslab.com/zoraxy/mod/utils"
+	"github.com/rtadams89/waymark-proxy/mod/utils"
 )
 
 //go:embed providers.json
