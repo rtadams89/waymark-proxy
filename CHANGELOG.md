@@ -9,6 +9,13 @@ This file lists Waymark Proxy's changes.
 - **MAJOR** (2.0.0): changes that need action when upgrading.
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 
+## 3.5.0
+
+**Health check failures say where they stalled**
+- A failed health check now names the step it was in and how long the finished steps took, in the log and on the health check panel. For example: `timed out after 5s in the TLS handshake with 10.0.0.5:443 (DNS 2ms, connect 1ms)`, `timed out after 5s waiting for the response (connect 1ms, TLS 14ms)` or `connection refused connecting to 10.0.0.5:8080`.
+- HTTP checks report DNS, connecting, the TLS handshake, sending the request, waiting for the response and reading the response headers. TCP and UDP checks report DNS and connecting (and, as before, sending and waiting for the expected reply), and ping checks report DNS and waiting for the echo reply.
+- TCP and UDP checks to a host name look it up first and then try its addresses in turn, so the address that failed is named.
+
 ## 3.4.1
 
 **Fixes**

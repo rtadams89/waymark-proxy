@@ -27,7 +27,7 @@ const userAgent = "waymark-healthcheck/1"
 // ProbeResult is the outcome of one active check.
 type ProbeResult struct {
 	OK         bool
-	Detail     string // e.g. "status 200", "connection refused", "timed out after 3s"
+	Detail     string // e.g. "status 200", "timed out after 3s waiting for the response (DNS 2ms, connect 1ms)"
 	Latency    time.Duration
 	StatusCode int // HTTP checks only; 0 if there was no HTTP response
 }
@@ -115,11 +115,13 @@ func probeHTTP(ctx context.Context, up Upstream, cfg *Config, timeout time.Durat
 		// Redirects are judged against ExpectedStatus, not followed
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
+	st := &stages{}
+	req = req.WithContext(st.trace(req.Context()))
 	start := time.Now()
 	resp, err := client.Do(req)
 	latency := time.Since(start)
 	if err != nil {
-		return ProbeResult{Detail: describeError(err, timeout), Latency: latency}
+		return ProbeResult{Detail: st.describe(err, timeout), Latency: latency}
 	}
 	body, readErr := io.ReadAll(io.LimitReader(resp.Body, bodyReadLimit))
 	resp.Body.Close()
@@ -146,12 +148,12 @@ func probeHTTP(ctx context.Context, up Upstream, cfg *Config, timeout time.Durat
 
 func probeTCP(ctx context.Context, up Upstream, timeout time.Duration) ProbeResult {
 	addr := withDefaultPort(up.Addr, up.RequireTLS)
-	d := net.Dialer{Timeout: timeout}
+	st := &stages{}
 	start := time.Now()
-	conn, err := d.DialContext(ctx, "tcp", addr)
+	conn, err := st.dial(ctx, "tcp", addr, timeout)
 	latency := time.Since(start)
 	if err != nil {
-		return ProbeResult{Detail: describeError(err, timeout), Latency: latency}
+		return ProbeResult{Detail: st.describe(err, timeout), Latency: latency}
 	}
 	conn.Close()
 	return ProbeResult{OK: true, Detail: "connected", Latency: latency}
@@ -162,11 +164,11 @@ func probeTCP(ctx context.Context, up Upstream, timeout time.Duration) ProbeResu
 func probeTCPExchange(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
 	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat) // validated on save
 	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)
-	d := net.Dialer{Timeout: timeout}
+	st := &stages{}
 	start := time.Now()
-	conn, err := d.DialContext(ctx, "tcp", up.Addr)
+	conn, err := st.dial(ctx, "tcp", up.Addr, timeout)
 	if err != nil {
-		return ProbeResult{Detail: describeError(err, timeout), Latency: time.Since(start)}
+		return ProbeResult{Detail: st.describe(err, timeout), Latency: time.Since(start)}
 	}
 	defer conn.Close()
 	if deadline, ok := ctx.Deadline(); ok {
@@ -188,11 +190,11 @@ func probeTCPExchange(ctx context.Context, up Upstream, cfg *Config, timeout tim
 func probeUDP(ctx context.Context, up Upstream, cfg *Config, timeout time.Duration) ProbeResult {
 	send, _ := DecodePayload(cfg.Send, cfg.PayloadFormat)
 	expect, _ := DecodePayload(cfg.Expect, cfg.PayloadFormat)
-	d := net.Dialer{Timeout: timeout}
+	st := &stages{}
 	start := time.Now()
-	conn, err := d.DialContext(ctx, "udp", up.Addr)
+	conn, err := st.dial(ctx, "udp", up.Addr, timeout)
 	if err != nil {
-		return ProbeResult{Detail: describeError(err, timeout), Latency: time.Since(start)}
+		return ProbeResult{Detail: st.describe(err, timeout), Latency: time.Since(start)}
 	}
 	defer conn.Close()
 	if deadline, ok := ctx.Deadline(); ok {
@@ -270,10 +272,16 @@ func hostOnly(addr string) string {
 
 func probeICMP(ctx context.Context, up Upstream, timeout time.Duration) ProbeResult {
 	host := hostOnly(up.Addr)
+	st := &stages{}
+	st.begin("looking up " + host + " in DNS")
 	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-	if err != nil || len(ips) == 0 {
+	if err != nil {
+		return ProbeResult{Detail: st.describe(err, timeout)}
+	}
+	if len(ips) == 0 {
 		return ProbeResult{Detail: "could not resolve " + host}
 	}
+	st.done("DNS")
 	ip := ips[0].IP
 	for _, a := range ips {
 		if a.IP.To4() != nil { // prefer IPv4
@@ -285,9 +293,10 @@ func probeICMP(ctx context.Context, up Upstream, timeout time.Duration) ProbeRes
 	if !ok {
 		deadline = time.Now().Add(timeout)
 	}
+	st.begin("waiting for an echo reply from " + ip.String())
 	rtt, err := pingOnce(ip, deadline)
 	if err != nil {
-		return ProbeResult{Detail: describeError(err, timeout)}
+		return ProbeResult{Detail: st.describe(err, timeout)}
 	}
 	return ProbeResult{OK: true, Detail: "reply from " + ip.String(), Latency: rtt}
 }

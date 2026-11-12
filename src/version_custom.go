@@ -6,7 +6,7 @@ package main
 const (
 	PRODUCT_NAME       = "Waymark Proxy"
 	PRODUCT_SHORT_NAME = "Waymark"
-	PRODUCT_VERSION    = "3.4.1"
+	PRODUCT_VERSION    = "3.5.0"
 	PRODUCT_REPO       = "https://github.com/rtadams89/waymark-proxy"
 
 	// DISPLAY_VERSION is shown in the web UI and by -version, and compared

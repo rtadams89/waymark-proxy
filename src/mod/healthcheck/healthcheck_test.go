@@ -433,7 +433,7 @@ func TestProbeHTTP(t *testing.T) {
 	}
 
 	cfg.Path = "/slow"
-	if r := DefaultProber(context.Background(), up, cfg); r.OK || r.Detail != "timed out after 1s" {
+	if r := DefaultProber(context.Background(), up, cfg); r.OK || !strings.HasPrefix(r.Detail, "timed out after 1s waiting for the response (connect ") {
 		t.Errorf("slow upstream should time out: %+v", r)
 	}
 }
@@ -459,7 +459,7 @@ func TestProbeTCP(t *testing.T) {
 		t.Errorf("open port: %+v", r)
 	}
 	ln.Close()
-	if r := DefaultProber(context.Background(), Upstream{Addr: addr}, cfg); r.OK || r.Detail != "connection refused" {
+	if r := DefaultProber(context.Background(), Upstream{Addr: addr}, cfg); r.OK || r.Detail != "connection refused connecting to "+addr {
 		t.Errorf("closed port: %+v", r)
 	}
 }
