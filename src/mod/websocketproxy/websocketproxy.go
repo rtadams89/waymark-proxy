@@ -81,7 +81,6 @@ func NewProxy(target *url.URL, options Options) *WebsocketProxy {
 		return &u
 	}
 
-	// Create a new websocket proxy
 	wsprox := &WebsocketProxy{Backend: backend, Verbal: false, Options: options}
 	if options.CopyAllHeaders {
 		wsprox.Director = DefaultDirector
@@ -146,12 +145,11 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	dialer := w.Dialer
 	if w.Dialer == nil {
 		if w.Options.SkipTLSValidation {
-			//Disable TLS secure check if target allow skip verification
-			bypassDialer := websocket.DefaultDialer
+			// Copy of the default dialer with verification off
+			bypassDialer := *DefaultDialer
 			bypassDialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-			dialer = bypassDialer
+			dialer = &bypassDialer
 		} else {
-			//Just use the default dialer come with gorilla websocket
 			dialer = DefaultDialer
 		}
 	}
@@ -194,9 +192,7 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		requestHeader.Set("X-Forwarded-Proto", "https")
 	}
 
-	// Replace header variables and copy user-defined headers
 	if w.Options.CopyAllHeaders {
-		// Rewrite the user defined headers
 		rewrittenUserDefinedHeaders := rewrite.PopulateRequestHeaderVariables(req, w.Options.UserDefinedHeaders)
 		upstreamHeaders, _ := rewrite.SplitUpDownStreamHeaders(&rewrite.HeaderRewriteOptions{
 			UserDefinedHeaders: rewrittenUserDefinedHeaders,
@@ -243,7 +239,6 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	upgrader := *baseUpgrader
 
-	// Bypass the request origin check
 	if w.Options.SkipOriginCheck {
 		upgrader.CheckOrigin = func(r *http.Request) bool {
 			return true

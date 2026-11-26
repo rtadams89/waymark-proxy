@@ -35,8 +35,7 @@ func (router *Router) PrepareProxyRoute(endpoint *ProxyEndpoint) (*ProxyEndpoint
 		}
 
 		webProxyEndpoint := domain
-		if !strings.HasPrefix("http://", domain) && !strings.HasPrefix("https://", domain) {
-			//TLS is not hardcoded in proxy target domain
+		if !strings.HasPrefix(domain, "http://") && !strings.HasPrefix(domain, "https://") {
 			if vdir.RequireTLS {
 				webProxyEndpoint = "https://" + webProxyEndpoint
 			} else {

@@ -144,7 +144,6 @@ func (m *Manager) HandleAddStoreSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Resync the downloadable plugin list to include the new source
 	err = m.UpdateDownloadablePluginList()
 	if err != nil {
 		m.Log("Failed to resync plugin list after adding source", err)

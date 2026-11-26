@@ -189,7 +189,6 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 		}
 	}
 
-	//Load relay configs from db
 	previousRules := []*ProxyRelayInstance{}
 	convertedRules := false
 	l4ProxyConfigFiles, err := filepath.Glob(options.ConfigStore + "/*.config")
@@ -224,7 +223,6 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 				continue
 			}
 
-			// Rename the file to uuid.config
 			newConfigFile := filepath.Join(options.ConfigStore, thisRelayConfig.UUID+".config")
 			err = os.Rename(configFile, newConfigFile)
 			if err != nil {
@@ -247,7 +245,6 @@ func NewL4Proxy(options *Options) (*Manager, error) {
 		Configs: previousRules,
 	}
 
-	//Inject manager into the rules
 	for _, rule := range previousRules {
 		rule.parent = thisManager
 	}
@@ -413,7 +410,6 @@ func (m *Manager) EditConfig(newConfig *ProxyRuleUpdateConfig) error {
 	m.SaveConfigToDatabase()
 	m.changed()
 
-	//Start it again if it was running
 	if wasRunning {
 		return foundConfig.Start()
 	}

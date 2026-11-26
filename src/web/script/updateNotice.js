@@ -177,7 +177,7 @@
             if (pageVersion == null) pageVersion = d.current;
             if (d.current != pageVersion){
                 // This node now runs another version (an install, a roll back or a
-                // rolling update): reload so the page matches it
+                // rolling update): reload to match it
                 waitFrom = null;
                 pageVersion = d.current;
                 msgbox("Waymark is now running " + d.current + ". Reloading...", true);

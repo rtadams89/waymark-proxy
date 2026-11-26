@@ -192,7 +192,6 @@
         <br><br><br>
         <script>
 
-            //Get hash from windows
             let hash = window.location.hash;
             let payload = hash.substring(1);
             let pluginID = "";
@@ -266,7 +265,6 @@
                 $("#registered_ui_proxy_path").text(registeredUIProxyPath);
                 $("#registered_subscription_path").text(subscriptionPath);
 
-                //Update permitted API endpoints
                 let apiEndpoints = data.Spec.permitted_api_endpoints;
                 if (apiEndpoints == null || apiEndpoints.length == 0) {
                     $("#plugin_permitted_api_endpoints").html('<tr><td colspan="3">No API endpoints registered</td></tr>');
@@ -306,4 +304,4 @@
             }
         </script>
     </body>
-</html>
+</html>

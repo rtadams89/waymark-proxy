@@ -88,7 +88,6 @@ func (t *trie) insert(ipAddr string, cc string) {
 			ccIdx:   ccIdx,
 		})
 	} else {
-		// IPv6
 		t.isIPv6 = true
 		high, low := ipv6ToUint64Pair(parsedIP)
 		t.rangesV6 = append(t.rangesV6, ipRangeV6{
@@ -148,7 +147,7 @@ func (t *trie) searchIPv4(ip net.IP) string {
 		return t.ranges[i].startIP > ipVal
 	})
 
-	// idx is now the first element > ipVal, so we want idx-1
+	// idx is the first element > ipVal
 	if idx == 0 {
 		return ""
 	}

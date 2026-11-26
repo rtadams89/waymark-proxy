@@ -30,7 +30,6 @@ func getRandomPort(minPort int) int {
 
 func initACME() *acme.ACMEHandler {
 	SystemWideLogger.Println("Starting ACME handler")
-	rand.Seed(time.Now().UnixNano())
 	port := getRandomPort(30000)
 
 	for acme.IsPortInUse(port) {
@@ -88,7 +87,6 @@ func acmeRegisterSpecialRoutingRule() {
 				return
 			}
 
-			// Rejects challenge requests with a query string.
 			if parsedURL.RawQuery != "" {
 				http.Error(w, "Query string not allowed in ACME challenge", http.StatusBadRequest)
 				return

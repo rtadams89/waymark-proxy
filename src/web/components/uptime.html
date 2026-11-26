@@ -173,10 +173,8 @@
         let url = value[value.length - 1].URL;
         let protocol = value[0].Protocol;
 
-        //Generate the status dot
         let statusDotList = ``;
         for(var i = 0; i < (288 - value.length); i++){
-            //Padding
             statusDotList += `<div class="padding statusDot"></div>`
         }
 
@@ -367,4 +365,4 @@
             return "Unknown Error";
         }
     }
-</script>
+</script>

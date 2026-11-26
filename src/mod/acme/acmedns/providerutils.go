@@ -58,7 +58,7 @@ func HandleServeProvidersJson(w http.ResponseWriter, r *http.Request) {
 		}
 
 		providers := []string{}
-		for providerName, _ := range configTemplateMap {
+		for providerName := range configTemplateMap {
 			providers = append(providers, providerName)
 		}
 

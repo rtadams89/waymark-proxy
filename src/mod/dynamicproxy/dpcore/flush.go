@@ -20,7 +20,6 @@ func (p *ReverseProxy) getFlushInterval(req *http.Request, res *http.Response) t
 		return -1
 	}
 
-	// Keep-alive connections
 	connectionHeader := req.Header["Connection"]
 	if len(connectionHeader) > 0 && strings.Contains(strings.Join(connectionHeader, ","), "keep-alive") {
 		return -1

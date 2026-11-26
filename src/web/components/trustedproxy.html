@@ -213,7 +213,6 @@
                         msgbox("Failed to reset: " + data.error, false);
                         return;
                     }
-                    // data is the new proxy list
                     $('#trustedProxyTextArea').val(proxyListToCsv(data));
                     tpBulkArea.reset();
                     msgbox("Trusted proxy list reset to defaults", true);

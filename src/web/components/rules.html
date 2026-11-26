@@ -384,7 +384,6 @@
 </div>
 <script>
 
-    //New Proxy Endpoint
     function newProxyEndpoint(){
         let rootname = $("#rootname").val();
         let proxyDomain = $("#proxyDomain").val();
@@ -463,7 +462,6 @@
                 if (data.error != undefined){
                     msgbox(data.error, false, 5000);
                 }else{
-                    //Clear old data
                     $("#rootname").val("");
                     $("#proxyDomain").val("");
                     $("#proxyTags").val("");
@@ -495,8 +493,7 @@
         
     }
 
-    //Clearn the proxy target value, make sure user do not enter http:// or https://
-    //and auto select TLS checkbox if https:// exists
+    //Strip http:// or https:// from the target and tick TLS for https://
     function autoFillTargetTLS(input){
         let targetDomain = $(input).val().trim();
         if (targetDomain.startsWith("http://")){
@@ -581,9 +578,8 @@
     */
     let credentials = []; // Global variable to store credentials
 
-    // The new rule form is kept until "Create HTTP Rule" is clicked. The
-    // listen address and ACL lists are filled in from the server, so they
-    // are not tracked.
+    // Tracks the new rule form until "Create HTTP Rule" is clicked; the
+    // listen address and ACL lists come from the server and are untracked.
     var newHttpRuleArea = wmTrackChanges("#newHttpRuleForm", {saveButton: "#newHttpRuleCreateBtn", onDiscard: function(){
         credentials = [];
         updateTable();
@@ -645,7 +641,6 @@
         // Remove the credential from the credentials array
         credentials.splice(index, 1);
 
-        // Update the table body
         updateTable();
     }
 
@@ -714,7 +709,6 @@
     }
 
     tabSwitchEventBind["rules"] = function(){
-        //Update the access rule lists and the addresses
         initNewProxyRuleAccessDropdownList();
         initNewRuleListenIPList();
         if (window.refreshNewL4AccessList) refreshNewL4AccessList();

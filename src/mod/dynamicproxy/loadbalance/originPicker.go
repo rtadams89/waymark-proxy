@@ -90,7 +90,6 @@ func (m *RouteManager) getSessionHandler(r *http.Request, upstreams []*Upstream)
 		return -1, err
 	}
 
-	// Retrieve session values for origin
 	originDomainRaw := session.Values["zr_sid_origin"]
 	originIDRaw := session.Values["zr_sid_index"]
 
@@ -119,13 +118,11 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 		return upstreams[0], 0, nil
 	}
 
-	// Preserve the index with upstreams
 	type upstreamWithIndex struct {
 		Upstream *Upstream
 		Index    int
 	}
 
-	// Calculate total weight for upstreams with weight > 0
 	totalWeight := 0
 	fallbackUpstreams := make([]upstreamWithIndex, 0, len(upstreams))
 
@@ -146,10 +143,8 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 		return nil, -1, errors.New("no valid destination servers available")
 	}
 
-	// Random weight between 0 and total weight
 	randomWeight := rand.Intn(totalWeight)
 
-	// Select an upstream based on the random weight
 	for index, upstream := range upstreams {
 		if upstream.Weight > 0 {
 			if randomWeight < upstream.Weight {
@@ -159,7 +154,7 @@ func getRandomUpstreamByWeight(upstreams []*Upstream) (*Upstream, int, error) {
 		}
 	}
 
-	// If we reach here, it means we should return a fallback upstream if available
+	// Fallback upstream, if any
 	if len(fallbackUpstreams) > 0 {
 		randIndex := rand.Intn(len(fallbackUpstreams))
 		return fallbackUpstreams[randIndex].Upstream, fallbackUpstreams[randIndex].Index, nil

@@ -107,14 +107,12 @@ func ReverseProxyUpstreamAdd(w http.ResponseWriter, r *http.Request) {
 		RespTimeout:              int64(respTimeout),
 	}
 
-	//Add the new upstream to endpoint
 	err = targetEndpoint.AddUpstreamOrigin(&newUpstream, preactivate)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
 
-	//Save changes to configs
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
 		SystemWideLogger.PrintAndLog("proxy-config", "Unable to save new destination to proxy config", err)
@@ -122,7 +120,6 @@ func ReverseProxyUpstreamAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Update Uptime Monitor
 	UpdateUptimeMonitorTargets()
 
 	utils.SendOK(w)
@@ -152,7 +149,6 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	originIP = strings.TrimSpace(originIP)
 
-	//Update content payload
 	payload, err := utils.PostPara(r, "payload")
 	if err != nil {
 		utils.SendErrorResponse(w, "update payload not set")
@@ -197,7 +193,6 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Save changes to configs
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
 		SystemWideLogger.PrintAndLog("proxy-config", "Unable to save destination update to proxy config", err)
@@ -205,7 +200,6 @@ func ReverseProxyUpstreamUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Update Uptime Monitor
 	UpdateUptimeMonitorTargets()
 	utils.SendOK(w)
 }
@@ -291,7 +285,6 @@ func ReverseProxyUpstreamDelete(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
-	//Save changes to configs
 	err = SaveReverseProxyConfig(targetEndpoint)
 	if err != nil {
 		SystemWideLogger.PrintAndLog("proxy-config", "Unable to remove destination", err)
@@ -299,7 +292,6 @@ func ReverseProxyUpstreamDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Update uptime monitor
 	UpdateUptimeMonitorTargets()
 
 	utils.SendOK(w)

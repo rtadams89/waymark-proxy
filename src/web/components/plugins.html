@@ -299,12 +299,11 @@ function loadPluginsForTag(tag) {
       `);
     }
 
-    //Load the remaining plugins to the selectable list
     $("#selectablePluginList").html("");
     let selectablePluginCount = 0;
     plugin_list.forEach(plugin => {
       if (plugin.Spec.type != 0) {
-        //This is not a router plugin, skip
+        //Skip non-router plugins
         return;
       }
       if (!selectedPluginIDs.includes(plugin.Spec.id)) {
@@ -336,7 +335,6 @@ function loadPluginsForTag(tag) {
   });
 }
 
-//Load all the tags from the server
 function loadTags(){
   $.get(`/api/proxy/listTags`, function(data){
     $("#pluginTagList").find(".menu").html("");
@@ -363,7 +361,7 @@ function initSelectablePluginList(){
   $.get(`/api/plugins/list`, function(data){
       data.forEach(plugin => {
       if (plugin.Spec.type != 0) {
-        //This is not a router plugin, skip
+        //Skip non-router plugins
         return;
       }
       $("#selectablePluginList").append(`
@@ -403,7 +401,6 @@ function bindEventsToSelectableItems(){
   });
 }
 
-//Bind events for the buttons
 function bindTagAssignButtonEvents(){
   $(".addSelectedPluginTotagBtn").on("click", function(){
     const selectedPlugin = $(".selectablePluginItem.active");
@@ -495,7 +492,6 @@ function initPluginSideMenu(){
       `);
     }
 
-    //Rebind events for the plugin menu
     $("#pluginMenu").find(".item").each(function(){
         $(this).off("click").on("click", function(event){
             let tabid = $(this).attr("tag");
@@ -645,7 +641,6 @@ function rebuildPlugin(pluginId, btn=undefined) {
     data: {plugin_id: pluginId},
     success: function(data){
       if (data.error != undefined){
-        // Show build error with detailed output
         showBuildErrorDialog(data.error);
       }else{
         msgbox("Plugin rebuilt successfully", true);
@@ -679,10 +674,8 @@ function showBuildErrorDialog(errorMessage) {
     </div>
   `;
   
-  // Remove existing modal if any
   $('#buildErrorModal').remove();
   
-  // Append and show the modal
   $('body').append(modalHtml);
   $('#buildErrorModal').modal('show');
 }
@@ -733,14 +726,12 @@ function uninstallPlugin(pluginId, pluginName, btn=undefined) {
         return;
       }
 
-      // Set the checkbox for Plugin Auto Reload
       if (data == true) {
         $("#enablePluginAutoReload").checkbox('set checked');
       } else {
         $("#enablePluginAutoReload").checkbox('set unchecked');
       }
 
-      // Fetch the auto reload interval
       $.get('/api/plugins/developer/setAutoReloadInterval', function(data) {
         if (data.error != undefined) {
           msgbox(data.error, false);

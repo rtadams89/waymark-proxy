@@ -92,7 +92,6 @@ func (m *Manager) getPluginListFromURL(url string) ([]*DownloadablePlugin, error
 }
 
 func (m *Manager) ListDownloadablePlugins() []*DownloadablePlugin {
-	//List all downloadable plugins
 	if len(m.Options.DownloadablePluginCache) == 0 {
 		return []*DownloadablePlugin{}
 	}
@@ -117,7 +116,6 @@ func (m *Manager) InstallPlugin(plugin *DownloadablePlugin) error {
 		return fmt.Errorf("failed to create plugin directory: %w", err)
 	}
 
-	// Download the plugin binary
 	downloadURL, ok := plugin.DownloadURLs[runtime.GOOS+"_"+runtime.GOARCH]
 	if !ok {
 		return fmt.Errorf("no download URL available for the current platform")
@@ -152,7 +150,6 @@ func (m *Manager) InstallPlugin(plugin *DownloadablePlugin) error {
 		return fmt.Errorf("failed to set executable permissions: %w", err)
 	}
 
-	// Download the icon if IconPath is a full URL
 	iconURL := strings.TrimSpace(plugin.IconPath)
 	if strings.HasPrefix(iconURL, "http://") || strings.HasPrefix(iconURL, "https://") {
 		err = downloadFileTo(iconURL, filepath.Join(pluginDir, "icon.png"))
@@ -162,7 +159,6 @@ func (m *Manager) InstallPlugin(plugin *DownloadablePlugin) error {
 	}
 	out.Close()
 
-	//Reload the plugin list
 	m.ReloadPluginFromDisk()
 
 	return nil
@@ -193,7 +189,6 @@ func (m *Manager) UninstallPlugin(pluginID string) error {
 		return fmt.Errorf("failed to remove plugin directory: %w", err)
 	}
 
-	//Reload the plugin list
 	m.ReloadPluginFromDisk()
 	return nil
 }
@@ -240,7 +235,6 @@ func (m *Manager) HandleInstallPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Install the plugin
 	err = m.InstallPlugin(plugin)
 	if err != nil {
 		utils.SendErrorResponse(w, "Failed to install plugin: "+err.Error())
@@ -263,7 +257,6 @@ func (m *Manager) HandleUninstallPlugin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Uninstall the plugin
 	err = m.UninstallPlugin(pluginID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Failed to uninstall plugin: "+err.Error())
@@ -286,7 +279,6 @@ func (m *Manager) HandleEmitCustomEvent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// parse the event payload from the request body
 	var payload events.CustomEvent
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		utils.SendErrorResponse(w, "Failed to parse event: "+err.Error())
@@ -299,7 +291,6 @@ func (m *Manager) HandleEmitCustomEvent(w http.ResponseWriter, r *http.Request) 
 		for _, rid := range payload.Recipients {
 			recipients = append(recipients, eventsystem.ListenerID(rid))
 		}
-		// Emit the event to subscribers and specified recipients
 		eventsystem.Publisher.EmitToSubscribersAnd(recipients, &payload)
 	} else {
 		// Emit the event to all subscribers

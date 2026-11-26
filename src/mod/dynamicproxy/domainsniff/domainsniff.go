@@ -89,7 +89,7 @@ func HandleCheckSiteSupportTLS(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "invalid url given")
 		return
 	}
-	// Host and port only; a path is not needed to detect TLS
+	// Host and port only
 	targetURL = strings.TrimSpace(targetURL)
 	if i := strings.IndexAny(targetURL, "/?#"); i >= 0 {
 		targetURL = targetURL[:i]

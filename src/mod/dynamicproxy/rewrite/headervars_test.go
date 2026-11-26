@@ -22,7 +22,7 @@ func TestGetHeaderVariableValuesFromRequest(t *testing.T) {
 		"$remote_addr":     "192.168.1.1:12345",
 		"$request_uri":     "https://example.com/test?foo=bar",
 		"$request_method":  "GET",
-		"$content_length":  "0", // ContentLength is 0 because there's no body in the request
+		"$content_length":  "0", // no request body
 		"$content_type":    "application/json",
 		"$uri":             "/test",
 		"$args":            "foo=bar",

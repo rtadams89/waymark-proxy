@@ -20,7 +20,6 @@ func (m *RouteManager) IsTargetOnline(upstreamIP string) bool {
 
 // NotifyHostOnlineState records the online state of a host.
 func (m *RouteManager) NotifyHostOnlineState(upstreamIP string, isOnline bool) {
-	//if the upstream IP contains http or https, strip it
 	upstreamIP = strings.TrimPrefix(upstreamIP, "http://")
 	upstreamIP = strings.TrimPrefix(upstreamIP, "https://")
 

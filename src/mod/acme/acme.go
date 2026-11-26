@@ -117,7 +117,6 @@ func (a *ACMEHandler) obtainCert(progressID string, domains []string, certificat
 
 	logf("Obtaining certificate for: "+strings.Join(domains, ", "), nil)
 
-	// Defaults to Let's Encrypt
 	if caName == "" {
 		caName = "Let's Encrypt"
 	}
@@ -125,7 +124,6 @@ func (a *ACMEHandler) obtainCert(progressID string, domains []string, certificat
 	if caName == "custom" {
 		logf("Using Custom ACME "+caUrl+" for CA Directory URL", nil)
 	} else if caUrl == "" {
-		// Loads the CA URL from ca.json
 		caLinkOverwrite, err := loadCAApiServerFromName(caName, a.TestMode)
 		if err == nil {
 			caUrl = caLinkOverwrite

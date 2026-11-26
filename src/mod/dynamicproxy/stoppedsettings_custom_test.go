@@ -4,8 +4,7 @@ import (
 	"testing"
 )
 
-// Changing a listener setting must not start a stopped proxy (it used to:
-// the setters called Restart, which starts the proxy when it is stopped).
+// Changing a listener setting leaves a stopped proxy stopped.
 func TestListenerSettingsKeepStoppedProxyStopped(t *testing.T) {
 	// With a root set, a call to Restart would get as far as starting the
 	// listeners (on a random port) or fail the test on the missing parts

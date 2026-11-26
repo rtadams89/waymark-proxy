@@ -23,7 +23,6 @@ func (m *Manager) UpdateTagsToPluginMaps() {
 		return true
 	})
 
-	//build the plugin list for each tag
 	m.tagPluginListMutex.Lock()
 	m.tagPluginList = make(map[string][]*Plugin)
 	for tag, pluginIds := range m.Options.PluginGroups {
@@ -41,7 +40,6 @@ func (m *Manager) UpdateTagsToPluginMaps() {
 
 // GetForwarderRadixTreeFromPlugins generates the radix tree for static forwarders
 func (m *Manager) GetForwarderRadixTreeFromPlugins(pluginIds []string) *radix.Tree {
-	// Create a new radix tree
 	r := radix.New()
 
 	// Iterate over the loaded plugins and insert their paths into the radix tree
@@ -52,7 +50,6 @@ func (m *Manager) GetForwarderRadixTreeFromPlugins(pluginIds []string) *radix.Tr
 			continue
 		}
 
-		// Check if the plugin ID is in the list of plugin IDs
 		includeThisPlugin := false
 		for _, id := range pluginIds {
 			if plugin.Spec.ID == id {

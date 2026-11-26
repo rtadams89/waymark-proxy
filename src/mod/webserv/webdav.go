@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/rtadams89/waymark-proxy/mod/auth"
 	"github.com/rtadams89/waymark-proxy/mod/netutils"
@@ -70,7 +71,6 @@ func (wd *WebDAVServer) basicAuthMiddleware(next http.Handler) http.Handler {
 
 // validateCustomCredentials validates custom WebDAV credentials
 func (wd *WebDAVServer) validateCustomCredentials(username, password string) bool {
-	// Get stored username and hashed password from database
 	var storedUsername string
 	var storedPasswordHash string
 
@@ -106,13 +106,13 @@ func (wd *WebDAVServer) Start(port string) error {
 		return errors.New("port already in use or access denied by host OS")
 	}
 
-	// Create server with basic auth middleware
 	mux := http.NewServeMux()
 	mux.Handle("/", wd.basicAuthMiddleware(wd.handler))
 
 	wd.server = &http.Server{
-		Addr:    "127.0.0.1:" + port,
-		Handler: mux,
+		Addr:              "127.0.0.1:" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {

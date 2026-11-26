@@ -104,7 +104,6 @@ func (ws *WebServer) SetDisableListenToAllInterface(w http.ResponseWriter, r *ht
 	// Update the option in the web server instance
 	ws.option.DisableListenToAllInterface = disableListen
 
-	// Restart the server if it is running
 	if ws.IsRunning() {
 		err = ws.Restart()
 		if err != nil {
@@ -173,7 +172,6 @@ func (ws *WebServer) HandleSetUseCustomCredentials(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// If WebDAV is running, restart it to apply the new setting
 	if ws.WebDAV != nil && ws.WebDAV.IsRunning() {
 		err = ws.WebDAV.Restart(ws.option.WebDAVPort)
 		if err != nil {
@@ -211,7 +209,6 @@ func (ws *WebServer) HandleSetCustomCredentials(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Save the custom credentials
 	err = ws.SetCustomCredentials(username, password)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())

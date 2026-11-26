@@ -543,8 +543,7 @@
                 }else{
                     msgbox(start ? "Layer 4 rule started" : "Layer 4 rule stopped");
                 }
-                //A listener that cannot open (address in use) stops the proxy
-                //again a moment after it starts, so look again shortly
+                //Refresh again shortly: a listener that cannot open stops the rule
                 initL4ProxyList(true);
                 if (start){
                     setTimeout(function(){ initL4ProxyList(true); }, 800);
@@ -666,8 +665,7 @@
         initL4ProxyList(true, callback);
     }
 
-    // saveL4Config saves changed rule settings (/api/l4proxy/config/edit
-    // takes every setting, so the rest are sent as they are)
+    // saveL4Config sends the changed rule settings with the rest unchanged
     function saveL4Config(changes, callback=undefined){
         let c = l4Editing;
         if (c == null) return;
@@ -879,7 +877,6 @@
     // reloads what the panel changed
     function hideL4EditorSideWrapper(resync=false){
         $("#l4EditModal .editor_side_wrapper").fadeOut("fast", function(){
-            // Reset the side wrapper frame URL
             $("#l4EditModal .editor_side_wrapper .wrapper_frame").attr("src", "snippet/placeholder.html");
         });
         if (resync){

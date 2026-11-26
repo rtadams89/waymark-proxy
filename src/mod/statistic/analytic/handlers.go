@@ -51,7 +51,6 @@ func (d *DataLoader) HandleLoadTargetDaySummary(w http.ResponseWriter, r *http.R
 	if day == time.Now().Format("2006_01_02") {
 		targetDailySummary = *d.StatisticCollector.GetExportSummary()
 	} else {
-		//Not today data
 		err = d.Database.Read("stats", day, &targetDailySummary)
 		if err != nil {
 			utils.SendErrorResponse(w, "target day data not found")
@@ -76,7 +75,6 @@ func (d *DataLoader) HandleLoadTargetRangeSummary(w http.ResponseWriter, r *http
 		return
 	}
 
-	//Merge the summaries into one
 	mergedSummary := mergeDailySummaryExports(dailySummaries)
 
 	js, _ := json.Marshal(struct {
@@ -114,7 +112,6 @@ func (d *DataLoader) HandleRangeExport(w http.ResponseWriter, r *http.Request) {
 
 		writer := csv.NewWriter(&csvContent)
 
-		// Write the header row
 		header := []string{"Date", "TotalRequest", "ErrorRequest", "ValidRequest", "ForwardTypes", "RequestOrigin", "RequestClientIp", "Referer", "UserAgent", "RequestURL"}
 		err := writer.Write(header)
 		if err != nil {
@@ -152,11 +149,9 @@ func (d *DataLoader) HandleRangeExport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Set the response headers
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", "attachment; filename=analytics_"+start+"_to_"+end+".csv")
 
-		// Write the CSV content to the response writer
 		_, err = w.Write([]byte(csvContent.String()))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -233,7 +228,6 @@ func (d *DataLoader) HandleResetAllStats(w http.ResponseWriter, r *http.Request)
 		d.Database.Delete("stats", key)
 	}
 
-	//Also reset the in-memory statistic collector
 	log.Println("RESETING in-memory statistics")
 	d.StatisticCollector.ResetSummaryOfDay()
 

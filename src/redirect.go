@@ -139,7 +139,6 @@ func handleEditRedirectionRule(w http.ResponseWriter, r *http.Request) {
 
 // Toggle redirection regex support
 func handleToggleRedirectRegexpSupport(w http.ResponseWriter, r *http.Request) {
-	//Update the current regex support rule enable state
 	enableRegexSupport, err := utils.PostBool(r, "enable")
 	if err != nil {
 		//Return the current state of the regex support
@@ -187,7 +186,6 @@ func handleToggleRedirectionRuleEnable(w http.ResponseWriter, r *http.Request) {
 
 // Toggle redirection case sensitivity. Note that this affects all redirection rules
 func handleToggleRedirectCaseSensitivity(w http.ResponseWriter, r *http.Request) {
-	//Update the current case sensitivity rule enable state
 	enableCaseSensitivity, err := utils.PostBool(r, "enable")
 	if err != nil {
 		//Return the current state of the case sensitivity

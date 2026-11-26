@@ -1,8 +1,8 @@
 package main
 
 /*
-	Settings tables stored as JSON files in the config folder instead of
-	sys.db (routed in mod/database).
+	Settings tables stored as JSON files in the config folder (routed in
+	mod/database).
 */
 
 import (

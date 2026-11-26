@@ -670,7 +670,6 @@
                 $('#zorxAuthCookieDuration').val(data.cookieDuration || 3600);
                 $('#zorxAuthCookieDurationRememberMe').val(data.cookieDurationRememberMe || 604800);
                 
-                // Rate limiting settings
                 if (data.enableRateLimit !== undefined && data.enableRateLimit === true) {
                     $("#zorxAuthEnableRateLimit").parent().checkbox("set checked");
                 } else {

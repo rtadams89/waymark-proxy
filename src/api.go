@@ -148,7 +148,6 @@ func RegisterZorxAuthUserManagementAPIs(authRouter *auth.RouterDef) {
 	authRouter.HandleFunc("/api/sso/zorxauth/users/logoutAll", zorxAuthRouter.HandleLogoutAllUsers)
 	authRouter.HandleFunc("/api/sso/zorxauth/users/disable2fa", zorxAuthRouter.HandleDisableUserTOTP)
 
-	// Group Policy management
 	authRouter.HandleFunc("/api/sso/zorxauth/grouppolicy/list", zorxAuthRouter.HandleGroupPolicyList)
 	authRouter.HandleFunc("/api/sso/zorxauth/grouppolicy/create", zorxAuthRouter.HandleGroupPolicyCreate)
 	authRouter.HandleFunc("/api/sso/zorxauth/grouppolicy/update", zorxAuthRouter.HandleGroupPolicyUpdate)
@@ -351,6 +350,10 @@ func RegisterAuthAPIs(targetMux *http.ServeMux) {
 
 		if newPassword != confirmPassword {
 			utils.SendErrorResponse(w, "confirm password not match")
+			return
+		}
+		if err := auth.ValidateNewPassword(newPassword); err != nil {
+			utils.SendErrorResponse(w, err.Error())
 			return
 		}
 

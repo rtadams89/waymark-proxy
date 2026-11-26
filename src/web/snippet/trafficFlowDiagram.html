@@ -576,7 +576,7 @@
         // Map a (primary, cross) layout coordinate to screen (x, y).
         //   primary = flow axis (Internet → Proxy → Upstream)
         //   cross   = stacking axis (rows of proxies / upstreams)
-        // In vertical mode the two axes are swapped so the flow runs top→bottom.
+        // Vertical mode swaps the axes: the flow runs top to bottom.
         function toXY(primary, cross) {
             return vertical ? { x: cross, y: primary } : { x: primary, y: cross };
         }
@@ -590,7 +590,6 @@
         const upstreamCrossExtent   = vertical ? UPSTREAM_W : UPSTREAM_H;
         const internetCrossExtent   = INTERNET_W; // square node — same either way
 
-        // Build SVG defs: drop-shadow filter
         const defs = svgEl("defs");
 
         const filter = svgEl("filter", { id: "shadow", x: "-20%", y: "-20%", width: "140%", height: "140%" });
@@ -600,7 +599,6 @@
 
         svg.appendChild(defs);
 
-        // Sort proxies by request count, highest first
         proxies.sort((a, b) => b.requestCount - a.requestCount);
 
         // Compute max traffic count for edge width scaling
@@ -615,7 +613,7 @@
             for (const us of proxy.upstreams) {
                 if (upstreamMap.has(us.origin)) {
                     const existing = upstreamMap.get(us.origin);
-                    // upstream.requestCount is a global stat (not per-proxy), so take the max, not the sum
+                    // upstream.requestCount is global: take the max
                     existing.requestCount = Math.max(existing.requestCount, us.requestCount);
                     if (!us.inactive) existing.inactive = false;
                 } else {

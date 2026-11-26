@@ -510,7 +510,7 @@ func validHostname(h string) bool {
 // PoolSettings are the pool settings of one rule, as the UI sends them.
 type PoolSettings struct {
 	Destinations        []Destination       `json:"destinations"`
-	Upstreams           []string            `json:"upstreams,omitempty"` // older clients: addresses, each with weight 1
+	Upstreams           []string            `json:"upstreams,omitempty"` // plain address list, each with weight 1
 	LoadBalancing       string              `json:"loadBalancing"`       // weighted (default) or leastconn
 	StickySessions      bool                `json:"stickySessions"`
 	HealthCheck         *healthcheck.Config `json:"healthCheck"` // nil: no checks

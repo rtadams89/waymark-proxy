@@ -66,8 +66,7 @@ var verifiedPasswords sync.Map // stored hash -> verifiedPassword
 var verifiedPasswordCount int64
 var verifiedPasswordMu sync.Mutex
 
-// PasswordMatchesCached is PasswordMatches with verified results cached; it
-// does not report upgrades.
+// PasswordMatchesCached is PasswordMatches with verified results cached.
 func PasswordMatchesCached(stored, raw string) bool {
 	if v, ok := verifiedPasswords.Load(stored); ok {
 		vp := v.(verifiedPassword)

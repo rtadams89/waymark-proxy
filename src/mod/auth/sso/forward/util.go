@@ -43,13 +43,10 @@ func headerCookieRedact(r *http.Request, names []string, exclude bool) {
 	value := strings.Join(cookies, "; ")
 
 	r.Header.Set(HeaderCookie, value)
-
-	return
 }
 
 func headerCopyExcluded(original, destination http.Header, excludedHeaders []string) {
 	for key, values := range original {
-		// Skips doNotCopyHeaders
 		if stringInSliceFold(key, doNotCopyHeaders) {
 			continue
 		}
@@ -72,7 +69,6 @@ func headerCopyIncluded(original, destination http.Header, includedHeaders []str
 
 func headerCopyAll(original, destination http.Header) {
 	for key, values := range original {
-		// Skips doNotCopyHeaders
 		if stringInSliceFold(key, doNotCopyHeaders) {
 			continue
 		}
@@ -83,7 +79,6 @@ func headerCopyAll(original, destination http.Header) {
 
 func headerCopyIncludedExact(original, destination http.Header, keys []string) {
 	for key, values := range original {
-		// Skips doNotCopyHeaders
 		if stringInSliceFold(key, doNotCopyHeaders) {
 			continue
 		}

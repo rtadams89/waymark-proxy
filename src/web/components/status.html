@@ -386,7 +386,7 @@
     </div>
 </div>
 
-<!-- Shown only while the HTTP proxy is not running (initRPStaste) -->
+<!-- Shown while the HTTP proxy is stopped (initRPStaste) -->
 <div class="standardContainer nobottom" id="zrProxyOffline" style="display:none;">
     <div class="ui yellow message" style="margin: 0;">
         <i class="exclamation triangle icon"></i>
@@ -672,9 +672,8 @@
 
 <script>
 
-    // Shows a notice while the HTTP proxy is not running (for example when
-    // its port was taken when Waymark started). Also called by other pages
-    // after listener changes.
+    // Shows a notice while the HTTP proxy is stopped. Also called by other
+    // pages after listener changes.
     function initRPStaste(){
         $.get("/api/proxy/status", function(data){
             if (!data || data.error != undefined){
@@ -1272,7 +1271,6 @@
         }, 300);
     }
 
-    //Resize the map with the window
     window.addEventListener('resize', resizeWorldMap);
 
     //Only resize the map while it is visible

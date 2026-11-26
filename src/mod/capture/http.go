@@ -85,18 +85,16 @@ type httpExchange struct {
 	recordCli  bool
 	clientDone bool
 
-	// upstream side
 	up *upstreamSide
 }
 
 // teeBody copies what is read from a body into a message.
 type teeBody struct {
-	rc      io.ReadCloser
-	ex      *httpExchange
-	m       *message
-	onEOF   func()
-	once    sync.Once
-	closeFn func()
+	rc    io.ReadCloser
+	ex    *httpExchange
+	m     *message
+	onEOF func()
+	once  sync.Once
 }
 
 func (t *teeBody) Read(p []byte) (int, error) {

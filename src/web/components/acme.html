@@ -141,7 +141,6 @@
     $("#acmeAutoRenewCheckbox").checkbox();
     $("#renewAllSupportedCheckbox").checkbox();
 
-    // Email gate control
     function updateEmailGate(email) {
         if (email.trim() === "") {
             $("#acmeAutoRenewCheckbox").addClass("disabled");
@@ -152,7 +151,6 @@
         }
     }
 
-    // Toggle state
     function initToggleState(){
         $.get("/api/acme/autoRenew/enable", function(data){
             enableTriggerOnChangeEvent = false;

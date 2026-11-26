@@ -260,7 +260,7 @@ func isGREASE(v uint16) bool { return v&0x0f0f == 0x0a0a && v>>8 == v&0xff }
 func versionRange(versions []uint16) string {
 	var lo, hi uint16
 	for _, v := range versions {
-		if isGREASE(v) || v < tls.VersionSSL30 || v > tls.VersionTLS13 {
+		if isGREASE(v) || v < 0x0300 || v > tls.VersionTLS13 {
 			continue
 		}
 		if lo == 0 || v < lo {

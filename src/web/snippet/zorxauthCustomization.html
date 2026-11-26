@@ -366,7 +366,7 @@
 				if (!st.image){
 					return;
 				}
-				//Default to "contain" so the whole image is visible inside the frame
+				//Default to "contain": the whole image fits the frame
 				st.baseScale = Math.min(st.frameWidth / st.image.width, st.frameHeight / st.image.height);
 				st.zoom = 1;
 				st.offsetX = 0;

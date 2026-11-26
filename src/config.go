@@ -236,8 +236,11 @@ func ImportConfigFromZip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Max upload size 10 MB
-	r.ParseMultipartForm(10 << 20)
+	r.Body = http.MaxBytesReader(w, r.Body, 512<<20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
 
 	file, handler, err := r.FormFile("file")
 	if err != nil {

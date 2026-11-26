@@ -34,10 +34,8 @@ func (m *Manager) RebuildPlugin(pluginID string) error {
 		return errors.New("plugin does not contain a Makefile or main.go file")
 	}
 
-	// Remember if the plugin was enabled
 	wasEnabled := plugin.Enabled
 
-	// Stop the plugin if it's running
 	if wasEnabled {
 		m.Log("Stopping plugin "+plugin.Spec.Name+" for rebuild", nil)
 		err = m.StopPlugin(pluginID)
@@ -49,7 +47,6 @@ func (m *Manager) RebuildPlugin(pluginID string) error {
 	// Build the plugin
 	var cmd *exec.Cmd
 	if hasMakefile {
-		// Use make to build
 		m.Log("Building plugin "+plugin.Spec.Name+" using Makefile", nil)
 		cmd = exec.Command("make")
 		cmd.Dir = plugin.RootDir
@@ -83,7 +80,6 @@ func (m *Manager) RebuildPlugin(pluginID string) error {
 
 	m.Log("Plugin \""+plugin.Spec.Name+"\" rebuilt successfully", nil)
 
-	// Restart the plugin if it was enabled before
 	if wasEnabled {
 		m.Log("Restarting plugin \""+plugin.Spec.Name+"\"", nil)
 		err = m.StartPlugin(pluginID)

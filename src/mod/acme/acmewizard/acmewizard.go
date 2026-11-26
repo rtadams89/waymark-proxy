@@ -157,8 +157,5 @@ func isHTTPServerAvailable(ipAddress string) bool {
 
 func isDomainReachable(domain string) bool {
 	_, err := net.LookupHost(domain)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }

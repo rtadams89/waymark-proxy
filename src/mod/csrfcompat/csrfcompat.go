@@ -5,8 +5,7 @@
 //
 // Unsafe methods are rejected when Sec-Fetch-Site reports a cross-origin
 // request, or when the Origin host does not match the Host header. GET, HEAD
-// and OPTIONS, and requests with neither header, are allowed. Tokens are not
-// checked.
+// and OPTIONS, and requests with neither header, are allowed.
 package csrfcompat
 
 import (
@@ -15,8 +14,7 @@ import (
 	"net/http"
 )
 
-// Option is accepted for compatibility with gorilla/csrf.Protect and has no
-// effect.
+// Option is gorilla/csrf.Protect's option type.
 type Option func(*options)
 
 type options struct{}
@@ -37,7 +35,7 @@ func Path(string) Option           { return func(*options) {} }
 func SameSite(SameSiteMode) Option { return func(*options) {} }
 
 // Protect returns middleware that rejects cross-origin, state-changing
-// browser requests. authKey and opts are ignored.
+// browser requests.
 func Protect(authKey []byte, opts ...Option) func(http.Handler) http.Handler {
 	protection := http.NewCrossOriginProtection()
 	return func(h http.Handler) http.Handler {
@@ -45,7 +43,7 @@ func Protect(authKey []byte, opts ...Option) func(http.Handler) http.Handler {
 	}
 }
 
-// Token returns a random value; Protect does not check it.
+// Token returns a random value.
 func Token(r *http.Request) string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

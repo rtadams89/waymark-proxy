@@ -40,7 +40,6 @@ func NewDB(path string) (*DB, error) {
 		batch: leveldb.Batch{},
 	}
 
-	// Flushes batched writes every second
 	writeFlushTicker := time.NewTicker(1 * time.Second)
 	writeFlushStop := make(chan bool)
 	go func() {

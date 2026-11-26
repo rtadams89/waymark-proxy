@@ -308,7 +308,7 @@ sudo sysctl --system</pre></div>
             $("#haNodesTable tbody").empty();
             (c.nodes || []).forEach(n => $("#haNodesTable tbody").append(nodeRow(n)));
             haMarkSelf();
-            // The DNS name guesses count as loaded values, not as changes
+            // The DNS name guesses count as loaded values
             haGuessHostnames(function(){ if (haArea) haArea.reset(); });
         }
 
@@ -330,7 +330,7 @@ sudo sysctl --system</pre></div>
             finish();
         };
 
-        // Nothing in the cluster form is saved until "Save and apply"
+        // The cluster form is saved by "Save and apply"
         var haArea = wmTrackChanges("#haForm", {saveButton: "#haSaveBtn", onDiscard: function(){ haLoad(true); }});
         $(document).off("change.haGuess").on("change.haGuess", "#haForm .haGuessFrom", function(){ haGuessHostnames(); });
 
@@ -404,7 +404,7 @@ sudo sysctl --system</pre></div>
                 haRenderCluster("#haClusterBox", {enabled: c.enabled, syncEnabled: c.syncEnabled, vip: c.vip, floatingIPs: fips, nodes: d.cluster || [], rollingUpdate: rolling},
                     {actions: {latest: upd && upd.latest ? upd.latest.version : "", rolling: rolling,
                                switching: rolling || sw.state == "switching" || (haActionLocal && haActionLocal.ok && Date.now() - haActionLocal.time < 20000)}});
-                // A switch-over made by a rolling update is shown with its steps instead
+                // A switch-over made by a rolling update is shown with its steps
                 let rs = d.rolling && d.rolling.state;
                 renderSwitch(rs && sw.time && rs.started <= sw.time ? {} : sw);
                 renderRolling(d, upd);
@@ -456,8 +456,7 @@ sudo sysctl --system</pre></div>
                 let stale = d.rolling.current === false ? `<div class="haHint" style="margin-top: 0.4em;">${esc(d.rolling.reportedBy)} is not answering right now (restarting?); this is its last report.</div>` : "";
                 let retry = r.phase == "failed" ? `<div class="haHint" style="margin-top: 0.4em;">Fix the problem, then start the rolling update again: nodes that already run ${esc(r.to)} are skipped. Nodes on different versions pause configuration sync until they match.</div>` : "";
                 parts.push(`<div class="ui ${cls} message" style="margin: 0;"><div>${head}</div><div class="haRollSteps">${steps}</div>${stale}${retry}</div>`);
-                // This node is updated in the last step: check its version with
-                // each refresh, so the page reloads as soon as it runs the new one
+                // This node is updated in the last step: reload once it runs the new version
                 let last = r.steps[r.steps.length - 1];
                 if (r.phase == "running" && me && last && last.node == me.name && last.state == "running" && window.updRefresh){
                     updRefresh();

@@ -81,7 +81,7 @@ func (d DayStats) HitRate() float64 {
 	return float64(served) / float64(total)
 }
 
-// Store is the shared memory cache. The zero value is not usable; use NewStore.
+// Store is the shared memory cache, created by NewStore.
 type Store struct {
 	mu        sync.Mutex
 	maxBytes  int64
@@ -203,7 +203,7 @@ func (s *Store) rollDayLocked() {
 	s.today = DayStats{Date: today}
 }
 
-// Totals are a rule's all-time counters, not reset by Purge.
+// Totals are a rule's all-time counters, kept across Purge.
 type Totals struct {
 	Hits        int64 `json:"hits"`
 	Revalidated int64 `json:"revalidated"`

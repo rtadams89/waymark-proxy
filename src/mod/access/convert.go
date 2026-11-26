@@ -1,7 +1,7 @@
 package access
 
 /*
-	Converts the access rules of 2.17 and earlier (conf/access/*.json) into
+	Converts legacy access rules (conf/access/*.json) into
 	ACLs with the same IDs. Each list becomes an object, and the rules are:
 	deny the blocklist; allow Private networks (if LAN was allowed); allow
 	the allowlist, or allow any without an allowlist. A permissive "default"

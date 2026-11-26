@@ -60,7 +60,6 @@ func (m *Manager) GetPluginSpec(entryPoint string) (*zoraxyPlugin.IntroSpect, er
 		return nil, err
 	}
 
-	// Parse the JSON output into pluginSpec
 	err = json.Unmarshal(output, &pluginSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal plugin spec: %v", err)

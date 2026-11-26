@@ -31,7 +31,6 @@ func (m *Manager) HandleRoute(w http.ResponseWriter, r *http.Request, tags []str
 			}
 		}
 
-		//Check if the plugin enabled dynamic route
 		m.tagPluginListMutex.RLock()
 		for _, plugin := range m.tagPluginList[tag] {
 			if plugin.Enabled && plugin.Spec.DynamicCaptureSniff != "" && plugin.Spec.DynamicCaptureIngress != "" {
@@ -41,7 +40,6 @@ func (m *Manager) HandleRoute(w http.ResponseWriter, r *http.Request, tags []str
 		m.tagPluginListMutex.RUnlock()
 	}
 
-	//Handle the static route if found
 	if len(staticRoutehandlers) > 0 {
 		staticRoutehandlers[0].HandleStaticRoute(w, r, longestPrefixAcrossAlltags)
 		return true

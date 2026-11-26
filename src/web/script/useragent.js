@@ -161,7 +161,6 @@
             break;
     }
 
-    // Return OS and browser
     return {
         os: os,
         browser: browser,

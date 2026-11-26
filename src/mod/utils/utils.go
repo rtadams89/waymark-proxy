@@ -37,7 +37,6 @@ func SendOK(w http.ResponseWriter) {
 
 // Get GET parameter
 func GetPara(r *http.Request, key string) (string, error) {
-	// Get first value from the URL query
 	value := r.URL.Query().Get(key)
 	if len(value) == 0 {
 		return "", errors.New("invalid " + key + " given")
@@ -65,7 +64,6 @@ func GetBool(r *http.Request, key string) (bool, error) {
 
 // Get POST parameter
 func PostPara(r *http.Request, key string) (string, error) {
-	// Try to parse the form
 	if err := r.ParseForm(); err != nil {
 		return "", err
 	}
@@ -79,7 +77,6 @@ func PostPara(r *http.Request, key string) (string, error) {
 
 // Get POST parameter as time.Duration
 func PostDuration(r *http.Request, key string) (*time.Duration, error) {
-	// Try to parse the form
 	if err := r.ParseForm(); err != nil {
 		return nil, err
 	}
@@ -134,7 +131,6 @@ func PostInt(r *http.Request, key string) (int, error) {
 func FileExists(filename string) bool {
 	_, err := os.Stat(filename)
 	if err == nil {
-		// File exists
 		return true
 	} else if errors.Is(err, os.ErrNotExist) {
 		// File does not exist
@@ -179,7 +175,6 @@ func ValidateListeningAddress(address string) bool {
 		return true
 	}
 
-	// Split the address into host and port parts
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		// Try to parse it as just a port

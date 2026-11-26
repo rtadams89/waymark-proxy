@@ -289,19 +289,16 @@
       });
     }
 
-    //Render the domains table
     function renderDomainTable(domainFileList) {
       // Get the table body element
       var tableBody = $('#domainTableBody');
       
-      // Clear the table body
       tableBody.empty();
       
       // Iterate over the domain names
       var counter = 0;
       for (const [srcfile, domains] of Object.entries(domainFileList)) {
 
-        // Create a table row
         var row = $('<tr>');
         
         // Create the domain name cell
@@ -326,7 +323,6 @@
         checkboxCell.append(checkbox);
         row.append(checkboxCell);
         
-        // Add the row to the table body
         tableBody.append(row);
 
         counter++;
@@ -357,7 +353,6 @@
         url: "/api/acme/listExpiredDomains",
         method: "GET",
         success: function(response) {
-          // Render domain table
           expiredDomains = response.domain;
           initDomainTable();
         },
@@ -451,7 +446,7 @@
       clearInterval(obtainProgressPoller);
       clearInterval(obtainElapsedTimer);
       obtainProgressPoller = null;
-      // One last fetch so the final lines are shown
+      // One last fetch for the final lines
       pollObtainProgress(function(){
         if (succ){
           $("#obtainProgressIcon").attr("class", "green check circle icon");
@@ -532,12 +527,10 @@
       }
     })
 
-    // Get filename form domains and input
     function getFilename() {
       var domains = $("#domainsInput").val();
       var filename = $("#filenameInput").val();
       if (filename.trim() == "" && !domains.includes(",")){
-        //The filename matches the domains
         filename = domains;
       }else if (filename != "" && !domains.includes(",")){
         //Invalid settings. Force the filename to be same as domain
@@ -548,13 +541,12 @@
         return;
       }
 
-      //Filename cannot contain wildcards, and wildcards are possible with DNS challenges
+      //Wildcards become underscores in the file name
       filename = filename.replaceAll("*", "_");
       return filename;
     }
       
 
-    // Update EAB values for autorenewal
     function updateCertificateEAB(callback=undefined) {
       var ca = $("#ca").dropdown("get value");
       var caURL = "";
@@ -607,7 +599,6 @@
             // Show success message
             parent.msgbox("Certificate EAB updated successfully");
             
-            // Renew the parent certificate list
             parent.initManagedDomainCertificateList();
             if (callback != undefined){
               callback(true);
@@ -715,7 +706,6 @@
       });
     }
 
-    // Obtain certificate from API
     function obtainCertificate(callback=undefined) {
       var domains = $("#domainsInput").val();
       var filename = getFilename();
@@ -799,7 +789,6 @@
       });
     }
 
-    //Check if the entered domain contains multiple domains
     function checkIfInputDomainIsMultiple(){
       var inputDomains = $("#domainsInput").val();
       if (inputDomains.includes(",")){
@@ -830,7 +819,6 @@
       }
     });
 
-    //Handle the input change event on domain input
     function handlePostInputAutomation(){
       checkIfInputDomainIsMultiple();
       validateDNSChallengeSupport();

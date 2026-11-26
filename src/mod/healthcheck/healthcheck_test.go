@@ -64,7 +64,7 @@ func (c *fakeClock) advance(d time.Duration) {
 	c.mu.Unlock()
 }
 
-// blockingProber never returns, so tests drive results by hand.
+// blockingProber blocks forever; tests report results directly.
 func blockingProber(ctx context.Context, _ Upstream, _ *Config) ProbeResult {
 	<-ctx.Done()
 	return ProbeResult{}

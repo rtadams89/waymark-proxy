@@ -52,10 +52,8 @@ func SplitUpDownStreamHeaders(rewriteOptions *HeaderRewriteOptions) ([][]string,
 	if rewriteOptions.EnablePermissionPolicyHeader {
 		var usingPermissionPolicy *permissionpolicy.PermissionsPolicy
 		if rewriteOptions.PermissionPolicy != nil {
-			//Custom permission policy
 			usingPermissionPolicy = rewriteOptions.PermissionPolicy
 		} else {
-			// Default permission policy
 			usingPermissionPolicy = permissionpolicy.GetDefaultPermissionPolicy()
 		}
 

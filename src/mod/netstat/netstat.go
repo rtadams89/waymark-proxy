@@ -98,7 +98,6 @@ func NewNetStatBuffer(recordCount int, systemWideLogger *logger.Logger) (*NetSta
 					systemWideLogger.PrintAndLog("netstat", "No initial states. Waiting", nil)
 					return
 				}
-				// Get the latest network interface stats
 				rx, tx, err := thisNetBuffer.GetNetworkInterfaceStats()
 				if err != nil {
 					// Log the error and keep going

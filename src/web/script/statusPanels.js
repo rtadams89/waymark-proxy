@@ -9,7 +9,7 @@
     or show it. Every change is saved at once.
 */
 (function(){
-    // def: shown when the user has not chosen yet. The default order is the
+    // def: shown by default. The default order is the
     // order of the tiles in components/status.html.
     // sizes: the widths a panel offers (its default is data-size in the markup)
     const CARD = ["quarter", "third", "half"];
@@ -61,9 +61,8 @@
         return Object.prototype.hasOwnProperty.call(visible, p.id) ? visible[p.id] === true : p.def;
     }
 
-    // The saved order with unknown and repeated ids dropped, and panels it
-    // does not list (e.g. added in a later version) placed after the panel
-    // they follow by default
+    // The saved order with unknown and repeated ids dropped, and unlisted
+    // panels placed after the panel they follow by default
     function fullOrder(){
         let list = order.filter((id, i) => panel(id) && order.indexOf(id) == i);
         DEFAULT_ORDER.forEach(function(id, i){

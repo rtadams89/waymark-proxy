@@ -215,9 +215,7 @@
                 <!-- Ingress Settings Tab -->
                 <div id="globalsettings" class="functiontab" target="globalsettings.html"></div>
 
-                <!-- Virtual Directory Tab -->
-
-                <!-- Subdomain Proxy -->
+                <!-- HTTP Proxy -->
                 <div id="httprp" class="functiontab" target="httprp.html"></div>
 
                 <!-- Create Rules -->
@@ -381,11 +379,9 @@
                             let parsedData = JSON.parse(tabID);
                             tabID = parsedData.tabID;
                             
-                            //Open the plugin context window
                             if (tabID == "pluginContextWindow"){
                                 let pluginID = parsedData.pluginID;
                                 if (pluginID == undefined){
-                                    //Do not swap page
                                     return;
                                 }
                                 if (!openPluginTabByID(pluginID)){
@@ -463,7 +459,6 @@
                         }
                     });
 
-                    // Remove dark theme for traffic flow diagram
                     $("#trafficFlowDiagram")[0].contentWindow.document.body.classList.remove("darkTheme");
 
                     if ($("#pluginContextLoader").is(":visible")){
@@ -480,7 +475,6 @@
                             $(this)[0].contentWindow.setDarkTheme(true);
                         }
                     })
-                    // Add dark theme for traffic flow diagram
                     $("#trafficFlowDiagram")[0].contentWindow.document.body.classList.add("darkTheme");
                     if ($("#pluginContextLoader").is(":visible")){
                         $("#pluginContextLoader")[0].contentWindow.setDarkTheme(true);
@@ -538,7 +532,7 @@
                 $(".functiontab").hide();
                 $("#" + tabID).fadeIn('fast', function(){
                     setTimeout(function(){
-                        //Only handlers the pages registered are called, never a property picked by the tab ID
+                        //Calls only the handlers the pages registered
                         for (const [boundTabID, handler] of Object.entries(tabSwitchEventBind)){
                             if (boundTabID === tabID && typeof handler == "function"){
                                 handler();
@@ -560,7 +554,6 @@
                     window.location.hash = tabID;
                 }
 
-                // Update document title
                 var tabLabel = $(targetBtn).clone().children('i').remove().end().text().trim();
                 document.title = 'Waymark' + (tabLabel ? ' | ' + tabLabel : '');
 
@@ -597,10 +590,8 @@
                 //Just to make sure there are no animation runnings
                 progressBar.stop();
 
-                // Update the question to confirm
                 questionElement.text(question_to_confirm);
 
-                // Start the progress bar animation
                 progressBar.css("width", "100%");
                 progressBar.animate({ width: "0%", easing: "linear" }, delaytime * 1000, function() {
                     // Animation complete, invoke the callback with undefined
@@ -609,19 +600,15 @@
                     //Unset the event listener
                     $("#confirmBox .ui.green.button").off("click");
 
-                    // Hide the confirm box
                     $("#confirmBox").hide();
                 });
 
                 // Bind click event to "Yes" button
                 $("#confirmBox .ui.green.button").on("click", function() {
-                    // Stop the progress bar animation
                     progressBar.stop();
 
-                    // Invoke the callback with true
                     callback(true);
 
-                    // Hide the confirm box
                     $("#confirmBox").hide();
 
                     //Unset the event listener
@@ -630,20 +617,16 @@
 
                 // Bind click event to "No" button
                 $("#confirmBox .ui.red.button").on("click", function() {
-                    // Stop the progress bar animation
                     progressBar.stop();
 
-                    // Invoke the callback with false
                     callback(false);
 
-                    // Hide the confirm box
                     $("#confirmBox").hide();
 
                      //Unset the event listener
                     $("#confirmBox .ui.red.button").off("click");
                 });
 
-                // Show the confirm box
                 $("#confirmBox").show().transition('jiggle');
             }
 

@@ -97,13 +97,11 @@ func handleInjectHTML(w http.ResponseWriter, r *http.Request, relativeFilepath s
 		".csrfToken": csrf.Token(r),
 	}
 
-	// Replace template tokens in the HTML content
 	for key, value := range templateStrings {
 		placeholder := "{{" + key + "}}"
 		htmlContent = strings.ReplaceAll(htmlContent, placeholder, value)
 	}
 
-	// Write the modified HTML content to the response
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(htmlContent))
 }

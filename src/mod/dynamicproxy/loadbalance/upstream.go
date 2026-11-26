@@ -24,8 +24,7 @@ func (u *Upstream) StartProxy(tlsServerName string) error {
 		domain = domain[:len(domain)-1]
 	}
 
-	if !strings.HasPrefix("http://", domain) && !strings.HasPrefix("https://", domain) {
-		//TLS is not hardcoded in proxy target domain
+	if !strings.HasPrefix(domain, "http://") && !strings.HasPrefix(domain, "https://") {
 		if u.RequireTLS {
 			domain = "https://" + domain
 		} else {

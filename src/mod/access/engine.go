@@ -26,8 +26,6 @@ type matcher struct {
 	publicIP  bool
 }
 
-func (m *matcher) needsCountry() bool { return len(m.countries) > 0 }
-
 func (m *matcher) add(typ, value string) {
 	switch typ {
 	case SourceIP:

@@ -32,7 +32,6 @@ type NetworkHost struct {
 
 // Create a new MDNS discoverer, set MacOverride to empty string for using the first NIC discovered
 func NewMDNS(config NetworkHost, MacOverride string) (*MDNSHost, error) {
-	//Get host MAC Address
 	macAddress, err := getMacAddr()
 	if err != nil {
 		return nil, err
@@ -146,7 +145,6 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 				var macAddrs []string
 				val, ok := properties["mac_addr"]
 				if !ok || val == "" {
-					// No MacAddr found
 					macAddrs = []string{}
 				} else {
 					macAddrs = strings.Split(properties["mac_addr"], ",")
@@ -180,7 +178,6 @@ func (m *MDNSHost) Scan(timeout int, domainFilter string) []*NetworkHost {
 					var macAddrs []string
 					val, ok := properties["mac_addr"]
 					if !ok || val == "" {
-						// No MacAddr found
 						macAddrs = []string{}
 					} else {
 						macAddrs = strings.Split(properties["mac_addr"], ",")

@@ -58,7 +58,6 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Rate Limit
 		if sep.RequireRateLimit {
 			err := h.handleRateLimitRouting(w, r, sep)
 			if err != nil {
@@ -70,7 +69,6 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// CAPTCHA Gating
 		if handled, challenged := h.Parent.handleCaptchaGating(w, r, sep); handled {
 			if challenged {
 				h.Parent.logRequest(r, false, 403, "captcha-required", domainOnly, "captcha", sep)
@@ -148,9 +146,8 @@ func (h *ProxyHandler) handleRootRouting(w http.ResponseWriter, r *http.Request)
 			return
 		} else if !strings.HasSuffix(proxyingPath, "/") && proot.ProxyType != ProxyTypeRoot {
 			potentialProxtEndpoint := proot.GetVirtualDirectoryHandlerFromRequestURI(proxyingPath + "/")
-			if potentialProxtEndpoint != nil && !targetProxyEndpoint.Disabled {
-				// Adds the missing trailing slash
-				http.Redirect(w, r, r.RequestURI+"/", http.StatusTemporaryRedirect)
+			if potentialProxtEndpoint != nil && !potentialProxtEndpoint.Disabled {
+				http.Redirect(w, r, trailingSlashLocation(r), http.StatusTemporaryRedirect)
 				return
 			}
 		}

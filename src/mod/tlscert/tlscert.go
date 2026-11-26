@@ -346,7 +346,6 @@ func (m *Manager) RemoveCert(domain string) error {
 		}
 	}
 
-	//Update the cert list
 	m.UpdateLoadedCertList()
 	return nil
 }

@@ -148,7 +148,6 @@ func NewDynamicProxyCore(target *url.URL, prepender string, dpcOptions *DpcoreOp
 
 	thisTransporter := newBaseTransport(dpcOptions)
 
-	// SNI for HTTPS backends
 	useRequestHostAsSNI := false
 	useClientHostAsSNI := false
 	if strings.EqualFold(target.Scheme, "https") && dpcOptions.TLSNameMode == TLSNameUpstream {
@@ -213,7 +212,7 @@ func (p *ReverseProxy) transportFor(base *http.Transport, serverName string, htt
 		trc.TLSClientConfig = cfg
 	}
 	if p.sniTransportCount.Load() >= maxSNITransports {
-		// Not cached
+		// Uncached transport
 		trc.DisableKeepAlives = true
 		return trc
 	}
@@ -493,7 +492,6 @@ func (p *ReverseProxy) ProxyHTTP(rw http.ResponseWriter, req *http.Request, rrr 
 		res.Header.Set("x-proxy-by", "waymark/"+rrr.Version)
 	}
 
-	// Location header rewrite
 	if res.Header.Get("Location") != "" {
 		locationRewrite := res.Header.Get("Location")
 		originLocation := res.Header.Get("Location")

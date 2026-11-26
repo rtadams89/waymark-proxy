@@ -117,7 +117,7 @@ var (
 	CONF_L4_PROXY              string
 	CONF_CERT_STORE            string
 	CONF_REDIRECTION           string
-	CONF_ACCESS_RULE           string // access rules of 2.17 and earlier, converted to ACLs
+	CONF_ACCESS_RULE           string // legacy access rules, converted to ACLs
 	CONF_ACL                   string // ACLs and objects
 	CONF_PATH_RULE             string
 	CONF_PLUGIN_GROUPS         string

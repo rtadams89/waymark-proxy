@@ -13,7 +13,7 @@ import (
 type Options struct {
 	Logger             logger.Logger
 	ConfigFolder       string
-	LegacyFolder       string // access rules of 2.17 and earlier
+	LegacyFolder       string // legacy access rule folder
 	TrustedProxiesFile string
 	GeoDB              *geodb.Store
 	Database           *database.Database

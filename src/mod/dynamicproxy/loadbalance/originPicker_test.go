@@ -3,14 +3,10 @@ package loadbalance
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"testing"
-	"time"
 )
 
 func TestRandomUpstreamSelection(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-
 	upstreams := []*Upstream{
 		{
 			OriginIpOrDomain:         "192.168.1.1:8080",

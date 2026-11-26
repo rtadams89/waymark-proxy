@@ -767,7 +767,6 @@
             upstreams = `<i class="ui yellow exclamation triangle icon"></i> No Active Destination<br>`;
         }else{
             subd.ActiveOrigins.forEach(upstream => {
-                //Check if the upstreams require TLS connections
                 let tlsIcon = "";
                 if (upstream.RequireTLS){
                     tlsIcon = `<i class="green lock icon" title="TLS Mode"></i>`;
@@ -962,13 +961,11 @@
                     <td data-label="" colspan="9"><i class="green check circle icon"></i> No HTTP rules</td>
                 </tr>`);
             }else{
-                //Sort by RootOrMatchingDomain field
                 data.sort((a,b) => (a.RootOrMatchingDomain > b.RootOrMatchingDomain) ? 1 : ((b.RootOrMatchingDomain > a.RootOrMatchingDomain) ? -1 : 0))
                 httpProxyList = data;
                 data.forEach(subd => {
                     let subdData = encodeURIComponent(JSON.stringify(subd));
                     
-                    //Build the upstream list
                     let upstreams = renderUpstreamList(subd);
 
                     let inboundTlsIcon = "";
@@ -981,7 +978,6 @@
                         inboundTlsIcon = `<i class="yellow lock open icon" title="Plain Text Mode"></i>`;
                     }
                     
-                    //Build the virtual directory list
                     let vdList = renderVirtualDirectoryList(subd);
                     let vdIsEmpty = (subd.VirtualDirectories.length == 0);
 
@@ -1016,7 +1012,6 @@
                         aliasDomains += `</small><br>`;
                     }
 
-                    //Build the sorting value
                     let destSortValue = subd.ActiveOrigins.map(o => {
                         // Check if it's an IP address (with optional port)
                         let upstreamAddr = o.OriginIpOrDomain;
@@ -1038,17 +1033,14 @@
                         return upstreamAddr;
                     }).join(",");
                     
-                    //Build tag list
                     let tagList = renderTagList(subd);
                     let tagListEmpty = (subd.Tags.length == 0);
                     
-                    //Build listening ports list
                     let listeningPortsList = renderListeningPortsList(subd);
                     
                     //Build access rule display (will be populated later)
                     let accessRuleDisplay = renderAccessRuleName(subd);
                     
-                    //Build authentication display
                     let authDisplay = "";
                     if (subd.AuthenticationProvider.AuthMethod == 0x1) {
                         authDisplay = `<i class="ui grey key icon"></i> Basic Auth`;
@@ -1101,15 +1093,6 @@
                             ${tagList}
                             </div>
                         </td>
-                        <!-- <td data-label="" editable="true" datatype="advanced" style="width: 350px;">
-                            ${subd.AuthenticationProvider.AuthMethod == 0x1?`<i class="ui grey key icon"></i> Basic Auth`:``}
-                            ${subd.AuthenticationProvider.AuthMethod == 0x2?`<i class="ui blue key icon"></i> Forward Auth`:``}
-                            ${subd.AuthenticationProvider.AuthMethod == 0x3?`<i class="ui yellow key icon"></i> OAuth2`:``}
-                            ${subd.AuthenticationProvider.AuthMethod == 0x4?`<i class="ui purple key icon"></i> Waymark Auth`:``}
-                            ${subd.AuthenticationProvider.AuthMethod != 0x0 && subd.RequireRateLimit?"<br>":""}
-                            ${subd.RequireRateLimit?`<i class="ui green check icon"></i> Rate Limit @ ${subd.RateLimit} req/s`:``}
-                            ${subd.AuthenticationProvider.AuthMethod == 0x0 && !subd.RequireRateLimit?`<small style="opacity: 0.3; pointer-events: none; user-select: none;">No Special Settings</small>`:""}
-                        </td> -->
                         <td class="center aligned ignoremw" editable="true" datatype="action" data-label="">
                             <button title="Edit Proxy Rule" class="ui circular small basic icon button editBtn inlineEditActionBtn" onclick='editEndpoint("${(subd.RootOrMatchingDomain).hexEncode()}")'><i class="ellipsis vertical icon"></i></button>
                             ${deleteBtn}
@@ -1129,7 +1112,7 @@
         });
     }
 
-    //Perform realtime alias update without refreshing the whole page
+    //Update the alias list in place
     function updateAliasListForEndpoint(endpointName, newAliasDomainList){
         let targetEle = $(`.aliasDomains[eptuuid='${endpointName}']`);
         console.log(targetEle);
@@ -1180,7 +1163,6 @@
         var row = $('tr[eptuuid="' + uuid + '"]');
         var payload = $(row).attr("payload");
         payload = JSON.parse(decodeURIComponent(payload));
-        //Show the HTTP Proxy Rule Editor Modal
         initHttpProxyRuleEditorModal(payload);
         return;
     }
@@ -1327,7 +1309,6 @@
             method: "GET",
             error: function(){ httprpEditorLoadDone(); },
             success: function(data) {
-                // Populate the TLS resolve list
                 let resolveList = editor.find(".Tls_resolve_list tbody");
                 resolveList.empty(); // Clear existing entries
                 let primaryDomain = data.domain;
@@ -1350,7 +1331,6 @@
                     `);
                 });
 
-                //Generate the certificate dropdown
                 generateCertificateDropdown(function(dropdown) {
                     let SNIEnabled = editor.find(".Tls_EnableSNI")[0].checked;
                     editor.find(".certificateDropdown").html(dropdown);
@@ -1484,7 +1464,6 @@
         })
     }
 
-    //Generic functions for delete rp endpoints 
     function deleteEndpoint(epoint){
         epoint = decodeURIComponent(epoint).hexDecode();
         wmConfirm("Confirm remove proxy for :" + epoint + "?", function(ok){
@@ -1750,7 +1729,6 @@
                     msgbox("Self-signed certificate generated", true);
                     resyncProxyEditorConfig();
                     if (typeof(initManagedDomainCertificateList) != undefined){
-                        //Re-init the managed domain certificate list
                         initManagedDomainCertificateList();
                     }
                 }else{
@@ -1827,7 +1805,6 @@
         if (window.filterL4ProxyList) filterL4ProxyList();
     }
 
-     // Function to filter the proxy list
      function filterProxyList() {
         let searchInput = $("#searchInput").val().toLowerCase();
         let selectedTag = $("#tagFilterDropdown").dropdown('get value');
@@ -1871,7 +1848,6 @@
         return brightness > 125 ? "#000000" : "#ffffff";
     }
     
-     // Populate the tag filter dropdown
      function populateTagFilterDropdown(data) {
         let tags = new Set();
         data.forEach(subd => {
@@ -1895,11 +1871,9 @@
     // Render the tags preview from tag editing snippet, callback from tags editor
     function renderTagsPreview(endpoint, tags){
         let targetProxyRuleEle = $(".subdEntry[eptuuid='" + endpoint + "'] td[data-label='tags']");
-        //Update the tag DOM
         let newTagDOM = tags.map(tag => `<span class="ui tiny label tag-select" style="background-color: ${getTagColorByName(tag)}; color: ${getTagTextColor(tag)}">${htmlEscape(tag)}</span>`).join("");
         $(targetProxyRuleEle).find(".tags-list").html(newTagDOM);
 
-        //Update the tag payload
         $(targetProxyRuleEle).attr("payload", encodeURIComponent(JSON.stringify(tags)));
     }
 
@@ -1971,18 +1945,14 @@
         })
     }
 
-    //Initialize the http proxy rule editor
     function initHttpProxyRuleEditorModal(rulepayload){
         let subd = JSON.parse(JSON.stringify(rulepayload));
     
         //Populate all the information in the proxy editor
         populateAndBindEventsToHTTPProxyEditor(subd);
         wmAdminRuleEditor(subd); //Limits for the admin console rule
-
-        //Hide all previously opened editor side-frame wrapper
         hideEditorSideWrapper();
 
-        //Show the first rpconfig
         $("#httprpEditModal .rpconfig_content").hide();
         $("#httprpEditModal .rpconfig_content[rpcfg='downstream']").show();
         $("#httprpEditModal .hrpedit_menu_item.active").removeClass("active");
@@ -2063,7 +2033,6 @@
         });
     }
 
-    // Populate the proxy editor and bind its events
     function populateAndBindEventsToHTTPProxyEditor(subd){
         //Assign the editing host to DOM element
         let uuid = subd.RootOrMatchingDomain; //Each matching hostname as uuid
@@ -2072,7 +2041,7 @@
         /* ------------ Downstream ------------ */
         let editor = $("#httprpEditModalWrapper");
         
-        //Check if the domain is wildcard domain, if yes do not render as a link
+        //Wildcard domains are shown as text
         if (subd.RootOrMatchingDomain.indexOf("*") > -1){
             editor.find(".downstream_primary_hostname").text(subd.RootOrMatchingDomain);
         }else{
@@ -2200,13 +2169,11 @@
             httprpEditorLoadDone();
         });
         /* ------------ Listening Ports ------------ */
-        // Populate listening ports
         let listeningPorts = subd.ListeningPorts || [];
         renderListeningPorts(uuid, listeningPorts);
         editor.find(".new_listening_port_input").val("");
         httprpNewPortArea.reset();
         
-        // Bind add listening port button
         editor.find(".addListeningPortBtn").off("click").on("click", function(){
             let newPort = editor.find(".new_listening_port_input").val().trim();
             if (newPort == "") {
@@ -2400,7 +2367,7 @@
             editZorxAuthExceptions(uuid);
         });
 
-        // Rate limit: load with .val() so the shared modal shows each proxy's saved value
+        // Rate limit: each proxy's saved value
         editor.find(".RateLimit").off("change");
         editor.find(".RequireRateLimit").off("change");
         if (subd.RequireRateLimit) {
@@ -2459,7 +2426,6 @@
             editor.find(".RecaptchaScore").val(subd.CaptchaConfig.RecaptchaScore || 0.5);
             editor.find(".CaptchaPathPrefixes").val((subd.CaptchaConfig.ProtectedPathPrefixes || []).join("\n"));
 
-            // Show/hide Google reCAPTCHA specific settings
             if (subd.CaptchaConfig.Provider == 1) {
                 editor.find(".googleRecaptchaSettings").show();
                 if (subd.CaptchaConfig.RecaptchaVersion == "v3") {
@@ -2482,7 +2448,6 @@
             editor.find(".googleRecaptchaSettings").hide();
         }
 
-        // Initialize CAPTCHA dropdowns
         editor.find(".captchaProviderDropdown").dropdown('destroy');
         editor.find(".captchaProviderDropdown").dropdown({
             onChange: function(value) {
@@ -2625,7 +2590,6 @@
         });
     }
 
-    //bind events to hrpedit_menu_item
     $(".hrpedit_menu_item").on("click", function() {
         let item = this;
         if ($("#httprpEditModal .editor_side_wrapper").is(":visible") && wmHasUnsavedChanges("#httprpEditModal .editor_side_wrapper")){
@@ -2664,7 +2628,6 @@
 
     function hideEditorSideWrapper(){
         $("#httprpEditModal .editor_side_wrapper").fadeOut("fast", function(){
-            // Reset the side wrapper frame URL
             $("#httprpEditModal .editor_side_wrapper .wrapper_frame").attr('src', 'snippet/placeholder.html');
         });
     }
@@ -2686,7 +2649,6 @@
         });
     });
 
-    //Bind on tab switch events
     tabSwitchEventBind["httprp"] = function(){
         //Check if the proxy editor is opened
         if ($("#httprpEditModalWrapper").is(":visible")) {

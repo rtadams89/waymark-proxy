@@ -26,7 +26,6 @@ func LoadLogConfig(configPath string) (*LogConfig, error) {
 		return nil, err
 	}
 
-	// Default config
 	defaultConfig := &LogConfig{
 		Enabled:    false,
 		MaxSize:    "0",

@@ -40,7 +40,7 @@ const (
 	adminCertValidity = 10 * 365 * 24 * time.Hour
 )
 
-var resetAdminRuleFlag = flag.Bool("reset-admin-rule", false, "Custom fork: rebuild the admin console proxy rule (addresses, destination, self-signed certificate, the Allow all ACL) and exit")
+var resetAdminRuleFlag = flag.Bool("reset-admin-rule", false, "rebuild the admin console proxy rule (addresses, destination, self-signed certificate, the Allow all ACL) and exit")
 
 var adminMu sync.Mutex
 

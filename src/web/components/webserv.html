@@ -289,13 +289,11 @@
                 $("#webserv_listenPort").val(data.ListeningPort);
                 updateWebServLinkExample(data.ListeningPort);
 
-                //WebDAV settings
                 setWebDAVServerRunningState(data.EnableWebDAV);
                 
                 $("#webdav_port").val(data.WebDAVPort);
                 updateWebDAVPortExample(data.WebDAVPort);
 
-                //Custom credentials settings
                 if (data.UseCustomCredentials){
                     $("#webdav_useCustomCredentials").parent().checkbox("set checked");
                 }else{
@@ -459,7 +457,6 @@
                     })
                 });
 
-                // Custom credentials toggle
                 $("#webdav_useCustomCredentials").off("change").on("change", function(){
                     let enable = $(this)[0].checked;
                     $.cjax({
@@ -480,7 +477,6 @@
                     })
                 });
 
-                // Save custom credentials button
                 $("#webdav_saveCustomCredentials").off("click").on("click", function(){
                     let username = $("#webdav_customUsername").val();
                     let password = $("#webdav_customPassword").val();
@@ -527,4 +523,4 @@
             $(".webdav_port").text(newport);
         }
     </script>
-</div>
+</div>

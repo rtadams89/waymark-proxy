@@ -246,11 +246,10 @@
                 let todaykey = getTodayStatisticKey();
                 loadStatisticByDate(todaykey);
             }else if ((startdate != "" && enddate == "") || startdate == enddate){
-                //Load the target date
                 let targetDate = startdate.trim();
                 loadStatisticByDate(targetDate);
             }else{
-                //Two dates are given and they are not identical
+                //Date range
                 loadStatisticByRange(startdate, enddate);
             }
     }
@@ -261,8 +260,6 @@
                 msgbox(data.error, false, 6000);
                 return;
             }
-            
-            //Destroy all the previous charts
             statisticCharts.forEach(function(thisChart){
                 thisChart.destroy();
             })
@@ -277,46 +274,35 @@
                 $("#statisticRenderNotEnoughData").hide();
             }
 
-            //Render the text values
             $("#statisticRenderElement").find(".totalViewCount").text(abbreviateNumber(data.TotalRequest));
             $("#statisticRenderElement").find(".totalSuccCount").text(abbreviateNumber(data.ValidRequest));
             $("#statisticRenderElement").find(".totalErrorCount").text(abbreviateNumber(data.ErrorRequest));
 
-            //Render forward type data
             renderForwardTypeCounts(data.ForwardTypes);
             
-            //Render visitor data
             renderVisitorChart(data.RequestOrigin);
 
             //Render IP versions
             renderIPVersionChart(data.RequestClientIp);
 
-            //Render user agent analysis
             renderUserAgentCharts(data.UserAgent);
 
-            //Render file type by analysising request URL paths
             renderFileTypeGraph(data.RequestURL);
 
-            //Render Referer header
             renderRefererTable(data.Referer);
 
             if (data.Downstreams == null){
-                //No downstream data to show
                 $("#stats_downstreamTable").html("<tr><td colspan='2'>No data</td></tr>");
             }else{
-                //Render the downstream table
                 renderDownstreamTable(data.Downstreams);
             }
 
             if (data.Upstreams == null){
-                //No upstream data to show
                 $("#stats_upstreamTable").html("<tr><td colspan='2'>No data</td></tr>");
             }else{
-                //Render the upstream table
                 renderUpstreamTable(data.Upstreams);
             }
 
-            //Hide the trend graphs
             $("#trendGraphs").hide();
         });
    }
@@ -325,7 +311,6 @@
 
    function loadStatisticByRange(startdate, endDate){
         $.getJSON("/api/analytic/loadRange?start=" + startdate + "&end=" + endDate, function(data){
-            //Destroy all the previous charts
            
             statisticCharts.forEach(function(thisChart){
                 thisChart.destroy();
@@ -341,30 +326,23 @@
                 $("#statisticRenderNotEnoughData").hide();
             }
 
-            //Render the text values
             $("#statisticRenderElement").find(".totalViewCount").text(abbreviateNumber(data.Summary.TotalRequest));
             $("#statisticRenderElement").find(".totalSuccCount").text(abbreviateNumber(data.Summary.ValidRequest));
             $("#statisticRenderElement").find(".totalErrorCount").text(abbreviateNumber(data.Summary.ErrorRequest));
 
-            //Render forward type data
             renderForwardTypeCounts(data.Summary.ForwardTypes);
 
-            //Render visitor data
             renderVisitorChart(data.Summary.RequestOrigin);
 
             //Render IP versions
             renderIPVersionChart(data.Summary.RequestClientIp);
 
-            //Render user agent analysis
             renderUserAgentCharts(data.Summary.UserAgent);
 
-            //Render file type by analysising request URL paths
             renderFileTypeGraph(data.Summary.RequestURL);
             
-            //Render Referer header
             renderRefererTable(data.Summary.Referer);
 
-            //Render the trend graph
             $("#trendGraphs").show();
             renderTrendGraph(data.Records);
         });
@@ -561,7 +539,6 @@
    }
    
    function renderTrendGraph(dailySummary){
-        // Get the canvas element
         const canvas = document.getElementById('requestTrends');
 
         //Generate the X axis labels
@@ -689,7 +666,6 @@
  
         });
 
-        //Create the device chart
         let deviceTypeChart = new Chart(document.getElementById("stats_device"), {
             type: 'pie',
             data: {
@@ -736,7 +712,6 @@
 
         statisticCharts.push(osTypeChart);
 
-        //Populate the OS version table
         let sortedOSVersion = Object.entries(osVersion).sort((a, b) => b[1] - a[1]);
         $("#stats_OSVersionList").html("");
         // Loop through the sorted data and populate the table
@@ -813,7 +788,6 @@
             maintainAspectRatio: false,
         };
 
-        // Create the pie chart
         let ipTypeChart = new Chart(document.getElementById("stats_ipver"), {
             type: 'pie',
             data: chartData,
@@ -828,7 +802,6 @@
         // Sort the array by the value (count)
         requestCounts.sort((a, b) => b[1] - a[1]);
 
-        // Select the table body and empty it
         let tableBody = $('#stats_requestCountlist');
         tableBody.empty();
 
@@ -841,7 +814,6 @@
         }
     }
 
-    //Generate a fixed color code from string hash
     function generateColorFromHash(stringToHash){
         let hash = 0;
         for (let i = 0; i < stringToHash.length; i++) {
@@ -891,7 +863,6 @@
             maintainAspectRatio: false,
         };
 
-        // Create the pie chart
         const visitorsChart = new Chart(document.getElementById("stats_visitors"), {
             type: 'pie',
             data: CCchartData,
@@ -900,4 +871,4 @@
 
         statisticCharts.push(visitorsChart);
    }
-</script>
+</script>

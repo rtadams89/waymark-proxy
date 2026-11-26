@@ -27,7 +27,6 @@ func NewDataLoader(db *database.Database, sc *statistic.Collector) *DataLoader {
 func (d *DataLoader) GetAllStatisticSummaryInRange(start, end string) ([]*statistic.DailySummaryExport, []string, error) {
 	dailySummaries := []*statistic.DailySummaryExport{}
 	collectedDates := []string{}
-	//Generate all the dates in between the range
 	keys, err := generateDateRange(start, end)
 	if err != nil {
 		return dailySummaries, collectedDates, err
@@ -48,7 +47,6 @@ func (d *DataLoader) GetAllStatisticSummaryInRange(start, end string) ([]*statis
 }
 
 func (d *DataLoader) GetStartAndEndDatesFromRequest(r *http.Request) (string, string, error) {
-	// Get the start date
 	start, err := utils.GetPara(r, "start")
 	if err != nil {
 		return "", "", errors.New("start date cannot be empty")
@@ -57,7 +55,6 @@ func (d *DataLoader) GetStartAndEndDatesFromRequest(r *http.Request) (string, st
 		//Must be underscore
 		start = strings.ReplaceAll(start, "-", "_")
 	}
-	// Get the end date
 	end, err := utils.GetPara(r, "end")
 	if err != nil {
 		return "", "", errors.New("end date cannot be empty")

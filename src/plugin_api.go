@@ -116,7 +116,6 @@ func initRestAPI(targetMux *http.ServeMux) {
 		},
 	)
 
-	//Register the APIs
 	RegisterHTTPProxyRestAPI(authMiddleware)
 	RegisterRedirectionRestAPI(authMiddleware)
 	RegisterAccessRuleRestAPI(authMiddleware)

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/rtadams89/waymark-proxy/mod/auth"
 	"github.com/rtadams89/waymark-proxy/mod/database"
@@ -86,17 +87,14 @@ func (ws *WebServer) RestorePreviousState() {
 	ws.option.Sysdb.Read("webserv", "port", &port)
 	ws.option.Port = port
 
-	//Set the enable directory list
 	enableDirList := ws.option.EnableDirectoryListing
 	ws.option.Sysdb.Read("webserv", "dirlist", &enableDirList)
 	ws.option.EnableDirectoryListing = enableDirList
 
-	//Set disable listen to all interface
 	disableListenToAll := ws.option.DisableListenToAllInterface
 	ws.option.Sysdb.Read("webserv", "disableListenToAllInterface", &disableListenToAll)
 	ws.option.DisableListenToAllInterface = disableListenToAll
 
-	//Set WebDAV enable state
 	enableWebDAV := ws.option.EnableWebDAV
 	ws.option.Sysdb.Read("webserv", "enableWebDAV", &enableWebDAV)
 	ws.option.EnableWebDAV = enableWebDAV
@@ -109,7 +107,6 @@ func (ws *WebServer) RestorePreviousState() {
 	ws.option.Sysdb.Read("webserv", "webdavPort", &webdavPort)
 	ws.option.WebDAVPort = webdavPort
 
-	//Set UseCustomCredentials
 	useCustomCredentials := ws.option.UseCustomCredentials
 	ws.option.Sysdb.Read("webserv", "useCustomCredentials", &useCustomCredentials)
 	ws.option.UseCustomCredentials = useCustomCredentials
@@ -123,7 +120,6 @@ func (ws *WebServer) RestorePreviousState() {
 		ws.Stop()
 	}
 
-	//Start WebDAV if enabled
 	if enableWebDAV && ws.WebDAV != nil {
 		ws.WebDAV.Start(webdavPort)
 	}
@@ -166,7 +162,6 @@ func (ws *WebServer) Start() error {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
-	//Check if server already running
 	if ws.isRunning {
 		return fmt.Errorf("web server is already running")
 	}
@@ -188,8 +183,9 @@ func (ws *WebServer) Start() error {
 		listenAddr = "127.0.0.1:" + ws.option.Port
 	}
 	ws.server = &http.Server{
-		Addr:    listenAddr,
-		Handler: ws.mux,
+		Addr:              listenAddr,
+		Handler:           ws.mux,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
@@ -298,7 +294,6 @@ func (ws *WebServer) ChangeWebDAVPort(port string) error {
 
 // SetCustomCredentials sets custom username and password for WebDAV
 func (ws *WebServer) SetCustomCredentials(username, password string) error {
-	// Hash the password
 	hashedPassword, err := auth.HashPassword(password)
 	if err != nil {
 		return err

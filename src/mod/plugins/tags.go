@@ -14,7 +14,6 @@ func (m *Manager) LoadPluginGroupsFromConfig() error {
 	m.pluginGroupsMutex.RLock()
 	defer m.pluginGroupsMutex.RUnlock()
 
-	//Read the config file
 	rawConfig, err := os.ReadFile(m.Options.PluginGroupsConfig)
 	if err != nil {
 		return err
@@ -41,7 +40,6 @@ func (m *Manager) AddPluginToTag(tag string, pluginID string) error {
 		return err
 	}
 
-	//Add to m.Options.PluginGroups
 	pluginList, ok := m.Options.PluginGroups[tag]
 	if !ok {
 		pluginList = []string{}
@@ -58,7 +56,6 @@ func (m *Manager) AddPluginToTag(tag string, pluginID string) error {
 
 // RemovePluginFromTag removes a plugin from a tag
 func (m *Manager) RemovePluginFromTag(tag string, pluginID string) error {
-	// Check if the plugin exists in Options.PluginGroups
 	m.pluginGroupsMutex.RLock()
 	defer m.pluginGroupsMutex.RUnlock()
 	pluginList, ok := m.Options.PluginGroups[tag]
@@ -66,7 +63,6 @@ func (m *Manager) RemovePluginFromTag(tag string, pluginID string) error {
 		return nil
 	}
 
-	// Remove the plugin from the list
 	for i, id := range pluginList {
 		if id == pluginID {
 			pluginList = append(pluginList[:i], pluginList[i+1:]...)

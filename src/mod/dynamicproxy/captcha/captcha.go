@@ -454,9 +454,10 @@ func HandleVerification(w http.ResponseWriter, r *http.Request, config *Config, 
 		return errors.New("invalid method")
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	contentType := r.Header.Get("Content-Type")
 	if strings.Contains(contentType, "multipart/form-data") {
-		if err := r.ParseMultipartForm(1 << 20); err != nil { // 1 MB max
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return err
 		}

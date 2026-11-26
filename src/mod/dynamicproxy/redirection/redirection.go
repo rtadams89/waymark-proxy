@@ -47,7 +47,6 @@ func NewRuleTable(configPath string, allowRegex bool, caseSensitive bool, logger
 		os.MkdirAll(configPath, 0775)
 	}
 
-	// Load all the *.json from the configPath
 	files, err := filepath.Glob(filepath.Join(configPath, "*.json"))
 	if err != nil {
 		return nil, err
@@ -107,7 +106,6 @@ func (t *RuleTable) AddRedirectRule(redirectURL string, destURL string, forwardP
 
 // Edit an existing redirection rule, the oldRedirectURL is used to find the rule to be edited
 func (t *RuleTable) EditRedirectRule(oldRedirectURL string, newRedirectURL string, destURL string, forwardPathname bool, statusCode int, requireExactMatch bool, deviceType string) error {
-	// Preserve the enabled state from the old rule
 	enabled := true
 	if oldRule, ok := t.rules.Load(oldRedirectURL); ok {
 		enabled = oldRule.(*RedirectRule).Enabled
@@ -137,7 +135,6 @@ func (t *RuleTable) EditRedirectRule(oldRedirectURL string, newRedirectURL strin
 }
 
 func (t *RuleTable) DeleteRedirectRule(redirectURL string) error {
-	// Convert the redirectURL to a valid filename by replacing "/" with "-" and "." with "_"
 	filename := utils.ReplaceSpecialCharacters(redirectURL) + ".json"
 
 	filepath := path.Join(t.configPath, filename)
@@ -200,7 +197,6 @@ func (t *RuleTable) MatchRedirectRule(requestedURL string) *RedirectRule {
 		}
 
 		if t.AllowRegex {
-			//Regexp matching rule
 			matched, err := regexp.MatchString(keyStr, requestedURL)
 			if err != nil {
 				t.log("Unable to match regex", err)
@@ -265,7 +261,6 @@ func (t *RuleTable) log(message string, err error) {
 }
 
 func (r *RedirectRule) SaveChangeToFile() error {
-	// Convert the redirectURL to a valid filename by replacing "/" with "-" and "." with "_"
 	filename := utils.ReplaceSpecialCharacters(r.RedirectURL) + ".json"
 	filepath := path.Join(r.parent.configPath, filename)
 

@@ -216,7 +216,6 @@
                 $('#inlineEditBasicAuthCredPassword').val('');
                 credentialAddArea.reset();
 
-                // Update the table body with the credentials
                 updateEditingCredentialList();
 
                 //Save the table
@@ -232,14 +231,12 @@
                 //The checkbox states the wanted behavior, the API takes the opposite flag
                 let caseInsensitive = exceptionType == 0x0 && !$('#newExclusionCaseSensitive').is(':checked');
                 if (exceptionType == 0x0){
-                    //Check if the path is empty
                     
                     if (newExclusionPathMatchingPrefix == ""){
                         parent.msgbox("Matching prefix cannot be empty!", false, 5000);
                         return;
                     }
                 }else{
-                    //Check if the CIDR is empty
                     if (newExclusionIP == ""){
                         parent.msgbox("Matching CIDR cannot be empty!", false, 5000);
                         return;
@@ -451,4 +448,4 @@
             }
         </script>
     </body>
-</html>
+</html>

@@ -118,7 +118,6 @@ func validateSVGAttributes(elementName string, attrs []xml.Attr) error {
 			return errors.New("SVG file contains an event handler attribute (" + attr.Name.Local + "). Remove any interactivity from the artwork.")
 		}
 
-		//Script URLs in any attribute, including style
 		if containsScriptURL(value) {
 			return errors.New("SVG file contains a script URL in the " + attr.Name.Local + " attribute")
 		}

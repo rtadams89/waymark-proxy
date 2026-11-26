@@ -118,8 +118,8 @@
                     <td>${(o.entries || []).length}</td>
                     <td>${users}</td>
                     <td style="white-space: nowrap; text-align: right;">
-                        <button class="ui basic mini button" onclick="wmOpenObject('${esc(o.id)}');"><i class="${o.builtIn ? "eye" : "edit"} icon"></i> ${o.builtIn ? "View" : "Edit"}</button>
-                        ${o.builtIn ? "" : `<button class="ui basic mini icon button" title="Delete" onclick="objDelete('${esc(o.id)}');"><i class="red trash icon"></i></button>`}
+                        <button class="ui basic mini button" onclick="wmOpenObject(${jsArg(o.id)});"><i class="${o.builtIn ? "eye" : "edit"} icon"></i> ${o.builtIn ? "View" : "Edit"}</button>
+                        ${o.builtIn ? "" : `<button class="ui basic mini icon button" title="Delete" onclick="objDelete(${jsArg(o.id)});"><i class="red trash icon"></i></button>`}
                     </td>
                 </tr>`;
             });
@@ -144,7 +144,7 @@
             $("#objBusyTable").html(busy.map(function(e){
                 let cc = /^[A-Za-z]{2}$/.test(e.CountryCode || "") ? `<i class="${esc(e.CountryCode.toLowerCase())} flag"></i>${esc(countryName(e.CountryCode))}` : `<small style="opacity: 0.7;">No country (private or reserved)</small>`;
                 let add = opts == "" ? `<small style="opacity: 0.7;">Create an object first</small>` :
-                    `<select class="objBusySel">${opts}</select> <button class="ui basic mini button" onclick="objQuickAdd('${esc(e.IpAddr)}', $(this).prev().val());"><i class="green add icon"></i> Add</button>`;
+                    `<select class="objBusySel">${opts}</select> <button class="ui basic mini button" onclick="objQuickAdd(${jsArg(e.IpAddr)}, $(this).prev().val());"><i class="green add icon"></i> Add</button>`;
                 return `<tr><td><code>${esc(e.IpAddr)}</code></td><td>${e.Count.toLocaleString()}</td><td>${cc}</td><td>${add}</td></tr>`;
             }).join(""));
         });
@@ -175,7 +175,7 @@
     };
 
     // Opens an object in the editor ("" for a new one), from anywhere
-    // Nothing in the editor (name, description, entries) is saved until Save
+    // The editor (name, description, entries) is saved by Save
     let objArea = null;
     $(function(){ objArea = wmTrackChanges("#objEditor", {saveButton: "#objSaveBtn", onDiscard: function(){
         // Puts back the saved entries (a new object starts empty)
@@ -239,7 +239,7 @@
                 v = `<i class="${esc(e.value.toLowerCase())} flag"></i>${esc(countryName(e.value))} <small>${esc(e.value)}</small>`;
             }else if (e.type == "object"){
                 let o = all[e.value];
-                v = o ? `<i class="cube icon"></i><a href="#" onclick="objOpenNested('${esc(o.id)}'); return false;">${esc(o.name)}</a> <small>(${(o.entries || []).length})</small>` :
+                v = o ? `<i class="cube icon"></i><a href="#" onclick="objOpenNested(${jsArg(o.id)}); return false;">${esc(o.name)}</a> <small>(${(o.entries || []).length})</small>` :
                     `<i class="orange exclamation triangle icon"></i>Missing object <code>${esc(e.value)}</code>`;
             }
             return `<tr><td>${v}</td><td class="objType">${typeLabel(e.type)}</td><td>${esc(e.comment)}</td>

@@ -80,13 +80,11 @@ func (l *Logger) ArchiveLog(filename string) error {
 		return err
 	}
 
-	// Optionally compress the archived file
 	if l.RotateOption.Compress {
 		if err := compressFile(archivedPath); err != nil {
 			return err
 		}
 		os.Remove(archivedPath)
-		archivedPath += ".gz"
 	}
 
 	if err := l.cleanupOldBackups(backupDir, filename, l.RotateOption.MaxBackups); err != nil {

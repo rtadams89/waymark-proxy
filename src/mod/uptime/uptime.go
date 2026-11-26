@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
@@ -78,7 +77,7 @@ func NewUptimeMonitor(config *Config) (*Monitor, error) {
 }
 
 // shadowPingTargets is a higher frequency check that only pings targets currently in the offline
-// list using the offline timeout setting, these will not go into the online status log
+// list using the offline timeout setting, outside the online status log
 func (m *Monitor) shadowPingTargets() {
 	m.targetMutex.Lock()
 	var targets []*Target = m.offlineTargets
@@ -135,7 +134,6 @@ func (m *Monitor) pingTargets(timeout time.Duration, targets []*Target, requireO
 				m.Config.Logger.PrintAndLog(LOG_MODULE_NAME, "Target "+target.Name+" ("+target.URL+") is back online, reverting to normal check interval", nil)
 			}
 
-			// Append record to the status log if required
 			if requireOnlineStatusLog {
 				m.logMutex.Lock()
 				thisRecords, ok := m.OnlineStatusLog[target.ID]
@@ -232,7 +230,6 @@ func (m *Monitor) SetTargets(newTargets []*Target) {
 		offlineIDs[t.ID] = true
 	}
 
-	// Distribute new targets into online/offline lists
 	var newOnline, newOffline []*Target
 	for _, t := range newTargets {
 		if offlineIDs[t.ID] {
@@ -258,7 +255,6 @@ func (m *Monitor) SetTargets(newTargets []*Target) {
 // Scan the config target. If a target exists in m.OnlineStatusLog no longer
 // exists in m.Monitor.Config.Targets, it remove it from the log as well.
 func (m *Monitor) CleanRecords() {
-	// Create a set of IDs for all targets in the config
 	targetIDs := make(map[string]bool)
 	for _, target := range m.Config.Targets {
 		targetIDs[target.ID] = true
@@ -363,9 +359,6 @@ func (m *Monitor) getWebsiteStatus(url string, skipTLSVerification bool, timeout
 	}
 	if skipTLSVerification {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-		transport.DialTLS = func(network, addr string) (net.Conn, error) {
-			return tls.Dial(network, addr, &tls.Config{InsecureSkipVerify: true})
-		}
 	}
 
 	client := http.Client{
@@ -401,8 +394,7 @@ func (m *Monitor) getWebsiteStatus(url string, skipTLSVerification bool, timeout
 		resp, err = client.Do(req)
 		if err != nil {
 			if strings.Contains(err.Error(), "http: server gave HTTP response to HTTPS client") {
-				//Invalid downstream reverse proxy settings, but it is online
-				//return SSL handshake failed
+				//Plain HTTP on an HTTPS target: 525 SSL handshake failed
 				return 525, nil
 			}
 			return 0, err

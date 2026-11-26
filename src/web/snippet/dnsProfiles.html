@@ -227,7 +227,7 @@
         $("#editProfileName").val(p.name);
         $("#editKeepHint").show();
         $("#profileEditor").show();
-        //Set provider without triggering a blank re-render, then render with saved state
+        //Set the provider silently, then render with the saved state
         suppressProviderChange = true;
         $("#editProvider").dropdown("set selected", p.provider);
         suppressProviderChange = false;

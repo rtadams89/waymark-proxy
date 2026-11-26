@@ -288,13 +288,12 @@ func (c *Capture) nextID() uint16 { return uint16(c.ipID.Add(1)) }
 // TCPFlow is one synthesized TCP connection from A (the side that
 // connected) to B.
 type TCPFlow struct {
-	c       *Capture
-	a, b    Endpoint
-	seqA    uint32
-	seqB    uint32
-	mu      sync.Mutex
-	closed  bool
-	comment string
+	c      *Capture
+	a, b   Endpoint
+	seqA   uint32
+	seqB   uint32
+	mu     sync.Mutex
+	closed bool
 }
 
 // NewTCPFlow starts a connection from a to b (handshake packets) with an
@@ -640,7 +639,7 @@ func (m *Manager) Path(name string) (string, error) {
 	return p, nil
 }
 
-// Delete removes a stored capture (not the running one).
+// Delete removes a stored capture other than the running one.
 func (m *Manager) Delete(name string) error {
 	p, err := m.Path(name)
 	if err != nil {

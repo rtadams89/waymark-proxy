@@ -243,7 +243,6 @@ func (u *Updater) scheduleWorker(stopChan chan struct{}) {
 				continue
 			}
 			if err := u.UpdateNow(); err != nil {
-				// Update failed: retry sooner
 				u.store.log("Scheduled GeoIP database update failed", err)
 				waitDuration = jitteredInterval(GeoDBUpdateRetryInterval)
 			} else {

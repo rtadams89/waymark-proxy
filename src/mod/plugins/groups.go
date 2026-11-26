@@ -27,7 +27,6 @@ func (m *Manager) AddPluginToGroup(tag, pluginID string) error {
 		return errors.New("plugin not found")
 	}
 
-	//Check if the plugin is a router type plugin
 	if plugin.Spec.Type != zoraxy_plugin.PluginType_Router {
 		return errors.New("plugin is not a router type plugin")
 	}
@@ -57,7 +56,6 @@ func (m *Manager) RemovePluginFromGroup(tag, pluginID string) error {
 		return errors.New("tag not found")
 	}
 
-	//Remove the plugin from the group
 	pluginList := m.Options.PluginGroups[tag]
 	for i, id := range pluginList {
 		if id == pluginID {

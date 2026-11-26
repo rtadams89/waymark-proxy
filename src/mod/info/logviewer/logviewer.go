@@ -164,7 +164,7 @@ func (v *Viewer) readLogFileContent(filepath string) ([]byte, error) {
 	if strings.HasSuffix(filepath, ".gz") {
 		gzipReader, err := gzip.NewReader(file)
 		if err != nil {
-			// Try zip reader for older logs that use zip compression despite .gz extension
+			// .gz file holding zip data
 			zipReader, err := zip.OpenReader(filepath)
 			if err != nil {
 				return nil, err
@@ -199,7 +199,6 @@ func (v *Viewer) senatizeLogFilenameInput(filename string) string {
 	if strings.Contains(filename, "..") {
 		return ""
 	}
-	//Check if .log.gz or .log exists
 	if utils.FileExists(filepath.Join(v.option.RootFolder, filename+".log")) {
 		return filepath.Join(v.option.RootFolder, filename+".log")
 	}

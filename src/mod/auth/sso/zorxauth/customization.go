@@ -303,7 +303,7 @@ func (ar *AuthRouter) RenderAuthPage() []byte {
 		watermarkLabel = `<span>` + html.EscapeString(branding.WatermarkText) + `</span>`
 	}
 
-	// Single pass replacement: inserted text is not expanded again
+	// Single-pass replacement
 	replacer := strings.NewReplacer(
 		"{{brand_mark}}", brandMark,
 		"{{brand_text}}", html.EscapeString(branding.BrandText),

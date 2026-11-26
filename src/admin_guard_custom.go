@@ -213,9 +213,7 @@ func adminGuard(next http.Handler) http.Handler {
 			var claimed []string
 			switch p {
 			case "/api/proxy/add":
-				for _, h := range strings.Split(r.Form.Get("rootname"), ",") {
-					claimed = append(claimed, h)
-				}
+				claimed = strings.Split(r.Form.Get("rootname"), ",")
 			case "/api/proxy/setAlias":
 				json.Unmarshal([]byte(r.Form.Get("alias")), &claimed)
 			case "/api/proxy/setHostname":

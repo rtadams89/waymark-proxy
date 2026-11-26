@@ -230,15 +230,14 @@
             .stop().finish().slideDown("fast").delay(isSuccess ? 3000 : 8000).slideUp("fast");
     }
 
-    //Bind the change event on the input element instead of using the checkbox
-    //module onChange, as the checkbox modules are re-initialized further below
+    //Change event on the input element; the checkbox modules are re-initialized below
     $("#geodbAutoUpdateEnabled").on("change", function(){
         setGeoDBAutoUpdate($(this).is(":checked"));
     });
 
     loadGeoDBUpdateStatus();
 
-    /* Custom fork: Geo-IP lookups on/off */
+    /* Geo-IP lookups on/off */
     function loadGeoIPLookupsSetting(){
         $.get("/api/geodb/enabled", function(data){
             if (!data || data.error != undefined){

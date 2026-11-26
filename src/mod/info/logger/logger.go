@@ -133,7 +133,7 @@ func (l *Logger) Log(title string, errorMessage string, originalError error, cop
 		}
 		mu.Unlock()
 	} else if fileLogger {
-		written = true //file logging is off for this stream: nothing is lost
+		written = true //file logging is off for this stream
 	}
 	if !written || copyToSTDOUT {
 		//Use STDOUT instead of logger
@@ -163,7 +163,6 @@ func (l *Logger) validateLogFilepathLocked() {
 			l.logger = nil
 		}
 
-		//Archive the old log file, if one was written
 		if _, err := os.Stat(l.CurrentLogFile); err == nil {
 			if err := l.ArchiveLog(l.CurrentLogFile); err != nil {
 				log.Println("Unable to archive old log file: ", err.Error())

@@ -161,7 +161,7 @@
             }
         });
 
-        // Loaded when the page is opened (tabSwitchEventBind), not at start-up
+        // Loaded when the page is opened (tabSwitchEventBind)
         let tab = root.attr("id");
         tabSwitchEventBind[tab] = function(){
             loadNotice();

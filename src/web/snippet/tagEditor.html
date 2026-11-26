@@ -80,7 +80,6 @@
             function loadTags(){
                 $.get("/api/proxy/detail", { type: "host", epname: editingEndpoint.ep }, function(data){
                     if (data.error == undefined){
-                        //Render the tags to the table
                         $("#tagsTableBody").empty();
                         data.Tags.forEach(tag => {
                             addTagRow(tag);
@@ -107,7 +106,6 @@
                 $("#tagsTableBody .notagNotice").remove();
             }
 
-            //Load all tags created in this system
             function loadAllCreatedTags(callback){
                 $.get("/api/proxy/list?type=host", function(data){
                     if (data.error !== undefined){
@@ -206,7 +204,6 @@
                 return color;
             }
 
-            //Add a tag row to the table
             function addTagRow(tag) {
                 const row = `<tr class="tagEntry" value="${htmlEscape(tag)}">
                     <td><div class="ui circular label tag-color" style="background-color: ${getTagColorByName(tag)};"></div> ${htmlEscape(tag)}</td>    
@@ -256,4 +253,4 @@
             }
         </script>
     </body>
-</html>
+</html>

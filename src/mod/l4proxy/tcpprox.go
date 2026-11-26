@@ -30,7 +30,7 @@ func isValidPort(port string) bool {
 }
 
 func (c *ProxyRelayInstance) connCopy(conn1 net.Conn, conn2 net.Conn, wg *sync.WaitGroup, accumulator *int64) {
-	// Always finish and close both sides, so the other copy ends too
+	// Close both sides, which also ends the other copy
 	defer wg.Done()
 	n, _ := io.Copy(conn1, conn2)
 	atomic.AddInt64(accumulator, n)
@@ -118,7 +118,7 @@ func startListener(address string) (net.Listener, error) {
 portA -> server
 server -> portB
 */
-func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, stopChan chan bool) error {
+func (c *ProxyRelayInstance) Port2host(allowPort string, _ string, stopChan chan bool) error {
 	listenerStartingAddr := allowPort
 	if isValidPort(allowPort) {
 		//number only, e.g. 8080
@@ -133,7 +133,6 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 		return err
 	}
 
-	targetAddress = strings.TrimSpace(targetAddress)
 	// Read the settings once
 	c.poolMu.RLock()
 	proxyProtocol, timeout := c.ProxyProtocolVersion, c.Timeout
@@ -158,8 +157,7 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 			continue
 		}
 
-		go func(targetAddress string) {
-			// Pick an upstream from the pool
+		go func() {
 			target, targetAddress, err := c.dialUpstream(conn)
 			if err != nil {
 				c.LogMsg("[x] no destination for client ["+conn.RemoteAddr().String()+"]: "+err.Error(), nil)
@@ -185,6 +183,6 @@ func (c *ProxyRelayInstance) Port2host(allowPort string, targetAddress string, s
 			}
 
 			c.forward(target, conn, c.aTobAccumulatedByteTransfer, c.bToaAccumulatedByteTransfer)
-		}(targetAddress)
+		}()
 	}
 }

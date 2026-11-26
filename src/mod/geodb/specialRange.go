@@ -61,7 +61,6 @@ func initReservedIPTrees() {
 		reservedIPv4Tree = &reservedIPRadixTree{root: &reservedIPNode{}}
 		reservedIPv6Tree = &reservedIPRadixTree{root: &reservedIPNode{}}
 
-		// Insert all reserved CIDR ranges into appropriate trees
 		for cidr, zoneName := range reservedCIDRsToZoneName {
 			if strings.Contains(cidr, ":") {
 				reservedIPv6Tree.insert(cidr, zoneName)
@@ -80,7 +79,7 @@ func (t *reservedIPRadixTree) insert(cidr, zoneName string) {
 	}
 
 	prefixLen, _ := ipnet.Mask.Size()
-	// Use the network IP from ipnet, not the parsed IP
+	// Network address from ipnet
 	ipBytes := ipnet.IP.To4()
 	if ipBytes == nil {
 		ipBytes = ipnet.IP.To16()

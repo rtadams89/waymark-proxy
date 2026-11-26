@@ -64,6 +64,4 @@ type Monitor struct {
 	targetMutex    sync.Mutex //Mutex for online/offline target list access
 }
 
-func defaultNotify(upstreamIP string, isOnline bool) {
-	// Do nothing
-}
+func defaultNotify(upstreamIP string, isOnline bool) {}

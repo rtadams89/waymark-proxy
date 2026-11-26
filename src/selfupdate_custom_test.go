@@ -59,7 +59,7 @@ func fakeBinary(version string) []byte {
 }
 
 // rewriteTransport sends every request to the test server, whatever host
-// it names, so the GitHub URLs in the code can be served locally.
+// it names.
 type rewriteTransport struct{ target *url.URL }
 
 func (rt rewriteTransport) RoundTrip(r *http.Request) (*http.Response, error) {

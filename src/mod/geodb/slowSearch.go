@@ -47,7 +47,6 @@ func isIPv6InRange(startIP, endIP, testIP string) (bool, error) {
 
 // slowSearchIpv4 is the slow country code lookup for IPv4
 func (s *Store) slowSearchIpv4(dataset *geoDataSet, ipAddr string) string {
-	// Check reserved IP zones
 	reservedZone := getReservedIPZone(ipAddr)
 	if reservedZone != "" {
 		return reservedZone
@@ -76,7 +75,6 @@ func (s *Store) slowSearchIpv4(dataset *geoDataSet, ipAddr string) string {
 }
 
 func (s *Store) slowSearchIpv6(dataset *geoDataSet, ipAddr string) string {
-	// Check reserved IP zones
 	reservedZone := getReservedIPZone(ipAddr)
 	if reservedZone != "" {
 		return reservedZone

@@ -64,13 +64,11 @@ func NewLoadBalancer(options *Options) *RouteManager {
 			case <-cacheTickerStop:
 				return
 			case <-cacheTicker.C:
-				//Clean up the cache
 				options.Logger.PrintAndLog("load-balancer", "Cleaning up destination state cache", nil)
 			}
 		}
 	}()
 
-	//Generate a session store for stickySession
 	store := sessions.NewCookieStore([]byte(options.SessionKey))
 	return &RouteManager{
 		SessionStore: store,
@@ -111,7 +109,6 @@ func (m *RouteManager) ResetSessions() {
 }
 
 func (m *RouteManager) Close() {
-	//Close the session store
 	m.SessionStore.MaxAge(0)
 
 	if m.cacheTicker != nil {

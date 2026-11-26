@@ -310,7 +310,7 @@ func TestPoolSettingsValidate(t *testing.T) {
 	if ok.Destinations[0].Address != "10.0.0.1:53" || ok.LoadBalancing != LBWeighted {
 		t.Fatalf("normalised: %+v", ok)
 	}
-	// Older clients send a plain address list
+	// A plain address list
 	legacy := PoolSettings{Upstreams: []string{"10.0.0.1:53", "10.0.0.2:53"}}
 	if err := legacy.Validate(true, true); err != nil || len(legacy.Destinations) != 2 || legacy.Destinations[1].Weight != 1 {
 		t.Fatalf("address list: %v %+v", err, legacy)

@@ -41,7 +41,6 @@ import (
 // startupSequence starts all required modules in order
 
 func startupSequence() {
-	//Start a system wide logger and log viewer
 	l, err := logger.NewLogger(LOG_PREFIX, *path_logFile)
 	if err == nil {
 		SystemWideLogger = l
@@ -103,10 +102,8 @@ func startupSequence() {
 	sysdb = db
 	useConfFileTables()  // settings kept as files in the config folder
 	haApplyPendingSync() // apply configuration copied from the HA active node
-	//Create tables for the database
 	sysdb.NewTable("settings")
 
-	//Create tmp folder and conf folder
 	os.MkdirAll(TMP_FOLDER, 0775)
 	os.MkdirAll(CONF_HTTP_PROXY, 0775)
 
@@ -121,7 +118,6 @@ func startupSequence() {
 	})
 	initAdminSetupCode()
 
-	// Create an API key manager for plugin authentication
 	pluginApiKeyManager = auth.NewAPIKeyManager()
 
 	//Create a TLS certificate manager
@@ -141,7 +137,6 @@ func startupSequence() {
 		panic(err)
 	}
 
-	//Create a geodb store
 	geodbStore, err = geodb.NewGeoDb(sysdb, &geodb.StoreOptions{
 		AllowSlowIpv4LookUp:          !*enableHighSpeedGeoIPLookup,
 		AllowSlowIpv6Lookup:          !*enableHighSpeedGeoIPLookup,
@@ -154,20 +149,18 @@ func startupSequence() {
 		panic(err)
 	}
 
-	//Create a load balancer
 	loadBalancer = loadbalance.NewLoadBalancer(&loadbalance.Options{
 		SessionKey: stickySessionKey(), // sticky session cookie key
 		Geodb:      geodbStore,
 		Logger:     SystemWideLogger,
 	})
 
-	//Create the access controller
 	accessController, err = access.NewAccessController(&access.Options{
 		Logger:             *SystemWideLogger,
 		Database:           sysdb,
 		GeoDB:              geodbStore,
 		ConfigFolder:       CONF_ACL,         // ACLs and objects (conf/acl)
-		LegacyFolder:       CONF_ACCESS_RULE, // access rules of 2.17 and earlier, converted once
+		LegacyFolder:       CONF_ACCESS_RULE, // legacy access rules, converted once
 		TrustedProxiesFile: CONF_TRUSTED_PROXIES,
 	})
 	if err != nil {
@@ -192,7 +185,6 @@ func startupSequence() {
 		return dynamicProxyRouter != nil && dynamicProxyRouter.GetProxyEndpointFromHostname(host) != nil
 	}
 
-	//Create a statistic collector
 	statisticCollector, err = statistic.NewStatisticCollector(statistic.CollectorOption{
 		Database:             sysdb,
 		MaxEntriesPerStatMap: *statsMaxEntriesPerMap,
@@ -202,7 +194,6 @@ func startupSequence() {
 	}
 	statisticCollector.SetAutoSave(STATISTIC_AUTO_SAVE_INTERVAL)
 
-	//Start the static web server
 	staticWebServer = webserv.NewWebServer(&webserv.WebServerOptions{
 		Sysdb:                  sysdb,
 		Port:                   strconv.Itoa(WEBSERV_DEFAULT_PORT), //Default Port
@@ -213,10 +204,8 @@ func startupSequence() {
 		Logger:                 SystemWideLogger,
 		AuthAgent:              authAgent,
 	})
-	//Restore the web server to previous shutdown state
 	staticWebServer.RestorePreviousState()
 
-	//Create a netstat buffer
 	netstatBuffers, err = netstat.NewNetStatBuffer(300, SystemWideLogger)
 	if err != nil {
 		SystemWideLogger.PrintAndLog("netstat", "Failed to load network statistic info", err)
@@ -246,7 +235,6 @@ func startupSequence() {
 		if hostName == "" {
 			hostName = MDNS_HOSTNAME_PREFIX + nodeUUID
 		} else {
-			//Trim off the suffix
 			hostName = strings.TrimSuffix(hostName, ".local")
 		}
 
@@ -300,7 +288,6 @@ func startupSequence() {
 		panic(err)
 	}
 
-	//Create an analytic loader
 	AnalyticLoader = analytic.NewDataLoader(sysdb, statisticCollector)
 
 	/*
@@ -398,7 +385,6 @@ func finalSequence() {
 	//Start ACME renew agent
 	acmeRegisterSpecialRoutingRule()
 
-	//Inject routing rules
 	registerBuildInRoutingRules()
 
 	//Set the host specific TLS behavior resolver for resolving TLS behavior for each hostname
@@ -427,7 +413,6 @@ func ShutdownSeq() {
 
 	if mdnsTickerStop != nil {
 		SystemWideLogger.Println("Stopping mDNS Discoverer (might take a few minutes)")
-		// Stop the mdns service
 		mdnsTickerStop <- true
 	}
 	if mdnsScanner != nil {
@@ -460,21 +445,17 @@ func ShutdownSeq() {
 		zorxAuthRouter.Close()
 	}
 
-	//Close the plugin manager
 	SystemWideLogger.Println("Shutting down plugin manager")
 	if pluginManager != nil {
 		pluginManager.Close()
 	}
 
-	//Remove the tmp folder
 	SystemWideLogger.Println("Cleaning up tmp files")
 	os.RemoveAll(TMP_FOLDER)
 
-	//Close database
 	SystemWideLogger.Println("Stopping system database")
 	sysdb.Close()
 
-	//Close logger
 	SystemWideLogger.Println("Closing system wide logger")
 	SystemWideLogger.Close()
 }

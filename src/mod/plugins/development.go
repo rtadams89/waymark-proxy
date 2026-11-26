@@ -124,7 +124,6 @@ func (m *Manager) HotReloadPlugin(pluginId string) error {
 		}
 	}
 
-	//Remove the plugin from the loaded plugins list
 	m.loadedPluginsMutex.Lock()
 	if _, ok := m.LoadedPlugins[pluginId]; ok {
 		delete(m.LoadedPlugins, pluginId)
@@ -134,7 +133,6 @@ func (m *Manager) HotReloadPlugin(pluginId string) error {
 	}
 	m.loadedPluginsMutex.Unlock()
 
-	// Reload the plugin from disk
 	m.ReloadPluginFromDisk()
 
 	return nil
@@ -145,7 +143,6 @@ Request handlers for developer options
 */
 func (m *Manager) HandleEnableHotReload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		//Return the current status of hot reload
 		js, _ := json.Marshal(m.Options.EnableHotReload)
 		utils.SendJSONResponse(w, string(js))
 		return
@@ -179,7 +176,6 @@ func (m *Manager) HandleEnableHotReload(w http.ResponseWriter, r *http.Request) 
 
 func (m *Manager) HandleSetHotReloadInterval(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		//Return the current status of hot reload
 		js, _ := json.Marshal(m.Options.HotReloadInterval)
 		utils.SendJSONResponse(w, string(js))
 		return
@@ -197,7 +193,6 @@ func (m *Manager) HandleSetHotReloadInterval(w http.ResponseWriter, r *http.Requ
 	}
 	m.Options.HotReloadInterval = interval
 
-	//Restart the hot reload ticker
 	if m.pluginReloadTicker != nil {
 		m.StopHotReloadTicker()
 		time.Sleep(1 * time.Second)

@@ -125,7 +125,6 @@ func (m *Manager) UpdatePlugin(pluginID string) error {
 		return fmt.Errorf("script based plugins cannot be updated automatically")
 	}
 
-	//Stop the plugin if it is running
 	wasRunning := installedPlugin.IsRunning()
 	if wasRunning {
 		err = m.StopPlugin(pluginID)
@@ -157,7 +156,6 @@ func (m *Manager) UpdatePlugin(pluginID string) error {
 		return fmt.Errorf("failed to set executable permissions: %w", err)
 	}
 
-	//Update the plugin icon if one is provided by the store
 	iconURL := strings.TrimSpace(storeCopy.IconPath)
 	if strings.HasPrefix(iconURL, "http://") || strings.HasPrefix(iconURL, "https://") {
 		err = downloadFileTo(iconURL, filepath.Join(installedPlugin.RootDir, "icon.png"))
@@ -167,7 +165,6 @@ func (m *Manager) UpdatePlugin(pluginID string) error {
 		}
 	}
 
-	//Reload the plugin spec from the updated binary
 	updatedPlugin, err := m.LoadPluginSpec(installedPlugin.RootDir)
 	if err != nil {
 		return fmt.Errorf("plugin updated but failed to reload plugin spec: %w", err)
@@ -183,12 +180,10 @@ func (m *Manager) UpdatePlugin(pluginID string) error {
 	m.LoadedPlugins[updatedPlugin.Spec.ID] = installedPlugin
 	m.loadedPluginsMutex.Unlock()
 
-	//Update the plugin hash list to reflect the new binary
 	m.InitPluginHashList()
 
 	m.Log("Plugin "+updatedPlugin.Spec.Name+" updated to v"+versionToString(updatedPlugin.Spec.VersionMajor, updatedPlugin.Spec.VersionMinor, updatedPlugin.Spec.VersionPatch), nil)
 
-	//Restart the plugin if it was running before the update
 	if wasRunning {
 		err = m.StartPlugin(updatedPlugin.Spec.ID)
 		if err != nil {

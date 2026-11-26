@@ -32,9 +32,9 @@ import (
 )
 
 var (
-	haExportInstaller = flag.String("ha-export-installer", "", "Custom fork: write the HA (keepalived) root installer files into this folder and exit")
-	haDirFlag         = flag.String("ha-dir", hacluster.DefaultDir, "Custom fork: HA folder shared with keepalived (created by the HA installer)")
-	haStateDirFlag    = flag.String("ha-state-dir", hacluster.DefaultStateDir, "Custom fork: folder where the HA helper reports results (created by the HA installer)")
+	haExportInstaller = flag.String("ha-export-installer", "", "write the HA (keepalived) root installer files into this folder and exit")
+	haDirFlag         = flag.String("ha-dir", hacluster.DefaultDir, "HA folder shared with keepalived (created by the HA installer)")
+	haStateDirFlag    = flag.String("ha-state-dir", hacluster.DefaultStateDir, "folder where the HA helper reports results (created by the HA installer)")
 )
 
 const haConfigFile = "ha.json"

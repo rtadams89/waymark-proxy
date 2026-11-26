@@ -145,64 +145,10 @@ func UpdateUptimeMonitorTargets() {
 	}
 }
 
-// Generate uptime monitor targets from reverse proxy rules
+// GetUptimeTargetsFromReverseProxyRules returns the Uptime Monitor targets:
+// the rules with active health checks.
 func GetUptimeTargetsFromReverseProxyRules(dp *dynamicproxy.Router) []*uptime.Target {
-	hosts := dp.GetProxyEndpointsAsMap()
-
-	UptimeTargets := []*uptime.Target{}
-	for hostid, target := range hosts {
-		if target.Disabled || target.DisableUptimeMonitor {
-			//Skip those proxy rules that is disabled
-			continue
-		}
-		isMultipleUpstreams := len(target.ActiveOrigins) > 1
-		for i, origin := range target.ActiveOrigins {
-			url := "http://" + origin.OriginIpOrDomain
-			protocol := "http"
-			if origin.RequireTLS {
-				url = "https://" + origin.OriginIpOrDomain
-				protocol = "https"
-			}
-
-			//Add the root url
-			hostIdAndName := hostid
-			if isMultipleUpstreams {
-				hostIdAndName = hostIdAndName + " (destination " + strconv.Itoa(i) + ")"
-			}
-			UptimeTargets = append(UptimeTargets, &uptime.Target{
-				ID:                hostIdAndName,
-				Name:              hostIdAndName,
-				URL:               url,
-				Protocol:          protocol,
-				ProxyType:         uptime.ProxyType_Host,
-				SkipTlsValidation: origin.SkipCertValidations,
-				HealthCheckURI:    target.UptimeMonitorURI,
-			})
-
-			//Add each virtual directory into the list
-			for _, vdir := range target.VirtualDirectories {
-				url := "http://" + vdir.Domain
-				protocol := "http"
-				if origin.RequireTLS {
-					url = "https://" + vdir.Domain
-					protocol = "https"
-				}
-				//Add the root url
-				UptimeTargets = append(UptimeTargets, &uptime.Target{
-					ID:                hostid + vdir.MatchingPath,
-					Name:              hostid + vdir.MatchingPath,
-					URL:               url,
-					Protocol:          protocol,
-					ProxyType:         uptime.ProxyType_Vdir,
-					SkipTlsValidation: origin.SkipCertValidations,
-					HealthCheckURI:    target.UptimeMonitorURI,
-				})
-
-			}
-		}
-	}
-
-	return healthCheckUptimeTargets(dp) // the Uptime Monitor shows rules with active health checks
+	return healthCheckUptimeTargets(dp)
 }
 
 // Handle rendering up time monitor data

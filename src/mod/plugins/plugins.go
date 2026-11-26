@@ -29,7 +29,6 @@ func NewPluginManager(options *ManagerOptions) *Manager {
 		os.MkdirAll(options.PluginDir, 0755)
 	}
 
-	//Create the plugin config file if not exists
 	if !utils.FileExists(options.PluginGroupsConfig) {
 		js, _ := json.Marshal(map[string][]string{})
 		err := utils.WriteFileAtomic(options.PluginGroupsConfig, js, 0644)
@@ -38,7 +37,6 @@ func NewPluginManager(options *ManagerOptions) *Manager {
 		}
 	}
 
-	//Create database table
 	options.Database.NewTable("plugins")
 
 	thisManager := &Manager{
@@ -52,7 +50,6 @@ func NewPluginManager(options *ManagerOptions) *Manager {
 		loadedPluginsMutex: sync.RWMutex{},
 	}
 
-	//Check if hot reload is enabled
 	if options.EnableHotReload {
 		err := thisManager.StartHotReloadTicker()
 		if err != nil {
@@ -79,7 +76,6 @@ func (m *Manager) ReloadPluginFromDisk() {
 
 	m.loadedPluginsMutex.Unlock()
 
-	//Scan the plugin directory for new plugins
 	foldersInPluginDir, err := os.ReadDir(m.Options.PluginDir)
 	if err != nil {
 		m.Log("Failed to read plugin directory", err)
@@ -115,7 +111,6 @@ func (m *Manager) ReloadPluginFromDisk() {
 		}
 	}
 
-	//Generate a hash list for plugins
 	m.InitPluginHashList()
 }
 
@@ -142,7 +137,6 @@ func (m *Manager) LoadPluginsFromDisk() error {
 			m.loadedPluginsMutex.Unlock()
 			m.Log("Loaded plugin: "+thisPlugin.Spec.Name, nil)
 
-			// If the plugin was enabled, start it now
 			if m.GetPluginPreviousEnableState(thisPlugin.Spec.ID) {
 				err = m.StartPlugin(thisPlugin.Spec.ID)
 				if err != nil {
@@ -153,7 +147,6 @@ func (m *Manager) LoadPluginsFromDisk() error {
 	}
 
 	if m.Options.PluginGroupsConfig != "" {
-		//Load the plugin groups from the config file
 		err = m.LoadPluginGroupsFromConfig()
 		if err != nil {
 			m.Log("Failed to load plugin groups", err)
@@ -163,7 +156,6 @@ func (m *Manager) LoadPluginsFromDisk() error {
 	//Generate the static forwarder radix tree
 	m.UpdateTagsToPluginMaps()
 
-	//Generate a hash list for plugins
 	m.InitPluginHashList()
 	return nil
 }

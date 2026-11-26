@@ -721,10 +721,6 @@ body.darkTheme .menudivider{
 	background-color: var(--buttom_toggle_active) !important;
 }
 
-/*
-    Global Area Network
-    gan.html
-*/
 .clickable{
     cursor: pointer;
 }

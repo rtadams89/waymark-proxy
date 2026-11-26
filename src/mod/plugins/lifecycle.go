@@ -25,13 +25,11 @@ func (m *Manager) StartPlugin(pluginID string) error {
 		return err
 	}
 
-	//Get the plugin Entry point
 	pluginEntryPoint, err := m.GetPluginEntryPoint(thisPlugin.RootDir)
 	if err != nil {
 		return err
 	}
 
-	// Absolute path of the plugin entry point
 	absolutePath, err := filepath.Abs(pluginEntryPoint)
 	if err != nil {
 		return err
@@ -43,7 +41,6 @@ func (m *Manager) StartPlugin(pluginID string) error {
 		RuntimeConst: *m.Options.SystemConst,
 	}
 
-	// Generate API key if the plugin has permitted endpoints
 	if len(thisPlugin.Spec.PermittedAPIEndpoints) > 0 {
 		apiKey, err := m.Options.APIKeyManager.GenerateAPIKey(thisPlugin.Spec.ID, thisPlugin.Spec.PermittedAPIEndpoints)
 		if err != nil {
@@ -56,7 +53,6 @@ func (m *Manager) StartPlugin(pluginID string) error {
 
 	js, _ := json.Marshal(pluginConfiguration)
 
-	//Start the plugin with given configuration
 	m.Log("Starting plugin "+thisPlugin.Spec.Name+" at :"+strconv.Itoa(pluginConfiguration.Port), nil)
 	cmd := exec.Command(absolutePath, "-configure="+string(js))
 	cmd.Dir = filepath.Dir(absolutePath)
@@ -153,7 +149,6 @@ func (m *Manager) StartPlugin(pluginID string) error {
 	thisPlugin.process = cmd
 	thisPlugin.Enabled = true
 
-	// Register event subscriptions
 	if thisPlugin.Spec.SubscriptionsEvents != nil {
 		for eventName := range thisPlugin.Spec.SubscriptionsEvents {
 			eventType := events.EventName(eventName)
@@ -268,7 +263,6 @@ func (m *Manager) StopPlugin(pluginID string) error {
 		time.Sleep(300 * time.Millisecond)
 		thisPlugin.process.Process.Kill()
 	} else {
-		//Send SIGTERM to the plugin process, if it is still running
 		err = thisPlugin.process.Process.Signal(syscall.SIGTERM)
 		if err != nil {
 			m.Log("Failed to send Interrupt signal to plugin "+thisPlugin.Spec.Name+": "+err.Error(), nil)
@@ -294,12 +288,10 @@ func (m *Manager) StopPlugin(pluginID string) error {
 	thisPlugin.StopAllStaticPathRouters()
 	thisPlugin.StopDynamicForwardRouter()
 
-	//Clean up API key
 	err = m.Options.APIKeyManager.RevokeAPIKeysForPlugin(thisPlugin.Spec.ID)
 	if err != nil {
 		m.Log("Failed to revoke API keys for plugin "+thisPlugin.Spec.Name, err)
 	}
-	//Unsubscribe from all events
 	err = eventsystem.Publisher.UnregisterSubscriber(eventsystem.ListenerID(thisPlugin.Spec.ID))
 	if err != nil {
 		m.Log("Failed to unsubscribe plugin "+thisPlugin.Spec.Name+" from events", err)

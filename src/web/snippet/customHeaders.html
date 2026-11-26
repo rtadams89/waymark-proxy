@@ -205,7 +205,6 @@
                 parent.hideSideWrapper(true);
             }
 
-            //Bind events to header mod mode
             $("#headerModeAdd").on("click", function(){
                 $("#headerModeAdd").addClass("active");
                 $("#headerModeRemove").removeClass("active");
@@ -370,7 +369,6 @@
                         //HSTS disabled
                         $("#enableHSTS").parent().checkbox("set unchecked");
                     }else{
-                        //HSTS enabled
                         $("#enableHSTS").parent().checkbox("set checked");
                     }
 
@@ -399,7 +397,6 @@
 
             //Return true if this is an proposed permission policy feature
             function isExperimentalFeature(header) {
-                // List of experimental features
                 const experimentalFeatures = [
                     "clipboard-read",
                     "clipboard-write",
@@ -539,7 +536,6 @@
                 return newPermissionPolicyKeyValuePair;
             }
 
-            //Handle saving of permission policy
             function savePermissionPolicy(){
                 let ppEnabled = $("#enablePP")[0].checked;
                 if (ppEnabled != ppSavedEnabled){

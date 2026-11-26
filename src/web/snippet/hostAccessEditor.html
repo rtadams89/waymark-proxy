@@ -112,7 +112,7 @@
                             <div class="content">${htmlEscape(a.name)} ${a.builtIn ? `<span class="ui mini basic label">built in</span>` : ""}</div>
                         </h5>
                         <div class="aclMeta">${htmlEscape(a.description || "")}</div>
-                        <div class="aclMeta" style="margin-top: 0.3em;">${rules} · used by ${users}${a.builtIn ? "" : ` · <a href="#" onclick="event.stopPropagation(); openACLPage('${htmlEscape(a.id)}'); return false;">Edit</a>`}</div>
+                        <div class="aclMeta" style="margin-top: 0.3em;">${rules} · used by ${users}${a.builtIn ? "" : ` · <a href="#" onclick="event.stopPropagation(); openACLPage(${jsArg(a.id)}); return false;">Edit</a>`}</div>
                         <div class="selected"><i class="ui large green check icon"></i></div>
                     </div>`);
                 });

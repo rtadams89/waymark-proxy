@@ -76,10 +76,8 @@ func ReverseProxyAddVdir(w http.ResponseWriter, r *http.Request) {
 	reqTLS, _ := utils.PostBool(r, "reqTLS")
 	skipValid, _ := utils.PostBool(r, "skipValid")
 
-	//Load the target proxy endpoint from runtime
 	var targetProxyEndpoint *dynamicproxy.ProxyEndpoint
 	if eptype == "root" {
-		//Check if root is running at reverse proxy mode
 		if dynamicProxyRouter.Root.DefaultSiteOption != dynamicproxy.DefaultSite_ReverseProxy {
 			utils.SendErrorResponse(w, "virtual directory can only be added to root router under proxy mode")
 			return
@@ -112,7 +110,6 @@ func ReverseProxyAddVdir(w http.ResponseWriter, r *http.Request) {
 		SkipCertValidations: skipValid,
 	}
 
-	//Add Virtual Directory Rule to this Proxy Endpoint
 	activatedProxyEndpoint, err := targetProxyEndpoint.AddVirtualDirectoryRule(&newVirtualDirectoryRouter)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
@@ -122,7 +119,6 @@ func ReverseProxyAddVdir(w http.ResponseWriter, r *http.Request) {
 	//Save it to file
 	SaveReverseProxyConfig(activatedProxyEndpoint)
 
-	// Update uptime monitor
 	UpdateUptimeMonitorTargets()
 	utils.SendOK(w)
 }
@@ -163,7 +159,6 @@ func ReverseProxyDeleteVdir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Delete the Vdir from endpoint
 	err = targetEndpoint.RemoveVirtualDirectoryRuleByMatchingPath(vdir)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error())
@@ -230,7 +225,6 @@ func ReverseProxyEditVdir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Check if the target vdir exists
 	if targetEndpoint.GetVirtualDirectoryRuleByMatchingPath(vdir) == nil {
 		utils.SendErrorResponse(w, "target virtual directory rule not exists")
 		return

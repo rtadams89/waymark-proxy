@@ -173,7 +173,6 @@
             $.cjax = function(payload){
                 let requireTokenMethod = ["POST", "PUT", "DELETE"];
                 if (requireTokenMethod.includes(payload.method) || requireTokenMethod.includes(payload.type)){
-                    //csrf token is required
                     let csrfToken = document.querySelector('meta[name="waymark.csrf.Token"]').getAttribute("content");                    payload.headers = {
                         "X-CSRF-Token": csrfToken,
                     }
@@ -289,7 +288,6 @@
                     }
                 }
                 }catch(ex){
-                    //Assume not logged in
                     console.log(data);
                 }
                 
@@ -319,7 +317,6 @@
                     if ($(this).attr("id") == "repeatMagic"){
                         $("#regsiterbtn").click();
                     }else{
-                        //Focus to next field
                         $(this).next().focus();
                     }
                 }else{
@@ -442,4 +439,4 @@
         });
     </script>
     </body>
-</html>
+</html>

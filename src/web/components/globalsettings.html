@@ -522,7 +522,6 @@
                                     }
                                 });
                             }else{
-                                //Updated
                                 msgbox("Setting updated");
                                 initRPStaste();
                             }
@@ -891,7 +890,7 @@
     }
     initDevelopmentMode();
 
-    //Set a toggle's state without firing change
+    //Set a toggle's state silently
     function setToggleStateSilently(selector, checked){
         $(selector).toggleClass("checked", checked).find("input[type='checkbox']").prop("checked", checked);
     }

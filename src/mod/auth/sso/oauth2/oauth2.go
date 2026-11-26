@@ -2,11 +2,15 @@ package oauth2
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +27,7 @@ const (
 )
 
 type OAuth2RouterOptions struct {
-	OAuth2ServerURL              string //The URL of the OAuth 2.0 server server
+	OAuth2ServerURL              string //The URL of the OAuth 2.0 server
 	OAuth2TokenURL               string //The URL of the OAuth 2.0 token server
 	OAuth2ClientId               string //The client id for OAuth 2.0 Application
 	OAuth2ClientSecret           string //The client secret for OAuth 2.0 Application
@@ -284,6 +288,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 	const callbackPrefix = "/internal/oauth2"
 	const tokenCookie = "z-token"
 	const verifierCookie = "z-verifier"
+	const stateCookie = "z-state"
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
@@ -314,6 +319,12 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if r.Method == http.MethodGet && strings.HasPrefix(r.RequestURI, callbackPrefix) && code != "" && state != "" {
+		returnURL, ok := checkOAuth2State(state, r, stateCookie)
+		if !ok {
+			ar.options.Logger.PrintAndLog("oauth2", "OAuth2 callback state does not match this browser's login", nil)
+			w.WriteHeader(401)
+			return errors.New("unauthorized")
+		}
 		ctx := context.Background()
 		var authCodeOptions []oauth2.AuthCodeOption
 		if ar.options.OAuth2CodeChallengeMethod == "PKCE" || ar.options.OAuth2CodeChallengeMethod == "PKCE_S256" {
@@ -348,8 +359,12 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		}
 		w.Header().Add("Set-Cookie", cookie.String())
 
+		expired := []string{stateCookie}
 		if ar.options.OAuth2CodeChallengeMethod == "PKCE" || ar.options.OAuth2CodeChallengeMethod == "PKCE_S256" {
-			cookie := http.Cookie{Name: verifierCookie, Value: "", Path: "/", Expires: time.Now().Add(-time.Hour * 1), HttpOnly: true}
+			expired = append(expired, verifierCookie)
+		}
+		for _, name := range expired {
+			cookie := http.Cookie{Name: name, Value: "", Path: "/", Expires: time.Now().Add(-time.Hour * 1), HttpOnly: true}
 			if scheme == "https" {
 				cookie.Secure = true
 				cookie.SameSite = http.SameSiteLaxMode
@@ -358,7 +373,7 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		}
 
 		// Redirects back to the page that started the login, on this host
-		http.Redirect(w, r, oauth2ReturnLocation(state, r.Host), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, oauth2ReturnLocation(returnURL, r.Host), http.StatusTemporaryRedirect)
 
 		return errors.New("authorized")
 	}
@@ -370,22 +385,29 @@ func (ar *OAuth2Router) HandleOAuth2Auth(w http.ResponseWriter, r *http.Request)
 		} else {
 			ctx := context.Background()
 			client := oauthConfig.Client(ctx, &oauth2.Token{AccessToken: cookie.Value})
-			req, err := client.Get(ar.options.OAuth2UserInfoUrl)
+			resp, err := client.Get(ar.options.OAuth2UserInfoUrl)
 			if err != nil {
 				ar.options.Logger.PrintAndLog("oauth2", "Failed to get user info", err)
 				unauthorized = true
-			}
-			defer req.Body.Close()
-			if req.StatusCode != http.StatusOK {
-				ar.options.Logger.PrintAndLog("oauth2", "Failed to get user info", err)
-				unauthorized = true
+			} else {
+				resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					ar.options.Logger.PrintAndLog("oauth2", "Failed to get user info: status "+strconv.Itoa(resp.StatusCode), nil)
+					unauthorized = true
+				}
 			}
 		}
 	} else {
 		unauthorized = true
 	}
 	if unauthorized {
-		state := url.QueryEscape(reqUrl)
+		nonce := newOAuth2StateNonce()
+		stateCk := http.Cookie{Name: stateCookie, Value: nonce, Path: "/", Expires: time.Now().Add(time.Hour), HttpOnly: true, SameSite: http.SameSiteLaxMode}
+		if scheme == "https" {
+			stateCk.Secure = true
+		}
+		w.Header().Add("Set-Cookie", stateCk.String())
+		state := nonce + "." + url.QueryEscape(reqUrl)
 		var url string
 		if ar.options.OAuth2CodeChallengeMethod == "PKCE" || ar.options.OAuth2CodeChallengeMethod == "PKCE_S256" {
 			cookie := http.Cookie{Name: verifierCookie, Value: oauth2.GenerateVerifier(), Path: "/", Expires: time.Now().Add(time.Hour * 1), HttpOnly: true}
@@ -438,4 +460,24 @@ func oauth2ReturnLocation(state string, host string) string {
 func localRedirectTarget(path string, rawQuery string) string {
 	target := &url.URL{Path: "/" + strings.TrimLeft(path, "/\\"), RawQuery: rawQuery}
 	return target.String()
+}
+
+func newOAuth2StateNonce() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// checkOAuth2State returns the return URL in state ("<nonce>.<url>") when
+// the nonce matches the browser's state cookie.
+func checkOAuth2State(state string, r *http.Request, cookieName string) (string, bool) {
+	nonce, returnURL, ok := strings.Cut(state, ".")
+	if !ok || len(nonce) != 32 {
+		return "", false
+	}
+	c, err := r.Cookie(cookieName)
+	if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(nonce)) != 1 {
+		return "", false
+	}
+	return returnURL, true
 }

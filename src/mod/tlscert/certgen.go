@@ -14,14 +14,12 @@ import (
 
 // GenerateSelfSignedCertificate generates a self-signed ECDSA certificate and saves it to the specified files.
 func (m *Manager) GenerateSelfSignedCertificate(cn string, sans []string, certFile string, keyFile string) error {
-	// Generate private key (ECDSA P-256)
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		m.Logger.PrintAndLog("tls", "Failed to generate private key", err)
 		return err
 	}
 
-	// Create certificate template
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(time.Now().UnixNano()),
 		Subject: pkix.Name{
@@ -67,7 +65,6 @@ func (m *Manager) GenerateSelfSignedCertificate(cn string, sans []string, certFi
 		os.Remove(keyPath)
 	}
 
-	// Write certificate to file
 	err = writeFileWithMode(m.CertStore, certFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER}), defaultPublicCertFileMode)
 	if err != nil {
 		m.Logger.PrintAndLog("tls", "Failed to write certificate to file: "+certFile, err)

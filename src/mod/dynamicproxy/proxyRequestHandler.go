@@ -72,7 +72,7 @@ func (router *Router) getProxyEndpoint(hostname string, local net.IP) *ProxyEndp
 			return true
 		}
 
-		//Wildcard not match. Check for alias
+		//Alias match
 		if len(ep.MatchingDomainAlias) > 0 {
 			for _, aliasDomain := range ep.MatchingDomainAlias {
 				match, err := filepath.Match(aliasDomain, hostname)
@@ -142,7 +142,6 @@ func (h *ProxyHandler) upstreamHostSwap(w http.ResponseWriter, r *http.Request, 
 	}
 	loopbackProxyEndpoint := h.Parent.GetProxyEndpointFromHostname(upstreamHostname)
 	if loopbackProxyEndpoint != nil && loopbackProxyEndpoint != currentTarget {
-		// Loopback to one of this proxy's rules
 		if loopbackProxyEndpoint.IsEnabled() {
 			h.hostRequest(w, r, loopbackProxyEndpoint)
 		} else {
@@ -165,7 +164,6 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 		return
 	}
 
-	// All upstreams down
 	if h.allUpstreamsDown(target) {
 		serveProxyRequestError(w, 521, h.Parent, ErrorTemplateRPError)
 		h.Parent.logRequest(r, false, 521, "host-http", reqHostname, "health-check-down", target)
@@ -207,7 +205,7 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	if r.URL != nil {
 		r.Host = r.URL.Host
 	} else {
-		//Fallback when the upstream proxy screw something up in the header
+		//Fallback when the request has no URL
 		r.URL, _ = url.Parse(reqHostname)
 	}
 
@@ -218,7 +216,6 @@ func (h *ProxyHandler) hostRequest(w http.ResponseWriter, r *http.Request, targe
 	}
 	rewrittenUserDefinedHeaders := rewrite.PopulateRequestHeaderVariables(r, headerRewriteOptions.UserDefinedHeaders)
 
-	//Build downstream and upstream header rules
 	upstreamHeaders, downstreamHeaders := rewrite.SplitUpDownStreamHeaders(&rewrite.HeaderRewriteOptions{
 		UserDefinedHeaders:           rewrittenUserDefinedHeaders,
 		HSTSMaxAge:                   headerRewriteOptions.HSTSMaxAge,
@@ -378,7 +375,7 @@ func (h *ProxyHandler) vdirRequest(w http.ResponseWriter, r *http.Request, targe
 	if r.URL != nil {
 		r.Host = r.URL.Host
 	} else {
-		//Fallback when the upstream proxy screw something up in the header
+		//Fallback when the request has no URL
 		r.URL, _ = url.Parse(reqHostname)
 	}
 
@@ -488,7 +485,6 @@ func serveProxyRequestError(w http.ResponseWriter, statusCode int, router *Route
 
 	embeddedContent, templateName := templateType.getTemplateContent()
 
-	// Try to load custom template from web directory
 	if router != nil && router.Option.WebDirectory != "" {
 		customTemplate, err := os.ReadFile(filepath.Join(router.Option.WebDirectory, "templates", templateName))
 		if err == nil {

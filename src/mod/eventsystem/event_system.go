@@ -54,7 +54,6 @@ func (em *eventManager) RegisterSubscriberToEvent(subscriber Listener, eventType
 	listenerID := subscriber.GetID()
 	em.subscribers[listenerID] = subscriber
 
-	// Check if already subscribed to the event
 	for _, id := range em.subscriptions[eventType] {
 		if id == listenerID {
 			return nil // Already subscribed

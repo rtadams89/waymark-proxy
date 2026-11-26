@@ -95,7 +95,6 @@ func (c *ProxyRelayInstance) RunUDPConnectionRelay(conn *udpClientServerConn, li
 			conn.ServerConn.SetReadDeadline(time.Now().Add(conn.timeout))
 		}
 
-		// Read from server
 		n, err := conn.ServerConn.Read(buffer[0:])
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
@@ -177,7 +176,6 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 	go func() {
 		// Wait for the stop signal (or the channel closing)
 		<-stopChan
-		//Stop server -> client forwarder
 		c.CloseAllUDPConnections()
 		//Stop client -> server forwarder
 		//Force close, will terminate ReadFromUDP for inbound listener
@@ -201,7 +199,7 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 		if !found {
 			// Check if this new client is allowed by access control policy
 			if c.checkAccess(cliaddr.IP.String(), "udp") != access.ActionAllow {
-				continue // deny and drop: UDP has nothing to answer with
+				continue // deny and drop both drop the datagram
 			}
 
 			// Pick an upstream from the pool
@@ -216,7 +214,6 @@ func (c *ProxyRelayInstance) ForwardUDP(address1, address2 string, stopChan chan
 			// Fire up routine to manage new connection
 			go c.RunUDPConnectionRelay(conn, lisener)
 
-			// Send Proxy Protocol header if enabled
 			if c.ProxyProtocolVersion == ProxyProtocolV2 {
 				if upAddr, ok := conn.ServerConn.RemoteAddr().(*net.UDPAddr); ok {
 					_ = WriteProxyProtocolHeaderUDP(conn.ServerConn, cliaddr, upAddr)

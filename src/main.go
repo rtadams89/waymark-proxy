@@ -30,6 +30,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/google/uuid"
 	csrf "github.com/rtadams89/waymark-proxy/mod/csrfcompat"
@@ -144,7 +145,8 @@ func main() {
 		SystemWideLogger.Println(SYSTEM_NAME + " started. Visit control panel at http://" + *webUIPort)
 	}
 
-	err = http.ListenAndServe(*webUIPort, adminSecurityHeaders(entryMux))
+	adminServer := &http.Server{Addr: *webUIPort, Handler: adminSecurityHeaders(entryMux), ReadHeaderTimeout: 10 * time.Second}
+	err = adminServer.ListenAndServe()
 
 	if err != nil {
 		log.Fatal(err)

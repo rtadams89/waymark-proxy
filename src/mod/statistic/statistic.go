@@ -197,7 +197,7 @@ func (c *Collector) GetCurrentDailySummary() *DailySummary {
 }
 
 // Summary returns today's summary. Its counters must be read with
-// atomic.LoadInt64 (or Counts), since requests update them concurrently.
+// atomic.LoadInt64 (or Counts).
 func (c *Collector) Summary() *DailySummary {
 	return c.summary.Load()
 }
@@ -288,18 +288,15 @@ func (c *Collector) RecordRequest(ri RequestInfo) {
 
 	c.incr(d.RequestClientIp, d.bounded.RequestClientIp, ri.IpAddr)
 
-	//Record the referer as sent (the UI escapes it when it shows it).
-	//Before 2.19.10 referers were stored HTML-encoded.
+	//Record the referer as sent
 	if ri.Referer != "" {
 		c.incr(d.Referer, d.bounded.Referer, truncateStatKey(ri.Referer))
 	} else {
 		c.incr(d.Referer, d.bounded.Referer, "")
 	}
 
-	//Record the UserAgent
 	c.incr(d.UserAgent, d.bounded.UserAgent, truncateStatKey(ri.UserAgent))
 
-	//Record request URL, if it is a page
 	ext := filepath.Ext(ri.RequestURL)
 
 	if ext != "" && !isWebPageExtension(ext) {
@@ -308,7 +305,6 @@ func (c *Collector) RecordRequest(ri RequestInfo) {
 
 	c.incr(d.RequestURL, d.bounded.RequestURL, truncateStatKey(ri.RequestURL))
 
-	// Record the downstream hostname (the hostname the user visited)
 	c.incr(d.DownstreamHostnames, d.bounded.DownstreamHostnames, ri.Target)
 
 	// Record the upstream hostname (the selected load balancer upstream)

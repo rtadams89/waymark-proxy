@@ -811,7 +811,6 @@
   }
 
   function asRenderCategorySidebar() {
-    //Count apps per category
     let counts = {};
     asAvailableApps.forEach(app => {
       const cat = asGetAppCategory(app);
@@ -857,7 +856,7 @@
     //Update sidebar highlight
     $("#asCategoryList .as-cat-item").removeClass("active");
     $(`#asCategoryList .as-cat-item[data-category="${category}"]`).addClass("active");
-    //Sync toolbar dropdown without retriggering the change handler
+    //Sync the toolbar dropdown silently
     if ($("#asCategoryDropdown").dropdown("get value") != category) {
       $("#asCategoryDropdown").dropdown("set selected", category);
     }
@@ -904,7 +903,6 @@
   }
 
   function asRenderCompatSidebar() {
-    //Count apps per download platform
     let counts = {};
     asAvailableApps.forEach(app => {
       Object.keys(app.DownloadURLs || {}).forEach(platform => {
@@ -975,15 +973,14 @@
     const updateInfo = asGetUpdateInfo(spec.id);
     if (asIsInstalled(spec.id)) {
       if (updateInfo != undefined && updateInfo.updateAvailable) {
-        action.html(`<button class="ui orange button" onclick="asUpdateApp('${asEscapeHtml(spec.id)}', this);"><i class="arrow alternate circle up icon"></i> Update</button>`);
+        action.html(`<button class="ui orange button" onclick="asUpdateApp(${jsArg(spec.id)}, this);"><i class="arrow alternate circle up icon"></i> Update</button>`);
       } else {
         action.html(`<span class="as-installed-label"><i class="check circle icon"></i> Installed</span>`);
       }
     } else {
-      action.html(`<button class="ui blue button" onclick="asInstallApp('${asEscapeHtml(spec.id)}', this);"><i class="download icon"></i> Install</button>`);
+      action.html(`<button class="ui blue button" onclick="asInstallApp(${jsArg(spec.id)}, this);"><i class="download icon"></i> Install</button>`);
     }
 
-    //Dots
     const dots = $("#asFeaturedDots");
     dots.empty();
     if (asFeaturedApps.length > 1) {
@@ -1020,12 +1017,12 @@
       let actionHtml = "";
       if (asIsInstalled(spec.id)) {
         if (updateInfo != undefined && updateInfo.updateAvailable) {
-          actionHtml = `<button class="ui mini orange button" title="Update to v${asEscapeHtml(updateInfo.latestVersion)}" onclick="asUpdateApp('${escapedId}', this);"><i class="arrow alternate circle up icon"></i> Update</button>`;
+          actionHtml = `<button class="ui mini orange button" title="Update to v${asEscapeHtml(updateInfo.latestVersion)}" onclick="asUpdateApp(${jsArg(spec.id)}, this);"><i class="arrow alternate circle up icon"></i> Update</button>`;
         } else {
           actionHtml = `<span class="as-installed-label"><i class="check circle icon"></i> Installed</span>`;
         }
       } else {
-        actionHtml = `<button class="ui mini blue button" onclick="asInstallApp('${escapedId}', this);">Install</button>`;
+        actionHtml = `<button class="ui mini blue button" onclick="asInstallApp(${jsArg(spec.id)}, this);">Install</button>`;
       }
 
       grid.append(`
@@ -1034,7 +1031,7 @@
             <div class="as-app-head">
               <div class="as-app-icon"><img src="${asEscapeHtml(asGetIconSrc(app))}" alt="${asEscapeHtml(spec.name)}"></div>
               <div style="min-width: 0;">
-                <div class="as-app-name" onclick="asShowAppDetails('${escapedId}');">${asEscapeHtml(spec.name)}</div>
+                <div class="as-app-name" onclick="asShowAppDetails(${jsArg(spec.id)});">${asEscapeHtml(spec.name)}</div>
               </div>
             </div>
             <div class="as-app-desc">${asEscapeHtml(spec.description)}</div>

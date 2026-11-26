@@ -74,12 +74,10 @@ func (m *Manager) HandleCertDownload(w http.ResponseWriter, r *http.Request) {
 		}
 		defer os.Remove(zipFileName) // Clean up the zip file after serving
 
-		// Serve the zip file
 		w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": certname + "_export.zip"}))
 		w.Header().Set("Content-Type", "application/zip")
 		http.ServeFile(w, r, zipFileName)
 	} else {
-		// Key pair incomplete
 		utils.SendErrorResponse(w, "invalid key-pairs: private key or public key not found in key store")
 		return
 	}
@@ -110,7 +108,6 @@ func (m *Manager) SetCertAsDefault(w http.ResponseWriter, r *http.Request) {
 
 	m.FallbackCert = certname
 	m.saveFallbackConfig()
-	// Update cert list
 	m.UpdateLoadedCertList()
 	utils.SendOK(w)
 }
@@ -137,10 +134,8 @@ func (m *Manager) HandleCertUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get the domain
 	domain, err := utils.GetPara(r, "domain")
 	if err != nil {
-		// No domain given
 		domain = "default"
 	}
 	domain, err = sanitizeCertDomain(domain)
@@ -159,14 +154,13 @@ func (m *Manager) HandleCertUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse multipart form data
-	err = r.ParseMultipartForm(10 << 20) // 10 MB
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+	err = r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
 		return
 	}
 
-	// get file from form data
 	file, _, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "Failed to get file", http.StatusBadRequest)
@@ -193,7 +187,6 @@ func (m *Manager) HandleCertUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update cert list
 	m.UpdateLoadedCertList()
 
 	// send response
@@ -217,7 +210,6 @@ func (m *Manager) HandleListDomains(w http.ResponseWriter, r *http.Request) {
 
 		certBtyes, err := os.ReadFile(certFilepath)
 		if err != nil {
-			// Unable to load this file
 			m.Logger.PrintAndLog("tls", "Unable to load certificate: "+certFilepath, err)
 			continue
 		} else {
@@ -310,8 +302,8 @@ func (m *Manager) HandleListCertificate(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 			certInfoFilename := filepath.Join(m.CertStore, filename+".json")
-			useDNSValidation := false                                // Default to false for HTTP TLS certificates
-			certInfo, err := acme.LoadCertInfoJSON(certInfoFilename) // Note: Not all certs have info json
+			useDNSValidation := false // Default to false for HTTP TLS certificates
+			certInfo, err := acme.LoadCertInfoJSON(certInfoFilename)
 			if err == nil {
 				useDNSValidation = certInfo.UseDNS
 			}
@@ -378,7 +370,6 @@ func (m *Manager) HandleDefaultCertCheck(w http.ResponseWriter, r *http.Request)
 }
 
 func (m *Manager) HandleSelfSignCertGenerate(w http.ResponseWriter, r *http.Request) {
-	// Get the common name from the request
 	cn, err := utils.GetPara(r, "cn")
 	if err != nil {
 		utils.SendErrorResponse(w, "Common name not provided")
@@ -399,14 +390,12 @@ func (m *Manager) HandleSelfSignCertGenerate(w http.ResponseWriter, r *http.Requ
 	priKeyFilename := domainToFilename(cn, ".key")
 	pubKeyFilename := domainToFilename(cn, ".pem")
 
-	// Generate self-signed certificate
 	err = m.GenerateSelfSignedCertificate(cn, SANs, pubKeyFilename, priKeyFilename)
 	if err != nil {
 		utils.SendErrorResponse(w, "Failed to generate self-signed certificate: "+err.Error())
 		return
 	}
 
-	// Update the certificate store
 	err = m.UpdateLoadedCertList()
 	if err != nil {
 		utils.SendErrorResponse(w, "Failed to update certificate store: "+err.Error())

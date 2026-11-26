@@ -341,14 +341,12 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Rate Limit
 	if sep.RequireRateLimit {
 		if err := router.handleRateLimit(w, r, sep); err != nil {
 			return
 		}
 	}
 
-	// CAPTCHA Gating
 	if handled, _ := router.handleCaptchaGating(w, r, sep); handled {
 		return
 	}
@@ -366,8 +364,7 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 	} else if !strings.HasSuffix(proxyingPath, "/") && sep.ProxyType != ProxyTypeRoot {
 		potentialProxtEndpoint := sep.GetVirtualDirectoryHandlerFromRequestURI(proxyingPath + "/")
 		if potentialProxtEndpoint != nil && !potentialProxtEndpoint.Disabled {
-			// Adds the missing trailing slash
-			http.Redirect(w, r, r.RequestURI+"/", http.StatusTemporaryRedirect)
+			http.Redirect(w, r, trailingSlashLocation(r), http.StatusTemporaryRedirect)
 			if !sep.DisableLogging {
 				clientIP := router.GetClientIPForEndpoint(r, sep)
 				router.Option.Logger.LogHTTPRequest(r, "redirect", 307, r.Host, "", clientIP)
@@ -381,7 +378,6 @@ func (router *Router) handleNonTLSRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Every upstream down: error page
 	if proxyHandler.allUpstreamsDown(sep) {
 		serveProxyRequestError(w, 521, router, ErrorTemplateRPError)
 		router.logRequest(r, false, 521, "host-http", r.Host, "health-check-down", sep)
@@ -629,7 +625,6 @@ func (router *Router) StopProxyService() error {
 		}(router.h3Server, router.h3Conn)
 	}
 
-	// Stop TLS redirect server
 	if router.tlsRedirectStop != nil {
 		wg.Add(1)
 		go func(ch chan bool) {
@@ -638,7 +633,6 @@ func (router *Router) StopProxyService() error {
 		}(router.tlsRedirectStop)
 	}
 
-	// Stop all secondary listening servers
 	router.secondaryServerMutex.Lock()
 	for addr, stopChan := range router.secondaryStopChans {
 		wg.Add(1)

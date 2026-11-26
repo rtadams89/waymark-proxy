@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -288,14 +289,7 @@ func (gs *GatewayServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !gs.router.ValidateUsername(username, password) {
 		// Exponential backoff on failed attempts
 		if gs.router.Options.UseExpotentialBackoff {
-			failures := gs.router.incrementLoginFailure(clientIP)
-			// 100ms * 2^(failures-1), at most 30 s
-			delay := 100 * time.Millisecond * (1 << uint(failures-1))
-			const maxDelay = 30 * time.Second
-			if delay > maxDelay || delay < 0 {
-				delay = maxDelay
-			}
-			time.Sleep(delay)
+			time.Sleep(loginBackoff(gs.router.incrementLoginFailure(clientIP)))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -487,7 +481,7 @@ func (gs *GatewayServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		pageContent := strings.Replace(string(logoutHTML), "{{username}}", username, -1)
+		pageContent := strings.Replace(string(logoutHTML), "{{username}}", html.EscapeString(username), -1)
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -692,4 +686,16 @@ func (gs *GatewayServer) handleTOTPVerify(w http.ResponseWriter, r *http.Request
 		"sessionSetURL":  sessionSetURL,
 		"rememberMe":     pending.RememberMe,
 	})
+}
+
+// loginBackoff returns 100ms * 2^(failures-1), at most 30s.
+func loginBackoff(failures int64) time.Duration {
+	const maxDelay = 30 * time.Second
+	if failures < 1 {
+		return 0
+	}
+	if failures > 9 {
+		return maxDelay
+	}
+	return min(100*time.Millisecond<<(failures-1), maxDelay)
 }

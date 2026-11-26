@@ -81,7 +81,6 @@ func GetCPUUsageUsingProcStat() (float64, error) {
 		return 0, err
 	}
 
-	// Sleep for 1 second to compare stats over time
 	time.Sleep(1 * time.Second)
 
 	currentStats, err := getCPUStats()

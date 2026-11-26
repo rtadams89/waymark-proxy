@@ -8,7 +8,6 @@ import (
 
 // LogHTTPRequest logs an HTTP request. clientIP is resolved by the caller.
 func (l *Logger) LogHTTPRequest(r *http.Request, reqclass string, statusCode int, downstreamHostname string, upstreamHostname string, clientIP string) {
-	// Read the request now
 	now := time.Now()
 	ev := &LogEvent{Stream: StreamTraffic, Time: now, Severity: SeverityInfo, Class: reqclass, Origin: downstreamHostname,
 		Client: clientIP, UserAgent: truncateField(r.UserAgent(), 512), Method: r.Method, URI: truncateField(r.RequestURI, 4096),

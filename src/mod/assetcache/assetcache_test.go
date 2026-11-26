@@ -270,7 +270,7 @@ func TestDefaultTTLAndExpires(t *testing.T) {
 func TestClientConditionalAndRange(t *testing.T) {
 	h := newHarness(t)
 	h.up.set("/v.mp4", "0123456789", "Content-Type", "video/mp4", "Etag", `"e1"`)
-	// Client's conditional is not forwarded on a miss (the cache needs the body)
+	// Client's conditional is dropped on a miss
 	r := h.do("GET", "/v.mp4", "If-None-Match", `"e1"`)
 	if r.Code != 200 || h.up.lastReq["/v.mp4"].Get("If-None-Match") != "" {
 		t.Fatalf("miss with conditional: %d", r.Code)

@@ -13,7 +13,6 @@ import (
 )
 
 type AuthRouterOptions struct {
-	// Address of the forward auth endpoint.
 	Address string
 
 	// ResponseHeaders is a list of headers to be copied from the response if provided by the forward auth endpoint to
@@ -122,8 +121,6 @@ func (ar *AuthRouter) handleOptionsGET(w http.ResponseWriter, r *http.Request) {
 	})
 
 	utils.SendJSONResponse(w, string(js))
-
-	return
 }
 
 func (ar *AuthRouter) handleOptionsPOST(w http.ResponseWriter, r *http.Request) {
@@ -194,8 +191,6 @@ func (ar *AuthRouter) handleOptionsDelete(w http.ResponseWriter, r *http.Request
 
 func (ar *AuthRouter) handleOptionsMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-
-	return
 }
 
 // HandleAuthProviderRouting is the internal handler for Forward Auth authentication.

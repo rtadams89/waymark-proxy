@@ -30,7 +30,6 @@ func GetHeaderVariableValuesFromRequest(r *http.Request) map[string]string {
 	vars["$scheme"] = r.URL.Scheme
 	vars["$query_string"] = r.URL.RawQuery
 
-	// User agent and referer
 	vars["$http_user_agent"] = r.UserAgent()
 	vars["$http_referer"] = r.Referer()
 

@@ -168,7 +168,6 @@ func (ar *AuthRouter) handleSessionSetCallback(w http.ResponseWriter, r *http.Re
 		MaxAge:   cookieDuration,
 	})
 
-	// Redirects only to this host
 	http.Redirect(w, r, sameHostRedirect(redirectURL, r), http.StatusSeeOther)
 	return errors.New("session callback handled")
 }
@@ -241,7 +240,6 @@ func (ar *AuthRouter) HandleAuthRouting(w http.ResponseWriter, r *http.Request) 
 			return err
 		}
 
-		// AJAX requests get 401 with JSON
 		if isAjaxRequest(r) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -276,7 +274,6 @@ func (ar *AuthRouter) HandleAuthRouting(w http.ResponseWriter, r *http.Request) 
 			return buildErr
 		}
 
-		// AJAX requests get 401 with JSON
 		if isAjaxRequest(r) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)

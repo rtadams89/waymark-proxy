@@ -23,8 +23,7 @@ import (
 const (
 	//Traffic accumulation sample interval
 	DASHBOARD_BANDWIDTH_SAMPLE_INTERVAL = 5 * time.Second
-	//Auto save interval
-	DASHBOARD_BANDWIDTH_SAVE_INTERVAL = 60 * time.Second
+	DASHBOARD_BANDWIDTH_SAVE_INTERVAL   = 60 * time.Second
 	//Database table and key used to persist the running totals
 	DASHBOARD_DB_TABLE      = "dashboard"
 	DASHBOARD_BANDWIDTH_KEY = "bandwidth_today"
@@ -206,7 +205,7 @@ func (t *dashboardBandwidthTracker) save() {
 	t.mu.Unlock()
 
 	if err := sysdb.Write(DASHBOARD_DB_TABLE, DASHBOARD_BANDWIDTH_KEY, record); err != nil {
-		//Keep the dirty flag so the next tick retries the write
+		//The next tick retries the write
 		t.mu.Lock()
 		t.dirty = true
 		t.mu.Unlock()
@@ -290,7 +289,6 @@ func HandleDashboardOverview(w http.ResponseWriter, r *http.Request) {
 		Yesterday           YesterdaySummary
 	}
 
-	//Count proxy hosts and upstreams
 	proxyHostCount := 0
 	upstreamCount := 0
 	if dynamicProxyRouter != nil {
@@ -302,7 +300,6 @@ func HandleDashboardOverview(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	//Load yesterday summary for comparison values
 	yesterday := time.Now().AddDate(0, 0, -1)
 	yesterdaySummary := statisticCollector.LoadSummaryOfDay(yesterday.Year(), yesterday.Month(), yesterday.Day())
 

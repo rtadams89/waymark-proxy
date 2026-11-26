@@ -86,7 +86,6 @@
 </div>
 <script>
     var currentDefaultSiteOption = 0; //For enum see typedef.go
-    // Nothing here is saved until Save is clicked
     let rprootArea = wmTrackChanges("#rprootForm", {saveButton: "#rprootSaveBtn", onDiscard: function(){ updateAvaibleDefaultSiteOptions(); }});
     $("#advanceRootSettings").accordion();
 
@@ -125,7 +124,6 @@
 
     }
 
-    //Bind events to the radio boxes
     function bindDefaultSiteRadioCheckboxEvents(){
         $('input[type=radio][name=defaultsiteOption]').off("change").on("change", function() {
             updateAvaibleDefaultSiteOptions();
@@ -183,7 +181,6 @@
     }
     
 
-    //Bind event to tab switch
     tabSwitchEventBind["setroot"] = function(){
         
     }
@@ -270,7 +267,6 @@
                     
                     initRootInfo(function(){
                         
-                        //Check if WebServ is enabled
                         isUsingStaticWebServerAsRoot(function(isUsingWebServ){
                             if (isUsingWebServ){
                                 //Force enable static web server
@@ -294,4 +290,4 @@
 
     }
 
-</script>
+</script>

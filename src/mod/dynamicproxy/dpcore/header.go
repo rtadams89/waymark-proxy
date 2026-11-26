@@ -22,7 +22,6 @@ func removeHeaders(header http.Header) {
 		}
 	}
 
-	//Restore the Upgrade header if any
 	if header.Get("Zr-Origin-Upgrade") != "" {
 		header.Set("Upgrade", header.Get("Zr-Origin-Upgrade"))
 		header.Del("Zr-Origin-Upgrade")

@@ -43,7 +43,7 @@ type haSyncApplied struct {
 	Hash       string `json:"hash"`       // last configuration applied from the active node
 	From       string `json:"from"`       // node it came from
 	Time       int64  `json:"time"`       // when it was applied
-	FailedHash string `json:"failedHash"` // configuration whose apply failed (not retried automatically)
+	FailedHash string `json:"failedHash"` // configuration whose apply failed
 	Error      string `json:"error"`
 }
 
@@ -64,7 +64,7 @@ type haSyncPeerInfo struct {
 	UpdatePhase     string       `json:"updatePhase"` // downloading, verifying, restarting, error
 	UpdateMessage   string       `json:"updateMessage"`
 	Rolling         *rollState   `json:"rolling,omitempty"` // the rolling update it runs or ran last
-	Stats           *haNodeStats `json:"stats,omitempty"`   // traffic and resource figures (2.19.9 and later)
+	Stats           *haNodeStats `json:"stats,omitempty"`   // traffic and resource figures
 }
 
 // haPeerStatus is the last poll of another node.

@@ -246,7 +246,6 @@
                 return;
             }
             if (filename.trim() == "" && !domains.includes(",")){
-                //The filename matches the domains
                 filename = domains;
             }else if (filename != "" && !domains.includes(",")){
                 //Invalid settings. Force the filename to be same as domain
@@ -259,7 +258,7 @@
                 }
                 return;
             }
-            //Filename cannot contain wildcards, and wildcards are possible with DNS challenges
+            //Wildcards become underscores in the file name
             filename = filename.replaceAll("*", "_");
 
             let requestCert = function(caURL="", skipTLSValue=false){
@@ -319,7 +318,6 @@
     }
 
 
-    //Delete the certificate by its domain
     function deleteCertificate(domain){
         wmConfirm("Confirm delete certificate for " + domain + " ?", function(ok){
             if (!ok) return;
@@ -450,7 +448,6 @@
         });
     }
 
-    //Handle domain keys upload
     function handleDomainKeysUpload(callback=undefined){
         let domain = $("#certdomain").val();
         if (domain.trim() == ""){
@@ -525,7 +522,7 @@
         $("#certPendingFiles").val([uploadPendingPublicKey, uploadPendingPrivateKey].map(f => f ? f.name : "").join("|")).trigger("change");
     }
 
-    // Nothing in "Add a certificate" is kept until it is uploaded
+    // "Add a certificate" is kept by uploading it
     var certAddArea = wmTrackChanges("#certAddAccordion", {saveButton: "#certUploadBtn, #certPasteUploadBtn", onDiscard: function(){
         $("#pubkeySelector, #prikeySelector").val("");
         uploadPendingPublicKey = undefined;
@@ -533,7 +530,6 @@
     }});
     setTimeout(function(){ certAddArea.reset(); }, 300);
 
-    //Check if the default keypairs exists
     function initDefaultKeypairCheck(){
         $.get("/api/cert/checkDefault", function(data){
             let tick = `<i class="ui green checkmark icon"></i>`;
@@ -544,13 +540,11 @@
     }
     initDefaultKeypairCheck();
 
-    // Toggle the paste certificate interface visibility
     function togglePasteCertInterface() {
         const pasteArea = $("#certPasteArea");
         const uploadFields = $("#pubkeySelector, #prikeySelector").closest('.field');
 
         if (pasteArea.is(':visible')) {
-            // Hide paste area and show upload fields
             pasteArea.slideUp("fast");
             uploadFields.show();
             $(".showOnlyInCertUploadMode").show();
@@ -558,7 +552,6 @@
             $("#pubkeyPasteContent").val('');
             $("#prikeyPasteContent").val('');
         } else {
-            // Show paste area and hide upload fields
             pasteArea.slideDown("fast");
             uploadFields.hide();
             $(".showOnlyInCertUploadMode").hide();
@@ -607,7 +600,6 @@
         });
     }
 
-    // Handle certificate upload from pasted content
     function handlePasteInBrowserAndUpload() {
         const pubkeyContent = $("#pubkeyPasteContent").val().trim();
         const prikeyContent = $("#prikeyPasteContent").val().trim();
@@ -637,7 +629,6 @@
         const publicKeyFile = new File([publicKeyBlob], 'publicKey.pem', { type: 'text/plain' });
         const privateKeyFile = new File([privateKeyBlob], 'privateKey.key', { type: 'text/plain' });
         
-        // Set the pending upload files
         uploadPendingPublicKey = publicKeyFile;
         uploadPendingPrivateKey = privateKeyFile;
         
@@ -651,7 +642,6 @@
             $("#certdomain").val('');
             $("#certdomain").attr("placeholder", "");
             
-            // Reset pending uploads
             uploadPendingPublicKey = undefined;
             uploadPendingPrivateKey = undefined;
             
@@ -663,7 +653,6 @@
             // Show success message
             $("#certUploadSuccMsg").stop().finish().slideDown("fast").delay(3000).slideUp("fast");
             
-            // Refresh certificate list
             initManagedDomainCertificateList();
         });
     }

@@ -9,6 +9,36 @@ This file lists Waymark Proxy's changes.
 - **MAJOR** (2.0.0): changes that need action when upgrading.
 - The version lives in `src/version_custom.go` (`PRODUCT_VERSION`). Release tags are `v<version>` (`v1.0.0`); CI refuses a tag that doesn't match the version built into the binary.
 
+## 3.5.2
+
+**Security**
+- Waymark Auth: the sign-out page shows the user name as text. A user name with HTML in it could run script on the gateway's sign-out page.
+- OAuth2 single sign-on: the `state` sent to the provider carries a random value that must match an HttpOnly cookie set in the same browser, so a sign-in started elsewhere is refused. The user info check now refuses the sign-in when the request fails or the provider answers with anything but 200, and closes the response.
+- Missing-slash redirects (`/app` to `/app/` for a virtual directory) keep the query string and always point at this host. A request for `//other.example` was redirected off-site.
+- A WebSocket upstream with "Skip TLS validation" no longer turns validation off for every other WebSocket upstream.
+- The admin console, the static web server and WebDAV close connections that take more than 10 seconds to send the request headers.
+- Waymark Auth sign-in back-off is capped at 30 seconds per attempt; after many failures from one address the delay could overflow.
+- Request size limits: 1 MB for CAPTCHA answers, 10 MB for certificate uploads and 512 MB for configuration imports.
+- Admin console: plugin IDs from a plugin store index, ACL and object IDs, and addresses used in buttons are encoded as JavaScript strings. A plugin ID with a quote in it could run script in the admin console.
+- Changing an admin password applies the same password rules as creating the account.
+- `gorilla/websocket` is updated to commit `d67f418` (GO-2026-6278, GHSA-w67g-5rqw-f597): mask keys come from a cryptographic random source.
+
+**Fixes**
+- On the default site (proxy root), a path that names a virtual directory without its trailing slash is redirected to the slash path. It failed with an internal error.
+- Upstream and virtual directory addresses entered with `http://` or `https://` are used as given. They got a second scheme in front.
+- Uptime checks with "Skip TLS verification" use the check timeout for the TLS handshake as well.
+- Memory figures on Linux are left empty when the system values cannot be read.
+
+**Cleanup**
+- Code comments are trimmed to what the code does, and unused code is removed.
+- Command-line help drops the "Custom fork:" prefix from some options.
+
+## 3.5.1
+
+**Security**
+- OpenTelemetry (`go.opentelemetry.io/otel` and its `trace`, `metric`, `sdk` and `sdk/metric` modules) is updated from 1.44.0 to 1.47.0, which fixes the `AttributeValueLengthLimit` bypass with attribute values made of U+FFFD characters. Waymark does not compile OpenTelemetry in; it is only required by test code of the Yandex Cloud DNS provider's gRPC dependency.
+- `go-logr/logr` is updated from 1.4.3 to 1.4.4 along with it.
+
 ## 3.5.0
 
 **Health check failures say where they stalled**

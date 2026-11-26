@@ -65,7 +65,6 @@ func normalizeIP(raw string) string {
 
 // Match the IP address with a wildcard string
 func MatchIpWildcard(ipAddress, wildcard string) bool {
-	// Split IP address and wildcard into octets
 	ipOctets := strings.Split(ipAddress, ".")
 	wildcardOctets := strings.Split(wildcard, ".")
 
@@ -94,13 +93,11 @@ func MatchIpCIDR(ip string, cidr string) bool {
 		ip = ip[:i]
 	}
 
-	// parse the CIDR string
 	_, cidrnet, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return false
 	}
 
-	// parse the IP address
 	ipAddr := net.ParseIP(ip)
 
 	// check if the IP address is within the CIDR range

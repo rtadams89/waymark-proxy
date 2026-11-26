@@ -21,7 +21,6 @@ func (m *Manager) HandleListPluginGroups(w http.ResponseWriter, r *http.Request)
 		js, _ := json.Marshal(pluginGroups)
 		utils.SendJSONResponse(w, string(js))
 	} else {
-		//List the plugins under the tag
 		m.tagPluginListMutex.RLock()
 		plugins, ok := m.tagPluginList[targetTag]
 		m.tagPluginListMutex.RUnlock()
@@ -32,7 +31,6 @@ func (m *Manager) HandleListPluginGroups(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		//Sort the plugin by its name
 		sort.Slice(plugins, func(i, j int) bool {
 			return plugins[i].Spec.Name < plugins[j].Spec.Name
 		})
@@ -153,7 +151,6 @@ func (m *Manager) HandleListPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Sort the plugin by its name
 	sort.Slice(plugins, func(i, j int) bool {
 		return plugins[i].Spec.Name < plugins[j].Spec.Name
 	})
@@ -253,7 +250,6 @@ func (m *Manager) HandleRebuildPlugin(w http.ResponseWriter, r *http.Request) {
 
 	err = m.RebuildPlugin(pluginID)
 	if err != nil {
-		// Send detailed error with build output
 		response := map[string]interface{}{
 			"error":        err.Error(),
 			"build_output": err.Error(),

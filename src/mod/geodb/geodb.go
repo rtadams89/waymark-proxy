@@ -91,7 +91,6 @@ func NewGeoDb(sysdb *database.Database, option *StoreOptions) (*Store, error) {
 		option:                   option,
 	}
 
-	//Load the geoip dataset into the store
 	thisGeoDBStore.disabled.Store(option.Disabled)
 	if !option.Disabled {
 		dataset, err := thisGeoDBStore.loadDataSet()
@@ -129,7 +128,6 @@ func (s *Store) loadDataSet() (*geoDataSet, error) {
 	ipv6Content := geoipv6
 	usingExternalDb := false
 
-	//Check if external geoDB data is available
 	if externalV4Db, err := os.ReadFile(s.ExternalDatabaseFilepath(false)); err == nil && len(externalV4Db) > 0 {
 		s.log("External GeoDB data found, using external IPv4 GeoIP data", nil)
 		ipv4Content = externalV4Db
@@ -182,7 +180,6 @@ func (s *Store) ReloadGeoDB() error {
 	}
 	s.dataset.Store(newDataSet)
 
-	// Drop the slow lookup caches
 	s.slowLookupCacheIpv4.Clear()
 	s.slowLookupCacheIpv6.Clear()
 	return nil

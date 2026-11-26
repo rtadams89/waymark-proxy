@@ -126,8 +126,7 @@ func TestBandwidthResetsOnlyAtLocalMidnight(t *testing.T) {
 	tracker.accumulate([]gonet.IOCountersStat{nicReading("eth0", 4500, 3500)}, lateSameDay)
 	assertTotals(t, tracker, 3500, 2500, "just before midnight")
 
-	//Just after local midnight the totals reset. Counter values are unchanged
-	//here so the reset is asserted without a straddling delta.
+	//Just after local midnight the totals reset; counter values are unchanged.
 	justAfterMidnight := time.Date(2026, 7, 26, 0, 0, 5, 0, time.Local)
 	tracker.accumulate([]gonet.IOCountersStat{nicReading("eth0", 4500, 3500)}, justAfterMidnight)
 	assertTotals(t, tracker, 0, 0, "just after midnight")

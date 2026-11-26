@@ -33,7 +33,6 @@ func (m *Manager) HandlePluginUI(pluginID string, w http.ResponseWriter, r *http
 	upstreamOrigin := "127.0.0.1:" + strconv.Itoa(plugin.AssignedPort)
 	matchingPath := "/plugin.ui/" + plugin.Spec.ID
 
-	//Rewrite the request path to the plugin UI path
 	rewrittenURL := r.RequestURI
 	rewrittenURL = strings.TrimPrefix(rewrittenURL, matchingPath)
 	rewrittenURL = strings.ReplaceAll(rewrittenURL, "//", "/")

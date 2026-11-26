@@ -13,6 +13,12 @@ function htmlEscape(value) {
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+// jsArg returns a value as a JavaScript string literal for an inline event
+// handler attribute
+function jsArg(value) {
+    return htmlEscape(JSON.stringify(String(value == undefined ? "" : value)));
+}
+
 // htmlDecodeEntities turns the character references in text the server
 // stored HTML-encoded (e.g. "&#34;") back into characters; the result is
 // plain text, to be escaped again when it is put into HTML
@@ -68,7 +74,6 @@ Object.defineProperty(String.prototype, 'capitalize', {
 $.cjax = function(payload){
     let requireTokenMethod = ["POST", "PUT", "DELETE"];
     if (requireTokenMethod.includes(payload.method) || requireTokenMethod.includes(payload.type)){
-        //csrf token is required
         let csrfToken = document.getElementsByTagName("meta")["waymark.csrf.Token"].getAttribute("content");
         payload.headers = {
             "X-CSRF-Token": csrfToken,
@@ -96,8 +101,8 @@ function aclNameLabel(aclMap, id, inTable){
 /*
     Unsaved changes
 
-    Save rule: an area with a Save button saves nothing until Save is
-    clicked; an area without a Save button applies each change at once.
+    Save rule: an area with a Save button saves when Save is clicked; an
+    area without a Save button applies each change at once.
 
     wmTrackChanges(root, options) watches the fields of an area that has a
     Save button. Call area.reset() after the area's values are loaded and
@@ -145,7 +150,7 @@ function wmFields(root){
     root = $(root)[0];
     return $(root).find("input, select, textarea").filter(function(){
         if (this.type == "file" || this.type == "button" || this.type == "submit" || this.type == "search") return false;
-        // The typing box of a searchable dropdown is not a value
+        // Skips the typing box of a searchable dropdown
         if ($(this).hasClass("search") && $(this).closest(".ui.dropdown").length) return false;
         // Fields inside a [data-wm-untracked] element below root belong to
         // another area (or to no area)
@@ -163,8 +168,7 @@ function wmFieldValue(el){
 // without a field (e.g. rows of a list that is saved with the area)
 function wmFieldValues(root){
     let r = $(root)[0];
-    // Keyed by position and id or name, not class names (which widgets
-    // like Semantic UI's checkbox change when they start)
+    // Keyed by position and id or name
     let values = wmFields(root).map((el, i) => i + ":" + (el.id || el.name || el.tagName) + "=" + JSON.stringify(wmFieldValue(el)));
     $(r).find("[data-wm-value]").each(function(){
         let untracked = $(this).closest("[data-wm-untracked]")[0];
@@ -237,9 +241,8 @@ function wmTrackChanges(root, options={}){
         area.check();
     };
     // Drops the changes: the saved values are put back (onDiscard can
-    // reload or redraw what the fields alone do not restore). If they cannot
-    // all be put back (e.g. rows were added), the area stops tracking until
-    // its next reset.
+    // reload or redraw the rest). If some cannot be put back (e.g. rows were
+    // added), the area stops tracking until its next reset.
     area.discard = function(){
         if (area.baseline !== null && area.snapshot){
             wmRestoreFields(area.snapshot);
@@ -324,8 +327,7 @@ function wmConfirmDiscard(scope, proceed){
 }
 
 /*
-    Dialogs (instead of the browser's alert, confirm and prompt, which look
-    different and block the page)
+    Dialogs in place of the browser's alert, confirm and prompt
 
     wmDialog(opts, callback) shows one dialog at a time, in the top window
     when this is a same-origin frame. opts:
